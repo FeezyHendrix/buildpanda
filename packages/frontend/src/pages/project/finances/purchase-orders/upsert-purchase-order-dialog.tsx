@@ -5,14 +5,13 @@ import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
 import { FormDrawer } from "@/components/molecules/form-drawer";
-import type { PurchaseOrderStatus } from "@/hooks/use-purchase-orders";
+import { SupplierPicker } from "@/components/molecules/supplier-picker";
 import { useStages } from "@/hooks/use-stages";
 import type { Stage } from "@/lib/project-types";
 import { currencySymbol, formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import {
   EMPTY_PO,
-  PO_STATUSES,
   isLineValid,
   lineTotal,
   type LineItemValues,
@@ -143,7 +142,6 @@ export function UpsertPurchaseOrderDialog({
 
   const grandTotal = values.items.reduce((sum, item) => sum + lineTotal(item), 0);
   const isValid =
-    values.poNumber.trim().length > 0 &&
     values.vendorName.trim().length > 0 &&
     values.items.length > 0 &&
     values.items.every(isLineValid);
@@ -153,7 +151,7 @@ export function UpsertPurchaseOrderDialog({
     onSubmit({
       poNumber: values.poNumber.trim(),
       vendorName: values.vendorName.trim(),
-      status: values.status,
+      supplierId: values.supplierId,
       orderDate: values.orderDate.trim(),
       expectedDate: values.expectedDate.trim(),
       notes: values.notes.trim(),
@@ -173,8 +171,8 @@ export function UpsertPurchaseOrderDialog({
       title={mode === "edit" ? "Edit purchase order" : "New purchase order"}
       description={
         mode === "edit"
-          ? "Update the vendor PO and replace its line items."
-          : "Create a vendor purchase order with committed line-item spend."
+          ? "Update the vendor PO and replace its line items. A received PO's lines are fixed."
+          : "A purchase order starts as a draft. Issuing it is what makes it committed spend."
       }
       submitLabel={mode === "edit" ? "Save changes" : "Add purchase order"}
       submitDisabled={!isValid}
@@ -190,11 +188,12 @@ export function UpsertPurchaseOrderDialog({
             id="po-number"
             value={values.poNumber}
             onChange={(event) => update("poNumber", event.target.value)}
-            placeholder="e.g. PO-0042"
+            placeholder="Leave blank to number it automatically"
             maxLength={100}
             autoFocus
             className={INPUT_CLASS}
           />
+          <p className="text-xs text-ink-muted">Blank numbers sequence as PO-1, PO-2… per project.</p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="po-vendor">Vendor name</Label>
@@ -209,20 +208,23 @@ export function UpsertPurchaseOrderDialog({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="po-status">Status</Label>
-          <select
-            id="po-status"
-            value={values.status}
-            onChange={(event) => update("status", event.target.value as PurchaseOrderStatus)}
-            className={INPUT_CLASS}
-          >
-            {PO_STATUSES.map((status) => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
-        </div>
+      <SupplierPicker
+        projectId={projectId}
+        enabled={open}
+        value={values.supplierId}
+        onChange={(supplierId, supplier) =>
+          setValues((prev) => ({
+            ...prev,
+            supplierId,
+            // The vendor line on the PO follows the register row it points at.
+            vendorName: supplier ? supplier.name : prev.vendorName,
+          }))
+        }
+        id="po-supplier"
+        label="Supplier"
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="po-order-date">Order date</Label>
           <input
@@ -253,7 +255,9 @@ export function UpsertPurchaseOrderDialog({
           onChange={(val) => update("stageId", val && val !== NO_STAGE ? val : "")}
           placeholder="Attribute to a build stage"
         />
-        <p className="text-xs text-ink-muted">Issued POs count as committed cost for this stage.</p>
+        <p className="text-xs text-ink-muted">
+          Only an issued PO counts as committed cost on this stage — a draft counts for nothing.
+        </p>
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-line-hair p-4">

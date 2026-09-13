@@ -31,8 +31,8 @@ function CompletionPosition({ schedule, currency }: CompletionPositionProps) {
   const hasAnything =
     completion ||
     revised ||
-    eotApproved !== null ||
-    eotPending !== null ||
+    (eotApproved ?? 0) > 0 ||
+    (eotPending ?? 0) > 0 ||
     ldExposure !== null ||
     (shift !== null && shift !== 0) ||
     (delayed !== null && delayed.count > 0);
@@ -58,7 +58,9 @@ function CompletionPosition({ schedule, currency }: CompletionPositionProps) {
         </div>
       ) : null}
 
-      {eotApproved !== null || eotPending !== null ? (
+      {/* The server sends 0 rather than null for these, so an empty EOT
+          position would otherwise add a permanent "None" line to the card. */}
+      {(eotApproved ?? 0) > 0 || (eotPending ?? 0) > 0 ? (
         <div className="flex items-center justify-between gap-3 text-[13px]">
           <span className="text-black-300">Extension of time</span>
           <span className="flex items-center gap-1.5">
@@ -68,7 +70,6 @@ function CompletionPosition({ schedule, currency }: CompletionPositionProps) {
             {eotPending ? (
               <Badge tone="warning" size="sm">◷ {daysLabel(eotPending)} claimed</Badge>
             ) : null}
-            {!eotApproved && !eotPending ? <span className="text-black-300">None</span> : null}
           </span>
         </div>
       ) : null}

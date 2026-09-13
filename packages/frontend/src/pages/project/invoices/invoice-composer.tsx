@@ -180,7 +180,7 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan,
 
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
             {scan && <ScannedDetailsBanner draft={scan.draft} currency={form.values.currency || currency} />}
-            <InvoiceForm form={form} money={money} />
+            <InvoiceForm form={form} money={money} projectId={projectId} />
           </div>
 
           <footer className="border-t border-line-hair bg-white px-6 py-4">

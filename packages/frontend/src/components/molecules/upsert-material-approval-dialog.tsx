@@ -25,13 +25,35 @@ export interface UpsertMaterialApprovalValues {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  mode: "create" | "edit";
+  /** `resubmit` prefills from a decided request and raises a new one linked to it. */
+  mode: "create" | "edit" | "resubmit";
   initial?: MaterialApproval | null;
   reviewerOptions?: MaterialApprovalReviewerOption[];
   onSubmit: (values: UpsertMaterialApprovalValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
 }
+
+const MODE_COPY = {
+  create: {
+    title: "Request material approval",
+    description:
+      "Get a material and its specification signed off before it is ordered or installed.",
+    submitLabel: "Send request",
+  },
+  edit: {
+    title: "Edit material request",
+    description:
+      "Get a material and its specification signed off before it is ordered or installed.",
+    submitLabel: "Save changes",
+  },
+  resubmit: {
+    title: "Resubmit material request",
+    description:
+      "The decided request stays on file. This raises a fresh request linked back to it, so the rejection and its replacement both stand.",
+    submitLabel: "Send resubmission",
+  },
+} as const;
 
 /** Site-standard units — a free-text unit drifts and breaks reconciliation. */
 const UNITS = ["ea", "m", "m2", "m3", "kg", "tonne", "bag", "roll", "litre", "set"] as const;
@@ -98,9 +120,9 @@ function UpsertMaterialApprovalDialog({
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={mode === "create" ? "Request material approval" : "Edit material request"}
-      description="Get a material and its specification signed off before it is ordered or installed."
-      submitLabel={mode === "create" ? "Send request" : "Save changes"}
+      title={MODE_COPY[mode].title}
+      description={MODE_COPY[mode].description}
+      submitLabel={MODE_COPY[mode].submitLabel}
       submitDisabled={!canSubmit}
       submitting={isSubmitting}
       error={error ?? null}

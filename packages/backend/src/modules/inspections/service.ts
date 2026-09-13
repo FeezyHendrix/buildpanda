@@ -19,6 +19,13 @@ import { ForbiddenError, NotFoundError, ConflictError, BadRequestError } from ".
 
 export interface InspectionsDeps {
   notifications?: NotificationsService;
+  /**
+   * What a company inspects is a list it owns, so the category on a request is
+   * checked against that catalogue rather than a constant in this file.
+   */
+  categories?: {
+    resolve: (projectId: string, idOrName: string) => Promise<{ id: string; name: string }>;
+  };
 }
 
 /** Placeholder shown on the request until BuildPanda assigns someone. */
@@ -54,6 +61,18 @@ export function inspectionsService(
   repository: InspectionsRepository,
   deps: InspectionsDeps = {},
 ) {
+  /**
+   * The category has to be on the project's list. Without a catalogue wired in
+   * (older callers, tests) the name is taken as given rather than refused.
+   */
+  async function resolveCategory(
+    projectId: string,
+    idOrName: string,
+  ): Promise<{ id: string | null; name: string }> {
+    if (!deps.categories) return { id: null, name: idOrName };
+    return deps.categories.resolve(projectId, idOrName);
+  }
+
   async function loadProjectInspection(
     projectId: string,
     inspectionId: string,
@@ -107,6 +126,7 @@ export function inspectionsService(
       side: RequesterSide,
     ): Promise<InspectionReport> {
       const subject = await repository.projectSubject(projectId);
+      const category = await resolveCategory(projectId, input.categoryId ?? input.category);
       const row = await repository.create({
         id: generateId("insp"),
         project_id: projectId,
@@ -116,7 +136,8 @@ export function inspectionsService(
         inspector_initials_tone: "brand",
         inspector_user_id: null,
         title: input.title,
-        category: input.category,
+        category: category.name,
+        category_id: category.id,
         description: input.description,
         description_html: input.descriptionHtml ?? null,
         status: "Scheduled",
@@ -154,7 +175,11 @@ export function inspectionsService(
 
       const patch: InspectionUpdatePatch = {};
       if (input.title !== undefined) patch.title = input.title;
-      if (input.category !== undefined) patch.category = input.category;
+      if (input.categoryId !== undefined || input.category !== undefined) {
+        const picked = await resolveCategory(projectId, input.categoryId ?? input.category!);
+        patch.category = picked.name;
+        patch.category_id = picked.id;
+      }
       if (input.description !== undefined) patch.description = input.description;
       if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
       if (input.scheduledAt !== undefined) patch.scheduled_at = input.scheduledAt;
@@ -266,6 +291,7 @@ export function inspectionsService(
       projectId: string,
       inspectionId: string,
       actor: InspectionActor,
+      reason?: string,
     ): Promise<InspectionReport> {
       const existing = await loadProjectInspection(projectId, inspectionId);
       if (!actor.isPlatformAdmin && existing.requested_by_id !== actor.id) {
@@ -276,7 +302,10 @@ export function inspectionsService(
       if (existing.service_status === "Reported") {
         throw new ConflictError("The report has been issued — this inspection cannot be cancelled");
       }
-      const updated = await repository.update(inspectionId, { service_status: "Cancelled" });
+      const updated = await repository.update(inspectionId, {
+        service_status: "Cancelled",
+        cancellation_reason: reason?.trim() || null,
+      });
       if (!updated) throw new ConflictError("Inspection update failed");
       return reload(updated);
     },

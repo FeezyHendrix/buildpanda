@@ -1,26 +1,39 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { DetailDrawer } from "../finance-drawer";
 import { Tabs } from "@/components/molecules/tabs";
 import type { Invoice } from "@/hooks/use-invoices";
 import type { Currency } from "@/lib/project-types";
+import { DetailDrawer } from "../finance-drawer";
 import type { InvoiceAction } from "./invoice-action-dialogs";
+import { InvoiceCertificatePanel } from "./invoice-certificate-panel";
 import { InvoiceDetailsPanel, InvoiceLineItemsPanel, InvoicePaymentsPanel } from "./invoice-drawer-panels";
-import { invoiceLabel } from "./invoice-model";
+import { InvoiceHistoryPanel } from "./invoice-history-panel";
+import { invoiceLabel, isVoided } from "./invoice-model";
 import { InvoiceStatusSelect } from "./invoice-status-select";
 
 /**
- * One invoice, read in place: Details | Line items | Payments. The status pill
- * in the header is the same inline control as the table row.
+ * One invoice, read in place. A certificate against the contract also carries
+ * its Certificate tab (previous / this / cumulative with the deductions the
+ * terms produce) and its History — who moved it, when and why.
  */
 
-type DrawerTab = "details" | "line-items" | "payments";
+type DrawerTab = "details" | "certificate" | "line-items" | "payments" | "history";
 
-const TABS = [
+interface TabItem {
+  id: DrawerTab;
+  label: string;
+}
+
+const BASE_TABS: readonly TabItem[] = [
   { id: "details", label: "Details" },
   { id: "line-items", label: "Line items" },
   { id: "payments", label: "Payments" },
-] as const satisfies readonly { id: DrawerTab; label: string }[];
+  { id: "history", label: "History" },
+];
+
+/** Only a certificate raised to the employer has an IPC structure to show. */
+const CERTIFICATE_TYPES = new Set(["progress", "final", "variation", "advance"]);
 
 interface InvoiceDrawerProps {
   open: boolean;
@@ -50,8 +63,18 @@ export function InvoiceDrawer({
 }: InvoiceDrawerProps) {
   const [tab, setTab] = useState<DrawerTab>("details");
 
+  const hasCertificate = invoice !== null && CERTIFICATE_TYPES.has(invoice.invoiceType);
+  const tabs = useMemo<readonly TabItem[]>(
+    () =>
+      hasCertificate
+        ? [BASE_TABS[0]!, { id: "certificate" as const, label: "Certificate" }, ...BASE_TABS.slice(1)]
+        : BASE_TABS,
+    [hasCertificate],
+  );
+
   if (!invoice) return null;
   const invoiceCurrency = invoice.currency || currency;
+  const voided = isVoided(invoice);
 
   return (
     <DetailDrawer
@@ -64,8 +87,13 @@ export function InvoiceDrawer({
       title={invoiceLabel(invoice)}
       headerMeta={
         <>
-          <InvoiceStatusSelect projectId={projectId} invoice={invoice} disabled={!canManage} />
+          <InvoiceStatusSelect projectId={projectId} invoice={invoice} disabled={!canManage || voided} />
           <span className="text-sm text-ink-muted">{invoice.trade}</span>
+          {voided ? (
+            <Badge tone="danger" size="sm" dot>
+              Voided
+            </Badge>
+          ) : null}
         </>
       }
       footer={
@@ -78,12 +106,17 @@ export function InvoiceDrawer({
               Pay application
             </Button>
           ) : null}
-          {canManage ? (
+          {canManage && !voided ? (
+            <Button variant="secondary" size="sm" onClick={() => onAction(invoice, "query")}>
+              Query
+            </Button>
+          ) : null}
+          {canManage && !voided ? (
             <Button variant="secondary" size="sm" onClick={() => onAction(invoice, "send")}>
               Send
             </Button>
           ) : null}
-          {canManage ? (
+          {canManage && !voided ? (
             <Button size="sm" onClick={() => onAction(invoice, "edit")}>
               Edit
             </Button>
@@ -91,13 +124,31 @@ export function InvoiceDrawer({
         </>
       }
     >
-      <Tabs items={TABS} value={tab} onChange={setTab} ariaLabel="Invoice sections" className="-mt-2" />
+      <Tabs items={tabs} value={tab} onChange={setTab} ariaLabel="Invoice sections" className="-mt-2" />
+      {voided ? (
+        <p className="rounded-lg bg-negative-50 p-4 text-sm leading-6 text-negative-700">
+          Voided{invoice.voidedAt ? ` on ${invoice.voidedAt.slice(0, 10)}` : ""}
+          {invoice.voidReason ? `: ${invoice.voidReason}` : "."} The certificate and its receipts
+          stay on file; its figures no longer count towards the contract position.
+        </p>
+      ) : null}
       {tab === "details" ? (
         <InvoiceDetailsPanel projectId={projectId} invoice={invoice} currency={invoiceCurrency} canManage={canManage} />
       ) : null}
+      {tab === "certificate" ? (
+        <InvoiceCertificatePanel projectId={projectId} invoiceId={invoice.id} currency={invoiceCurrency} />
+      ) : null}
       {tab === "line-items" ? <InvoiceLineItemsPanel invoice={invoice} currency={invoiceCurrency} /> : null}
       {tab === "payments" ? (
-        <InvoicePaymentsPanel projectId={projectId} invoice={invoice} currency={invoiceCurrency} canManage={canRecordPayment} />
+        <InvoicePaymentsPanel
+          projectId={projectId}
+          invoice={invoice}
+          currency={invoiceCurrency}
+          canManage={canRecordPayment}
+        />
+      ) : null}
+      {tab === "history" ? (
+        <InvoiceHistoryPanel projectId={projectId} invoiceId={invoice.id} currency={invoiceCurrency} />
       ) : null}
     </DetailDrawer>
   );

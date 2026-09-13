@@ -22,6 +22,15 @@ export function isAwaitingDecision(approval: MaterialApproval): boolean {
   return approval.status === "Pending" || approval.status === "Resubmit";
 }
 
+/**
+ * A decided record is read-only: editing the specification under a standing
+ * rejection would leave the decision referring to a sample that no longer
+ * exists. The way forward is a resubmission, not an edit.
+ */
+export function isDecided(approval: MaterialApproval): boolean {
+  return approval.status === "Approved" || approval.status === "Rejected";
+}
+
 export function matchesApprovalSearch(approval: MaterialApproval, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;

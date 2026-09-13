@@ -1,12 +1,14 @@
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { contractSideOf } from "../../lib/authorization.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { BadRequestError } from "../../lib/errors.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
+import { inspectionCategoriesRepository } from "../inspection-categories/repository.ts";
+import { inspectionCategoriesService } from "../inspection-categories/service.ts";
 import { inspectionsRepository } from "./repository.ts";
 import { inspectionsService } from "./service.ts";
 import {
-  INSPECTION_CATEGORIES,
   INSPECTION_OUTCOMES,
   REQUESTER_SIDES,
   SERVICE_STATUSES,
@@ -15,6 +17,12 @@ import {
   type RecordOutcomeInput,
   type RequestInspectionInput,
 } from "./types.ts";
+
+const cancelBody = {
+  type: "object",
+  properties: { reason: { type: "string", maxLength: 500 } },
+  additionalProperties: false,
+} as const;
 
 const inspectionParams = {
   type: "object",
@@ -26,7 +34,6 @@ const inspectionParams = {
   },
 } as const;
 
-const inspectionCategoryEnum = INSPECTION_CATEGORIES;
 
 const holdPointFields = {
   activityId: { type: ["string", "null"], maxLength: 100 },
@@ -124,7 +131,8 @@ const requestInspectionBody = {
   additionalProperties: false,
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
-    category: { type: "string", enum: [...inspectionCategoryEnum] },
+    category: { type: "string", minLength: 1, maxLength: 80 },
+    categoryId: { type: "string" },
     description: { type: "string", minLength: 1, maxLength: 2000 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     scheduledAt: { type: "string", minLength: 1, maxLength: 100 },
@@ -139,7 +147,8 @@ const editInspectionBody = {
   minProperties: 1,
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
-    category: { type: "string", enum: [...inspectionCategoryEnum] },
+    category: { type: "string", minLength: 1, maxLength: 80 },
+    categoryId: { type: "string" },
     description: { type: "string", minLength: 1, maxLength: 2000 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     scheduledAt: { type: "string", minLength: 1, maxLength: 100 },
@@ -157,8 +166,30 @@ function actorOf(request: FastifyRequest): InspectionActor {
 }
 
 const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
+  const categories = inspectionCategoriesService(inspectionCategoriesRepository(fastify.db));
   const service = inspectionsService(inspectionsRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+    categories: {
+      /**
+       * A request names a category by id when the picker supplied one and by
+       * name when an older client did; either way it has to be on the list the
+       * project can see.
+       */
+      resolve: async (projectId, idOrName) => {
+        const project = await fastify.db("projects").where({ id: projectId }).first();
+        const audience = { projectId, organizationId: project?.organization_id ?? null };
+        const list = await categories.list(audience, false);
+        const match =
+          list.find((row) => row.id === idOrName) ??
+          list.find((row) => row.name.toLowerCase() === idOrName.trim().toLowerCase());
+        if (!match) {
+          throw new BadRequestError(
+            `"${idOrName}" is not on this project's inspection list. Pick one from the list, or ask a workspace admin to add it.`,
+          );
+        }
+        return { id: match.id, name: match.name };
+      },
+    },
   });
 
   fastify.get<{ Params: { id: string } }>(
@@ -249,12 +280,23 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string; inspectionId: string } }>(
+  fastify.post<{ Params: { id: string; inspectionId: string }; Body: { reason?: string } }>(
     "/projects/:id/inspections/:inspectionId/cancel",
-    { schema: { params: inspectionParams, response: { 200: inspectionResponse } } },
+    {
+      schema: {
+        params: inspectionParams,
+        body: cancelBody,
+        response: { 200: inspectionResponse },
+      },
+    },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "inspections", "view");
-      return service.cancel(project.id, request.params.inspectionId, actorOf(request));
+      return service.cancel(
+        project.id,
+        request.params.inspectionId,
+        actorOf(request),
+        request.body?.reason,
+      );
     },
   );
 

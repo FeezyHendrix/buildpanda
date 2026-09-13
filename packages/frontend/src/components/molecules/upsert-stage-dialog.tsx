@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
+import { MoneyInput } from "@/components/atoms/money-input";
 import { FormDrawer } from "./form-drawer";
 import type { StageStatus } from "@/lib/project-types";
 import { INPUT_CLASS } from "@/components/atoms/input";
+import { currencySymbol, formatWholeCurrency } from "@/lib/formatters";
 
 export interface UpsertStageValues {
   name: string;
@@ -10,6 +12,8 @@ export interface UpsertStageValues {
   startDate: string | null;
   endDate: string | null;
   progressPercent: number;
+  /** The stage's share of the contract sum; a phase without one is half a record. */
+  value: number;
 }
 
 interface UpsertStageDialogProps {
@@ -17,6 +21,9 @@ interface UpsertStageDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   initial?: Partial<UpsertStageValues>;
+  /** What is still unallocated against the contract sum, for the helper line. */
+  unallocated?: number;
+  currency?: string;
   onSubmit: (values: UpsertStageValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -35,6 +42,8 @@ function UpsertStageDialog({
   onOpenChange,
   mode,
   initial,
+  unallocated,
+  currency = "NGN",
   onSubmit,
   isSubmitting = false,
   error,
@@ -44,6 +53,7 @@ function UpsertStageDialog({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [progress, setProgress] = useState(0);
+  const [value, setValue] = useState("0");
 
   useEffect(() => {
     if (open) {
@@ -52,6 +62,7 @@ function UpsertStageDialog({
       setStartDate(initial?.startDate ?? "");
       setEndDate(initial?.endDate ?? "");
       setProgress(initial?.progressPercent ?? 0);
+      setValue(String(initial?.value ?? 0));
     }
   }, [open, initial]);
 
@@ -63,6 +74,7 @@ function UpsertStageDialog({
       startDate: startDate || null,
       endDate: endDate || null,
       progressPercent: Math.max(0, Math.min(100, Math.round(progress))),
+      value: Math.max(0, Number(value) || 0),
     });
   }
 
@@ -126,6 +138,22 @@ function UpsertStageDialog({
             className={field}
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="stage-value">Stage value</Label>
+        <MoneyInput
+          id="stage-value"
+          value={value}
+          onChange={setValue}
+          currencySymbol={currencySymbol(currency)}
+          placeholder="0.00"
+        />
+        <p className="text-xs text-ink-muted">
+          {typeof unallocated === "number"
+            ? `${formatWholeCurrency(Math.abs(unallocated), currency)} ${unallocated < 0 ? "over-allocated" : "unallocated"} against the contract sum.`
+            : "Stage values have to stay within the project's contract sum."}
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">

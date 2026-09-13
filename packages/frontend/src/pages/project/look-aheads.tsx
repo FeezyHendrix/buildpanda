@@ -27,6 +27,8 @@ import type { AutoWindowActivity, LookAhead } from "@/lib/project-types";
 import { toast } from "@/lib/toast";
 import { errorMessage } from "@/lib/api-error";
 import { useProjectActivities } from "@/hooks/use-activities";
+import { useProjectInspections } from "@/hooks/use-inspections";
+import { openHoldPointsByActivity } from "@/lib/hold-points";
 import { ApproveLookAheadDialog } from "./look-aheads/approve-look-ahead-dialog";
 import { delayedActivityIds } from "./look-aheads/look-ahead-helpers";
 import { LookAheadDetailDrawer } from "./look-aheads/look-ahead-detail-drawer";
@@ -69,6 +71,11 @@ export default function ProjectLookAheads() {
   // A look-ahead is exactly where a site agent wants "this one is already
   // 7 days late" (finding F31), so the delay flag travels with the plan.
   const delayedIds = useMemo(() => delayedActivityIds(activities), [activities]);
+
+  // Same reason as the delay flag: a week's plan must show which of its
+  // activities is still gated by a hold point that has not passed.
+  const { data: inspections = [] } = useProjectInspections(project.id);
+  const holdPoints = useMemo(() => openHoldPointsByActivity(inspections), [inspections]);
 
   const activityCoverage = useMemo(
     () => new Map((autoWindow?.activities ?? []).map((activity) => [activity.activityId, activity.hasMaterialCoverage])),
@@ -233,6 +240,7 @@ export default function ProjectLookAheads() {
         lookAhead={viewTarget}
         canManage={canManage}
         delayedActivityIds={delayedIds}
+        holdPoints={holdPoints}
         onApprove={(lookAhead) => {
           setViewTarget(null);
           setApproveTarget(lookAhead);

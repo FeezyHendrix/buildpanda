@@ -23,6 +23,8 @@ function row(over: Partial<InspectionRow> = {}): InspectionRow {
     inspector_user_id: "usr_insp",
     title: "Formation level, ch 0+420",
     category: "Structural",
+    category_id: null,
+    cancellation_reason: null,
     description: "Formation approval before sub-base",
     description_html: null,
     status: "Scheduled",

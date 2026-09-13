@@ -20,6 +20,7 @@ import {
   MATERIAL_APPROVAL_STATUS_META,
   formatQuantity,
   isAwaitingDecision,
+  isDecided,
 } from "./approval-helpers";
 
 /**
@@ -40,6 +41,7 @@ export interface ApprovalRowHandlers {
   onOpen: (approval: MaterialApproval) => void;
   onEdit: (approval: MaterialApproval) => void;
   onDelete: (approval: MaterialApproval) => void;
+  onResubmit: (approval: MaterialApproval) => void;
   onDecide: (approval: MaterialApproval, decision: MaterialDecision) => void;
 }
 
@@ -67,6 +69,7 @@ export function ApprovalsTable({
   onOpen,
   onEdit,
   onDelete,
+  onResubmit,
   onDecide,
 }: ApprovalsTableProps) {
   return (
@@ -122,6 +125,7 @@ export function ApprovalsTable({
                 onOpen={onOpen}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onResubmit={onResubmit}
                 onDecide={onDecide}
               />
             ))
@@ -149,10 +153,12 @@ function ApprovalTableRow({
   onOpen,
   onEdit,
   onDelete,
+  onResubmit,
   onDecide,
 }: RowProps) {
   const meta = MATERIAL_APPROVAL_STATUS_META[approval.status];
   const awaiting = isAwaitingDecision(approval);
+  const decided = isDecided(approval);
   const decidedOn = formatShortDate(approval.reviewedAt);
 
   const actions = useMemo<RowActionItem[]>(
@@ -164,12 +170,16 @@ function ApprovalTableRow({
             onSelect: () => onDecide(approval, decision),
           }))
         : []),
-      ...(canManage ? [{ label: "Edit", onSelect: () => onEdit(approval) }] : []),
-      ...(canManage
+      // A decided record is read-only; the replacement is a new request.
+      ...(canManage && decided
+        ? [{ label: "Resubmit as new request", onSelect: () => onResubmit(approval) }]
+        : []),
+      ...(canManage && !decided ? [{ label: "Edit", onSelect: () => onEdit(approval) }] : []),
+      ...(canManage && !decided
         ? [{ label: "Delete", tone: "danger" as const, onSelect: () => onDelete(approval) }]
         : []),
     ],
-    [approval, canManage, canDecide, awaiting, onOpen, onEdit, onDelete, onDecide],
+    [approval, canManage, canDecide, awaiting, decided, onOpen, onEdit, onDelete, onResubmit, onDecide],
   );
 
   return (

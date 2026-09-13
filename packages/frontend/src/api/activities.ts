@@ -2,7 +2,10 @@ import api from "./client";
 import type {
   Activity,
   ActivityDelay,
+  ActivityDependency,
+  ActivityEvent,
   ActivityStatus,
+  Culpability,
   Currency,
 } from "@/lib/project-types";
 
@@ -17,6 +20,9 @@ export interface CreateActivityInput {
   workerCountPlanned?: number;
   assigneeId?: string | null;
   notes?: string;
+  predecessors?: ActivityDependency[];
+  percentComplete?: number;
+  isMilestone?: boolean;
 }
 export interface UpdateActivityInput {
   projectId: string;
@@ -33,12 +39,28 @@ export interface UpdateActivityInput {
   workerCountPlanned?: number;
   assigneeId?: string | null;
   notes?: string | null;
+  predecessors?: ActivityDependency[];
+  percentComplete?: number;
+  isMilestone?: boolean;
 }
 export interface DeleteActivityInput {
   projectId: string;
   activityId: string;
 }
-export interface RaiseDelayInput {
+
+/** The attribution and links a delay carries, shared by raising and amending one. */
+export interface DelayAttribution {
+  endedAt?: string | null;
+  daysLost?: number;
+  culpability?: Culpability;
+  eotClaimable?: boolean;
+  linkedRfiId?: string | null;
+  linkedChangeRequestId?: string | null;
+  linkedMaterialOrderId?: string | null;
+  preventionNotes?: string;
+}
+
+export interface RaiseDelayInput extends DelayAttribution {
   projectId: string;
   activityId: string;
   reasonCode: string;
@@ -46,14 +68,17 @@ export interface RaiseDelayInput {
   startedAt: string;
   costImpact?: number;
   currency?: Currency;
-  preventionNotes?: string;
 }
-export interface ResolveDelayInput {
+
+/**
+ * `PATCH …/delays/:delayId` is both "resolve" and "amend": setting `endedAt`
+ * closes the delay, and changing `daysLost` re-applies the cascade by the delta.
+ */
+export interface ResolveDelayInput extends DelayAttribution {
   projectId: string;
   activityId: string;
   delayId: string;
-  resolvedAt: string;
-  preventionNotes?: string;
+  resolvedAt?: string;
 }
 
 /**
@@ -88,6 +113,16 @@ export const activitiesApi = {
 
   delete: (projectId: string, activityId: string) =>
     api.delete(`/projects/${projectId}/activities/${activityId}`).then((r) => r.data),
+
+  listDelays: (projectId: string, activityId: string) =>
+    api
+      .get<ActivityDelay[]>(`/projects/${projectId}/activities/${activityId}/delays`)
+      .then((r) => r.data),
+
+  listEvents: (projectId: string, activityId: string) =>
+    api
+      .get<ActivityEvent[]>(`/projects/${projectId}/activities/${activityId}/events`)
+      .then((r) => r.data),
 
   raiseDelay: (projectId: string, activityId: string, body: Omit<RaiseDelayInput, "projectId" | "activityId">) =>
     api.post<ActivityDelay>(`/projects/${projectId}/activities/${activityId}/delays`, body).then((r) => r.data),

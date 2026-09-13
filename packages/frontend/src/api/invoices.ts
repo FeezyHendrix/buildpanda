@@ -1,7 +1,62 @@
 import api from "./client";
 
-export type InvoiceStatus = "Draft" | "Sent" | "Submitted" | "Queried" | "Approved" | "PartiallyPaid" | "Paid" | "Overdue";
-export type InvoiceType = "progress" | "final" | "variation" | "vendor" | "material";
+export type InvoiceStatus =
+  | "Draft"
+  | "Sent"
+  | "Submitted"
+  | "Queried"
+  | "Approved"
+  | "PartiallyPaid"
+  | "Paid"
+  | "Overdue"
+  | "Void";
+/** The mobilisation advance is its own certificate; recovery comes off later ones. */
+export type InvoiceType = "progress" | "final" | "variation" | "vendor" | "material" | "advance";
+
+/**
+ * Which way the certificate points. `receivable` is what WE certify to the
+ * employer (progress, final, variation, advance) and is the only direction
+ * that feeds the contract waterfall; `payable` is what a vendor bills us.
+ */
+export type InvoiceDirection = "payable" | "receivable";
+
+export type InvoiceEventType =
+  | "created"
+  | "sent"
+  | "queried"
+  | "approved"
+  | "voided"
+  | "payment_recorded"
+  | "payment_removed";
+
+/** One status change on the certificate: who, when, and why. */
+export interface InvoiceEvent {
+  id: string;
+  type: InvoiceEventType;
+  fromStatus: string | null;
+  toStatus: string | null;
+  reason: string | null;
+  actor: { id: string | null; name: string };
+  amount: number | null;
+  createdAt: string;
+}
+
+/**
+ * The interim-certificate structure a QS reads down: what was certified
+ * before, what this certificate adds, and where that leaves the cumulative
+ * position — with the deductions this certificate takes.
+ */
+export interface InvoiceCertificate {
+  /** 1 for IPC 1, 2 for IPC 2 …, counted over receivable progress certificates. */
+  number: number;
+  previousCertified: number;
+  thisCertificate: number;
+  cumulative: number;
+  retention: number;
+  vat: number;
+  advanceRecovery: number;
+  netPayable: number;
+}
 
 export type PaymentMethod =
   | "Bank Transfer"
@@ -16,6 +71,8 @@ export interface InvoicePayment {
   method: PaymentMethod;
   paidAt: string | null;
   note: string | null;
+  /** An accepted overpayment, recorded as a credit rather than a receipt. */
+  credit?: boolean;
 }
 
 export interface InvoiceLineItem {
@@ -88,6 +145,21 @@ export interface Invoice {
   budgetMonth?: string | null;
   /** Statuses this invoice may move to next; the inline status select offers only these. */
   nextStatuses?: InvoiceStatus[];
+  /** Which way the certificate points; a client invoice is receivable. */
+  direction?: InvoiceDirection;
+  /** The party on the other side of the certificate, whichever way it points. */
+  counterparty?: string | null;
+  /** The contract this certificate bills against; the main contract by default. */
+  contractId?: string | null;
+  advanceRecovery?: number;
+  voidedAt?: string | null;
+  voidReason?: string | null;
+  /** Days between the due date and the recorded receipt, when it was late. */
+  paidLateDays?: number | null;
+  /** Days past due on an unpaid certificate. */
+  overdueDays?: number | null;
+  /** Every status change, with actor and reason. Empty until the History tab loads it. */
+  history?: InvoiceEvent[];
 }
 
 /** One invoice with its recorded payments, as `GET /invoices/payments` lists them. */
@@ -106,6 +178,11 @@ export interface InvoicePaymentsRow {
   amountPaid: number;
   balanceDue: number;
   payments: InvoicePayment[];
+  direction?: InvoiceDirection;
+  counterparty?: string | null;
+  voidedAt?: string | null;
+  paidLateDays?: number | null;
+  overdueDays?: number | null;
 }
 
 export interface InvoicePaymentsTotals {
@@ -129,6 +206,9 @@ export interface InvoiceLineItemInput {
 }
 
 export interface InvoiceInput {
+  direction?: InvoiceDirection;
+  counterparty?: string | null;
+  contractId?: string | null;
   vendorName: string;
   trade: string;
   number?: string;
@@ -166,6 +246,8 @@ export interface PaymentInput {
   method: PaymentMethod;
   paidAt?: string;
   note?: string;
+  /** Accept a payment above the balance; it is recorded as a credit, with a note. */
+  allowOverpayment?: boolean;
 }
 
 export interface SendInvoiceInput {
@@ -226,6 +308,24 @@ export const invoicesApi = {
   /** `period` flags that billing-sheet month as invoiced on the stages saved. */
   setPayApplication: (projectId: string, invoiceId: string, lines: PayApplicationLineInput[], period?: string) =>
     api.put<PayApplicationSummary>(`/projects/${projectId}/invoices/${invoiceId}/pay-application`, { lines, period }).then(r => r.data),
+
+  /** Previous / this / cumulative, with retention, VAT and advance recovery from the contract terms. */
+  certificate: (projectId: string, invoiceId: string) =>
+    api
+      .get<InvoiceCertificate | null>(`/projects/${projectId}/invoices/${invoiceId}/certificate`)
+      .then(r => r.data),
+
+  /** Every status change on the certificate, with actor and reason. */
+  history: (projectId: string, invoiceId: string) =>
+    api.get<InvoiceEvent[]>(`/projects/${projectId}/invoices/${invoiceId}/history`).then(r => r.data),
+
+  /** A paid certificate is an accounting record: it is voided with a reason, never deleted. */
+  void: (projectId: string, invoiceId: string, reason: string) =>
+    api.post<Invoice>(`/projects/${projectId}/invoices/${invoiceId}/void`, { reason }).then(r => r.data),
+
+  /** A client query is a formal dispute: it always carries a reason. */
+  query: (projectId: string, invoiceId: string, reason: string) =>
+    api.post<Invoice>(`/projects/${projectId}/invoices/${invoiceId}/query`, { reason }).then(r => r.data),
 };
 
 export type InvoiceDocumentKind = "invoice" | "receipt" | "quote" | "other";

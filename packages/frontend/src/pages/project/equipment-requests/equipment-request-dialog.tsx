@@ -1,12 +1,24 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
+import { Switcher } from "@/components/atoms/switcher";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { SupplierPicker } from "@/components/molecules/supplier-picker";
+import { WorkLinkFields, type WorkLinkValue } from "@/components/molecules/work-link-fields";
 import type { EquipmentRequestInput } from "@/hooks/use-materials-equipment";
 import { cn } from "@/lib/utils";
 import type { EquipmentRequest, RequestPriority } from "@/lib/project-types";
+import { HireTermsFields, type HireTerms } from "./hire-terms-fields";
 
-const PRIORITIES: RequestPriority[] = ["Low", "Normal", "High", "Critical"];
+const PRIORITIES: readonly RequestPriority[] = ["Low", "Normal", "High", "Critical"] as const;
+
+const EMPTY_TERMS: HireTerms = {
+  onHireAt: "",
+  offHireAt: "",
+  plantRef: "",
+  dailyRate: "",
+  estimatedCost: "0",
+};
 
 function isoDaysFromNow(days: number): string {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -23,30 +35,35 @@ function defaultUntil(): string {
 interface EquipmentRequestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   initial: EquipmentRequest | null;
   onSubmit: (values: EquipmentRequestInput) => void;
   isSubmitting: boolean;
   error: string | null;
+  currency: string;
 }
 
 /** Create and edit a plant hire request in one drawer; `initial` picks the mode. */
 export function EquipmentRequestDialog({
   open,
   onOpenChange,
+  projectId,
   initial,
   onSubmit,
   isSubmitting,
   error,
+  currency,
 }: EquipmentRequestDialogProps) {
   const [title, setTitle] = useState("");
   const [equipmentName, setEquipmentName] = useState("");
   const [equipmentType, setEquipmentType] = useState("Plant");
   const [quantity, setQuantity] = useState("1");
-  const [supplier, setSupplier] = useState("");
+  const [supplierId, setSupplierId] = useState<string | null>(null);
   const [priority, setPriority] = useState<RequestPriority>("Normal");
   const [neededFrom, setNeededFrom] = useState(defaultFrom());
   const [neededUntil, setNeededUntil] = useState(defaultUntil());
-  const [estimatedCost, setEstimatedCost] = useState("0");
+  const [terms, setTerms] = useState<HireTerms>(EMPTY_TERMS);
+  const [link, setLink] = useState<WorkLinkValue>({ phaseId: null, activityId: null });
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [operatorRequired, setOperatorRequired] = useState(false);
   const [notes, setNotes] = useState("");
@@ -57,45 +74,67 @@ export function EquipmentRequestDialog({
     setEquipmentName(initial?.equipmentName ?? "");
     setEquipmentType(initial?.equipmentType ?? "Plant");
     setQuantity(String(initial?.quantity ?? 1));
-    setSupplier(initial?.supplier ?? "");
+    setSupplierId(initial?.supplierId ?? null);
     setPriority(initial?.priority ?? "Normal");
     setNeededFrom(initial?.neededFrom.slice(0, 10) ?? defaultFrom());
     setNeededUntil(initial?.neededUntil.slice(0, 10) ?? defaultUntil());
-    setEstimatedCost(String(initial?.estimatedCost ?? 0));
+    setTerms({
+      onHireAt: initial?.onHireAt?.slice(0, 10) ?? "",
+      offHireAt: initial?.offHireAt?.slice(0, 10) ?? "",
+      plantRef: initial?.plantRef ?? "",
+      dailyRate:
+        initial?.dailyRate === null || initial?.dailyRate === undefined
+          ? ""
+          : String(initial.dailyRate),
+      estimatedCost: String(initial?.estimatedCost ?? 0),
+    });
+    setLink({ phaseId: initial?.phaseId ?? null, activityId: initial?.activityId ?? null });
     setDeliveryLocation(initial?.deliveryLocation ?? "");
     setOperatorRequired(initial?.operatorRequired ?? false);
     setNotes(initial?.notes ?? "");
   }, [initial, open]);
 
+  const patchTerms = useCallback((patch: Partial<HireTerms>) => {
+    setTerms((current) => ({ ...current, ...patch }));
+  }, []);
+
   const valid =
-    title.trim() &&
-    equipmentName.trim() &&
-    equipmentType.trim() &&
+    title.trim() !== "" &&
+    equipmentName.trim() !== "" &&
+    equipmentType.trim() !== "" &&
     Number(quantity) > 0 &&
-    neededFrom &&
-    neededUntil;
+    neededFrom !== "" &&
+    neededUntil !== "";
 
   return (
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title={initial ? "Edit equipment request" : "New equipment request"}
-      description="Tie equipment rentals to schedule dates, site activities, supplier paperwork, and return control."
+      description="Book plant against the stage and activity it works on, with the hire period, fleet number and daily rate it is invoiced by."
       submitLabel={initial ? "Save changes" : "Create request"}
       submitDisabled={!valid}
       submitting={isSubmitting}
       error={error}
+      width="lg"
       onSubmit={() => {
+        const rate = terms.dailyRate.trim() === "" ? null : Number(terms.dailyRate);
         onSubmit({
           title: title.trim(),
           equipmentName: equipmentName.trim(),
           equipmentType: equipmentType.trim(),
           quantity: Number(quantity),
-          supplier: supplier.trim() || null,
+          supplierId,
           priority,
           neededFrom,
           neededUntil,
-          estimatedCost: Number(estimatedCost || 0),
+          onHireAt: terms.onHireAt || null,
+          offHireAt: terms.offHireAt || null,
+          plantRef: terms.plantRef.trim() || null,
+          dailyRate: rate !== null && Number.isFinite(rate) ? rate : null,
+          estimatedCost: Number(terms.estimatedCost || 0),
+          phaseId: link.phaseId,
+          activityId: link.activityId,
           currency: "NGN",
           deliveryLocation: deliveryLocation.trim() || null,
           operatorRequired,
@@ -108,15 +147,16 @@ export function EquipmentRequestDialog({
         id="eq-title"
         value={title}
         onChange={setTitle}
-        placeholder="e.g. Crane for roof truss lift"
+        placeholder="e.g. Grader for cut to formation"
       />
       <Field
         label="Equipment"
         id="eq-name"
         value={equipmentName}
         onChange={setEquipmentName}
-        placeholder="Mobile crane"
+        placeholder="Motor grader"
       />
+
       <div className="grid grid-cols-2 gap-3">
         <Field label="Type" id="eq-type" value={equipmentType} onChange={setEquipmentType} />
         <Field
@@ -127,28 +167,25 @@ export function EquipmentRequestDialog({
           type="number"
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="eq-priority">Priority</Label>
-          <select
-            id="eq-priority"
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as RequestPriority)}
-            className={INPUT_CLASS}
-          >
-            {PRIORITIES.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </div>
-        <Field
-          label="Estimated cost"
-          id="eq-cost"
-          value={estimatedCost}
-          onChange={setEstimatedCost}
-          type="number"
-        />
-      </div>
+
+      <WorkLinkFields
+        projectId={projectId}
+        enabled={open}
+        value={link}
+        onChange={setLink}
+        idPrefix="eq"
+      />
+
+      <SupplierPicker
+        projectId={projectId}
+        enabled={open}
+        value={supplierId}
+        onChange={setSupplierId}
+        legacyName={initial?.supplierId ? null : initial?.supplier}
+        id="eq-supplier"
+        label="Hire supplier"
+      />
+
       <div className="grid grid-cols-2 gap-3">
         <Field
           label="Needed from"
@@ -165,28 +202,46 @@ export function EquipmentRequestDialog({
           type="date"
         />
       </div>
-      <Field
-        label="Supplier"
-        id="eq-supplier"
-        value={supplier}
-        onChange={setSupplier}
-        placeholder="Optional"
+
+      <HireTermsFields
+        currency={currency}
+        value={terms}
+        onChange={patchTerms}
+        fallbackFrom={neededFrom}
+        fallbackTo={neededUntil}
       />
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="eq-priority">Priority</Label>
+          <select
+            id="eq-priority"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value as RequestPriority)}
+            className={INPUT_CLASS}
+          >
+            {PRIORITIES.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="eq-operator">Operator required</Label>
+          <Switcher
+            value={operatorRequired ? "yes" : "no"}
+            onChange={(next) => setOperatorRequired(next === "yes")}
+          />
+        </div>
+      </div>
+
       <Field
         label="Delivery location"
         id="eq-location"
         value={deliveryLocation}
         onChange={setDeliveryLocation}
-        placeholder="Site gate, crane pad…"
+        placeholder="Site gate, laydown area…"
       />
-      <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input
-          type="checkbox"
-          checked={operatorRequired}
-          onChange={(e) => setOperatorRequired(e.target.checked)}
-        />
-        Operator required
-      </label>
+
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="eq-notes">Lifecycle notes</Label>
         <textarea
@@ -231,3 +286,5 @@ function Field({
     </div>
   );
 }
+
+Field.displayName = "Field";

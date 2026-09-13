@@ -7,10 +7,15 @@ import { MoneyInput } from "@/components/atoms/money-input";
 import {
   useAddChangeComment,
   useChangeRequest,
-  useUpdateChangeRequest,
   useChangeRequestBudgetLinks,
   useSetChangeRequestBudgetLinks,
 } from "@/hooks/use-change-requests";
+import { ChangeRequestActions } from "@/components/molecules/change-request-actions";
+import {
+  ChangeRequestLinks,
+  ChangeRequestRevisions,
+  ChangeTypeBadge,
+} from "@/components/molecules/change-request-context";
 import { useProjectBudget } from "@/hooks/use-budget";
 import { cn } from "@/lib/utils";
 import { currencySymbol, formatCurrency, formatShortDate, formatWholeCurrency } from "@/lib/formatters";
@@ -152,14 +157,8 @@ interface Props {
 
 function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: Props) {
   const { data: cr, isLoading } = useChangeRequest(projectId, changeId ?? undefined);
-  const update = useUpdateChangeRequest();
   const addComment = useAddChangeComment();
   const [comment, setComment] = useState("");
-
-  function decide(status: ChangeStatus): void {
-    if (!changeId) return;
-    update.mutate({ projectId, changeId, status });
-  }
 
   function submitComment(): void {
     if (!changeId || !comment.trim()) return;
@@ -185,6 +184,7 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
                   <Badge tone={CHANGE_STATUS_META[cr.status].tone} size="sm">
                     {CHANGE_STATUS_META[cr.status].label}
                   </Badge>
+                  <ChangeTypeBadge type={cr.type} />
                   <span className="text-xs font-medium text-ink">{money(cr.costImpact, cr.currency)}</span>
                   {cr.timeImpactDays > 0 && <span className="text-xs text-ink-muted">+{cr.timeImpactDays} days</span>}
                 </div>
@@ -207,31 +207,16 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
                     {cr.decidedAt ? ` · ${formatWhen(cr.decidedAt)}` : ""}
                   </p>
                 )}
+                {cr.rejectedReason ? (
+                  <p className="mt-1 text-xs text-negative-600">Reason: {cr.rejectedReason}</p>
+                ) : null}
               </header>
 
               <div className="mt-4 flex-1 overflow-y-auto border-t border-line-hair px-6 py-4">
-                <div className="flex flex-wrap gap-2">
-                  {cr.status === "Draft" && (
-                    <Button type="button" variant="secondary" size="md" loading={update.isPending} onClick={() => decide("Submitted")}>
-                      Submit for decision
-                    </Button>
-                  )}
-                  {cr.status !== "Approved" && cr.status !== "Executed" && (
-                    <Button type="button" variant="primary" size="md" loading={update.isPending} onClick={() => decide("Approved")}>
-                      Approve
-                    </Button>
-                  )}
-                  {cr.status === "Approved" && (
-                    <Button type="button" variant="secondary" size="md" loading={update.isPending} onClick={() => decide("Executed")}>
-                      Mark executed
-                    </Button>
-                  )}
-                  {cr.status !== "Rejected" && cr.status !== "Executed" && (
-                    <Button type="button" variant="secondary" size="md" className="text-negative-500" loading={update.isPending} onClick={() => decide("Rejected")}>
-                      Reject
-                    </Button>
-                  )}
-                </div>
+                <ChangeRequestActions projectId={projectId} cr={cr} />
+
+                <ChangeRequestLinks projectId={projectId} cr={cr} />
+                <ChangeRequestRevisions cr={cr} />
 
                 {cr.costImpact > 0 && <CRBudgetAllocations projectId={projectId} cr={cr} />}
 

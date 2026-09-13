@@ -1,39 +1,16 @@
+import type { FinanceSummary } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
-import type { ProjectFinances } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 
 /**
- * The contract waterfall: contract sum → variations → adjusted contract →
- * certified → paid → retention → outstanding. Every figure is a recorded
- * amount; the statement explains how the outstanding balance is computed,
- * it never settles it.
+ * The contract waterfall, read straight off `GET /finances/summary` — the one
+ * money model. Certification comes only from approved receivable certificates
+ * and payment only from the receipts recorded on them; funding deposits and
+ * milestone releases are a separate ledger and never appear here.
+ *
+ * Nothing in this file computes a money figure. The only derived value is the
+ * width of the progress bar, which is presentation, not a record.
  */
-export interface Settlement {
-  retentionHeld: number;
-  remainingToCertify: number;
-  outstanding: number;
-  percentPaid: number;
-  isSettled: boolean;
-}
-
-export function computeSettlement(finances: ProjectFinances, retentionHeld: number): Settlement {
-  const remainingToCertify = Math.max(0, finances.adjustedContract - finances.certifiedGrossToDate);
-  const outstanding = Math.max(
-    0,
-    finances.adjustedContract - finances.amountPaidToDate - retentionHeld,
-  );
-  const percentPaid =
-    finances.adjustedContract > 0
-      ? Math.min(100, Math.round((finances.amountPaidToDate / finances.adjustedContract) * 100))
-      : 0;
-  return {
-    retentionHeld,
-    remainingToCertify,
-    outstanding,
-    percentPaid,
-    isSettled: finances.adjustedContract > 0 && outstanding === 0 && remainingToCertify === 0,
-  };
-}
 
 type LineTone = "muted" | "positive" | "negative" | "brand";
 
@@ -44,41 +21,62 @@ const TONE_CLASS: Record<LineTone, string> = {
   brand: "text-primary-500",
 };
 
+/** Share of the adjusted contract already received, for the bar only. */
+export function percentPaid(summary: FinanceSummary): number {
+  if (summary.adjustedContract <= 0) return 0;
+  return Math.min(100, Math.round((summary.amountPaidToDate / summary.adjustedContract) * 100));
+}
+
+/** A contract is settled when there is nothing left to certify, receive or hold. */
+export function isSettled(summary: FinanceSummary): boolean {
+  return (
+    summary.adjustedContract > 0 &&
+    summary.outstanding === 0 &&
+    summary.unpaidCertified === 0 &&
+    summary.retentionHeld === 0
+  );
+}
+
 export function SettlementLine({
   label,
   value,
   tone = "muted",
   operator,
   emphasis,
+  helper,
 }: {
   label: string;
   value: string;
   tone?: LineTone;
   operator?: "+" | "−" | "=";
   emphasis?: boolean;
+  helper?: string;
 }) {
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 py-3",
+        "flex items-start justify-between gap-4 py-3",
         emphasis
-          ? "border-t border-gray-900/10 mt-1 pt-4"
+          ? "mt-1 border-t border-gray-900/10 pt-4"
           : "border-t border-line-hair first:border-t-0 first:pt-0",
       )}
     >
-      <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-start gap-3 text-sm">
         {operator ? (
           <span className="w-4 text-center font-semibold text-ink-muted">{operator}</span>
         ) : (
           <span className="w-4" aria-hidden="true" />
         )}
-        <span className={cn(emphasis ? "text-sm font-semibold text-ink" : "text-gray-600")}>
-          {label}
-        </span>
+        <div>
+          <span className={cn(emphasis ? "text-sm font-semibold text-ink" : "text-gray-600")}>
+            {label}
+          </span>
+          {helper ? <p className="mt-0.5 text-xs text-ink-muted">{helper}</p> : null}
+        </div>
       </div>
       <span
         className={cn(
-          "tabular-nums",
+          "whitespace-nowrap tabular-nums",
           emphasis ? "text-lg font-medium" : "text-sm font-medium",
           TONE_CLASS[tone],
         )}
@@ -91,70 +89,69 @@ export function SettlementLine({
 
 SettlementLine.displayName = "SettlementLine";
 
-export function SettlementStatement({
-  finances,
-  settlement,
-}: {
-  finances: ProjectFinances;
-  settlement: Settlement;
-}) {
-  const currency = finances.currency;
+export function SettlementStatement({ summary }: { summary: FinanceSummary }) {
+  const currency = summary.currency;
+  const money = (value: number) => formatCurrency(value, currency);
+  const paid = percentPaid(summary);
+
   return (
     <div>
-      <SettlementLine
-        label="Original contract sum"
-        value={formatCurrency(finances.contractSum, currency)}
-      />
+      <SettlementLine label="Original contract sum" value={money(summary.contractSum)} />
       <SettlementLine
         label="Variations"
-        operator={finances.variationsTotal >= 0 ? "+" : "−"}
-        tone={finances.variationsTotal >= 0 ? "positive" : "negative"}
-        value={formatCurrency(Math.abs(finances.variationsTotal), currency)}
+        operator={summary.variationsTotal >= 0 ? "+" : "−"}
+        tone={summary.variationsTotal >= 0 ? "positive" : "negative"}
+        value={money(Math.abs(summary.variationsTotal))}
       />
       <SettlementLine
         label="Adjusted contract sum"
         operator="="
         tone="brand"
-        value={formatCurrency(finances.adjustedContract, currency)}
+        value={money(summary.adjustedContract)}
         emphasis
       />
       <SettlementLine
-        label="Certified to date"
+        label="Certified gross to date"
         operator="−"
-        value={formatCurrency(finances.certifiedGrossToDate, currency)}
+        helper="Approved and paid certificates issued to the employer"
+        value={money(summary.certifiedGrossToDate)}
       />
       <SettlementLine
-        label="Remaining to certify"
+        label="Still to certify"
         operator="="
-        value={formatCurrency(settlement.remainingToCertify, currency)}
+        value={money(summary.outstanding)}
       />
       <SettlementLine
         label="Amount paid to date"
         operator="−"
-        value={formatCurrency(finances.amountPaidToDate, currency)}
+        helper="Receipts recorded against those certificates"
+        value={money(summary.amountPaidToDate)}
+      />
+      <SettlementLine
+        label="Unpaid certified"
+        operator="="
+        tone={summary.unpaidCertified > 0 ? "negative" : "muted"}
+        value={money(summary.unpaidCertified)}
+        emphasis
       />
       <SettlementLine
         label="Retention held"
-        operator="−"
-        value={formatCurrency(settlement.retentionHeld, currency)}
+        helper="Deducted on the certificates above; released under the contract terms"
+        value={money(summary.retentionHeld)}
       />
-      <SettlementLine
-        label="Outstanding balance"
-        operator="="
-        tone="brand"
-        value={formatCurrency(settlement.outstanding, currency)}
-        emphasis
-      />
+      {summary.advanceRecovered > 0 ? (
+        <SettlementLine label="Advance recovered" value={money(summary.advanceRecovered)} />
+      ) : null}
 
       <div className="mt-6">
         <div className="flex items-center justify-between text-xs text-ink-muted">
           <span>Paid vs adjusted contract</span>
-          <span className="font-semibold text-ink tabular-nums">{settlement.percentPaid}%</span>
+          <span className="font-semibold tabular-nums text-ink">{paid}%</span>
         </div>
         <div className="mt-1.5 h-2 w-full rounded-full bg-surface-track">
           <div
             className="h-full rounded-full bg-primary-500 transition-[width] duration-300"
-            style={{ width: `${settlement.percentPaid}%` }}
+            style={{ width: `${paid}%` }}
           />
         </div>
       </div>

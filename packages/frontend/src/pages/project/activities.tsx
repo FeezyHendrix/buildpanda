@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ActivitiesTable } from "./activities/activities-table";
 import { DeleteActivityDialog } from "./activities/delete-activity-dialog";
+import { buildDelayLinkOptions } from "./activities/delay-link-options";
 import {
   ACTIVITY_STATUS_FILTERS,
   matchesActivitySearch,
@@ -19,7 +20,11 @@ import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDelayDialog } from "@/components/molecules/raise-delay-dialog";
+import { ActivityDelaysDrawer } from "@/components/molecules/activity-delays-drawer";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useProjectRfis } from "@/hooks/use-rfis";
+import { useChangeRequests } from "@/hooks/use-change-requests";
+import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useParticipants } from "@/hooks/use-participants";
 import {
@@ -29,6 +34,8 @@ import {
   useUpdateActivity,
 } from "@/hooks/use-activities";
 import { useDelayReasons } from "@/hooks/use-delay-reasons";
+import { useProjectInspections } from "@/hooks/use-inspections";
+import { openHoldPointsByActivity } from "@/lib/hold-points";
 import { icons } from "@/assets/icons/icons";
 import { errorMessage } from "@/lib/api-error";
 import { choiceLabel, participantChoices } from "@/lib/assignee-options";
@@ -40,12 +47,17 @@ export default function ProjectActivities() {
   const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const { data: activities = [], isPending } = useProjectActivities(project.id, selectedBuildingId);
   const { data: reasons = [] } = useDelayReasons();
+  // A hold point has to show on the work it gates, not only on the inspections
+  // page the person about to build the thing never opens.
+  const { data: inspections = [] } = useProjectInspections(project.id);
+  const holdPoints = openHoldPointsByActivity(inspections);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [prefill, setPrefill] = useState<ActivityPrefill | null>(null);
   const [editingTarget, setEditingTarget] = useState<Activity | null>(null);
   const [delayTarget, setDelayTarget] = useState<Activity | null>(null);
+  const [delaysTarget, setDelaysTarget] = useState<Activity | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null);
 
   const [search, setSearch] = useState("");
@@ -54,6 +66,13 @@ export default function ProjectActivities() {
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
   const raiseDelay = useRaiseDelay();
+
+  // A delay's cause is usually already a record; linking it is what makes the
+  // delay arguable in a dispute (findings F22, F55).
+  const { data: rfis = [] } = useProjectRfis(project.id);
+  const { data: changeRequests = [] } = useChangeRequests(project.id);
+  const { data: materialOrders = [] } = useMaterialOrders(project.id);
+  const delayLinks = buildDelayLinkOptions(rfis, changeRequests, materialOrders);
 
   const { data: participants = [] } = useParticipants(project.id, canManage);
   const assigneeOptions = participantChoices(participants)
@@ -119,12 +138,32 @@ export default function ProjectActivities() {
         totalCount={activities.length}
         isPending={isPending}
         canManage={canManage}
+        holdPoints={holdPoints}
         onEdit={(activity) => {
           setEditingTarget(activity);
           setCreateOpen(true);
         }}
         onRaiseDelay={setDelayTarget}
         onDelete={setDeleteTarget}
+        onOpenDelays={setDelaysTarget}
+        onProgressChange={(activity, percentComplete) =>
+          updateActivity.mutate({
+            projectId: project.id,
+            activityId: activity.id,
+            percentComplete,
+          })
+        }
+      />
+
+      <ActivityDelaysDrawer
+        open={delaysTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDelaysTarget(null);
+        }}
+        projectId={project.id}
+        activity={delaysTarget}
+        canManage={canManage}
+        links={delayLinks}
       />
 
       <DeleteActivityDialog
@@ -164,6 +203,9 @@ export default function ProjectActivities() {
         initial={editingTarget}
         prefill={prefill}
         assigneeOptions={assigneeOptions}
+        predecessorOptions={activities
+          .filter((a) => a.id !== editingTarget?.id)
+          .map((a) => ({ id: a.id, name: a.name }))}
         isSubmitting={createActivity.isPending || updateActivity.isPending}
         error={errorMessage(createActivity.error ?? updateActivity.error, "") || null}
         errorSource={createActivity.error ?? updateActivity.error}
@@ -201,6 +243,7 @@ export default function ProjectActivities() {
         }}
         activityName={delayTarget?.name ?? ""}
         reasons={reasons}
+        links={delayLinks}
         isSubmitting={raiseDelay.isPending}
         error={raiseDelay.error ? errorMessage(raiseDelay.error) : null}
         onSubmit={(values) => {

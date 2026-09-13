@@ -33,7 +33,10 @@ import {
   useKeyDates,
   useUpdateKeyDate,
 } from "@/hooks/use-key-dates";
+import { useProjectActivities } from "@/hooks/use-activities";
+import { errorMessage } from "@/lib/api-error";
 import { formatShortDate } from "@/lib/formatters";
+import { CONTRACTUAL_LOCK_HINT } from "@/lib/key-date-meta";
 import { cn } from "@/lib/utils";
 import { icons } from "@/assets/icons/icons";
 import { canResourceAction, type KeyDate, type KeyDateStatus } from "@/lib/project-types";
@@ -76,6 +79,11 @@ export default function ProjectKeyDates() {
   const { selectedBuildingId } = useBuildingScope();
   const canManage = Boolean(access && canResourceAction(access, "key-dates", "manage"));
   const { data: keyDates = [], isLoading } = useKeyDates(project.id, selectedBuildingId);
+  // A key date that names no activity can never move with the programme, which
+  // is why "Culverts complete" sat still through a culvert delay (finding F23d).
+  const { data: activities = [] } = useProjectActivities(project.id, selectedBuildingId);
+  const activityNameById = new Map(activities.map((a) => [a.id, a.name]));
+  const activityOptions = activities.map((a) => ({ id: a.id, name: a.name }));
   const createKd = useCreateKeyDate();
   const updateKd = useUpdateKeyDate();
   const deleteKd = useDeleteKeyDate();
@@ -224,6 +232,9 @@ export default function ProjectKeyDates() {
                   index={idx}
                   dateView={dateView}
                   canManage={canManage}
+                  activityName={
+                    kd.linkedActivityId ? (activityNameById.get(kd.linkedActivityId) ?? null) : null
+                  }
                   onEdit={() => setEditKd(kd)}
                   onDelete={() => setDeleteId(kd.id)}
                 />
@@ -237,18 +248,21 @@ export default function ProjectKeyDates() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
+        activityOptions={activityOptions}
         onSubmit={handleCreate}
         isSubmitting={createKd.isPending}
-        error={(createKd.error as Error | undefined)?.message ?? null}
+        error={createKd.error ? errorMessage(createKd.error) : null}
       />
       <UpsertKeyDateDialog
         open={editKd !== null}
         onOpenChange={(o) => !o && setEditKd(null)}
         mode="edit"
         initial={editKd ?? undefined}
+        revisedFrom={editKd?.revisedFrom ?? null}
+        activityOptions={activityOptions}
         onSubmit={handleEdit}
         isSubmitting={updateKd.isPending}
-        error={(updateKd.error as Error | undefined)?.message ?? null}
+        error={updateKd.error ? errorMessage(updateKd.error) : null}
       />
       <ConfirmDialog
         open={deleteId !== null}
@@ -272,6 +286,7 @@ function KeyDateRow({
   index,
   dateView,
   canManage,
+  activityName,
   onEdit,
   onDelete,
 }: {
@@ -279,6 +294,7 @@ function KeyDateRow({
   index: number;
   dateView: DateView;
   canManage: boolean;
+  activityName: string | null;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -289,12 +305,31 @@ function KeyDateRow({
           {index + 1}
         </span>
       </TableCell>
-      <TableCell className="font-medium text-gray-900">{kd.label}</TableCell>
+      <TableCell className="font-medium text-gray-900">
+        <div className="flex flex-wrap items-center gap-2">
+          <span>{kd.label}</span>
+          {/* A contract date carries LD consequences; saying so on the row is
+              what stops a PM dragging it (findings #50, F55). */}
+          {kd.isContractual ? (
+            <Badge tone="accent" size="sm" title={CONTRACTUAL_LOCK_HINT}>
+              🔒 Contractual
+            </Badge>
+          ) : null}
+        </div>
+        {activityName ? (
+          <p className="mt-0.5 text-xs font-normal text-ink-muted">Delivered by {activityName}</p>
+        ) : null}
+      </TableCell>
       <TableCell>
         <StatusCell status={kd.status} />
       </TableCell>
       <TableCell className={cn("whitespace-nowrap", dateView === "target" ? "font-medium text-gray-900" : "text-gray-400")}>
         {fmt(kd.targetDate)}
+        {kd.revisedFrom ? (
+          <p className="mt-0.5 text-xs font-normal text-ink-muted">
+            revised from {fmt(kd.revisedFrom)}
+          </p>
+        ) : null}
       </TableCell>
       <TableCell className={cn("whitespace-nowrap", dateView === "actual" ? "font-medium text-gray-900" : "text-gray-400")}>
         {fmt(kd.actualDate)}

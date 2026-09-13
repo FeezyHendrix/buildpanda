@@ -19,6 +19,7 @@ import {
   useCreateMaterialApproval,
   useDeleteMaterialApproval,
   useMaterialApprovals,
+  useResubmitMaterialApproval,
   useUpdateMaterialApproval,
 } from "@/hooks/use-material-approvals";
 import { useSession } from "@/stores/auth";
@@ -64,9 +65,11 @@ export default function ProjectMaterialApprovals() {
   const createApproval = useCreateMaterialApproval();
   const updateApproval = useUpdateMaterialApproval();
   const deleteApproval = useDeleteMaterialApproval();
+  const resubmitApproval = useResubmitMaterialApproval();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editApproval, setEditApproval] = useState<MaterialApproval | null>(null);
+  const [resubmitTarget, setResubmitTarget] = useState<MaterialApproval | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [pendingDecision, setPendingDecision] = useState<PendingDecision | null>(null);
@@ -102,6 +105,20 @@ export default function ProjectMaterialApprovals() {
     updateApproval.mutate(
       { projectId: project.id, approvalId: editApproval.id, ...values },
       { onSuccess: () => setEditApproval(null) },
+    );
+  }
+
+  /** Clone a decided request into a fresh Pending one that links back to it. */
+  function handleResubmit(values: UpsertMaterialApprovalValues): void {
+    if (!resubmitTarget) return;
+    resubmitApproval.mutate(
+      { projectId: project.id, approvalId: resubmitTarget.id, ...values },
+      {
+        onSuccess: () => {
+          setResubmitTarget(null);
+          toast("Resubmission raised and linked to the original", "success");
+        },
+      },
     );
   }
 
@@ -186,6 +203,7 @@ export default function ProjectMaterialApprovals() {
         onClearFilters={clearFilters}
         onOpen={(approval) => setDetailId(approval.id)}
         onEdit={setEditApproval}
+        onResubmit={setResubmitTarget}
         onDelete={(approval) => setDeleteId(approval.id)}
         onDecide={(approval, decision) => setPendingDecision({ approval, decision })}
       />
@@ -212,6 +230,19 @@ export default function ProjectMaterialApprovals() {
           onSubmit={handleEdit}
           isSubmitting={updateApproval.isPending}
           error={updateApproval.error ? errorMessage(updateApproval.error) : null}
+        />
+      ) : null}
+
+      {resubmitTarget ? (
+        <UpsertMaterialApprovalDialog
+          open
+          onOpenChange={(o) => !o && setResubmitTarget(null)}
+          mode="resubmit"
+          initial={resubmitTarget}
+          reviewerOptions={reviewerOptions}
+          onSubmit={handleResubmit}
+          isSubmitting={resubmitApproval.isPending}
+          error={resubmitApproval.error ? errorMessage(resubmitApproval.error) : null}
         />
       ) : null}
 

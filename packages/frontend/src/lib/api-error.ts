@@ -102,6 +102,19 @@ export function errorCode(err: unknown): string | undefined {
   return body(err)?.code;
 }
 
+/**
+ * The structured `details` a typed failure carries — a 409 naming the record
+ * that already exists, say. Array details belong to schema validation, so they
+ * are excluded here.
+ */
+export function errorDetails<T extends object = Record<string, unknown>>(
+  err: unknown,
+): T | null {
+  const details = body(err)?.details;
+  if (details === null || typeof details !== "object" || Array.isArray(details)) return null;
+  return details as T;
+}
+
 /** True when the failure is the file store being down (typed 503 from /files). */
 export function isStorageUnavailable(err: unknown): boolean {
   return getApiErrorStatus(err) === 503 && errorCode(err) === "storage_unavailable";

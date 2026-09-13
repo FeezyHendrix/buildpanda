@@ -7,25 +7,40 @@ import { SearchInput } from "@/components/atoms/search-input";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
+import { ReasonDialog } from "@/components/molecules/reason-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateEquipmentRequest,
   useDeleteEquipmentRequest,
   useEquipmentRequests,
+  useExtendHire,
   useUpdateEquipmentRequest,
   type EquipmentRequestInput,
 } from "@/hooks/use-materials-equipment";
+import { errorMessage } from "@/lib/api-error";
 import { formatCurrency } from "@/lib/formatters";
-import type { EquipmentBucket, EquipmentRequest } from "@/lib/project-types";
+import { toast } from "@/lib/toast";
+import type { EquipmentBucket, EquipmentRequest, EquipmentRequestStatus } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
 import { EquipmentRequestDialog } from "./equipment-requests/equipment-request-dialog";
 import { EquipmentRequestsTable } from "./equipment-requests/equipment-requests-table";
+import { ExtendHireDialog } from "./equipment-requests/extend-hire-dialog";
+import { ReturnHireDialog } from "./equipment-requests/return-hire-dialog";
 import {
   DEFAULT_EQUIPMENT_BUCKET,
   EQUIPMENT_BUCKETS,
   EQUIPMENT_BUCKET_TABS,
   matchesEquipmentSearch,
 } from "./equipment-requests/equipment-helpers";
+
+type HireDialog =
+  | { kind: "create" }
+  | { kind: "edit"; request: EquipmentRequest }
+  | { kind: "delete"; request: EquipmentRequest }
+  | { kind: "cancel"; request: EquipmentRequest }
+  | { kind: "extend"; request: EquipmentRequest }
+  | { kind: "return"; request: EquipmentRequest }
+  | null;
 
 /**
  * Plant hire register. The stage tabs are the server-side bucket the list has
@@ -49,31 +64,43 @@ export default function ProjectEquipmentRequests() {
   const { data: requests = [], isLoading } = useEquipmentRequests(project.id, activeBucket);
 
   const [search, setSearch] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<EquipmentRequest | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<EquipmentRequest | null>(null);
+  const [dialog, setDialog] = useState<HireDialog>(null);
 
   const createRequest = useCreateEquipmentRequest();
   const updateRequest = useUpdateEquipmentRequest();
   const deleteRequest = useDeleteEquipmentRequest();
+  const extendHire = useExtendHire();
 
   const visible = requests.filter((request) => matchesEquipmentSearch(request, search));
-  const bookedCost = requests.reduce((sum, request) => sum + request.estimatedCost, 0);
+  const bookedCost = requests
+    .filter((request) => request.status !== "Cancelled")
+    .reduce((sum, request) => sum + request.estimatedCost, 0);
   const lateCount = requests.filter((request) => request.late).length;
 
+  function close(): void {
+    setDialog(null);
+  }
+
   function upsert(values: EquipmentRequestInput): void {
-    if (editTarget) {
+    if (dialog?.kind === "edit") {
       updateRequest.mutate(
-        { projectId: project.id, requestId: editTarget.id, ...values },
-        { onSuccess: () => setEditTarget(null) },
+        { projectId: project.id, requestId: dialog.request.id, ...values },
+        { onSuccess: close },
       );
       return;
     }
-    createRequest.mutate(
-      { projectId: project.id, ...values },
-      { onSuccess: () => setCreateOpen(false) },
+    createRequest.mutate({ projectId: project.id, ...values }, { onSuccess: close });
+  }
+
+  function advance(request: EquipmentRequest, status: EquipmentRequestStatus): void {
+    updateRequest.mutate(
+      { projectId: project.id, requestId: request.id, status },
+      { onError: (error) => toast(errorMessage(error)) },
     );
   }
+
+  const isUpsert = dialog?.kind === "create" || dialog?.kind === "edit";
+  const upsertError = dialog?.kind === "edit" ? updateRequest.error : createRequest.error;
 
   return (
     <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
@@ -90,7 +117,7 @@ export default function ProjectEquipmentRequests() {
               <ChevronRightIcon className="size-4" />
             </Button>
             {canRequest ? (
-              <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+              <Button variant="primary" size="md" onClick={() => setDialog({ kind: "create" })}>
                 <PlusIcon className="size-4" />
                 New equipment request
               </Button>
@@ -108,7 +135,7 @@ export default function ProjectEquipmentRequests() {
         <KpiCard
           label="Booked cost"
           value={formatCurrency(bookedCost, project.currency, { compact: true })}
-          helper="Estimated hire spend recorded on this stage"
+          helper="Recorded hire spend, cancelled hires excluded"
         />
         <KpiCard
           label="Late"
@@ -123,7 +150,7 @@ export default function ProjectEquipmentRequests() {
           <SearchInput
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by equipment or supplier"
+            placeholder="Search by equipment, plant ref or supplier"
             aria-label="Search equipment requests"
           />
         </div>
@@ -144,44 +171,128 @@ export default function ProjectEquipmentRequests() {
         isFiltered={search.trim().length > 0}
         canRequest={canRequest}
         canApprove={canApprove}
-        onAdd={() => setCreateOpen(true)}
+        onAdd={() => setDialog({ kind: "create" })}
         onClearFilters={() => setSearch("")}
-        onEdit={setEditTarget}
-        onDelete={setDeleteTarget}
-        onAdvance={(request, status) =>
-          updateRequest.mutate({ projectId: project.id, requestId: request.id, status })
-        }
+        onEdit={(request) => setDialog({ kind: "edit", request })}
+        onDelete={(request) => setDialog({ kind: "delete", request })}
+        onCancel={(request) => setDialog({ kind: "cancel", request })}
+        onExtend={(request) => setDialog({ kind: "extend", request })}
+        onReturn={(request) => setDialog({ kind: "return", request })}
+        onAdvance={advance}
       />
 
       <EquipmentRequestDialog
-        open={createOpen || editTarget !== null}
+        open={isUpsert}
         onOpenChange={(open) => {
-          if (!open) {
-            setCreateOpen(false);
-            setEditTarget(null);
-          }
+          if (!open) close();
         }}
-        initial={editTarget}
+        projectId={project.id}
+        initial={dialog?.kind === "edit" ? dialog.request : null}
         onSubmit={upsert}
         isSubmitting={createRequest.isPending || updateRequest.isPending}
-        error={((createRequest.error ?? updateRequest.error) as Error | null)?.message ?? null}
+        error={upsertError ? errorMessage(upsertError) : null}
+        currency={project.currency}
       />
 
+      {dialog?.kind === "extend" ? (
+        <ExtendHireDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) close();
+          }}
+          request={dialog.request}
+          isSubmitting={extendHire.isPending}
+          error={extendHire.error ? errorMessage(extendHire.error) : null}
+          onSubmit={({ offHireAt, reason }) =>
+            extendHire.mutate(
+              { projectId: project.id, requestId: dialog.request.id, offHireAt, reason },
+              {
+                onSuccess: () => {
+                  close();
+                  toast("Hire extended — the original period is kept.", "success");
+                },
+              },
+            )
+          }
+        />
+      ) : null}
+
+      {dialog?.kind === "return" ? (
+        <ReturnHireDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) close();
+          }}
+          request={dialog.request}
+          isSubmitting={updateRequest.isPending}
+          error={updateRequest.error ? errorMessage(updateRequest.error) : null}
+          onSubmit={({ offHireAt, notes }) =>
+            updateRequest.mutate(
+              {
+                projectId: project.id,
+                requestId: dialog.request.id,
+                status: "Returned",
+                offHireAt,
+                ...(notes ? { notes } : {}),
+              },
+              {
+                onSuccess: () => {
+                  close();
+                  toast("Plant returned — hire closed at that date.", "success");
+                },
+              },
+            )
+          }
+        />
+      ) : null}
+
+      {dialog?.kind === "cancel" ? (
+        <ReasonDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) close();
+          }}
+          title="Cancel this hire?"
+          description="The hire order stays on file as cancelled with your reason, and the reason shows on the row."
+          label="Why is it being cancelled?"
+          placeholder="Plant no longer needed, supplier could not mobilise, duplicate booking…"
+          submitLabel="Cancel hire"
+          isSubmitting={updateRequest.isPending}
+          error={updateRequest.error ? errorMessage(updateRequest.error) : null}
+          onSubmit={(reason) =>
+            updateRequest.mutate(
+              {
+                projectId: project.id,
+                requestId: dialog.request.id,
+                status: "Cancelled",
+                reason,
+              },
+              {
+                onSuccess: () => {
+                  close();
+                  toast("Hire cancelled", "success");
+                },
+              },
+            )
+          }
+        />
+      ) : null}
+
       <ConfirmDialog
-        open={deleteTarget !== null}
+        open={dialog?.kind === "delete"}
         onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
+          if (!open) close();
         }}
-        title="Delete equipment request?"
-        description="This removes the rental request from the equipment lifecycle board."
+        title="Delete this draft?"
+        description="Only a draft can be deleted. Anything further along is cancelled with a reason so the hire order survives."
         variant="danger"
         confirmLabel="Delete"
         loading={deleteRequest.isPending}
         onConfirm={() => {
-          if (!deleteTarget) return;
+          if (dialog?.kind !== "delete") return;
           deleteRequest.mutate(
-            { projectId: project.id, requestId: deleteTarget.id },
-            { onSuccess: () => setDeleteTarget(null) },
+            { projectId: project.id, requestId: dialog.request.id },
+            { onSuccess: close, onError: (error) => toast(errorMessage(error)) },
           );
         }}
       />

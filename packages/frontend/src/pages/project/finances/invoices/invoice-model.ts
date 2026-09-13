@@ -15,6 +15,7 @@ export const INVOICE_STATUSES: readonly InvoiceStatus[] = [
   "PartiallyPaid",
   "Paid",
   "Overdue",
+  "Void",
 ];
 
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
@@ -26,6 +27,7 @@ export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
   PartiallyPaid: "Partially paid",
   Paid: "Paid",
   Overdue: "Overdue",
+  Void: "Void",
 };
 
 /**
@@ -43,6 +45,7 @@ const FALLBACK_NEXT: Record<InvoiceStatus, readonly InvoiceStatus[]> = {
   PartiallyPaid: [],
   Overdue: ["Approved"],
   Paid: [],
+  Void: [],
 };
 
 export function nextInvoiceStatuses(invoice: Invoice): readonly InvoiceStatus[] {
@@ -97,6 +100,45 @@ export function filterInvoices(
   return invoices.filter(
     (invoice) => (status === "all" || invoice.status === status) && matchesInvoiceSearch(invoice, query),
   );
+}
+
+/**
+ * How the other party is named. A certificate we raise to the employer is
+ * RECEIVABLE — the party on it is the client, never a "vendor"; a bill a
+ * supplier sends us is PAYABLE and its party really is the vendor.
+ */
+export function counterpartyLabel(invoice: Pick<Invoice, "direction">): string {
+  return invoice.direction === "payable" ? "Vendor" : "Client";
+}
+
+export function counterpartyName(
+  invoice: Pick<Invoice, "counterparty" | "vendorName">,
+): string {
+  return invoice.counterparty ?? invoice.vendorName;
+}
+
+/** A voided certificate stays on file with its receipts; its figures are reversed. */
+export function isVoided(invoice: Pick<Invoice, "voidedAt" | "status">): boolean {
+  return Boolean(invoice.voidedAt) || invoice.status === "Void";
+}
+
+/** A payment may only be recorded against a certified (Approved+) invoice. */
+export function canRecordPaymentOn(
+  invoice: Pick<Invoice, "status" | "voidedAt">,
+): { allowed: boolean; reason: string | null } {
+  if (isVoided(invoice)) {
+    return { allowed: false, reason: "This certificate was voided — record the payment on its replacement." };
+  }
+  if (invoice.status === "Approved" || invoice.status === "PartiallyPaid" || invoice.status === "Paid") {
+    return { allowed: true, reason: null };
+  }
+  return {
+    allowed: false,
+    reason:
+      invoice.status === "Draft"
+        ? "This invoice has not been issued — send and certify it before recording a payment."
+        : `This invoice is ${INVOICE_STATUS_LABEL[invoice.status]} — it must be approved before a payment is recorded against it.`,
+  };
 }
 
 /** Hands the PDF blob to the browser as a download named after the invoice. */

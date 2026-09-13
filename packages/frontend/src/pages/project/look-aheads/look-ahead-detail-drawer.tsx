@@ -1,6 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { HoldPointBadge } from "@/components/molecules/hold-point-badge";
 import { cn } from "@/lib/utils";
 import type { LookAhead } from "@/lib/project-types";
 import { formatLookAheadDate, LOOK_AHEAD_STATUS_META } from "./look-ahead-helpers";
@@ -10,6 +11,8 @@ interface LookAheadDetailDrawerProps {
   lookAhead: LookAhead | null;
   canManage: boolean;
   delayedActivityIds: ReadonlySet<string>;
+  /** Activity id -> title of a hold-point inspection that has not passed. */
+  holdPoints: ReadonlyMap<string, string>;
   onOpenChange: (open: boolean) => void;
   onEdit: (lookAhead: LookAhead) => void;
   onApprove: (lookAhead: LookAhead) => void;
@@ -20,6 +23,7 @@ export function LookAheadDetailDrawer({
   lookAhead,
   canManage,
   delayedActivityIds,
+  holdPoints,
   onOpenChange,
   onEdit,
   onApprove,
@@ -89,6 +93,15 @@ export function LookAheadDetailDrawer({
                         <p className="mt-0.5 text-xs text-gray-500">
                           {formatLookAheadDate(activity.plannedStartAt.slice(0, 10))} - {formatLookAheadDate(activity.plannedEndAt.slice(0, 10))}
                         </p>
+                        {/* Read-only: planning a week of work has to show what is
+                            still gated, but the result is the inspector's to record. */}
+                        {holdPoints.has(activity.activityId) ? (
+                          <p className="mt-1">
+                            <HoldPointBadge
+                              inspectionTitle={holdPoints.get(activity.activityId) as string}
+                            />
+                          </p>
+                        ) : null}
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
                         {delayedActivityIds.has(activity.activityId) ? (

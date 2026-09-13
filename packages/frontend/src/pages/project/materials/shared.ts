@@ -21,6 +21,7 @@ export const STATUS_FILTERS: Array<MaterialOrderStatus | "all"> = [
   "Ordered",
   "PartiallyDelivered",
   "Delivered",
+  "Cancelled",
 ];
 
 export const STATUS_FILTER_ITEMS = STATUS_FILTERS.map((status) => ({
@@ -42,6 +43,10 @@ export function formatDate(value: string | null): string {
   return formatShortDate(value) || "Not set";
 }
 
+/**
+ * The ladder only runs as far as Ordered now: what happens after that is a
+ * delivery, and a delivery is recorded with its quantities, not clicked.
+ */
 export function nextStatus(status: MaterialOrderStatus): MaterialOrderStatus | null {
   switch (status) {
     case "Draft":
@@ -51,14 +56,50 @@ export function nextStatus(status: MaterialOrderStatus): MaterialOrderStatus | n
     case "Approved":
       return "Ordered";
     case "Ordered":
-      return "PartiallyDelivered";
     case "PartiallyDelivered":
-      return "Delivered";
     case "Delivered":
     case "Cancelled":
     case "Rejected":
       return null;
   }
+}
+
+/** Goods can only arrive against an order that has actually been placed. */
+export function canRecordDelivery(status: MaterialOrderStatus): boolean {
+  return status === "Ordered" || status === "PartiallyDelivered";
+}
+
+/** Terminal states: nothing moves, and the reason is already on the record. */
+export function isClosed(status: MaterialOrderStatus): boolean {
+  return status === "Cancelled" || status === "Rejected" || status === "Delivered";
+}
+
+/**
+ * Past Draft the record is a contractual one — it is cancelled or rejected with
+ * a reason and kept, never deleted.
+ */
+export function canDelete(status: MaterialOrderStatus): boolean {
+  return status === "Draft";
+}
+
+export function canCancel(status: MaterialOrderStatus): boolean {
+  return status !== "Draft" && status !== "Cancelled" && status !== "Rejected" && status !== "Delivered";
+}
+
+/**
+ * The state of the material-approval request covering this material. An order
+ * whose sample is pending or rejected is a commercial risk the row must show.
+ */
+export const APPROVAL_META: Record<string, { label: string; tone: BadgeTone }> = {
+  Pending: { label: "Approval pending", tone: "warning" },
+  Resubmit: { label: "Approval: changes asked", tone: "warning" },
+  Rejected: { label: "Material rejected", tone: "danger" },
+  Approved: { label: "Material approved", tone: "success" },
+};
+
+export function approvalMeta(status: string | null): { label: string; tone: BadgeTone } | null {
+  if (!status) return null;
+  return APPROVAL_META[status] ?? null;
 }
 
 /**

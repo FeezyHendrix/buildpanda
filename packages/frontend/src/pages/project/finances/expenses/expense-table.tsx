@@ -1,3 +1,4 @@
+import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
@@ -7,6 +8,36 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { formatCurrency, formatDayMonth } from "@/lib/formatters";
 import type { Transaction } from "@/lib/project-types";
 import { CategoryBadge } from "./expense-dialogs";
+
+/**
+ * What stops this figure being read as plain final cost: a credit is money
+ * coming back, a recoverable deposit comes back at the end of the job, and a
+ * pre-contract cost is legitimate but not recoverable under the contract.
+ */
+function ExpenseFlags({ tx }: { tx: Transaction }) {
+  if (!tx.credit && !tx.recoverable && !tx.preContract) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {tx.credit ? (
+        <Badge tone="success" size="sm" dot>
+          Credit
+        </Badge>
+      ) : null}
+      {tx.recoverable ? (
+        <Badge tone="info" size="sm" dot>
+          Recoverable
+        </Badge>
+      ) : null}
+      {tx.preContract ? (
+        <Badge tone="warning" size="sm" dot>
+          Before site possession
+        </Badge>
+      ) : null}
+    </div>
+  );
+}
+
+ExpenseFlags.displayName = "ExpenseFlags";
 
 function ExpenseRow({
   tx,
@@ -25,14 +56,15 @@ function ExpenseRow({
         <div className="font-medium text-ink">{tx.title}</div>
         {tx.vendor ? <div className="mt-0.5 text-xs text-ink-muted">{tx.vendor}</div> : null}
         {tx.reference ? <div className="mt-0.5 text-xs text-ink-muted">Ref: {tx.reference}</div> : null}
+        <ExpenseFlags tx={tx} />
       </TableCell>
       <TableCell>
         <CategoryBadge categoryLabel={tx.categoryLabel} categoryColor={tx.categoryColor} />
       </TableCell>
       <TableCell className="whitespace-nowrap">{formatDayMonth(tx.transactedAt)}</TableCell>
-      <TableCell className="whitespace-nowrap text-ink-muted">—</TableCell>
       <TableCell className="text-ink-subtle">{tx.stageName || "—"}</TableCell>
       <TableCell align="right" className="font-medium text-ink tabular-nums">
+        {tx.credit ? "−" : ""}
         {formatCurrency(tx.amount, currency)}
       </TableCell>
       <TableCell className="whitespace-nowrap text-xs text-ink-subtle">
@@ -100,8 +132,7 @@ export function ExpenseTable({
             <tr>
               <TableHeaderCell>Name</TableHeaderCell>
               <TableHeaderCell>Category</TableHeaderCell>
-              <TableHeaderCell>From</TableHeaderCell>
-              <TableHeaderCell title="Expenses are logged on a single date">To</TableHeaderCell>
+              <TableHeaderCell>Date</TableHeaderCell>
               <TableHeaderCell>Stage</TableHeaderCell>
               <TableHeaderCell align="right">Amount</TableHeaderCell>
               <TableHeaderCell>Created</TableHeaderCell>

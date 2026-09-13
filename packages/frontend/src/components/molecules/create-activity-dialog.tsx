@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
+import {
+  ActivityPredecessorsField,
+  type PredecessorChoice,
+} from "./activity-predecessors-field";
 import { Label } from "@/components/atoms/label";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 import { errorFieldName } from "@/lib/api-error";
-import type { Activity, ProjectPhase } from "@/lib/project-types";
+import { workingDaysLabel } from "@/lib/delay-meta";
+import type { Activity, ActivityDependency, ProjectPhase } from "@/lib/project-types";
 
 export interface CreateActivityValues {
   name: string;
@@ -18,6 +23,8 @@ export interface CreateActivityValues {
   workerCountPlanned: number;
   notes: string;
   assigneeId: string | null;
+  percentComplete: number;
+  predecessors: ActivityDependency[];
 }
 
 export interface AssigneeOption {
@@ -37,6 +44,8 @@ interface CreateActivityDialogProps {
   initial?: Activity | null;
   prefill?: ActivityPrefill | null;
   assigneeOptions?: AssigneeOption[];
+  /** Every other activity on the programme, as candidate predecessors. */
+  predecessorOptions?: PredecessorChoice[];
   onSubmit: (values: CreateActivityValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -72,6 +81,7 @@ function CreateActivityDialog({
   initial,
   prefill,
   assigneeOptions = [],
+  predecessorOptions = [],
   onSubmit,
   isSubmitting = false,
   error,
@@ -88,6 +98,8 @@ function CreateActivityDialog({
   const [workerCountPlanned, setWorkerCountPlanned] = useState("8");
   const [notes, setNotes] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
+  const [percentComplete, setPercentComplete] = useState("0");
+  const [predecessors, setPredecessors] = useState<ActivityDependency[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -106,6 +118,8 @@ function CreateActivityDialog({
     setWorkerCountPlanned(String(initial?.workerCountPlanned ?? 8));
     setNotes(initial?.notes ?? "");
     setAssigneeId(initial?.assigneeId ?? "");
+    setPercentComplete(String(Math.round(initial?.percentComplete ?? 0)));
+    setPredecessors(initial?.predecessors ?? []);
   }, [open, initial, prefill]);
 
   const actualRangeValid =
@@ -139,6 +153,8 @@ function CreateActivityDialog({
       workerCountPlanned: Math.max(0, Number(workerCountPlanned) || 0),
       notes: notes.trim(),
       assigneeId: assigneeId || null,
+      percentComplete: Math.max(0, Math.min(100, Math.round(Number(percentComplete) || 0))),
+      predecessors,
     });
   }
 
@@ -254,7 +270,44 @@ function CreateActivityDialog({
           <p className="text-xs text-negative-600">Planned end must be after planned start.</p>
         ) : null}
       </div>
+      {initial ? (
+        <p className="col-span-2 text-xs text-ink-muted">
+          Currently {workingDaysLabel(initial.durationWorkingDays)} on the project calendar.
+        </p>
+      ) : null}
     </div>
+
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="activity-progress">Progress ({percentComplete}%)</Label>
+      <div className="flex items-center gap-3">
+        <input
+          id="activity-progress"
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={percentComplete}
+          onChange={(e) => setPercentComplete(e.target.value)}
+          className="flex-1 accent-primary-500"
+        />
+        <input
+          aria-label="Percent complete"
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          value={percentComplete}
+          onChange={(e) => setPercentComplete(e.target.value)}
+          className={cn(INPUT_CLASS, "w-20 tabular-nums")}
+        />
+      </div>
+    </div>
+
+    <ActivityPredecessorsField
+      value={predecessors}
+      options={predecessorOptions}
+      onChange={setPredecessors}
+    />
 
     {initial && (
       <div className="grid grid-cols-2 gap-3">

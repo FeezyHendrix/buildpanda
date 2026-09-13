@@ -27,6 +27,11 @@ import {
   type ContractTermsForm,
 } from "../contract/contract-terms-model";
 import { RadioCard, TermsSection, UnitNumberField } from "../contract/contract-terms-fields";
+import {
+  ContractPartiesSection,
+  ContractPeriodSection,
+  ContractTaxSection,
+} from "../contract/contract-parties-sections";
 
 /**
  * Terms — the contract sum and the commercial terms that govern how the main
@@ -182,6 +187,10 @@ export function ContractTermsSection() {
         </div>
       </TermsSection>
 
+      <ContractPartiesSection form={form} set={set} disabled={disabled} currency={finances.currency} />
+      <ContractPeriodSection form={form} set={set} disabled={disabled} currency={finances.currency} />
+      <ContractTaxSection form={form} set={set} disabled={disabled} currency={finances.currency} />
+
       <TermsSection
         title="Retention"
         description="Percentage held from each approved payment as security against defects."
@@ -197,6 +206,17 @@ export function ContractTermsSection() {
             max={100}
             step={0.1}
             hint="Typical range 3% – 10%. Held per certification until released."
+          />
+          <UnitNumberField
+            id="retention-cap"
+            label="Retention limit"
+            value={form.retentionCapPercent}
+            onChange={(v) => set("retentionCapPercent", v)}
+            disabled={disabled}
+            unit="%"
+            max={100}
+            step={0.1}
+            hint="Retention stops accruing once the held sum reaches this share of the contract. 0 = uncapped."
           />
           <div className="flex flex-col gap-1.5">
             <Label>Release schedule</Label>
@@ -250,6 +270,19 @@ export function ContractTermsSection() {
           />
         </div>
 
+        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <UnitNumberField
+            id="advance-recovery-from"
+            label="Recovery starts from certificate"
+            value={form.advanceRecoveryFromCertificate}
+            onChange={(v) => set("advanceRecoveryFromCertificate", v)}
+            disabled={disabled}
+            unit="IPC #"
+            min={1}
+            hint="Recovery is deducted from this certificate onwards — typically IPC 2, so the mobilisation certificate itself is not clawed back."
+          />
+        </div>
+
         <div className="mt-6">
           <Label>Recovery mode</Label>
           <div className="mt-2 grid grid-cols-1 gap-3">
@@ -282,15 +315,6 @@ export function ContractTermsSection() {
             disabled={disabled}
             unit="days"
             hint={`Net-${form.paymentTermsDays || 0} — days until an invoice is considered overdue.`}
-          />
-          <UnitNumberField
-            id="defects-days"
-            label="Defects liability"
-            value={form.defectsLiabilityDays}
-            onChange={(v) => set("defectsLiabilityDays", v)}
-            disabled={disabled}
-            unit="days"
-            hint="How long the contractor is responsible for defects after practical completion."
           />
         </div>
       </TermsSection>

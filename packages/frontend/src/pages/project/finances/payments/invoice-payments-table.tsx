@@ -53,7 +53,7 @@ export function InvoicePaymentsTable({
               <span className="sr-only">Expand</span>
             </TableHeaderCell>
             <TableHeaderCell>Invoice #</TableHeaderCell>
-            <TableHeaderCell>Vendor</TableHeaderCell>
+            <TableHeaderCell>Party</TableHeaderCell>
             <TableHeaderCell align="right">Amount</TableHeaderCell>
             <TableHeaderCell align="right">Paid</TableHeaderCell>
             <TableHeaderCell align="right">Outstanding</TableHeaderCell>
@@ -105,7 +105,12 @@ interface InvoiceParentRowProps {
 
 function InvoiceParentRow({ row, currency, open, onToggle }: InvoiceParentRowProps) {
   return (
-    <TableRow onClick={() => onToggle(row.id)} aria-expanded={open} className="bg-white">
+    <TableRow
+      onClick={() => onToggle(row.id)}
+      aria-expanded={open}
+      tone={row.voidedAt ? "muted" : "default"}
+      className="bg-white"
+    >
       <TableCell className="px-4">
         <span
           aria-hidden="true"
@@ -120,16 +125,33 @@ function InvoiceParentRow({ row, currency, open, onToggle }: InvoiceParentRowPro
           {row.payments.length} payment{row.payments.length === 1 ? "" : "s"}
         </span>
       </TableCell>
-      <TableCell>{row.vendorName}</TableCell>
+      <TableCell>
+        <p>{row.counterparty ?? row.vendorName}</p>
+        <p className="text-xs text-ink-muted">
+          {row.direction === "payable" ? "Vendor" : "Client"}
+        </p>
+      </TableCell>
       <TableCell align="right" className="whitespace-nowrap font-semibold tabular-nums">{formatCurrency(row.netPayable, row.currency || currency)}</TableCell>
       <TableCell align="right" className="whitespace-nowrap tabular-nums">{formatCurrency(row.amountPaid, row.currency || currency)}</TableCell>
       <TableCell align="right" className="whitespace-nowrap font-medium tabular-nums text-primary-500">
         {formatCurrency(row.balanceDue, row.currency || currency)}
       </TableCell>
       <TableCell>
-        <Badge tone={INVOICE_STATUS_TONE[row.status]} size="sm">
-          {INVOICE_STATUS_LABEL[row.status]}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={INVOICE_STATUS_TONE[row.status]} size="sm">
+            {INVOICE_STATUS_LABEL[row.status]}
+          </Badge>
+          {row.paidLateDays && row.paidLateDays > 0 ? (
+            <Badge tone="warning" size="sm" dot>
+              Paid {row.paidLateDays}d late
+            </Badge>
+          ) : null}
+          {row.overdueDays && row.overdueDays > 0 ? (
+            <Badge tone="danger" size="sm" dot>
+              {row.overdueDays}d overdue
+            </Badge>
+          ) : null}
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -165,7 +187,12 @@ function PaymentLines({ row, currency, onOpenInvoice }: PaymentLinesProps) {
                   <TableRow key={payment.id} onClick={() => onOpenInvoice(row.id)}>
                     <TableCell className="whitespace-nowrap px-4">{payment.paidAt ?? "—"}</TableCell>
                     <TableCell align="right" className="px-4 font-medium tabular-nums">{formatCurrency(payment.amount, row.currency || currency)}</TableCell>
-                    <TableCell className="px-4">{payment.method}</TableCell>
+                    <TableCell className="px-4">
+                      {payment.method}
+                      {payment.credit ? (
+                        <span className="ml-2 text-xs text-warning-500">Overpayment credit</span>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="px-4 text-gray-600">{payment.note ?? "—"}</TableCell>
                   </TableRow>
                 ))}

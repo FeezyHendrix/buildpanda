@@ -1,13 +1,8 @@
 import { Button } from "@/components/atoms/button";
 import { ChevronRightIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import {
-  type InvoiceStatus,
-  type InvoiceType,
-} from "@/hooks/use-invoices";
-import {
-  STATUSES,
-  TYPES,
-} from "./invoice-form-model";
+import { useContracts } from "@/hooks/use-contracts";
+import { type InvoiceType } from "@/hooks/use-invoices";
+import { TYPES, directionForType, partyLabel } from "./invoice-form-model";
 import {
   Section,
   SelectField,
@@ -20,6 +15,8 @@ import { type InvoiceFormApi } from "./use-invoice-form";
 interface InvoiceFormProps {
   form: InvoiceFormApi;
   money: (n: number) => string;
+  /** Offers the contract this certificate bills against. */
+  projectId: string;
 }
 
 /**
@@ -28,23 +25,68 @@ interface InvoiceFormProps {
  * taxes, retention, payment details, notes) sits behind "More options" so the
  * common path is short. Shared by the composer and the edit dialog.
  */
-function InvoiceForm({ form, money }: InvoiceFormProps) {
+function InvoiceForm({ form, money, projectId }: InvoiceFormProps) {
   const { values, update, updateLine, addLine, removeLine } = form;
+  const { data: contracts = [] } = useContracts(projectId);
+  const receivable = values.direction === "receivable";
+
+  // Picking the type picks the direction: a certificate we raise to the
+  // employer is receivable, a supplier's bill is payable. That is what stops
+  // the employer being labelled "Vendor".
+  function setType(next: InvoiceType): void {
+    update("invoiceType", next);
+    update("direction", directionForType(next));
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <Section title="Bill to" description="Who this invoice goes to.">
+      <Section
+        title={receivable ? "Certificate" : "Bill"}
+        description={
+          receivable
+            ? "What is being certified, to whom, and against which contract."
+            : "Who this bill is from and what it covers."
+        }
+      >
         <div className="grid grid-cols-1 gap-x-4 gap-y-4 md:grid-cols-2">
+          <SelectField<InvoiceType>
+            id="type"
+            label="Type"
+            value={values.invoiceType}
+            onChange={setType}
+            options={TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          />
+          <TextField
+            id="trade"
+            label="Trade / description"
+            value={values.trade}
+            onChange={(v) => update("trade", v)}
+            placeholder={receivable ? "e.g. Progress claim" : "e.g. Electrical"}
+            maxLength={120}
+          />
           <TextField
             id="vendor"
-            label="Vendor / payee"
+            label={partyLabel(values.direction)}
             span="md:col-span-2"
             value={values.vendorName}
             onChange={(v) => update("vendorName", v)}
-            placeholder="e.g. Adeyemi Builders Ltd"
+            placeholder={receivable ? "e.g. Lagos State Ministry of Works" : "e.g. Adeyemi Builders Ltd"}
             maxLength={200}
             autoFocus
           />
+          {receivable ? (
+            <SelectField<string>
+              id="contract"
+              label="Contract"
+              span="md:col-span-2"
+              value={values.contractId}
+              onChange={(v) => update("contractId", v)}
+              options={[
+                { value: "", label: "Main contract (default)" },
+                ...contracts.map((contract) => ({ value: contract.id, label: contract.title })),
+              ]}
+            />
+          ) : null}
           <TextField
             id="recipient"
             type="email"
@@ -99,7 +141,7 @@ function InvoiceForm({ form, money }: InvoiceFormProps) {
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-gray-900">More options</h2>
             <p className="mt-0.5 text-xs text-gray-500 text-pretty">
-              Type, taxes, retention, payment details and notes.
+              Invoice number, taxes, retention, payment details and notes.
             </p>
           </div>
           <ChevronRightIcon className="size-4 shrink-0 text-gray-400 transition-transform duration-200 group-open:rotate-90" />
@@ -107,40 +149,17 @@ function InvoiceForm({ form, money }: InvoiceFormProps) {
 
         <div className="flex flex-col gap-6 border-t border-line-hair p-5 sm:p-6">
           <div className="grid grid-cols-1 gap-x-4 gap-y-4 md:grid-cols-2">
-            <SelectField<InvoiceType>
-              id="type"
-              label="Type"
-              value={values.invoiceType}
-              onChange={(v) => update("invoiceType", v)}
-              options={TYPES}
-            />
-            <TextField
-              id="trade"
-              label="Trade"
-              value={values.trade}
-              onChange={(v) => update("trade", v)}
-              placeholder="e.g. Electrical"
-              maxLength={120}
-            />
             <TextField
               id="number"
               label="Invoice number"
               value={values.number}
               onChange={(v) => update("number", v)}
-              placeholder="INV-0042"
+              placeholder={receivable ? "IPC-001" : "INV-0042"}
               maxLength={100}
-            />
-            <SelectField<InvoiceStatus>
-              id="status"
-              label="Status"
-              value={values.status}
-              onChange={(v) => update("status", v)}
-              options={STATUSES.map((s) => ({ value: s, label: s }))}
             />
             <TextField
               id="terms"
               label="Payment terms"
-              span="md:col-span-2"
               value={values.paymentTerms}
               onChange={(v) => update("paymentTerms", v)}
               placeholder="e.g. Net 30"
@@ -164,6 +183,10 @@ function InvoiceForm({ form, money }: InvoiceFormProps) {
 
           <div>
             <h3 className="mb-3 text-sm font-semibold text-gray-900">Taxes &amp; retention</h3>
+            <p className="mb-3 text-xs text-gray-500">
+              Seeded from the contract terms for a certificate against the contract. Change the
+              terms on the main contract so every later certificate inherits the new figures.
+            </p>
             <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
               <TextField id="vat" label="VAT (%)" value={values.vatRate} onChange={(v) => update("vatRate", v)} inputMode="decimal" />
               <TextField id="wht" label="WHT (%)" value={values.whtRate} onChange={(v) => update("whtRate", v)} inputMode="decimal" />

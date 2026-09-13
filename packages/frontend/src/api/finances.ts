@@ -75,6 +75,70 @@ export interface StageCostsResponse {
   stages: StageCost[];
 }
 
+// ── The one money model ───────────────────────────────────────────────────
+// `GET /finances/summary` is the single contract position. Certification comes
+// only from approved receivable certificates and payment only from the
+// receipts recorded on them; deposits and milestone releases sit in `funding`
+// and never feed the waterfall. Nothing on screen recomputes these figures.
+
+/** Funding put into the project and released from it. Never part of the waterfall. */
+export interface FundingPosition {
+  deposited: number;
+  released: number;
+}
+
+/** Liquidated damages the employer could levy: days late × rate, capped. */
+export interface LdExposure {
+  daysLate: number;
+  ratePerDay: number;
+  capAmount: number | null;
+  amount: number;
+  /** The date lateness is measured against — the revised completion when an EOT moved it. */
+  againstDate: string;
+}
+
+export interface EotPosition {
+  daysApproved: number;
+  daysPending: number;
+}
+
+/** Cost against budget for one build stage, saying where the budget figure came from. */
+export interface StageBudgetLine {
+  stageId: string;
+  name: string;
+  scheduledValue: number;
+  budget: number;
+  /** "scheduled_value" when nobody entered an estimate and the value stands in. */
+  budgetSource: "expected_cost" | "scheduled_value";
+  committed: number;
+  actual: number;
+  variance: number;
+}
+
+export interface FinanceSummary {
+  projectId: string;
+  currency: string;
+  contractSum: number;
+  variationsTotal: number;
+  adjustedContract: number;
+  /** Gross certified: the sum of Approved/Paid receivable invoices, voided ones excluded. */
+  certifiedGrossToDate: number;
+  /** Payments recorded against those receivable invoices. */
+  amountPaidToDate: number;
+  retentionHeld: number;
+  advanceRecovered: number;
+  /** Still to certify: adjusted contract − certified. */
+  outstanding: number;
+  /** Certified but not yet received. */
+  unpaidCertified: number;
+  funding: FundingPosition;
+  ldExposure: LdExposure | null;
+  eot: EotPosition | null;
+  completionDate: string | null;
+  revisedCompletionDate: string | null;
+  phases: StageBudgetLine[];
+}
+
 export const financesApi = {
   stageCosts: (projectId: string) =>
     api.get<StageCostsResponse>(`/projects/${projectId}/finances/stage-costs`).then((r) => r.data),
@@ -89,6 +153,10 @@ export const financesApi = {
 
   summary: (projectId: string) =>
     api.get<ProjectFinances>(`/projects/${projectId}/finances`).then((r) => r.data),
+
+  /** The one money model: the contract position every finance surface reads. */
+  position: (projectId: string) =>
+    api.get<FinanceSummary>(`/projects/${projectId}/finances/summary`).then((r) => r.data),
 
   events: (projectId: string) =>
     api.get<FinanceEvent[]>(`/projects/${projectId}/finances/events`).then((r) => r.data),
