@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/json-ld";
 import { Container, ButtonLink, Badge, SectionHeading, FeatureCard } from "@/components/ui";
 import { ConsultationSection } from "@/components/consultation-section";
 import { site } from "@/lib/site";
@@ -14,12 +17,13 @@ import {
   WalletIcon,
 } from "@/components/icons";
 
-export const metadata: Metadata = {
-  title: "Construction",
+export const metadata: Metadata = pageMetadata({
+  path: "construction",
+  title: "Managed construction service in Nigeria",
   description:
-    "BuildPanda's managed construction service: we run your build on the ground in Nigeria, and you follow it in the software. Payment records that trace back to signed-off work, inspections you can request, and daily site reporting.",
-  alternates: { canonical: "https://buildpanda.io/construction" },
-};
+    "We scope the work, set the budget and programme, appoint and manage the trades, and report progress and spend as it happens. You get the record a contractor would keep, without having to keep it. For owners and investors, including from abroad.",
+  socialTitle: "We run the build, and report it to you as it happens",
+});
 
 const serviceJsonLd = {
   "@context": "https://schema.org",
@@ -69,6 +73,7 @@ const promises = [
 export default function ConstructionPage() {
   return (
     <>
+    <JsonLd data={breadcrumbJsonLd([{ name: "Construction service", path: "construction" }])} />
       <script
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger

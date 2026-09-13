@@ -5,22 +5,19 @@ const roles = [
   {
     label: "For contractors",
     title: "Get paid for what you built",
-    body: "Applications that are hard to send back. Delays recorded the day they happen, with responsibility on the record. Time claims that move the completion date before damages start counting.",
-    note: "One to fifty jobs, with everyone on the site working in the same record.",
+    body: "Applications that are hard to send back, and delays recorded the day they happen.",
     cta: { label: "Start free", href: site.appUrl, variant: "primary" as const },
   },
   {
     label: "For developers",
     title: "See every job without asking",
-    body: "Programme, certified value and what is waiting on a decision, across the portfolio. Inspections on the jobs that matter, whoever is building them.",
-    note: "Your consultants and your contractors work in the same record.",
+    body: "Programme, certified value and what is waiting on a decision, across the portfolio.",
     cta: { label: "Start free", href: site.appUrl, variant: "primary" as const },
   },
   {
     label: "For owners building remotely",
     title: "Know what is standing, not what you were told",
-    body: "Progress you can see, dated. An inspector whose report the builder cannot change. Money recorded against work that was signed off.",
-    note: "Two ways in: watch a build someone else is running, or have us run it.",
+    body: "Dated progress, an inspector whose report the builder cannot change, and money against signed-off work.",
     cta: {
       label: "Talk to us about building",
       href: "/talk-to-us/",
@@ -37,7 +34,6 @@ export function Roles() {
         <SectionHeading
           eyebrow="Who it is for"
           title="Three jobs, one record."
-          description="Contractors and developers arrive for the software. Owners arrive for the build service, or for a view of a build someone else is running."
         />
         <div className="grid gap-6 lg:grid-cols-3">
           {roles.map((role) => (
@@ -52,7 +48,6 @@ export function Roles() {
                 {role.title}
               </h3>
               <p className="text-sm leading-relaxed text-muted">{role.body}</p>
-              <p className="text-sm leading-relaxed text-muted">{role.note}</p>
               <div className="mt-auto flex flex-col gap-2 pt-2">
                 <ButtonLink
                   href={role.cta.href}
@@ -76,9 +71,6 @@ export function Roles() {
             </div>
           ))}
         </div>
-        <p className="text-center text-sm text-muted">
-          Not sure which you are? Start free and tell us about the job.
-        </p>
       </Container>
     </section>
   );

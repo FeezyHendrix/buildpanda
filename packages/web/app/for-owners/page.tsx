@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/json-ld";
 import {
   Container,
   ButtonLink,
@@ -19,12 +22,13 @@ import {
   DocumentIcon,
 } from "@/components/icons";
 
-export const metadata: Metadata = {
-  title: "BuildPanda for Project Owners",
+export const metadata: Metadata = pageMetadata({
+  path: "for-owners",
+  title: "Construction software for developers and project owners",
   description:
-    "The software side of BuildPanda, for the client on a construction contract. Follow progress, request inspections, and see a payment record that traces back to work that was signed off.",
-  alternates: { canonical: "https://buildpanda.io/for-owners" },
-};
+    "Follow a build you are paying for. See progress against the programme, request an inspection at any stage, and read a payment record that traces back to work that was signed off. Start free, no card.",
+  socialTitle: "Owners: see what you are paying for, stage by stage",
+});
 
 const visibilityFeatures = [
   {
@@ -76,6 +80,7 @@ const financialFeatures = [
 export default function ForOwnersPage() {
   return (
     <>
+    <JsonLd data={breadcrumbJsonLd([{ name: "For owners", path: "for-owners" }])} />
       <section className="bg-white py-16 sm:py-20 lg:py-24">
         <Container className="flex flex-col items-center text-center gap-6">
           <Badge>FOR OWNERS & CLIENTS</Badge>

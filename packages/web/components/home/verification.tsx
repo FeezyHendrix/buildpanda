@@ -1,6 +1,5 @@
-import { Container, ButtonLink, SectionHeading } from "@/components/ui";
-import { ArrowRightIcon, ShieldCheckIcon, WalletIcon } from "@/components/icons";
-import { site } from "@/lib/site";
+import { Container, SectionHeading } from "@/components/ui";
+import { ShieldCheckIcon, WalletIcon } from "@/components/icons";
 
 // DECISION NEEDED: whether BuildPanda's inspection service can be called
 // "independent" or "third-party" while BuildPanda also runs builds as the
@@ -22,13 +21,13 @@ const columns = [
     icon: <ShieldCheckIcon className="h-6 w-6" />,
     label: "On the ground",
     title: "An inspection you can request",
-    body: "The client or the contractor requests an inspection. BuildPanda assigns the inspector, who attends and issues the report with a pass or a fail and the findings behind it. The contractor being inspected can read the report and cannot change it, whether that contractor is you or someone you hired. Hold points stop the next operation until they clear.",
+    body: "One side requests it, BuildPanda assigns the inspector, and the report cannot be changed by the contractor it covers. Hold points stop the next operation until they clear.",
   },
   {
     icon: <WalletIcon className="h-6 w-6" />,
     label: "On the file",
     title: "Certification that follows sign-off",
-    body: "A payment certificate is built from measured progress and the inspections behind it. Retention, advance recovery and what was previously certified are on the certificate, not in someone's spreadsheet.",
+    body: "A certificate is built from measured progress and the inspections behind it, with retention and advance recovery on it.",
   },
 ];
 
@@ -39,7 +38,6 @@ export function Verification() {
         <SectionHeading
           eyebrow="Verification"
           title="Someone attends the site, and the record follows what they find."
-          description="Software can record a claim. It cannot see a slab. So an inspector attends, and the certificate follows what they find."
         />
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -62,36 +60,10 @@ export function Verification() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-6 sm:p-8">
-          <p className="text-pretty text-base leading-relaxed text-ink sm:text-lg">
-            BuildPanda records money; it does not hold it or move it. What we
-            give you is the thing an argument turns on: a certificate whose every
-            line traces to work somebody confirmed on site, with the date they
-            confirmed it. Every decision is added to the record with who made it,
-            when and why, and the record is added to rather than rewritten.
-          </p>
-          <p className="text-sm leading-relaxed text-muted">
-            This applies to both products. If you run the build, you book the
-            inspection. If we run the build, we are the contractor being
-            inspected: we can read the report, and we cannot change it.
-          </p>
-        </div>
-
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href={site.appUrl} size="md">
-              Start free
-              <ArrowRightIcon className="h-5 w-5" />
-            </ButtonLink>
-            <ButtonLink href="/talk-to-us/" variant="outline" size="md">
-              Talk to us about an inspection
-            </ButtonLink>
-          </div>
-          <p className="text-sm text-muted">
-            Inspections are booked per visit. Ask us what a visit costs on your
-            site.
-          </p>
-        </div>
+        <p className="text-pretty text-center text-base leading-relaxed text-ink sm:text-lg">
+          BuildPanda records money, it never holds or moves it. The record is
+          added to, never rewritten — including when the contractor is us.
+        </p>
       </Container>
     </section>
   );

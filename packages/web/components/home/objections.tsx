@@ -14,27 +14,27 @@ const objections = [
     // inspection is requested, BuildPanda assigns the inspector, and the
     // contractor being inspected can read the report and cannot change it.
     answer:
-      "An inspection is a job BuildPanda is asked to do, not a note the builder writes about itself. An inspector attends, records pass or fail with the findings behind it, and issues a report both sides can read. The contractor being inspected cannot change it.",
+      "An inspector attends and files a pass or a fail with the findings. The contractor being inspected cannot change it.",
   },
   {
     quote: "My application has been sitting with the consultant for five weeks.",
     answer:
-      "Applications are built from measured progress, not retyped. Each one shows what was previously certified, what is claimed now and what it totals, so there is less to argue with.",
+      "Applications are built from measured progress, showing what was certified before and what is claimed now.",
   },
   {
     quote: "The delay wasn't ours, but I can't show that now.",
     answer:
-      "A delay is recorded when it happens, with days lost, who was responsible and whether it entitles you to time. It moves the programme and the completion date with it.",
+      "A delay is recorded the day it happens, with days lost and who was responsible. It moves the completion date with it.",
   },
   {
     quote: "I find out about a material problem when it's already in the wall.",
     answer:
-      "Approve the source before the order. Record what arrived, how much, and on whose delivery note. A rejected load is on the file against that supplier.",
+      "Approve the source before the order. A rejected load stays on the file against that supplier.",
   },
   {
     quote: "Every site update is a photo on WhatsApp with no date on it.",
     answer:
-      "The daily record carries weather, crew, hours against each activity and what was written that evening. It becomes the week's report without anyone rewriting it.",
+      "The daily record carries weather, crew and hours, and becomes the week's report without rewriting.",
   },
 ];
 
@@ -45,7 +45,6 @@ export function Objections() {
         <SectionHeading
           eyebrow="The problem"
           title="The work was done. Proving it is the hard part."
-          description="Five sentences we hear on almost every site."
         />
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {objections.map((item) => (
@@ -59,15 +58,6 @@ export function Objections() {
               <p className="text-sm leading-relaxed text-muted">{item.answer}</p>
             </div>
           ))}
-        </div>
-        <div className="flex flex-col items-center gap-3">
-          <ButtonLink href={site.appUrl} size="md">
-            Start free
-            <ArrowRightIcon className="h-5 w-5" />
-          </ButtonLink>
-          <p className="text-sm text-muted">
-            Set up one job and see how it holds up.
-          </p>
         </div>
       </Container>
     </section>
