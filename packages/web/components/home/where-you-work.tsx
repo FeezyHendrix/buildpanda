@@ -37,7 +37,7 @@ const rows = [
 
 export function WhereYouWork() {
   return (
-    <section className="bg-ink py-20 sm:py-24">
+    <section className="bg-ink py-16 sm:py-20">
       <Container className="flex flex-col gap-12">
         <div className="flex flex-col items-center gap-4 text-center">
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
