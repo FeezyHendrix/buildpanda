@@ -28,14 +28,6 @@ function formatSuggestionTitle(title: string): string {
   return title.replace("1 inspection need action", "1 inspection needs action");
 }
 
-function countLabel(count: number, label: string): string {
-  if (count !== 1) return label;
-  if (label === "queries") return "query";
-  if (label === "permits") return "permit";
-  if (label === "key dates") return "key date";
-  if (label === "action items") return "action item";
-  return label;
-}
 
 function HealthGauge({ score }: { score: number | null }) {
   const size = 132;
