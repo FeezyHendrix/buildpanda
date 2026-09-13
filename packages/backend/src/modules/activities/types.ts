@@ -134,6 +134,8 @@ export interface ActivityDelayRow {
   currency: Currency;
   prevention_notes: string | null;
   recorded_by_id: string | null;
+  /** Joined from the user table so a delay record says who logged it. */
+  recorded_by_name?: string | null;
   created_at: Date | string;
 }
 

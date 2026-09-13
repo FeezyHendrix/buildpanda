@@ -28,7 +28,9 @@ export function buildDelay(
     costImpact: Number(row.cost_impact),
     currency: row.currency,
     preventionNotes: row.prevention_notes,
-    recordedBy: row.recorded_by_id ? { id: row.recorded_by_id, name: null } : null,
+    recordedBy: row.recorded_by_id
+      ? { id: row.recorded_by_id, name: row.recorded_by_name ?? null }
+      : null,
     createdAt: toIso(row.created_at),
   };
 }

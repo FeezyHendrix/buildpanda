@@ -240,10 +240,13 @@ export function financesRepository(db: Knex) {
           .first();
         if (!summary) throw new ConflictError("Project finances not initialized");
 
+        // Funding is money the client has put in; it is not payment against a
+        // certificate. Mixing the two is what made four pages disagree about
+        // what had been paid.
         await trx("project_finances")
           .where({ project_id: operation.projectId })
           .update({
-            amount_paid_to_date: trx.raw("amount_paid_to_date + ?", [operation.amount]),
+            funds_deposited: trx.raw("funds_deposited + ?", [operation.amount]),
           });
 
         await appendLedger(trx, {
