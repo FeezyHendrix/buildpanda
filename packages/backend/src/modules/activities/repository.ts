@@ -124,18 +124,22 @@ export function activitiesRepository(db: Knex) {
 
     delaysForActivities(activityIds: string[]): Promise<ActivityDelayRow[]> {
       if (activityIds.length === 0) return Promise.resolve([]);
-      return db<ActivityDelayRow>("activity_delays")
-        .whereIn("activity_id", activityIds)
+      return db<ActivityDelayRow>("activity_delays as d")
+        .leftJoin("user as u", "u.id", "d.recorded_by_id")
+        .select("d.*", "u.name as recorded_by_name")
+        .whereIn("d.activity_id", activityIds)
         .orderBy([
-          { column: "activity_id", order: "asc" },
-          { column: "started_at", order: "desc" },
+          { column: "d.activity_id", order: "asc" },
+          { column: "d.started_at", order: "desc" },
         ]);
     },
 
     delaysForActivity(activityId: string): Promise<ActivityDelayRow[]> {
-      return db<ActivityDelayRow>("activity_delays")
-        .where({ activity_id: activityId })
-        .orderBy("started_at", "desc");
+      return db<ActivityDelayRow>("activity_delays as d")
+        .leftJoin("user as u", "u.id", "d.recorded_by_id")
+        .select("d.*", "u.name as recorded_by_name")
+        .where({ "d.activity_id": activityId })
+        .orderBy("d.started_at", "desc");
     },
 
     findDelayById(id: string): Promise<ActivityDelayRow | undefined> {
