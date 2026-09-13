@@ -42,11 +42,11 @@ function KpiCard({ label, value, helper, progress, tone = "default", className }
       <div className="flex flex-col gap-2">
         <p
           className={cn(
-            // Never break a figure across lines: [overflow-wrap:anywhere] was
-            // splitting ₦26,950,000 into "₦26,95" and "0,000" on a laptop.
-            // The figure shrinks a step on narrower cards and, past that,
-            // truncates rather than rewrapping into nonsense.
-            "overflow-hidden text-ellipsis whitespace-nowrap text-[21px] font-bold leading-tight tabular-nums xl:text-[25px]",
+            // Never break inside a word: [overflow-wrap:anywhere] was splitting
+            // ₦26,950,000 into "₦26,95" and "0,000" on a laptop. A value made of
+            // several words ("01 Apr 2027") still wraps between them, which is
+            // what a narrow card should do with a date.
+            "overflow-hidden text-ellipsis text-[21px] font-bold leading-tight tabular-nums [overflow-wrap:normal] xl:text-[25px]",
             VALUE_TONE[tone],
           )}
         >

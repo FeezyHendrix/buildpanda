@@ -29,7 +29,9 @@ export function ScheduleReportPanel({
   return (
     <section
       aria-label="Schedule report"
-      className="grid shrink-0 gap-4 border-b border-line-hair p-4 sm:grid-cols-2 lg:grid-cols-6"
+      // Same reason as the overview strip: six across on a laptop leaves each
+      // card narrower than the figures and dates it holds.
+      className="grid shrink-0 gap-4 border-b border-line-hair p-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6"
     >
       <KpiCard label="Milestone cost" value={formatCurrency(report.milestoneCost, currency, { compact: true })} />
       <KpiCard label="Work items" value={`${report.completedActivities}/${report.activityCount}`} helper="completed" />
