@@ -32,6 +32,14 @@ export interface LogEntryInput {
   reason?: string | null;
   notesHtml?: string | null;
   idempotencyKey?: string | null;
+  supplier?: string | null;
+  deliveryNote?: string | null;
+  /**
+   * A receipt raised from a signed delivery note is already a fact, so it is
+   * posted Approved. Anything typed straight into the log is a claim and stays
+   * Pending until somebody accepts it.
+   */
+  approvalStatus?: "Pending" | "Approved";
 }
 
 export interface LogEntryResult {
@@ -135,6 +143,9 @@ function buildEntry(row: LedgerEntryRow, files: LedgerEntryFileRow[]): LedgerEnt
     reversalForEntryId: row.reversal_for_entry_id,
     reason: row.reason,
     notesHtml: row.notes_html,
+    supplier: row.supplier,
+    deliveryNote: row.delivery_note,
+    selfApproved: row.self_approved,
     files: files
       .filter((f) => f.entry_id === row.id)
       .map((f) => ({ fileId: f.file_id, url: fileUrl(f.file_id), name: f.file_id })),
@@ -229,7 +240,9 @@ export function materialsLedgerService(
         unit: catalog.unit,
           locationKey: (input.locationKey || "default").trim(),
           stageId: input.stageId ?? null,
-          approvalStatus: "Pending",
+          approvalStatus: input.approvalStatus ?? "Pending",
+          supplier: input.supplier ?? null,
+          deliveryNote: input.deliveryNote ?? null,
         quantity: input.quantity,
         stockDelta,
         occurredAt,
@@ -308,6 +321,8 @@ export function materialsLedgerService(
         // so it applies immediately. Born Pending, a void would never restore
         // stock until a second person approved the undo.
         approvalStatus: "Approved",
+        supplier: original.supplier,
+        deliveryNote: original.delivery_note,
         occurredAt: new Date().toISOString(),
         timestampSuspect: false,
         loggedById: actorId,

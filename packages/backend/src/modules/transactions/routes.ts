@@ -59,6 +59,10 @@ const createTransactionBody = {
     reference: { type: ["string", "null"], maxLength: 200 },
     receiptFileId: { type: ["string", "null"], maxLength: 200 },
     stageId: { type: ["string", "null"], maxLength: 200 },
+    /** A refund or credit note against this category rather than an outlay. */
+    credit: { type: "boolean" },
+    /** A refundable outlay — a plant-hire deposit, a bond. */
+    recoverable: { type: "boolean" },
   },
 } as const;
 
@@ -107,7 +111,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
       const project = await request.requireProjectPermission(
         request.params.id,
         "finances",
-        "view",
+        "viewCosts",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
       return service.list(project.id, orgId, toFilters(request.query));
@@ -121,7 +125,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
       const project = await request.requireProjectPermission(
         request.params.id,
         "finances",
-        "view",
+        "viewCosts",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
       return service.analytics(project.id, orgId, toFilters(request.query));
@@ -135,7 +139,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
       const project = await request.requireProjectPermission(
         request.params.id,
         "finances",
-        "view",
+        "viewCosts",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
       return service.listCategories(orgId);
@@ -199,7 +203,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
       const project = await request.requireProjectPermission(
         request.params.id,
         "finances",
-        "view",
+        "viewCosts",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
       return service.get(project.id, orgId, request.params.transactionId);

@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import type {
+  InvoiceDirection,
   InvoiceLineItemRow,
   InvoiceParty,
   InvoicePaymentRow,
@@ -48,6 +49,10 @@ export interface NewInvoiceRecord {
   header_text: string | null;
   footer_text: string | null;
   source_file_id: string | null;
+  contract_id: string | null;
+  direction: InvoiceDirection;
+  counterparty: string | null;
+  advance_recovery: string;
 }
 
 export interface InvoiceUpdatePatch {
@@ -91,6 +96,13 @@ export interface InvoiceUpdatePatch {
   viewed_at?: Date | string | null;
   pdf_storage_key?: string | null;
   billing_period?: string | null;
+  contract_id?: string | null;
+  direction?: InvoiceDirection;
+  counterparty?: string | null;
+  advance_recovery?: string;
+  voided_at?: Date | string | null;
+  voided_by_id?: string | null;
+  void_reason?: string | null;
 }
 
 export interface InvoiceOrganizationRow {
@@ -125,6 +137,8 @@ export interface NewPaymentRecord {
   method: PaymentMethod;
   paid_at: string | null;
   note: string | null;
+  credit: boolean;
+  recorded_by_id: string | null;
 }
 
 export interface NewInvoiceStageLineRecord {

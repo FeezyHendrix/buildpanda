@@ -175,6 +175,8 @@ export interface ChangeRequestCreator {
     input: { title: string; description?: string | null; costImpact?: number; timeImpactDays?: number },
     userId: string,
   ): Promise<{ id: string }>;
+  /** Linking an RFI to a change the commercial team already raised. */
+  get(projectId: string, changeRequestId: string): Promise<{ id: string }>;
 }
 
 const REOPENABLE: ReadonlySet<RfiStatus> = new Set(["Answered", "Closed"]);
@@ -229,6 +231,12 @@ export function rfisService(
       const rows = await repository.listByProject(projectId, filter);
       const counts = await repository.commentCounts(rows.map((r) => r.id));
       return rows.map((r) => toRfi(r, counts.get(r.id) ?? 0));
+    },
+
+    async listEvents(projectId: string, rfiId: string): Promise<RfiEvent[]> {
+      await loadRow(projectId, rfiId);
+      const events = await repository.listEvents(rfiId);
+      return events.map(toEvent);
     },
 
     async get(projectId: string, rfiId: string, sharedOnly = false): Promise<RfiDetail> {
@@ -520,7 +528,12 @@ export function rfisService(
       return { ok: true, rfiSubject: rfi.subject, rfiNumber: rfi.number };
     },
 
-    async convertToChange(projectId: string, rfiId: string, actor: Actor): Promise<Rfi> {
+    async convertToChange(
+      projectId: string,
+      rfiId: string,
+      actor: Actor,
+      changeRequestId?: string | null,
+    ): Promise<Rfi> {
       const current = await loadRow(projectId, rfiId);
       if (!deps.changeRequests) {
         throw new ForbiddenError("Change request conversion is unavailable");
@@ -529,20 +542,27 @@ export function rfisService(
         const counts = await repository.commentCounts([rfiId]);
         return toRfi(current, counts.get(rfiId) ?? 0);
       }
-      const change = await deps.changeRequests.create(
-        projectId,
-        {
-          title: `RFI-${current.number}: ${current.subject}`,
-          description: current.official_response ?? current.question,
-        },
-        actor.id,
-      );
+      // One site event is one change event. When the commercial team has already
+      // raised the variation, link it instead of minting a duplicate £0 draft.
+      const change = changeRequestId
+        ? await deps.changeRequests.get(projectId, changeRequestId)
+        : await deps.changeRequests.create(
+            projectId,
+            {
+              title: `RFI-${current.number}: ${current.subject}`,
+              description: current.official_response ?? current.question,
+            },
+            actor.id,
+          );
       const row = await repository.update(rfiId, {
         change_request_id: change.id,
         updated_at: new Date().toISOString(),
       });
       if (!row) throw new NotFoundError("RFI");
-      await logEvent(rfiId, "converted_to_change", actor, { changeRequestId: change.id });
+      await logEvent(rfiId, "converted_to_change", actor, {
+        changeRequestId: change.id,
+        linked: Boolean(changeRequestId),
+      });
       const counts = await repository.commentCounts([rfiId]);
       return toRfi(row, counts.get(rfiId) ?? 0);
     },

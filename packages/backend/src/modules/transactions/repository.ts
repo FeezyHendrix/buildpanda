@@ -21,6 +21,8 @@ export interface NewTransactionRecord {
   reference: string | null;
   receipt_file_id: string | null;
   stage_id: string | null;
+  credit: boolean;
+  recoverable: boolean;
   created_by_id: string | null;
 }
 
@@ -35,6 +37,8 @@ export interface TransactionUpdatePatch {
   reference?: string | null;
   receipt_file_id?: string | null;
   stage_id?: string | null;
+  credit?: boolean;
+  recoverable?: boolean;
   updated_at?: Date | string;
 }
 
@@ -169,14 +173,27 @@ export function transactionsRepository(db: Knex) {
     },
 
     // Actual cost attributed to each stage. Expenses have no void state: a
-    // wrong entry is deleted, so every row still present counts.
+    // wrong entry is deleted, so every row still present counts. A credit is a
+    // refund against the stage, so it subtracts rather than adds.
     async sumByStage(projectId: string): Promise<StageExpenseSumRow[]> {
       return db<TransactionRow>("project_transactions")
         .select("stage_id")
-        .sum({ total: "amount" })
+        .sum({ total: db.raw("CASE WHEN credit THEN -amount ELSE amount END") })
         .where("project_transactions.project_id", projectId)
         .whereNotNull("stage_id")
         .groupBy("stage_id") as unknown as Promise<StageExpenseSumRow[]>;
+    },
+
+    /** Site possession date, so a pre-contract expense can be flagged as one. */
+    async projectStartDate(projectId: string): Promise<string | null> {
+      if (!(await db.schema.hasColumn("projects", "start_date"))) return null;
+      const row = await db("projects")
+        .where({ id: projectId })
+        .select("start_date")
+        .first<{ start_date: string | Date | null }>();
+      const value = row?.start_date ?? null;
+      if (value === null) return null;
+      return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
     },
 
     async totals(

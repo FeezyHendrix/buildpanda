@@ -1,13 +1,7 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import {
-  assertCanGrant,
-  effectiveParticipantGrants,
-  participantRole,
-  type GrantValidationContext,
-} from "../../lib/authorization.ts";
-import { statement } from "../../lib/permissions.ts";
-import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
+import { assertCanGrant, ROLE_PRESET_SIDES, type GrantValidationContext } from "../../lib/authorization.ts";
+import { ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { captureBug } from "../../lib/sentry.ts";
@@ -15,39 +9,16 @@ import { projectInviteEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
 import { messagingRepository } from "../messaging/repository.ts";
 import { messagingService } from "../messaging/service.ts";
-
-type ParticipantRole = string;
-type ParticipantStatus = "invited" | "active" | "revoked";
-
-interface ParticipantRow {
-  id: string;
-  project_id: string;
-  user_id: string | null;
-  email: string;
-  role: ParticipantRole;
-  status: ParticipantStatus;
-  invited_by_id: string | null;
-  invite_token: string | null;
-  invite_expires_at: string | null;
-  name?: string | null;
-  permissions: Record<string, string> | null;
-  grants: Record<string, string[]> | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface TeamEntry {
-  id: string;
-  projectId: string;
-  userId: string | null;
-  name: string | null;
-  email: string;
-  role: ParticipantRole | "owner";
-  status: ParticipantStatus;
-  permissions: Record<string, string>;
-  grants: Record<string, string[]> | null;
-  createdAt: string;
-}
+import { computeAccess } from "./access.ts";
+import { inviteBody, participantParams, projectIdParams, updateBody } from "./schemas.ts";
+import participantInviteRoutes from "./invite-routes.ts";
+import {
+  type InviteParticipantBody,
+  type ParticipantRow,
+  type ParticipantSide,
+  type TeamEntry,
+  type UpdateParticipantBody,
+} from "./types.ts";
 
 function toParticipant(r: ParticipantRow): TeamEntry {
   return {
@@ -57,6 +28,7 @@ function toParticipant(r: ParticipantRow): TeamEntry {
     name: r.name ?? null,
     email: r.email,
     role: r.role,
+    side: r.side ?? null,
     status: r.status,
     permissions: (r.permissions as Record<string, string>) ?? {},
     grants: (r.grants as Record<string, string[]> | null) ?? null,
@@ -64,151 +36,17 @@ function toParticipant(r: ParticipantRow): TeamEntry {
   };
 }
 
-const appUrl = config.mail.appUrl;
-
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
-
-const participantParams = {
-  type: "object",
-  required: ["id", "participantId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    participantId: { type: "string", minLength: 1 },
-  },
-} as const;
-
-const tokenParams = {
-  type: "object",
-  required: ["token"],
-  additionalProperties: false,
-  properties: { token: { type: "string", minLength: 1 } },
-} as const;
-
-const grantsSchema = {
-  type: "object",
-  additionalProperties: { type: "array", items: { type: "string", maxLength: 40 } },
-} as const;
-
-const inviteBody = {
-  type: "object",
-  required: ["email"],
-  additionalProperties: false,
-  properties: {
-    email: { type: "string", minLength: 3, maxLength: 200 },
-    name: { type: "string", maxLength: 120 },
-    role: { type: "string", minLength: 1, maxLength: 80 },
-    permissions: { type: "object", additionalProperties: { type: "string" } },
-    grants: grantsSchema,
-  },
-} as const;
-
-const updateBody = {
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: {
-    role: { type: "string", minLength: 1, maxLength: 80 },
-    status: { type: "string", enum: ["invited", "active", "revoked"] },
-    permissions: { type: "object", additionalProperties: { type: "string" } },
-    grants: grantsSchema,
-  },
-} as const;
-
-const PROJECT_CARD_COLUMNS = [
-  "id",
-  "name",
-  "address",
-  "status",
-  "health_score",
-  "risk",
-  "progress_percent",
-  "budget_total",
-  "budget_used",
-  "currency",
-  "folder_tone",
-  "updated_at",
-] as const;
-
-function computeAccess(
-  project: { id: string; owner_id: string | null; organization_id: string | null },
-  request: FastifyRequest,
-) {
-  const ctx = {
-    userId: request.user!.id,
-    orgRoles: request.orgRoles,
-    projectRoles: request.projectRoles,
-    projectSectionPermissions: request.projectSectionPermissions,
-    projectGrants: request.projectGrants,
-  };
-  const scope = { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id };
-  const orgRole = project.organization_id ? request.orgRoles.get(project.organization_id) : undefined;
-  const pRole = participantRole(scope, ctx);
-  const sections = request.projectSectionPermissions.get(project.id);
-
-  let relationship: "company" | ParticipantRole | "none" = "none";
-  if (orgRole) relationship = "company";
-  else if (pRole) relationship = pRole as ParticipantRole;
-  else if (project.owner_id === request.user!.id) relationship = "company";
-
-  const isCompanyManager = relationship === "company" && orgRole !== "viewer";
-  const isClient = relationship === "client";
-
-  // Effective resource permissions — the same inputs assertProjectPermission
-  // composes, exposed so the UI can hide surfaces the caller cannot view.
-  const permissions: Record<string, string[]> = {};
-  if (project.owner_id === request.user!.id) {
-    // Personal project owners have full access (mirrors assertProjectPermission).
-    for (const [res, actions] of Object.entries(statement)) {
-      permissions[res] = [...actions];
-    }
-  } else {
-    const orgPerms = project.organization_id
-      ? request.orgPermissions.get(project.organization_id)
-      : undefined;
-    if (orgPerms) {
-      for (const [res, actions] of orgPerms) permissions[res] = [...actions];
-    }
-    // Participant overlay (stored grants when present, else legacy compose) —
-    // must mirror assertProjectPermission so the UI shows exactly what the API allows.
-    for (const [res, actions] of Object.entries(effectiveParticipantGrants(scope, ctx))) {
-      permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
-    }
-  }
-
-  // Capabilities honor the composed permissions above (participant-role
-  // defaults + per-participant matrix), not just company/client status —
-  // otherwise a participant granted e.g. approvals:decide via the matrix
-  // would be authorized by the backend but see a read-only UI.
-  const allows = (resource: string, action: string): boolean =>
-    (permissions[resource] ?? []).includes(action);
-
-  return {
-    relationship,
-    orgRole: orgRole ?? null,
-    permissions,
-    sections: sections ?? null,
-    capabilities: {
-      canManage: isCompanyManager,
-      canViewAll: relationship !== "none",
-      canManageParticipants: isCompanyManager || allows("participants", "manage"),
-      canDecideApprovals: isCompanyManager || isClient || allows("approvals", "decide"),
-      canDecideSelections: isCompanyManager || isClient || allows("selections", "decide"),
-      canRaiseQueries: isCompanyManager || isClient || allows("queries", "raise"),
-      canComment:
-        (relationship !== "none" && relationship !== "guest") || allows("comments", "post"),
-    },
-  };
+/** A participant's side defaults from the starter role they were invited on. */
+function sideFor(explicit: ParticipantSide | undefined, role: string): ParticipantSide | null {
+  return explicit ?? ROLE_PRESET_SIDES[role] ?? null;
 }
+
+const appUrl = config.mail.appUrl;
 
 const participantRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
   const messaging = messagingService(messagingRepository(fastify.db));
+  await fastify.register(participantInviteRoutes);
 
   function validateGrants(
     request: FastifyRequest,
@@ -271,6 +109,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           "p.user_id",
           "p.email",
           "p.role",
+          "p.side",
           "p.status",
           "p.permissions",
           "p.grants",
@@ -291,6 +130,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           name: owner.name,
           email: owner.email,
           role: "owner",
+          side: "contractor",
           status: "active",
           permissions: {},
           grants: null,
@@ -301,7 +141,65 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string }; Body: { email: string; name?: string; role?: ParticipantRole; permissions?: Record<string, string>; grants?: Record<string, string[]> } }>(
+  /**
+   * Everyone work can be handed to on this project — ball-in-court on an RFI,
+   * a task assignee, an inspector. People who have been INVITED but have not
+   * logged in yet are included: on a real job the RE is named in the RFI the
+   * day they are appointed, not the day they accept an email. `userId` is null
+   * for those, so a consumer that keys assignment on a user account shows them
+   * and records the participant id instead.
+   */
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/participants/assignable",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "participants", "view");
+      const rows = await db<ParticipantRow>("project_participants as p")
+        .leftJoin("user as u", "u.id", "p.user_id")
+        .where("p.project_id", project.id)
+        .whereIn("p.status", ["invited", "active"])
+        .select(
+          "p.id",
+          "p.project_id",
+          "p.user_id",
+          "p.email",
+          "p.role",
+          "p.side",
+          "p.status",
+          "p.permissions",
+          "p.grants",
+          "p.invited_by_id",
+          "p.created_at",
+          "p.updated_at",
+          db.raw("COALESCE(p.name, u.name) as name"),
+        )
+        .orderBy("p.created_at", "asc");
+      const owner = await resolveProjectOwner(project.owner_id, project.organization_id);
+      const assignees = rows.map((row) => ({
+        ...toParticipant(row),
+        pending: row.status === "invited",
+      }));
+      if (owner && !assignees.some((a) => a.userId === owner.id)) {
+        assignees.unshift({
+          id: `owner-${owner.id}`,
+          projectId: project.id,
+          userId: owner.id,
+          name: owner.name,
+          email: owner.email,
+          role: "owner",
+          side: "contractor",
+          status: "active",
+          permissions: {},
+          grants: null,
+          createdAt: String(project.created_at),
+          pending: false,
+        });
+      }
+      return assignees;
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: InviteParticipantBody }>(
     "/projects/:id/participants/invite",
     { schema: { params: projectIdParams, body: inviteBody } },
     async (request, reply) => {
@@ -337,6 +235,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         email,
         name,
         role,
+        side: sideFor(request.body.side, role),
         status: "invited" as const,
         invited_by_id: user.id,
         invite_token: token,
@@ -372,7 +271,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.patch<{ Params: { id: string; participantId: string }; Body: { role?: ParticipantRole; status?: ParticipantStatus; permissions?: Record<string, string>; grants?: Record<string, string[]> } }>(
+  fastify.patch<{ Params: { id: string; participantId: string }; Body: UpdateParticipantBody }>(
     "/projects/:id/participants/:participantId",
     { schema: { params: participantParams, body: updateBody } },
     async (request) => {
@@ -380,6 +279,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       validateGrants(request, project, request.body.grants);
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (request.body.role) patch.role = request.body.role;
+      if (request.body.side) patch.side = request.body.side;
       if (request.body.status) patch.status = request.body.status;
       if (request.body.permissions !== undefined) patch.permissions = JSON.stringify(request.body.permissions);
       if (request.body.grants !== undefined) patch.grants = JSON.stringify(request.body.grants);
@@ -395,6 +295,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           "p.user_id",
           "p.email",
           "p.role",
+          "p.side",
           "p.status",
           "p.permissions",
           "p.grants",
@@ -440,95 +341,6 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(204).send();
     },
   );
-
-  // --- Invite preview + accept ---
-  fastify.get<{ Params: { token: string } }>(
-    "/project-invites/:token",
-    { schema: { params: tokenParams } },
-    async (request) => {
-      const invite = await db<ParticipantRow>("project_participants")
-        .where({ invite_token: request.params.token, status: "invited" })
-        .first();
-      if (!invite) throw new NotFoundError("Invitation");
-      const project = await db("projects").where({ id: invite.project_id }).first();
-      const inviter = invite.invited_by_id
-        ? await db("user").where({ id: invite.invited_by_id }).first<{ name: string }>()
-        : null;
-      return {
-        email: invite.email,
-        role: invite.role,
-        projectName: (project as { name?: string } | undefined)?.name ?? "a project",
-        inviterName: inviter?.name ?? null,
-        expired: invite.invite_expires_at ? new Date(invite.invite_expires_at) < new Date() : false,
-      };
-    },
-  );
-
-  fastify.post<{ Params: { token: string } }>(
-    "/project-invites/:token/accept",
-    { schema: { params: tokenParams } },
-    async (request) => {
-      const user = request.requireAuth();
-      const invite = await db<ParticipantRow>("project_participants")
-        .where({ invite_token: request.params.token, status: "invited" })
-        .first();
-      if (!invite) throw new NotFoundError("Invitation");
-      if (invite.invite_expires_at && new Date(invite.invite_expires_at) < new Date()) {
-        throw new BadRequestError("This invitation has expired.");
-      }
-      if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
-        throw new BadRequestError("This invitation was sent to a different email address.");
-      }
-      // The partial unique index on (project_id, user_id) means a prior (even
-      // revoked) row already holding this user blocks setting user_id on the new
-      // invite row. Merge the new invite's role into that existing row and drop
-      // the redundant invite, so re-invites and role changes accept cleanly.
-      const now = new Date().toISOString();
-      await db.transaction(async (trx) => {
-        const linked = await trx<ParticipantRow>("project_participants")
-          .where({ project_id: invite.project_id, user_id: user.id })
-          .first();
-        if (linked && linked.id !== invite.id) {
-          await trx("project_participants").where({ id: linked.id }).update({
-            role: invite.role,
-            permissions: JSON.stringify(invite.permissions ?? {}),
-            status: "active",
-            invite_token: null,
-            updated_at: now,
-          });
-          await trx("project_participants").where({ id: invite.id }).delete();
-        } else {
-          await trx("project_participants").where({ id: invite.id }).update({
-            user_id: user.id,
-            status: "active",
-            invite_token: null,
-            updated_at: now,
-          });
-        }
-      });
-      await fastify.accessCache.invalidate(user.id);
-      return { projectId: invite.project_id, role: invite.role };
-    },
-  );
-
-  // --- Client/company dashboard: projects I can see ---
-  fastify.get("/me/projects", async (request) => {
-    const user = request.requireAuth();
-    const orgIds = [...request.orgRoles.keys()];
-    const participantProjectIds = await db("project_participants")
-      .where({ user_id: user.id })
-      .whereNot("status", "revoked")
-      .pluck("project_id");
-    const rows = await db("projects")
-      .where(function () {
-        this.where("owner_id", user.id);
-        if (orgIds.length) this.orWhereIn("organization_id", orgIds);
-        if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
-      })
-      .select(...PROJECT_CARD_COLUMNS)
-      .orderBy("updated_at", "desc");
-    return rows;
-  });
 
   // --- The caller's relationship + capabilities for a project (drives the UI) ---
   fastify.get<{ Params: { id: string } }>(

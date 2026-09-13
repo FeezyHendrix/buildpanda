@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 import type { ApprovalUpdatePatch } from "./repository.ts";
-import type { MaterialApprovalJoinedRow } from "./material-types.ts";
-import type { ApprovalCommentRow, ApprovalRow, ApprovalStatus } from "./types.ts";
+import type { MaterialApprovalJoinedRow, MaterialApprovalRow } from "./material-types.ts";
+import type { ApprovalCommentRow, ApprovalStatus } from "./types.ts";
 
 export interface NewMaterialApprovalRecord {
   id: string;
@@ -16,6 +16,7 @@ export interface NewMaterialApprovalRecord {
   document_id: string | null;
   document_version_id: string | null;
   source_markup_id: string | null;
+  resubmitted_from_id: string | null;
 }
 
 export interface NewMaterialApprovalDetailRecord {
@@ -52,6 +53,7 @@ const APPROVAL_SELECT = [
   "a.reviewed_by_id",
   "u.name as reviewed_by_name",
   "a.reviewed_at",
+  "a.resubmitted_from_id",
   "a.created_at",
   "a.updated_at",
 ] as const;
@@ -88,13 +90,13 @@ export function materialApprovalsRepository(db: Knex) {
   }
 
   return {
-    listByProject(projectId: string, status?: ApprovalStatus): Promise<ApprovalRow[]> {
+    listByProject(projectId: string, status?: ApprovalStatus): Promise<MaterialApprovalRow[]> {
       const q = base().where("a.project_id", projectId);
       if (status) q.andWhere("a.status", status);
       return q.select(...APPROVAL_SELECT).orderBy("a.created_at", "desc");
     },
 
-    findById(id: string): Promise<ApprovalRow | undefined> {
+    findById(id: string): Promise<MaterialApprovalRow | undefined> {
       return base().where("a.id", id).select(...APPROVAL_SELECT).first();
     },
 
@@ -122,7 +124,7 @@ export function materialApprovalsRepository(db: Knex) {
     async create(
       approval: NewMaterialApprovalRecord,
       details: NewMaterialApprovalDetailRecord,
-    ): Promise<ApprovalRow> {
+    ): Promise<MaterialApprovalRow> {
       await db.transaction(async (trx) => {
         await trx("approvals").insert({ ...approval, kind: "material" });
         await trx("material_approval_details").insert(details);
@@ -136,7 +138,7 @@ export function materialApprovalsRepository(db: Knex) {
       id: string,
       patch: ApprovalUpdatePatch,
       detailPatch: MaterialApprovalDetailPatch,
-    ): Promise<ApprovalRow | undefined> {
+    ): Promise<MaterialApprovalRow | undefined> {
       await db.transaction(async (trx) => {
         await trx("approvals").where({ id, kind: "material" }).update(patch);
         if (Object.keys(detailPatch).length > 0) {

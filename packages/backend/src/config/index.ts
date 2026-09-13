@@ -43,6 +43,9 @@ export const config = {
   env,
   isProduction: env === "production",
   isTest: env === "test",
+  // The timezone dates are read in. "Overdue", "this month" and "late" are all
+  // relative to a site's local day, not to UTC.
+  timezone: optional("PROJECT_TIMEZONE", "Africa/Lagos"),
 
   http: {
     host: optional("HOST", "0.0.0.0"),

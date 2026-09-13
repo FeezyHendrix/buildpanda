@@ -118,6 +118,16 @@ export function reportingService(db: Knex) {
       recentUpdates,
       latestUpdate,
       recentDailyLogs,
+      lateMaterialOrders,
+      pendingMaterialApprovals,
+      projectDates,
+      eotPosition,
+      delayedActivities,
+      timelineShift,
+      overdueRfis,
+      overdueTasks,
+      expiredPermits,
+      expiringSoonPermits,
     ] = await Promise.all([
       db<ProjectInfoRow>("projects")
         .select("name", "status", "currency", "progress_percent")
@@ -240,6 +250,90 @@ export function reportingService(db: Knex) {
         .where("created_at", ">=", recentCutoff)
         .count<{ count: string }>("* as count")
         .first(),
+      // Late is computed from the dates, never a stored status: wanted before
+      // today and not delivered, or promised after it was wanted.
+      db("material_orders")
+        .where({ project_id: projectId })
+        .whereNotIn("status", ["Delivered", "Cancelled", "Rejected"])
+        .where((q) =>
+          q
+            .where("needed_by", "<", db.raw("to_char(now(), 'YYYY-MM-DD')"))
+            .orWhereRaw("expected_delivery_at IS NOT NULL AND expected_delivery_at > needed_by"),
+        )
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("approvals")
+        .where({ project_id: projectId, kind: "material" })
+        .whereIn("status", ["Pending", "Resubmit"])
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("projects")
+        .where({ id: projectId })
+        .select("completion_date", "revised_completion_date")
+        .first<{ completion_date: string | null; revised_completion_date: string | null } | undefined>(),
+      db("extension_of_time_claims")
+        .where({ project_id: projectId })
+        .select<Array<{ status: string; days_claimed: number; days_awarded: number | null }>>(
+          "status",
+          "days_claimed",
+          "days_awarded",
+        ),
+      // Activities carrying an OPEN delay, with the time booked against them —
+      // "9 delayed activities" meant nothing without the days.
+      db("activity_delays as d")
+        .join("activities as a", "a.id", "d.activity_id")
+        .where("a.project_id", projectId)
+        .whereNull("d.resolved_at")
+        .first<{ activities: string; days: string | null } | undefined>(
+          db.raw("count(DISTINCT d.activity_id) as activities"),
+          db.raw("COALESCE(SUM(d.days_lost), 0) as days"),
+        ),
+      // How far the projected finish has moved from the baseline programme.
+      db("activities")
+        .where({ project_id: projectId })
+        .whereNotNull("baseline_end_at")
+        .first<{ shift: string | null } | undefined>(
+          db.raw(
+            "MAX(EXTRACT(EPOCH FROM (planned_end_at - baseline_end_at)) / 86400) as shift",
+          ),
+        ),
+      db("rfis")
+        .where({ project_id: projectId })
+        .whereNotIn("status", ["Answered", "Closed", "Void", "Draft"])
+        .whereNotNull("due_date")
+        .where("due_date", "<", db.raw("to_char(now(), 'YYYY-MM-DD')"))
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("tasks as t")
+        .join("task_columns as c", "c.id", "t.column_id")
+        .where("t.project_id", projectId)
+        .whereNot("c.status", "Done")
+        .whereNotNull("t.due_date")
+        .where("t.due_date", "<", db.raw("to_char(now(), 'YYYY-MM-DD')"))
+        .count<{ count: string }[]>("t.id as count")
+        .first(),
+      db("permits")
+        .where({ project_id: projectId })
+        .where((q) =>
+          q
+            .where("status", "Expired")
+            .orWhere((qq) =>
+              qq
+                .whereNot("status", "Rejected")
+                .whereNotNull("expiry_date")
+                .where("expiry_date", "<", db.raw("to_char(now(), 'YYYY-MM-DD')")),
+            ),
+        )
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("permits")
+        .where({ project_id: projectId })
+        .whereNotIn("status", ["Expired", "Rejected"])
+        .whereNotNull("expiry_date")
+        .where("expiry_date", ">=", db.raw("to_char(now(), 'YYYY-MM-DD')"))
+        .where("expiry_date", "<=", db.raw("to_char(now() + interval '30 days', 'YYYY-MM-DD')"))
+        .count<{ count: string }[]>("id as count")
+        .first(),
     ]);
 
     if (!project) {
@@ -343,6 +437,12 @@ export function reportingService(db: Knex) {
     const latestUpdateAt = (latestUpdate as { last: string | null } | undefined)
       ?.last;
 
+    const eotDays = { approved: 0, pending: 0 };
+    for (const claim of eotPosition) {
+      if (claim.status === "Approved") eotDays.approved += toNumber(claim.days_awarded);
+      else if (claim.status === "Submitted") eotDays.pending += toNumber(claim.days_claimed);
+    }
+
     const insight = latestInsight ? toInsight(latestInsight) : null;
     const trend: HealthPoint[] = trendRows
       .map((row) => ({
@@ -394,6 +494,18 @@ export function reportingService(db: Knex) {
         },
       },
       schedule: {
+        completionDate: projectDates?.completion_date ?? null,
+        revisedCompletionDate: projectDates?.revised_completion_date ?? null,
+        eotDaysApproved: eotDays.approved,
+        eotDaysPending: eotDays.pending,
+        // Needs the contract's LD rate and cap, which arrive with the contract
+        // terms; a made-up figure here would be a claim, not a report.
+        ldExposure: null,
+        delayedActivities: {
+          count: toNumber(delayedActivities?.activities),
+          daysLost: toNumber(delayedActivities?.days),
+        },
+        timelineShiftDays: Math.round(toNumber(timelineShift?.shift)),
         progressPercent: toNumber(project.progress_percent),
         phasesInProgress,
         phasesUpcoming,
@@ -417,6 +529,12 @@ export function reportingService(db: Knex) {
         overdueActivities: toNumber(overdueActivities?.count),
         upcomingKeyDates: toNumber(upcomingKeyDates?.count),
         missedKeyDates: toNumber(missedKeyDates?.count),
+        lateMaterialOrders: toNumber(lateMaterialOrders?.count),
+        pendingMaterialApprovals: toNumber(pendingMaterialApprovals?.count),
+        overdueRfis: toNumber(overdueRfis?.count),
+        overdueTasks: toNumber(overdueTasks?.count),
+        expiredPermits: toNumber(expiredPermits?.count),
+        expiringSoonPermits: toNumber(expiringSoonPermits?.count),
       },
       health: {
         score: insight?.healthScore ?? null,

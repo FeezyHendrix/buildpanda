@@ -4,6 +4,7 @@ import type {
   ChangeRequestRow,
   ChangeStatus,
   ChangeStatusCountRow,
+  ChangeType,
   Currency,
 } from "./types.ts";
 
@@ -16,11 +17,15 @@ export interface NewChangeRequestRecord {
   reason: string | null;
   reason_html: string | null;
   status: ChangeStatus;
+  type: ChangeType;
   cost_impact: string;
   time_impact_days: number;
   currency: Currency;
   submitted_by_id: string | null;
   assignee_id?: string | null;
+  stage_id?: string | null;
+  rfi_id?: string | null;
+  eot_claim_id?: string | null;
 }
 
 export interface ChangeRequestUpdatePatch {
@@ -37,6 +42,13 @@ export interface ChangeRequestUpdatePatch {
   decided_at?: string | null;
   assignee_id?: string | null;
   estimate_id?: string | null;
+  type?: ChangeType;
+  stage_id?: string | null;
+  rfi_id?: string | null;
+  eot_claim_id?: string | null;
+  rejected_reason?: string | null;
+  submitted_at?: string | null;
+  revisions?: string;
   updated_at?: string;
 }
 
@@ -49,6 +61,13 @@ const SELECT = [
   "c.reason",
   "c.reason_html",
   "c.status",
+  "c.type",
+  "c.stage_id",
+  "c.rfi_id",
+  "c.eot_claim_id",
+  "c.rejected_reason",
+  "c.submitted_at",
+  "c.revisions",
   "c.cost_impact",
   "c.time_impact_days",
   "c.currency",
@@ -122,6 +141,14 @@ export function changeRequestsRepository(db: Knex) {
 
     async remove(id: string): Promise<void> {
       await db("change_requests").where({ id }).del();
+    },
+
+    /** RFIs converted into this change; deleting it would orphan their trail. */
+    async countReferencingRfis(changeRequestId: string): Promise<number> {
+      const rows = await db("rfis")
+        .where({ change_request_id: changeRequestId })
+        .count<{ count: string }[]>("id as count");
+      return Number(rows[0]?.count ?? 0);
     },
 
     listComments(changeRequestId: string): Promise<ChangeCommentRow[]> {

@@ -2,6 +2,7 @@ import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 import type { ChangeRequestsRepository, ChangeRequestUpdatePatch } from "./repository.ts";
+import { parseRevisions } from "./transitions.ts";
 import type {
   ChangeBudgetLink,
   ChangeComment,
@@ -11,33 +12,11 @@ import type {
   ChangeRequestRow,
   ChangeRequestSummary,
   ChangeStatus,
-  Currency,
+  CreateChangeRequestInput,
+  UpdateChangeRequestInput,
 } from "./types.ts";
 
-export interface CreateChangeRequestInput {
-  title: string;
-  description?: string | null;
-  descriptionHtml?: string | null;
-  reason?: string | null;
-  reasonHtml?: string | null;
-  costImpact?: number;
-  timeImpactDays?: number;
-  currency?: Currency;
-  assigneeId?: string | null;
-}
-
-export interface UpdateChangeRequestInput {
-  title?: string;
-  description?: string | null;
-  descriptionHtml?: string | null;
-  reason?: string | null;
-  reasonHtml?: string | null;
-  status?: ChangeStatus;
-  costImpact?: number;
-  timeImpactDays?: number;
-  currency?: Currency;
-  assigneeId?: string | null;
-}
+export type { CreateChangeRequestInput, UpdateChangeRequestInput };
 
 /** The contract records an approved change order is generated into (modules/contracts). */
 export interface ChangeOrderContracts {
@@ -61,9 +40,6 @@ export interface ChangeRequestsDeps {
   ) => Promise<void>;
 }
 
-// Executed follows Approved, so it keeps the decision stamp rather than clearing it.
-const DECISIONS: ChangeStatus[] = ["Approved", "Executed", "Rejected"];
-
 function notifyChangeAssignee(
   deps: ChangeRequestsDeps,
   assigneeId: string | null | undefined,
@@ -81,22 +57,41 @@ function notifyChangeAssignee(
     .catch(() => undefined);
 }
 
+/**
+ * A change moving is news for the person who raised it and for whoever has to
+ * act next. The type is specific — "submitted", "approved", "rejected" — so a
+ * QS can tell from the bell whether a variation needs pricing or has been
+ * turned down, without opening the register.
+ */
+const DECISION_TYPES = {
+  Submitted: { type: "change_request_submitted", title: "A change request was submitted for decision" },
+  Approved: { type: "change_request_approved", title: "A change request was approved" },
+  Rejected: { type: "change_request_rejected", title: "A change request was rejected" },
+} as const;
+
 function notifyChangeDecided(
   deps: ChangeRequestsDeps,
-  submitterId: string | null | undefined,
+  recipientIds: (string | null | undefined)[],
   projectId: string,
   title: string,
-  status: string,
+  status: keyof typeof DECISION_TYPES,
   actorId: string,
+  reason: string | null = null,
 ): void {
-  if (!deps.notifications || !submitterId || submitterId === actorId) return;
-  void deps.notifications
-    .notify(submitterId, "change_request_decided", {
-      title: `Change request ${status.toLowerCase()}`,
-      body: title,
-      projectId,
-    })
-    .catch(() => undefined);
+  const meta = DECISION_TYPES[status];
+  if (!deps.notifications || !meta) return;
+  const seen = new Set<string>();
+  for (const recipientId of recipientIds) {
+    if (!recipientId || recipientId === actorId || seen.has(recipientId)) continue;
+    seen.add(recipientId);
+    void deps.notifications
+      .notify(recipientId, meta.type, {
+        title: meta.title,
+        body: reason ? `${title} — ${reason}` : title,
+        projectId,
+      })
+      .catch(() => undefined);
+  }
 }
 
 function toChange(row: ChangeRequestRow, commentCount: number, contractId: string | null = null): ChangeRequest {
@@ -106,9 +101,16 @@ function toChange(row: ChangeRequestRow, commentCount: number, contractId: strin
     title: row.title,
     description: row.description,
     descriptionHtml: row.description_html,
-      reason: row.reason,
-      reasonHtml: row.reason_html,
-      status: row.status,
+    reason: row.reason,
+    reasonHtml: row.reason_html,
+    status: row.status,
+    type: row.type ?? "variation",
+    stageId: row.stage_id ?? null,
+    rfiId: row.rfi_id ?? null,
+    eotClaimId: row.eot_claim_id ?? null,
+    rejectedReason: row.rejected_reason ?? null,
+    submittedAt: row.submitted_at ?? null,
+    revisions: parseRevisions(row.revisions),
     costImpact: Number(row.cost_impact),
     timeImpactDays: row.time_impact_days,
     currency: row.currency,
@@ -201,11 +203,17 @@ export function changeRequestsService(
         reason: input.reason ?? null,
         reason_html: input.reasonHtml ?? null,
         status: "Draft",
+        // A change with days and no money only ever asked for time; saying so
+        // up front is what keeps the register readable and the claim traceable.
+        type: input.type ?? (input.costImpact ? "variation" : input.timeImpactDays ? "eot_only" : "variation"),
         cost_impact: String(input.costImpact ?? 0),
         time_impact_days: input.timeImpactDays ?? 0,
         currency: input.currency ?? "NGN",
         submitted_by_id: userId,
         assignee_id: input.assigneeId ?? null,
+        stage_id: input.stageId ?? null,
+        rfi_id: input.rfiId ?? null,
+        eot_claim_id: input.eotClaimId ?? null,
       });
       notifyChangeAssignee(deps, row.assignee_id, projectId, row.title, userId);
       return toChange(row, 0);
@@ -216,7 +224,6 @@ export function changeRequestsService(
       id: string,
       input: UpdateChangeRequestInput,
       userId: string,
-      actorName = "Team member",
     ): Promise<ChangeRequest> {
       const existing = await repository.findById(id);
       if (!existing || existing.project_id !== projectId) throw new NotFoundError("Change request");
@@ -230,54 +237,76 @@ export function changeRequestsService(
       if (input.costImpact !== undefined) patch.cost_impact = String(input.costImpact);
       if (input.timeImpactDays !== undefined) patch.time_impact_days = input.timeImpactDays;
       if (input.currency !== undefined) patch.currency = input.currency;
-      if (input.status !== undefined) {
-        patch.status = input.status;
-        if (DECISIONS.includes(input.status) && !DECISIONS.includes(existing.status)) {
-          patch.decided_at = new Date().toISOString();
-          patch.decided_by_id = userId;
-          notifyChangeDecided(deps, existing.submitted_by_id, projectId, existing.title, input.status, userId);
-        } else if (!DECISIONS.includes(input.status)) {
-          patch.decided_at = null;
-          patch.decided_by_id = null;
-        }
-      }
+      if (input.type !== undefined) patch.type = input.type;
+      if (input.stageId !== undefined) patch.stage_id = input.stageId;
+      if (input.rfiId !== undefined) patch.rfi_id = input.rfiId;
+      if (input.eotClaimId !== undefined) patch.eot_claim_id = input.eotClaimId;
 
       const reassigned =
         input.assigneeId !== undefined && input.assigneeId !== existing.assignee_id;
       if (input.assigneeId !== undefined) patch.assignee_id = input.assigneeId;
 
-      const approvedNow = input.status === "Approved" && existing.status !== "Approved";
-      if (approvedNow && !existing.estimate_id) {
-        patch.estimate_id = await repository.projectEstimateId(projectId);
-      }
-      if (input.status === "Executed" && existing.status !== "Executed") {
-        await assertExecutable(existing);
+      // Editing a decided change must not silently re-price the contract.
+      if (existing.status === "Approved" || existing.status === "Executed") {
+        if (input.costImpact !== undefined && Number(input.costImpact) !== Number(existing.cost_impact)) {
+          throw new BadRequestError(
+            "This change is already approved — raise a new change request to alter its value",
+          );
+        }
       }
 
       const updated = await repository.update(id, patch);
       if (!updated) throw new NotFoundError("Change request");
-      const costImpact = Number(updated.cost_impact);
-      if (approvedNow && costImpact !== 0 && deps.recordVariation) {
-        await deps.recordVariation(
-          projectId,
-          { amount: costImpact, description: `Change request · ${updated.title}`, changeRequestId: updated.id },
-          { id: userId, name: actorName },
-        );
-      }
-      // An approved change becomes a change-order contract (kind change_order)
-      // carrying its cost impact; idempotent so re-approving never duplicates it.
-      if (approvedNow && deps.contracts) {
-        await deps.contracts.ensureForChangeRequest(projectId, {
-          id: updated.id,
-          title: updated.title,
-          costImpact,
-        });
-      }
       if (reassigned) {
         notifyChangeAssignee(deps, updated.assignee_id, projectId, updated.title, userId);
       }
       const [counts, contracts] = await Promise.all([repository.commentCounts([id]), contractIds([id])]);
       return toChange(updated, counts.get(id) ?? 0, contracts.get(id) ?? null);
+    },
+
+    /** Called by the actions service once a change is approved. */
+    async onApproved(row: ChangeRequestRow, actor: { id: string; name: string }): Promise<void> {
+      const costImpact = Number(row.cost_impact);
+      if (!row.estimate_id) {
+        const estimateId = await repository.projectEstimateId(row.project_id);
+        if (estimateId) await repository.update(row.id, { estimate_id: estimateId });
+      }
+      if (costImpact !== 0 && deps.recordVariation) {
+        await deps.recordVariation(
+          row.project_id,
+          { amount: costImpact, description: `Change request · ${row.title}`, changeRequestId: row.id },
+          actor,
+        );
+      }
+      // An approved change becomes a change-order contract (kind change_order)
+      // carrying its cost impact; idempotent so re-approving never duplicates it.
+      if (deps.contracts) {
+        await deps.contracts.ensureForChangeRequest(row.project_id, {
+          id: row.id,
+          title: row.title,
+          costImpact,
+        });
+      }
+    },
+
+    /** Exposed so the actions service can reuse the signed-contract rule. */
+    assertExecutable,
+
+    notifyDecided(
+      row: ChangeRequestRow,
+      status: "Submitted" | "Approved" | "Rejected",
+      actorId: string,
+      reason: string | null = null,
+    ): void {
+      notifyChangeDecided(
+        deps,
+        [row.submitted_by_id, row.assignee_id],
+        row.project_id,
+        row.title,
+        status,
+        actorId,
+        reason,
+      );
     },
 
     async remove(projectId: string, id: string): Promise<void> {

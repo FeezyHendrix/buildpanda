@@ -8,9 +8,11 @@ import { projectsService } from "./service.ts";
 import { PROJECT_TEMPLATES, PROJECT_TEMPLATE_IDS, toTemplateSummary } from "./templates.ts";
 import {
   AI_UPDATE_CADENCES,
+  PROJECT_TYPES,
   type CreateProjectInput,
   type ProjectSettings,
   type UpdateProjectBudgetInput,
+  type UpdateProjectProfileInput,
 } from "./types.ts";
 
 const listTemplatesResponse = {
@@ -53,6 +55,52 @@ const updateCurrencyBody = {
 const settingsResponse = {
   type: "object",
   properties: {
+    aiUpdateCadence: { type: "string", enum: [...AI_UPDATE_CADENCES] },
+  },
+} as const;
+
+const profileResponse = {
+  type: "object",
+  properties: {
+    name: { type: "string" },
+    address: { type: "string" },
+    startDate: { type: ["string", "null"] },
+    completionDate: { type: ["string", "null"] },
+    revisedCompletionDate: { type: ["string", "null"] },
+    clientName: { type: ["string", "null"] },
+    contractorEntity: { type: ["string", "null"] },
+    projectType: { type: ["string", "null"], enum: [...PROJECT_TYPES, null] },
+    workingDays: { type: "array", items: { type: "integer" } },
+    holidays: { type: "array", items: { type: "string" } },
+    aiUpdateCadence: { type: "string", enum: [...AI_UPDATE_CADENCES] },
+  },
+} as const;
+
+const isoDateField = { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" } as const;
+
+const patchSettingsBody = {
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: {
+    name: { type: "string", minLength: 1, maxLength: 200 },
+    address: { type: "string", minLength: 1, maxLength: 300 },
+    startDate: isoDateField,
+    completionDate: isoDateField,
+    revisedCompletionDate: isoDateField,
+    clientName: { type: ["string", "null"], maxLength: 200 },
+    contractorEntity: { type: ["string", "null"], maxLength: 200 },
+    projectType: { type: ["string", "null"], enum: [...PROJECT_TYPES, null] },
+    workingDays: {
+      type: "array",
+      maxItems: 7,
+      items: { type: "integer", minimum: 0, maximum: 6 },
+    },
+    holidays: {
+      type: "array",
+      maxItems: 400,
+      items: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+    },
     aiUpdateCadence: { type: "string", enum: [...AI_UPDATE_CADENCES] },
   },
 } as const;
@@ -241,10 +289,27 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/settings",
-    { schema: { params: projectIdParams, response: { 200: settingsResponse } } },
+    { schema: { params: projectIdParams, response: { 200: profileResponse } } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "project", "view");
-      return { aiUpdateCadence: project.ai_update_cadence };
+      return service.getProfile(project.id);
+    },
+  );
+
+  // PATCH because a settings page saves one card at a time; PUT stays for the
+  // cadence-only callers that predate the project record.
+  fastify.patch<{ Params: { id: string }; Body: UpdateProjectProfileInput }>(
+    "/projects/:id/settings",
+    {
+      schema: {
+        params: projectIdParams,
+        body: patchSettingsBody,
+        response: { 200: profileResponse },
+      },
+    },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "project", "manage");
+      return service.updateProfile(project.id, request.body);
     },
   );
 

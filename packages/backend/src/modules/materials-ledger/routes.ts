@@ -87,6 +87,8 @@ const logBody = {
     reason: { type: ["string", "null"], maxLength: 1000 },
     notesHtml: { type: ["string", "null"], maxLength: 200000 },
     idempotencyKey: { type: ["string", "null"], maxLength: 100 },
+    supplier: { type: ["string", "null"], maxLength: 200 },
+    deliveryNote: { type: ["string", "null"], maxLength: 120 },
   },
 } as const;
 

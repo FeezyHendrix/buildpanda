@@ -1,5 +1,5 @@
 import { config } from "../../config/index.ts";
-import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { Money } from "../../lib/money.ts";
 import {
@@ -15,18 +15,31 @@ import { num, toInvoice } from "./invoice-mapper.ts";
 import { assertInvoiceTransition, toDatabaseStatus, toWorkflowStatus } from "./invoice-status.ts";
 import type { InvoicesRepository } from "./repository.ts";
 import type {
-  AddPaymentInput,
   CreateInvoiceInput,
   EditInvoiceInput,
   Invoice,
   InvoiceBudgetAllocation,
+  InvoiceDirection,
   InvoiceLineItemRow,
   InvoicePaymentRow,
   InvoiceRow,
+  InvoiceType,
   SendInvoiceInput,
 } from "./types.ts";
 
-export function invoicesService(repository: InvoicesRepository) {
+export interface InvoicesDeps {
+  /** The project's main contract id — the contract a certificate bills against. */
+  mainContractId?: (projectId: string) => Promise<string | null>;
+}
+
+/** Receivable is what WE certify to the employer; everything else we owe. */
+function directionFor(type: InvoiceType | undefined): InvoiceDirection {
+  return type === "progress" || type === "final" || type === "variation" || type === "advance"
+    ? "receivable"
+    : "payable";
+}
+
+export function invoicesService(repository: InvoicesRepository, deps: InvoicesDeps = {}) {
   async function buildInvoice(row: InvoiceRow): Promise<Invoice> {
     const [payments, items] = await Promise.all([
       repository.listPaymentsForInvoices([row.id]),
@@ -110,11 +123,25 @@ export function invoicesService(repository: InvoicesRepository) {
         throw new BadRequestError("Retainage must be between 0 and 100");
       }
       const id = generateId("inv");
+      const invoiceType = input.invoiceType ?? "vendor";
+      const direction = input.direction ?? directionFor(invoiceType);
+      // A certificate that names no contract bills against the main one — the
+      // waterfall cannot read an invoice that belongs to nothing.
+      const contractId =
+        input.contractId !== undefined
+          ? optional(input.contractId) ?? null
+          : direction === "receivable" && deps.mainContractId
+            ? await deps.mainContractId(projectId)
+            : null;
       const row = await repository.create(
         {
           id,
           project_id: projectId,
-          invoice_type: input.invoiceType ?? "vendor",
+          invoice_type: invoiceType,
+          contract_id: contractId,
+          direction,
+          counterparty: optional(input.counterparty) ?? input.vendorName.trim(),
+          advance_recovery: "0",
           vendor_name: input.vendorName.trim(),
           trade: input.trade.trim(),
           number: optional(input.number) ?? null,
@@ -157,6 +184,9 @@ export function invoicesService(repository: InvoicesRepository) {
 
     async edit(projectId: string, invoiceId: string, input: EditInvoiceInput): Promise<Invoice> {
       const existing = await getOwnedInvoice(projectId, invoiceId);
+      if (existing.voided_at) {
+        throw new ConflictError("This certificate is voided — raise a correction on the next one");
+      }
       const defaults = await defaultsForProject(projectId);
       const currentItems = await repository.listItemsForInvoices([invoiceId]);
       const lineItems = input.lineItems ?? (
@@ -204,7 +234,13 @@ export function invoicesService(repository: InvoicesRepository) {
         assertInvoiceTransition(existing.status, input.status);
         patch.status = toDatabaseStatus(toWorkflowStatus(input.status));
       }
-      if (input.invoiceType !== undefined) patch.invoice_type = input.invoiceType;
+      if (input.invoiceType !== undefined) {
+        patch.invoice_type = input.invoiceType;
+        if (input.direction === undefined) patch.direction = directionFor(input.invoiceType);
+      }
+      if (input.direction !== undefined) patch.direction = input.direction;
+      if (input.counterparty !== undefined) patch.counterparty = optional(input.counterparty) ?? null;
+      if (input.contractId !== undefined) patch.contract_id = optional(input.contractId) ?? null;
       if (input.currency !== undefined) patch.currency = optional(input.currency) ?? defaults.currency;
       if (input.retainagePercentage !== undefined) patch.retainage_percentage = String(input.retainagePercentage);
       if (input.issueDate !== undefined) patch.issue_date = optional(input.issueDate) ?? null;
@@ -275,29 +311,6 @@ export function invoicesService(repository: InvoicesRepository) {
       if (!row) throw new NotFoundError("Invoice");
       const updated = await repository.update(row.id, { viewed_at: new Date() });
       return buildInvoice(updated ?? row);
-    },
-
-    async addPayment(projectId: string, invoiceId: string, input: AddPaymentInput): Promise<Invoice> {
-      await getOwnedInvoice(projectId, invoiceId);
-      if (input.amount <= 0) throw new BadRequestError("Payment amount must be positive");
-      await repository.createPayment({
-        id: generateId("pay"),
-        invoice_id: invoiceId,
-        amount: String(input.amount),
-        method: input.method ?? "Bank Transfer",
-        paid_at: optional(input.paidAt) ?? null,
-        note: optional(input.note) ?? null,
-      });
-      const row = await getOwnedInvoice(projectId, invoiceId);
-      return buildInvoice(row);
-    },
-
-    async removePayment(projectId: string, invoiceId: string, paymentId: string): Promise<Invoice> {
-      const row = await getOwnedInvoice(projectId, invoiceId);
-      const payment = await repository.findPayment(paymentId);
-      if (!payment || payment.invoice_id !== invoiceId) throw new NotFoundError("Payment");
-      await repository.deletePayment(paymentId);
-      return buildInvoice(row);
     },
 
     async getAllocations(projectId: string, invoiceId: string): Promise<InvoiceBudgetAllocation[]> {

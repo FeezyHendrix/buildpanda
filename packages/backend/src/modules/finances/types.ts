@@ -30,17 +30,15 @@ export type RetentionReleaseMode = (typeof RETENTION_RELEASE_MODES)[number];
 export const ADVANCE_RECOVERY_MODES = ["percentage", "fixed"] as const;
 export type AdvanceRecoveryMode = (typeof ADVANCE_RECOVERY_MODES)[number];
 
-export interface ContractTerms {
-  contractType: ContractType;
-  retentionRate: number;
-  retentionReleaseMode: RetentionReleaseMode;
-  advancePercentage: number;
-  advanceRecoveryMode: AdvanceRecoveryMode;
-  advanceRecoveryRate: number;
-  paymentTermsDays: number;
-  defectsLiabilityDays: number;
-  contractNotes: string | null;
-}
+// The contract terms and the contract POSITION they produce live in
+// contract-types.ts; re-exported so every importer keeps one import site.
+export * from "./contract-types.ts";
+import type {
+  ContractForm,
+  ContractTerms,
+  FundingPosition,
+  ValuationFrequency,
+} from "./contract-types.ts";
 
 export interface BudgetPhase {
   id: string;
@@ -88,6 +86,10 @@ export interface ProjectFinances {
   adjustedContract: number;
   certifiedGrossToDate: number;
   amountPaidToDate: number;
+  retentionHeld: number;
+  advanceRecovered: number;
+  /** Deposits and milestone releases — the funding ledger, not the contract waterfall. */
+  funding: FundingPosition;
   contractTerms: ContractTerms;
   budgetAllocation: BudgetPhase[];
   materialsProcured: MaterialProcurement[];
@@ -113,6 +115,21 @@ export interface FinancesRow {
   payment_terms_days: number;
   defects_liability_days: number;
   contract_notes: string | null;
+  retention_held: string;
+  liquidated_damages_rate: string;
+  liquidated_damages_cap_percent: string;
+  commencement_date: string | Date | null;
+  completion_date: string | Date | null;
+  employer_name: string | null;
+  contractor_name: string | null;
+  contract_form: ContractForm | null;
+  vat_rate: string;
+  advance_recovery_from_certificate: number;
+  retention_cap_percent: string;
+  valuation_frequency: ValuationFrequency;
+  defects_period_months: number;
+  funds_deposited: string;
+  funds_released: string;
 }
 
 export interface BudgetPhaseRow {

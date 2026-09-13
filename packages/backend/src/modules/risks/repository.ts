@@ -17,6 +17,7 @@ export interface NewRiskFactorRecord {
   mitigation: string | null;
   status: RiskStatus;
   review_date: string | null;
+  linked_activity_id?: string | null;
   origin: RiskOrigin;
 }
 
@@ -32,6 +33,8 @@ export interface RiskFactorUpdatePatch {
   mitigation?: string | null;
   status?: RiskStatus;
   review_date?: string | null;
+  linked_activity_id?: string | null;
+  closed_at?: Date | null;
   confirmed_by?: string | null;
   confirmed_at?: Date | null;
   updated_at?: Knex.Raw | Date;

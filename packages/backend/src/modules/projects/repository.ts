@@ -25,6 +25,7 @@ export interface NewProjectRecord {
   budget_min: number;
   budget_max: number;
   setup: ProjectSetup;
+  project_type: string | null;
 }
 
 export interface ProjectUpdatePatch {
@@ -33,6 +34,16 @@ export interface ProjectUpdatePatch {
   budget_max?: number;
   currency?: CurrencyCode;
   ai_update_cadence?: AiUpdateCadence;
+  name?: string;
+  address?: string;
+  start_date?: string | null;
+  completion_date?: string | null;
+  revised_completion_date?: string | null;
+  client_name?: string | null;
+  contractor_entity?: string | null;
+  project_type?: string | null;
+  working_days?: string;
+  holidays?: string;
 }
 
 export interface NewPhaseRecord {

@@ -242,7 +242,9 @@ export function dailyLogsService(
       if (hooks.markActivityInProgress) {
         await hooks.markActivityInProgress(projectId, input.activityId).catch(() => undefined);
       }
-      if (hooks.createUpdate && actor) {
+      // Linking hours is a diary entry, not a stakeholder update: the client
+      // feed only hears about it when the person logging says so.
+      if (hooks.createUpdate && actor && input.postUpdate === true) {
         const activityName = activity.name ?? "an activity";
         await hooks
           .createUpdate(

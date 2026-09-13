@@ -27,6 +27,25 @@ export interface PeriodReportActivityRow {
   percentComplete: number;
 }
 
+export interface PeriodReportDayRow {
+  date: string;
+  weekday: string;
+  weather: string;
+  crew: string;
+  hours: string;
+  entries: number;
+  /** "Voided — reason" or a rain/no-work note; blank when the day was ordinary. */
+  note: string;
+}
+
+export interface PeriodReportNarrativeEntry {
+  date: string;
+  author: string;
+  body: string;
+  voided: boolean;
+  voidReason: string | null;
+}
+
 export interface PeriodReportDocxData {
   companyName: string;
   projectName: string;
@@ -38,6 +57,10 @@ export interface PeriodReportDocxData {
   kpis: PeriodReportKpi[];
   weatherBreakdown: PeriodReportKpi[];
   activities: PeriodReportActivityRow[];
+  /** One row per logged day — the record a Resident Engineer actually reads. */
+  days: PeriodReportDayRow[];
+  /** The site diary itself, in date order, voided entries kept and marked. */
+  narrative: PeriodReportNarrativeEntry[];
 }
 
 const INK = "101828";
@@ -162,6 +185,77 @@ function activitiesTable(rows: PeriodReportActivityRow[]): Table {
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...body] });
 }
 
+function daysTable(rows: PeriodReportDayRow[]): Table {
+  const widths = [14, 12, 16, 12, 12, 10, 24];
+  const header = new TableRow({
+    tableHeader: true,
+    children: [
+      headerCell("Date", widths[0]!),
+      headerCell("Day", widths[1]!),
+      headerCell("Weather", widths[2]!),
+      headerCell("Crew", widths[3]!),
+      headerCell("Hours", widths[4]!),
+      headerCell("Entries", widths[5]!),
+      headerCell("Note", widths[6]!),
+    ],
+  });
+  const body = rows.map(
+    (row) =>
+      new TableRow({
+        children: [
+          bodyCell(row.date, widths[0]!),
+          bodyCell(row.weekday, widths[1]!),
+          bodyCell(row.weather, widths[2]!),
+          bodyCell(row.crew, widths[3]!, AlignmentType.RIGHT),
+          bodyCell(row.hours, widths[4]!, AlignmentType.RIGHT),
+          bodyCell(String(row.entries), widths[5]!, AlignmentType.RIGHT),
+          bodyCell(row.note || "—", widths[6]!),
+        ],
+      }),
+  );
+  return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...body] });
+}
+
+function narrativeParagraphs(entries: PeriodReportNarrativeEntry[]): Paragraph[] {
+  const out: Paragraph[] = [];
+  for (const entry of entries) {
+    out.push(
+      new Paragraph({
+        spacing: { before: 160, after: 40 },
+        children: [
+          new TextRun({ text: `${entry.date} · ${entry.author}`, bold: true, size: 18, color: INK }),
+          ...(entry.voided
+            ? [new TextRun({ text: "  VOIDED", bold: true, size: 16, color: "B42318" })]
+            : []),
+        ],
+      }),
+    );
+    out.push(
+      new Paragraph({
+        spacing: { after: 40 },
+        children: [
+          new TextRun({
+            text: entry.body,
+            size: 18,
+            color: entry.voided ? MUTED : BODY,
+            strike: entry.voided,
+          }),
+        ],
+      }),
+    );
+    if (entry.voided && entry.voidReason) {
+      out.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Void reason: ${entry.voidReason}`, size: 16, color: MUTED, italics: true }),
+          ],
+        }),
+      );
+    }
+  }
+  return out;
+}
+
 export async function renderPeriodReportDocx(data: PeriodReportDocxData): Promise<Buffer> {
   const children: (Paragraph | Table)[] = [
     new Paragraph({
@@ -204,6 +298,27 @@ export async function renderPeriodReportDocx(data: PeriodReportDocxData): Promis
   if (data.weatherBreakdown.length > 0) {
     children.push(heading("Weather"));
     children.push(kpiTable(data.weatherBreakdown));
+  }
+
+  children.push(heading("Day by day"));
+  children.push(
+    data.days.length > 0
+      ? daysTable(data.days)
+      : new Paragraph({
+          children: [new TextRun({ text: "No days were logged in this period.", size: 18, color: MUTED })],
+        }),
+  );
+
+  // The narrative is the point of a site report; the figures are context.
+  children.push(heading("Site diary"));
+  if (data.narrative.length > 0) {
+    children.push(...narrativeParagraphs(data.narrative));
+  } else {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: "No diary entries were written in this period.", size: 18, color: MUTED })],
+      }),
+    );
   }
 
   children.push(heading("Activity"));

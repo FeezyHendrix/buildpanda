@@ -6,15 +6,13 @@ import type {
   StagesRepository,
   StageUpdatePatch,
 } from "./repository.ts";
-import { periodBilling } from "./period-billing.ts";
+import { recordedAfter, recordedBefore, toScheduleOfValues } from "./sov-mapper.ts";
 import type { PhaseRollupService } from "./phase-rollup.ts";
 import { clampPercent, deriveDateRange, toStage } from "./stage-mapper.ts";
 import type {
-  PeriodBillingLine,
   Stage,
   StageRow,
   StageScheduleOfValue,
-  StageScheduleOfValueRow,
   StageStatus,
   UpdateStageInput,
 } from "./types.ts";
@@ -45,70 +43,12 @@ export interface StagePhaseDeps {
   contractBelongsToProject: (projectId: string, contractId: string) => Promise<boolean>;
 }
 
-function percentCompleteOf(row: StageScheduleOfValueRow): number | null {
-  return row.percent_complete === null ? null : Number(row.percent_complete);
-}
-
-function toScheduleOfValue(
-  row: StageScheduleOfValueRow,
-  billing: PeriodBillingLine | undefined,
-): StageScheduleOfValue {
-  return {
-    id: row.id,
-    stageId: row.stage_id,
-    period: row.period,
-    percent: Number(row.percent),
-    amount: Number(row.amount),
-    billed: row.billed,
-    sortOrder: row.sort_order,
-    percentComplete: percentCompleteOf(row),
-    periodPercent: billing?.periodPct ?? 0,
-    periodAmount: billing?.periodAmount ?? 0,
-    toDateAmount: billing?.toDateAmount ?? 0,
-  };
-}
-
-/**
- * Prices every line's period figures off its stage's scheduled value. One
- * `periodBilling` per stage, so a project-wide list stays a single pass.
- */
-function toScheduleOfValues(
-  rows: StageScheduleOfValueRow[],
-  valueByStage: Map<string, number>,
-): StageScheduleOfValue[] {
-  const byStage = new Map<string, StageScheduleOfValueRow[]>();
-  for (const row of rows) {
-    const bucket = byStage.get(row.stage_id);
-    if (bucket) bucket.push(row);
-    else byStage.set(row.stage_id, [row]);
-  }
-  const billingByKey = new Map<string, PeriodBillingLine>();
-  for (const [stageId, stageRows] of byStage) {
-    const lines = periodBilling(
-      stageRows.map((row) => ({ period: row.period, percentComplete: percentCompleteOf(row) })),
-      valueByStage.get(stageId) ?? 0,
-    );
-    for (const line of lines) billingByKey.set(`${stageId}:${line.period}`, line);
-  }
-  return rows.map((row) => toScheduleOfValue(row, billingByKey.get(`${row.stage_id}:${row.period}`)));
-}
-
-function recordedBefore(rows: StageScheduleOfValueRow[], period: string): StageScheduleOfValueRow | undefined {
-  let found: StageScheduleOfValueRow | undefined;
-  for (const row of rows) {
-    if (row.period >= period || row.percent_complete === null) continue;
-    if (!found || row.period > found.period) found = row;
-  }
-  return found;
-}
-
-function recordedAfter(rows: StageScheduleOfValueRow[], period: string): StageScheduleOfValueRow | undefined {
-  let found: StageScheduleOfValueRow | undefined;
-  for (const row of rows) {
-    if (row.period <= period || row.percent_complete === null) continue;
-    if (!found || row.period < found.period) found = row;
-  }
-  return found;
+/** What a project has priced against its contract sum. */
+export interface StageValueSummary {
+  valueTotal: number;
+  contractSum: number;
+  unallocated: number;
+  allocatedPercent: number;
 }
 
 const ACTIVE_STATUSES: ReadonlySet<StageStatus> = new Set(["InProgress", "Done"]);
@@ -121,6 +61,9 @@ export function stagesService(
   // chain by the route plugin so this module never touches finance tables.
   onStageReached?: (projectId: string, stage: { id: string; name: string }) => Promise<void>,
   phases?: StagePhaseDeps,
+  // Activities live in their own module; the stage only needs the count that
+  // decides whether it can be deleted.
+  activityCountForStage?: (stageId: string) => Promise<number>,
 ) {
   async function decorate(projectId: string, rows: StageRow[]): Promise<Stage[]> {
     if (!phases) return rows.map((row) => toStage(row));
@@ -238,10 +181,39 @@ export function stagesService(
       return one(projectId, updated);
     },
 
+    /**
+     * A stage carrying work or contract value cannot just vanish: the activities
+     * are real programme rows and the value is part of the schedule of values.
+     * The 409 names both so the PM knows what to reassign first — it used to be
+     * a silent 500 from the database's own foreign key.
+     */
     async remove(projectId: string, stageId: string): Promise<void> {
       const existing = await repository.findById(stageId);
       if (!existing || existing.project_id !== projectId) throw new NotFoundError("Stage");
+      const activities = activityCountForStage ? await activityCountForStage(stageId) : 0;
+      const value = Number(existing.value ?? 0);
+      if (activities > 0 || value > 0) {
+        throw new ConflictError(
+          `Stage has ${activities} ${activities === 1 ? "activity" : "activities"} and a value of ${value} — reassign them first`,
+          { activities, value },
+        );
+      }
       await repository.remove(stageId);
+    },
+
+    /** Priced stage value against the contract sum — the missing "total" row. */
+    async valueSummary(projectId: string): Promise<StageValueSummary> {
+      const [rows, contractSum] = await Promise.all([
+        repository.listByProject(projectId),
+        contractSumForProject ? contractSumForProject(projectId) : Promise.resolve(0),
+      ]);
+      const valueTotal = Number(Money.sum(rows.map((row) => row.value)).toFixed(2));
+      return {
+        valueTotal,
+        contractSum,
+        unallocated: Number((contractSum - valueTotal).toFixed(2)),
+        allocatedPercent: contractSum > 0 ? Math.round((valueTotal / contractSum) * 10000) / 100 : 0,
+      };
     },
 
     async reorder(projectId: string, orderedIds: string[]): Promise<Stage[]> {

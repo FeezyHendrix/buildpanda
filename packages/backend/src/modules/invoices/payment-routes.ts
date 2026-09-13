@@ -1,8 +1,15 @@
 import type { FastifyPluginAsync } from "fastify";
+import { toContractTerms } from "../finances/contract-terms.ts";
+import { financesRepository } from "../finances/repository.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
+import { invoiceCertificateRepository } from "./certificate-repository.ts";
+import { invoiceCertificateService } from "./certificate.ts";
+import { invoiceNotifier } from "./invoice-notifier.ts";
 import { invoicePaymentsService } from "./invoice-payments.ts";
 import { invoicesRepository } from "./repository.ts";
 import { invoicesService } from "./service.ts";
-import { INVOICE_STATUSES, PAYMENT_METHODS, type AddPaymentInput } from "./types.ts";
+import { INVOICE_DIRECTIONS, INVOICE_STATUSES, PAYMENT_METHODS, type AddPaymentInput } from "./types.ts";
 
 const projectIdParams = {
   type: "object",
@@ -41,6 +48,8 @@ const addPaymentBody = {
     method: { type: "string", enum: PAYMENT_METHODS },
     paidAt: { type: "string", maxLength: 30 },
     note: { type: "string", maxLength: 500 },
+    /** Accept a receipt above the balance; it is recorded as a credit. */
+    allowOverpayment: { type: "boolean" },
   },
 } as const;
 
@@ -52,6 +61,7 @@ const paymentSchema = {
     method: { type: "string", enum: PAYMENT_METHODS },
     paidAt: { type: ["string", "null"] },
     note: { type: ["string", "null"] },
+    credit: { type: "boolean" },
   },
 } as const;
 
@@ -77,6 +87,11 @@ const overviewResponse = {
             netPayable: { type: "number" },
             amountPaid: { type: "number" },
             balanceDue: { type: "number" },
+            direction: { type: "string", enum: INVOICE_DIRECTIONS },
+            counterparty: { type: ["string", "null"] },
+            voidedAt: { type: ["string", "null"] },
+            paidLateDays: { type: ["integer", "null"] },
+            overdueDays: { type: ["integer", "null"] },
             payments: { type: "array", items: paymentSchema },
           },
         },
@@ -96,8 +111,30 @@ const overviewResponse = {
 // Invoice payments: reading them (the Payments tab) and recording one. A
 // payment is a LOG of money the client moved off-platform; nothing is charged.
 const invoicePaymentRoutes: FastifyPluginAsync = async (fastify) => {
-  const invoices = invoicesService(invoicesRepository(fastify.db));
+  const repository = invoicesRepository(fastify.db);
+  const invoices = invoicesService(repository);
   const service = invoicePaymentsService(invoices);
+  const finances = financesRepository(fastify.db);
+  const notifier = invoiceNotifier(
+    notificationsService(notificationsRepository(fastify.db), fastify.queue),
+    fastify.db,
+  );
+  // Recording a receipt goes through the certificate service, where the guards
+  // and the audit trail live — a payment is never a bare insert.
+  const certificates = invoiceCertificateService({
+    invoices: repository,
+    certificates: invoiceCertificateRepository(fastify.db),
+    terms: async (projectId) => {
+      const row = await finances.findSummary(projectId);
+      return row ? toContractTerms(row) : null;
+    },
+    adjustedContract: async (projectId) => {
+      const row = await finances.findSummary(projectId);
+      return row ? Number(row.contract_sum) + Number(row.variations_total) : 0;
+    },
+    onEvent: (projectId, invoice, type, actor, reason) =>
+      notifier.statusChanged(projectId, invoice, type, actor, reason),
+  });
 
   // Static segment declared ahead of /invoices/:invoiceId so it never reads as an id.
   fastify.get<{ Params: { id: string } }>(
@@ -125,11 +162,18 @@ const invoicePaymentRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: invoiceParams, body: addPaymentBody } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "finances", "approve");
-      const invoice = await invoices.addPayment(
+      const user = request.requireAuth();
+      const actor = { id: user.id, name: user.name };
+      const invoice = await certificates.addPayment(
         project.id,
         request.params.invoiceId,
         request.body,
+        actor,
       );
+      if (invoice.paidLateDays !== null) {
+        const row = await repository.findById(invoice.id);
+        if (row) notifier.paidLate(project.id, row, invoice.paidLateDays, actor);
+      }
       return reply.status(201).send(invoice);
     },
   );
@@ -139,10 +183,12 @@ const invoicePaymentRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: paymentParams } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "finances", "approve");
-      return invoices.removePayment(
+      const user = request.requireAuth();
+      return certificates.removePayment(
         project.id,
         request.params.invoiceId,
         request.params.paymentId,
+        { id: user.id, name: user.name },
       );
     },
   );

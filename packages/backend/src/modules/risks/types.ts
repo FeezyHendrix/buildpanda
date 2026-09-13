@@ -6,7 +6,9 @@ export type RiskLikelihood = (typeof RISK_LIKELIHOODS)[number];
 export const RISK_IMPACTS = ["low", "medium", "high"] as const;
 export type RiskImpact = (typeof RISK_IMPACTS)[number];
 
-export const RISK_STATUSES = ["open", "mitigated", "closed"] as const;
+// "occurred" is not "closed": a risk that materialised is the record a dispute
+// turns on, and the register has to keep saying so.
+export const RISK_STATUSES = ["open", "mitigated", "closed", "occurred"] as const;
 export type RiskStatus = (typeof RISK_STATUSES)[number];
 
 export const RISK_ORIGINS = ["ai", "manual", "prompt"] as const;
@@ -33,6 +35,8 @@ export interface RiskFactor {
   mitigation: string | null;
   status: RiskStatus;
   reviewDate: string | null;
+  linkedActivityId: string | null;
+  closedAt: string | null;
   origin: RiskOrigin;
   editState: RiskEditState;
   confirmedBy: string | null;
@@ -56,6 +60,8 @@ export interface RiskFactorRow {
   mitigation: string | null;
   status: RiskStatus;
   review_date: Date | string | null;
+  linked_activity_id: string | null;
+  closed_at: Date | string | null;
   origin: RiskOrigin;
   confirmed_by: string | null;
   confirmed_at: Date | string | null;
@@ -75,6 +81,7 @@ export interface CreateRiskInput {
   mitigation?: string | null;
   status?: RiskStatus;
   reviewDate?: string | null;
+  linkedActivityId?: string | null;
 }
 
 export interface EditRiskInput {
@@ -89,6 +96,7 @@ export interface EditRiskInput {
   mitigation?: string | null;
   status?: RiskStatus;
   reviewDate?: string | null;
+  linkedActivityId?: string | null;
 }
 
 // What the drafter is given about the job. Everything is optional so a bare

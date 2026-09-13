@@ -2,6 +2,8 @@ import { Money } from "../../lib/money.ts";
 import { nextInvoiceStatuses, toWorkflowStatus } from "./invoice-status.ts";
 import type {
   Invoice,
+  InvoiceEvent,
+  InvoiceEventRow,
   InvoiceLineItem,
   InvoiceLineItemRow,
   InvoicePayment,
@@ -9,6 +11,34 @@ import type {
   InvoiceRow,
   InvoiceStatus,
 } from "./types.ts";
+
+const DAY_MS = 86_400_000;
+
+function dayDiff(from: string | null, to: string | null): number | null {
+  if (!from || !to) return null;
+  const start = Date.parse(`${String(from).slice(0, 10)}T00:00:00Z`);
+  const end = Date.parse(`${String(to).slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  return Math.floor((end - start) / DAY_MS);
+}
+
+function iso(value: Date | string | null): string | null {
+  if (value === null) return null;
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
+export function toInvoiceEvent(row: InvoiceEventRow): InvoiceEvent {
+  return {
+    id: row.id,
+    type: row.type,
+    fromStatus: row.from_status,
+    toStatus: row.to_status,
+    reason: row.reason,
+    actor: { id: row.actor_id, name: row.actor_name },
+    amount: row.amount === null ? null : num(row.amount),
+    createdAt: new Date(row.created_at).toISOString(),
+  };
+}
 
 export function num(value: string | null | undefined): number {
   return Number(value ?? 0);
@@ -21,6 +51,7 @@ export function toPayment(row: InvoicePaymentRow): InvoicePayment {
     method: row.method,
     paidAt: row.paid_at,
     note: row.note,
+    credit: Boolean(row.credit),
   };
 }
 
@@ -47,6 +78,9 @@ function deriveStatus(
   netPayable: number,
 ): InvoiceStatus {
   const workflowStatus = toWorkflowStatus(row.status);
+  // A voided certificate keeps every figure on the record but contributes
+  // nothing — that is the whole point of voiding instead of deleting.
+  if (row.voided_at) return "Void";
   if (balanceDue <= 0 && netPayable > 0) return "Paid";
   if (amountPaid > 0) return "PartiallyPaid";
   const dueDate = row.due_date ? new Date(row.due_date) : null;
@@ -59,13 +93,18 @@ export function toInvoice(
   row: InvoiceRow,
   paymentRows: InvoicePaymentRow[],
   lineItemRows: InvoiceLineItemRow[],
+  eventRows: InvoiceEventRow[] = [],
+  today = new Date().toISOString().slice(0, 10),
 ): Invoice {
   const amount = num(row.amount);
   const retainagePercentage = num(row.retainage_percentage);
   const retainageAmount = Money.of(amount).percent(retainagePercentage).round(2).toNumber();
   const payableAmount = Money.of(amount).sub(retainageAmount).round(2).toNumber();
   const payments = paymentRows.map(toPayment);
-  const amountPaid = Money.sum(payments.map((p) => p.amount)).round(2).toNumber();
+  // A credit is an accepted overpayment, not a receipt against the balance.
+  const amountPaid = Money.sum(payments.filter((p) => !p.credit).map((p) => p.amount))
+    .round(2)
+    .toNumber();
   const netPayable = num(row.net_payable);
   const balanceDue = Money.of(netPayable).sub(amountPaid).round(2).toNumber();
   const workflowStatus = toWorkflowStatus(row.status);
@@ -118,7 +157,40 @@ export function toInvoice(
     payableAmount,
     amountPaid,
     balanceDue,
+    direction: row.direction ?? "payable",
+    counterparty: row.counterparty ?? row.vendor_name,
+    contractId: row.contract_id ?? null,
+    advanceRecovery: num(row.advance_recovery),
+    voidedAt: iso(row.voided_at),
+    voidReason: row.void_reason ?? null,
+    // Lateness is measured retrospectively from the LAST receipt that cleared
+    // the certificate, so "paid 11 days late" survives after the fact.
+    paidLateDays: lastPaymentLateDays(row, payments, balanceDue),
+    overdueDays: unpaidOverdueDays(row, balanceDue, today),
     lineItems: lineItemRows.map(toLineItem),
     payments,
+    history: eventRows.map(toInvoiceEvent),
   };
+}
+
+/** Days late on a certificate that HAS been cleared; null while it is unpaid. */
+function lastPaymentLateDays(
+  row: InvoiceRow,
+  payments: InvoicePayment[],
+  balanceDue: number,
+): number | null {
+  if (balanceDue > 0 || !row.due_date) return null;
+  const dates = payments.filter((p) => !p.credit && p.paidAt).map((p) => String(p.paidAt));
+  if (dates.length === 0) return null;
+  const settled = dates.sort().at(-1) ?? null;
+  const late = dayDiff(row.due_date, settled);
+  return late !== null && late > 0 ? late : null;
+}
+
+/** Days past due on a certificate still carrying a balance. */
+function unpaidOverdueDays(row: InvoiceRow, balanceDue: number, today: string): number | null {
+  if (balanceDue <= 0 || !row.due_date || row.voided_at) return null;
+  if (toWorkflowStatus(row.status) === "Draft") return null;
+  const overdue = dayDiff(row.due_date, today);
+  return overdue !== null && overdue > 0 ? overdue : null;
 }

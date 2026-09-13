@@ -11,10 +11,14 @@ export const statement = {
   // Construction suite
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
-  // Governs the WHOLE finance surface, expenses/receipts included — they had a
-  // separate `transactions` resource until the model was unified. Reading an
-  // expense is finances:view; writing or exporting one is finances:manage.
-  finances: ["view", "manage", "approve", "dispute"],
+  // Two reads, not one. `view` is the CLIENT-FACING contract position — contract
+  // sum, certificates/receivable invoices, retention, the payments on them.
+  // `viewCosts` is the CONTRACTOR'S internal position — expenses, purchase
+  // orders, budget vs actual, cost variance, payable invoices. On a works
+  // contract the employer's Resident Engineer must see what was certified to
+  // them and must never see the contractor's costs or margin, so a single flat
+  // finances:view was a disclosure bug, not a convenience.
+  finances: ["view", "viewCosts", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   stages: ["view", "manage"],
   buildings: ["view", "manage"],
@@ -34,7 +38,10 @@ export const statement = {
   approvals: ["view", "decide", "manage"],
   selections: ["view", "decide", "manage"],
   queries: ["view", "raise", "manage"],
-  "change-requests": ["view", "manage"],
+  // `approve` is separate from `manage` on purpose: the contractor proposes a
+  // variation, the engineer or employer decides it. Holding manage lets you
+  // raise and price a change; holding approve lets you decide one you raised.
+  "change-requests": ["view", "manage", "approve"],
   "action-items": ["view", "manage"],
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
@@ -57,7 +64,7 @@ type PresetShape = Partial<Record<keyof typeof statement, readonly string[]>>;
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage", "approve", "dispute"],
+  finances: ["view", "viewCosts", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete", "markup"],
   inspections: ["view", "request", "manage"],
@@ -75,7 +82,7 @@ const constructionFull = {
   approvals: ["view", "decide", "manage"],
   selections: ["view", "decide", "manage"],
   queries: ["view", "raise", "manage"],
-  "change-requests": ["view", "manage"],
+  "change-requests": ["view", "manage", "approve"],
   "action-items": ["view", "manage"],
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
@@ -87,7 +94,7 @@ const constructionFull = {
 const constructionContributor = {
   project: ["view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage", "dispute"],
+  finances: ["view", "viewCosts", "manage", "dispute"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "markup"],
   inspections: ["view", "request", "manage"],
@@ -105,7 +112,7 @@ const constructionContributor = {
   approvals: ["view", "decide", "manage"],
   selections: ["view", "decide", "manage"],
   queries: ["view", "raise", "manage"],
-  "change-requests": ["view", "manage"],
+  "change-requests": ["view", "manage", "approve"],
   "action-items": ["view", "manage"],
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
@@ -117,7 +124,8 @@ const constructionContributor = {
 const constructionReadOnly = {
   project: ["view"],
   tasks: ["view"],
-  finances: ["view"],
+  // An org viewer is internal staff: they read the cost position too.
+  finances: ["view", "viewCosts"],
   schedule: ["view"],
   documents: ["view"],
   inspections: ["view"],

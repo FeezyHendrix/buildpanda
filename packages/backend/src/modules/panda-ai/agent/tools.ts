@@ -181,6 +181,55 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_schedule_position", "Get the project's contractual schedule position: the contract completion date, the revised completion date after awarded extensions of time, EOT days approved and still pending, how far the projected finish has shifted from the baseline programme, and every delay with its days lost, culpability (contractor / client / neutral) and whether it is claimable as an EOT. Use for 'are we late', 'when do we finish now', 'what is our EOT position', 'what are liquidated damages exposure', 'who is at fault for the delays', or any question about completion, time risk or extensions of time. Liquidated-damages exposure is only reported once the contract carries an LD rate."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const [dates, delays, claims, shift] = await Promise.all([
+        repo.scheduleDates(ctx.projectId),
+        repo.delaysWithCulpability(ctx.projectId),
+        repo.eotClaims(ctx.projectId),
+        repo.timelineShift(ctx.projectId),
+      ]);
+      let eotDaysApproved = 0;
+      let eotDaysPending = 0;
+      for (const claim of claims) {
+        if (claim.status === "Approved") eotDaysApproved += Number(claim.days_awarded ?? 0);
+        else if (claim.status === "Submitted") eotDaysPending += Number(claim.days_claimed ?? 0);
+      }
+      const openDelays = delays.filter((d) => d.resolved_at === null);
+      return {
+        output: {
+          startDate: dates?.start_date ?? null,
+          completionDate: dates?.completion_date ?? null,
+          revisedCompletionDate: dates?.revised_completion_date ?? dates?.completion_date ?? null,
+          eotDaysApproved,
+          eotDaysPending,
+          // Needs the contract's LD rate and cap to be meaningful; never guessed.
+          ldExposure: null,
+          timelineShiftDays: Math.round(Number(shift?.shift ?? 0)),
+          openDelayCount: openDelays.length,
+          daysLostOpen: openDelays.reduce((sum, d) => sum + Number(d.days_lost ?? 0), 0),
+          claims: claims.map((c) => ({
+            reference: `EOT-${String(c.number).padStart(3, "0")}`,
+            title: c.title,
+            status: c.status,
+            daysClaimed: Number(c.days_claimed ?? 0),
+            daysAwarded: c.days_awarded === null ? null : Number(c.days_awarded),
+            decidedAt: c.decided_at,
+          })),
+          delays: delays.map((d) => ({
+            activity: d.activityName,
+            reason: d.reason_code,
+            daysLost: Number(d.days_lost ?? 0),
+            culpability: d.culpability,
+            eotClaimable: Boolean(d.eot_claimable),
+            startedAt: d.started_at,
+            endedAt: d.ended_at,
+            resolved: d.resolved_at !== null,
+          })),
+        },
+      };
+    }),
+
     tool(fn("get_risks", "Get the project risk register (risk factors by severity). Use for questions about risks or what could go wrong."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const risks = await repo.risks(ctx.projectId);
@@ -550,10 +599,55 @@ export function buildTools(): AgentTool[] {
       return { output: inspections.map((i) => ({ title: i.title, category: i.category, status: i.status, riskLevel: i.risk_level, scheduledAt: i.scheduled_at })) };
     }),
 
-    tool(fn("get_materials", "Get planned material orders and requests (what was ordered) with status, supplier and cost. This is the procurement list, NOT current stock on hand — for how much of a material is currently available, use get_material_stock."), async (ctx) => {
+    tool(fn("get_materials", "Get planned material orders and requests (what was ordered) with status, supplier, cost and the deliveries received against each one (quantity, date, delivery-note number, and whether a load was rejected). This is the procurement list, NOT current stock on hand — for how much of a material is currently available, use get_material_stock. For which orders are running late, use get_late_material_orders."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const materials = await repo.materials(ctx.projectId);
-      return { output: materials.map((m) => ({ material: m.material_name, quantity: m.quantity, unit: m.unit, supplier: m.supplier, status: m.status, neededBy: m.needed_by, estimatedCost: m.estimated_cost })) };
+      const deliveries = await repo.deliveriesForOrders(materials.map((m) => m.id));
+      const byOrder = new Map<string, typeof deliveries>();
+      for (const d of deliveries) {
+        const bucket = byOrder.get(d.order_id);
+        if (bucket) bucket.push(d);
+        else byOrder.set(d.order_id, [d]);
+      }
+      return { output: materials.map((m) => ({
+        material: m.material_name,
+        quantity: m.quantity,
+        unit: m.unit,
+        supplier: m.supplier,
+        status: m.status,
+        neededBy: m.needed_by,
+        estimatedCost: m.estimated_cost,
+        deliveries: (byOrder.get(m.id) ?? []).map((d) => ({
+          quantity: d.delivered_qty,
+          deliveredAt: d.delivered_at,
+          deliveryNote: d.delivery_note,
+          rejected: d.rejected,
+          rejectedReason: d.rejected_reason,
+        })),
+      })) };
+    }),
+
+    tool(fn("get_late_material_orders", "Get the material orders that are actually LATE right now: their needed-by date has passed and they have not been delivered, or the supplier's expected delivery date is after the date the material was needed. Cancelled and rejected orders are excluded. Use this for 'which material orders are late', 'what deliveries are overdue', or 'which suppliers do I need to chase' — do NOT infer lateness from get_materials yourself."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const today = new Date().toISOString().slice(0, 10);
+      const orders = await repo.lateMaterials(ctx.projectId, today);
+      return { output: {
+        today,
+        lateOrders: orders.map((m) => ({
+          material: m.material_name,
+          quantity: m.quantity,
+          unit: m.unit,
+          supplier: m.supplier,
+          status: m.status,
+          neededBy: m.needed_by,
+          expectedDeliveryAt: m.expected_delivery_at,
+          daysLate: m.needed_by < today
+            ? Math.floor((Date.parse(today) - Date.parse(m.needed_by)) / 86400000)
+            : 0,
+          reason: m.needed_by < today ? "past its needed-by date" : "supplier promised it after it is needed",
+          estimatedCost: m.estimated_cost,
+        })),
+      } };
     }),
 
     tool(fn("get_precon_boq", "Get the draft preconstruction Bill of Quantities rows measured by Panda AI from uploaded drawings, including element group, code, description, quantity, unit, rate, amount, review status (ai_generated/needs_review/verified/rejected) and confidence. Use for questions about the draft/AI-measured BOQ, takeoff quantities from drawings, review progress, or draft bid totals. The accepted contractual BoQ lives in get_boq_items."), async (ctx) => {

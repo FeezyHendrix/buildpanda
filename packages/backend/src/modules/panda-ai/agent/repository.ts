@@ -1,5 +1,14 @@
 import type { Knex } from "knex";
 
+interface DeliveryRow {
+  order_id: string;
+  delivered_qty: string;
+  delivered_at: string;
+  delivery_note: string | null;
+  rejected: boolean;
+  rejected_reason: string | null;
+}
+
 export function agentRepository(db: Knex) {
   return {
     projectInfo(projectId: string) {
@@ -92,6 +101,54 @@ export function agentRepository(db: Knex) {
           "d.started_at",
           "d.resolved_at",
           "d.description",
+        );
+    },
+
+    /** The contract dates and where completion stands after awarded EOTs. */
+    scheduleDates(projectId: string) {
+      return db("projects")
+        .where({ id: projectId })
+        .first<{
+          start_date: string | null;
+          completion_date: string | null;
+          revised_completion_date: string | null;
+        }>("start_date", "completion_date", "revised_completion_date");
+    },
+
+    /** Delays with the attribution that decides whether the time is claimable. */
+    delaysWithCulpability(projectId: string) {
+      return db("activity_delays as d")
+        .join("activities as a", "a.id", "d.activity_id")
+        .where("a.project_id", projectId)
+        .orderBy("d.started_at", "desc")
+        .limit(200)
+        .select(
+          "d.id",
+          "a.name as activityName",
+          "d.reason_code",
+          "d.days_lost",
+          "d.culpability",
+          "d.eot_claimable",
+          "d.started_at",
+          "d.ended_at",
+          "d.resolved_at",
+        );
+    },
+
+    eotClaims(projectId: string) {
+      return db("extension_of_time_claims")
+        .where({ project_id: projectId })
+        .orderBy("number", "asc")
+        .select("number", "title", "status", "days_claimed", "days_awarded", "decided_at");
+    },
+
+    /** How far the projected finish has moved from the baseline programme. */
+    timelineShift(projectId: string) {
+      return db("activities")
+        .where({ project_id: projectId })
+        .whereNotNull("baseline_end_at")
+        .first<{ shift: string | null } | undefined>(
+          db.raw("MAX(EXTRACT(EPOCH FROM (planned_end_at - baseline_end_at)) / 86400) as shift"),
         );
     },
 
@@ -206,6 +263,50 @@ export function agentRepository(db: Knex) {
           "supplier",
           "status",
           "needed_by",
+          "estimated_cost",
+          "currency",
+        );
+    },
+
+    deliveriesForOrders(orderIds: string[]) {
+      // knex renders an empty whereIn as a false predicate, so no early return.
+      return db<DeliveryRow>("material_deliveries")
+        .whereIn("order_id", orderIds)
+        .orderBy("delivered_at", "asc")
+        .select(
+          "order_id",
+          "delivered_qty",
+          "delivered_at",
+          "delivery_note",
+          "rejected",
+          "rejected_reason",
+        );
+    },
+
+    /**
+     * Late is a fact about dates, not a status: wanted before today and still
+     * not delivered, or promised by the supplier after the date it was wanted.
+     * Cancelled and rejected orders are closed and cannot be late.
+     */
+    lateMaterials(projectId: string, today: string) {
+      return db("material_orders")
+        .where({ project_id: projectId })
+        .whereNotIn("status", ["Delivered", "Cancelled", "Rejected"])
+        .where((q) =>
+          q
+            .where("needed_by", "<", today)
+            .orWhereRaw("expected_delivery_at IS NOT NULL AND expected_delivery_at > needed_by"),
+        )
+        .orderBy("needed_by", "asc")
+        .select(
+          "id",
+          "material_name",
+          "quantity",
+          "unit",
+          "supplier",
+          "status",
+          "needed_by",
+          "expected_delivery_at",
           "estimated_cost",
           "currency",
         );

@@ -1,11 +1,32 @@
-export const INVOICE_TYPES = ["progress", "final", "variation", "vendor", "material"] as const;
+export const INVOICE_TYPES = [
+  "progress",
+  "final",
+  "variation",
+  "vendor",
+  "material",
+  // The mobilisation advance is its own certificate; recovery is deducted from
+  // later progress certificates, never from this one.
+  "advance",
+] as const;
+
+/**
+ * Which way the certificate points. `receivable` is what WE certify to the
+ * employer (progress, final, variation, advance) and is the only direction
+ * that feeds the contract waterfall; `payable` is what a vendor bills us.
+ */
 /** Derived (API) statuses: the workflow ladder plus the payment states derived from recorded payments. */
-export const INVOICE_STATUSES = ["Draft", "Sent", "Queried", "Approved", "PartiallyPaid", "Paid", "Overdue"] as const;
+export const INVOICE_STATUSES = ["Draft", "Sent", "Queried", "Approved", "PartiallyPaid", "Paid", "Overdue", "Void"] as const;
 /** Workflow statuses a client may set; "Submitted" is the stored spelling of "Sent". */
 export const INVOICE_WORKFLOW_STATUSES = ["Draft", "Sent", "Submitted", "Queried", "Approved"] as const;
 export const PAYMENT_METHODS = ["Bank Transfer", "Cash", "Card", "Cheque", "Other"] as const;
 
 export type InvoiceType = (typeof INVOICE_TYPES)[number];
+
+// The certificate side — direction, the status-change trail and the
+// interim-certificate structure — lives in certificate-types.ts; re-exported so
+// every importer keeps one import site.
+export * from "./certificate-types.ts";
+import type { InvoiceDirection, InvoiceEvent } from "./certificate-types.ts";
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 export type StoredInvoiceStatus = (typeof INVOICE_WORKFLOW_STATUSES)[number];
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -31,6 +52,8 @@ export interface InvoicePayment {
   method: PaymentMethod;
   paidAt: string | null;
   note: string | null;
+  /** An accepted overpayment, recorded as a credit rather than a receipt. */
+  credit: boolean;
 }
 
 export interface InvoiceBudgetAllocation {
@@ -60,6 +83,18 @@ export interface Invoice {
   workflowStatus: StoredInvoiceStatus;
   /** Workflow statuses this invoice may move to next (forward-only ladder). */
   nextStatuses: StoredInvoiceStatus[];
+  direction: InvoiceDirection;
+  /** The party on the other side of the certificate, whichever way it points. */
+  counterparty: string | null;
+  /** The contract this certificate bills against; the main contract by default. */
+  contractId: string | null;
+  advanceRecovery: number;
+  voidedAt: string | null;
+  voidReason: string | null;
+  /** Days between the due date and the recorded receipt, when it was late. */
+  paidLateDays: number | null;
+  /** Days past due on an unpaid certificate. */
+  overdueDays: number | null;
   /** The billing-sheet month (YYYY-MM) the pay application was raised for. */
   budgetMonth: string | null;
   currency: string;
@@ -102,6 +137,8 @@ export interface Invoice {
   balanceDue: number;
   lineItems: InvoiceLineItem[];
   payments: InvoicePayment[];
+  /** Every status change, with actor and reason. Empty until loaded. */
+  history: InvoiceEvent[];
 }
 
 export interface InvoiceRow {
@@ -148,6 +185,13 @@ export interface InvoiceRow {
   viewed_at: string | null;
   pdf_storage_key: string | null;
   billing_period: string | null;
+  contract_id: string | null;
+  direction: InvoiceDirection;
+  counterparty: string | null;
+  advance_recovery: string | null;
+  voided_at: Date | string | null;
+  voided_by_id: string | null;
+  void_reason: string | null;
   created_at: Date | string;
 }
 
@@ -172,6 +216,8 @@ export interface InvoicePaymentRow {
   method: PaymentMethod;
   paid_at: string | null;
   note: string | null;
+  credit: boolean;
+  recorded_by_id: string | null;
   created_at: Date | string;
 }
 
@@ -245,6 +291,9 @@ export interface InvoiceLineItemInput {
 }
 
 export interface CreateInvoiceInput {
+  direction?: InvoiceDirection;
+  counterparty?: string | null;
+  contractId?: string | null;
   vendorName: string;
   trade: string;
   number?: string;
@@ -278,6 +327,9 @@ export interface CreateInvoiceInput {
 }
 
 export interface EditInvoiceInput {
+  direction?: InvoiceDirection;
+  counterparty?: string | null;
+  contractId?: string | null;
   vendorName?: string;
   trade?: string;
   number?: string;
@@ -314,6 +366,17 @@ export interface AddPaymentInput {
   method?: PaymentMethod;
   paidAt?: string;
   note?: string;
+  /** Accept a payment above the balance; it is recorded as a credit, with a note. */
+  allowOverpayment?: boolean;
+}
+
+export interface VoidInvoiceInput {
+  reason: string;
+}
+
+/** A client query on a certificate is a formal dispute and always has a reason. */
+export interface QueryInvoiceInput {
+  reason: string;
 }
 
 export interface SendInvoiceInput {
@@ -340,6 +403,11 @@ export interface InvoiceWithPayments {
   netPayable: number;
   amountPaid: number;
   balanceDue: number;
+  direction: InvoiceDirection;
+  counterparty: string | null;
+  voidedAt: string | null;
+  paidLateDays: number | null;
+  overdueDays: number | null;
   payments: InvoicePayment[];
 }
 

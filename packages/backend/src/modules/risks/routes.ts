@@ -35,6 +35,7 @@ const riskFields = {
   mitigation: { type: ["string", "null"], maxLength: 2000 },
   status: { type: "string", enum: RISK_STATUSES },
   reviewDate: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+  linkedActivityId: { type: ["string", "null"], maxLength: 100 },
 } as const;
 
 const createRiskBody = {

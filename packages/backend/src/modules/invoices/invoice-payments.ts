@@ -23,6 +23,11 @@ export function invoicePaymentsService(invoices: Pick<InvoicesService, "listByPr
       netPayable: invoice.netPayable,
       amountPaid: invoice.amountPaid,
       balanceDue: invoice.balanceDue,
+      direction: invoice.direction,
+      counterparty: invoice.counterparty,
+      voidedAt: invoice.voidedAt,
+      paidLateDays: invoice.paidLateDays,
+      overdueDays: invoice.overdueDays,
       payments: invoice.payments,
     };
   }
@@ -33,7 +38,10 @@ export function invoicePaymentsService(invoices: Pick<InvoicesService, "listByPr
     },
 
     async overview(projectId: string): Promise<InvoicePaymentsOverview> {
-      const rows = (await invoices.listByProject(projectId)).map(parentRow);
+      // A voided certificate is on the record but out of every total.
+      const rows = (await invoices.listByProject(projectId))
+        .filter((invoice) => invoice.voidedAt === null)
+        .map(parentRow);
       const invoiced = Money.sum(rows.map((row) => row.netPayable)).round(2);
       const paid = Money.sum(rows.map((row) => row.amountPaid)).round(2);
       return {
