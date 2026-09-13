@@ -39,10 +39,10 @@ export function DeviceCluster({ tone = "light" }: { tone?: "light" | "dark" }) {
         <div className={`rounded-xl border ${bezel} p-1.5 shadow-[0_30px_70px_-30px_rgba(13,19,33,0.5)] sm:rounded-2xl sm:p-2.5`}>
           <div className="overflow-hidden rounded bg-white sm:rounded-lg">
             <Image
-              src="/product/tablet-app.jpg"
-              alt="The same project on a tablet, the layout the site team sees"
-              width={2008}
-              height={1506}
+              src="/product/tablet-plan.jpg"
+              alt="A roof plan open on a tablet in the drawing review workspace, with the markup toolbar and the sheet scale detected as 1:120"
+              width={2056}
+              height={1542}
               sizes="(max-width: 1024px) 38vw, 380px"
               className="block w-full"
             />
