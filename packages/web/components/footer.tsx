@@ -29,9 +29,9 @@ export function Footer() {
               className="h-8 w-auto brightness-0 invert"
             />
             <p className="max-w-xs text-sm leading-relaxed text-white/70">
-              The construction management platform that takes you from inception
-              to completion and handover, whether you build from Lagos or from
-              the diaspora.
+              Software a contractor runs their own build on, and a managed
+              construction service in Nigeria for clients who would rather we ran
+              the build.
             </p>
           </div>
 
@@ -60,7 +60,15 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-white/15 pt-6 sm:flex-row sm:items-center">
+        <div className="mt-12 border-t border-white/15 pt-6">
+          <p className="max-w-3xl text-sm leading-relaxed text-white/60">
+            BuildPanda records construction progress and payment. It is not a
+            bank, an escrow agent or a payment institution, and does not hold or
+            transfer funds.
+          </p>
+        </div>
+
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <p className="text-sm text-white/70">
             &copy; {new Date().getFullYear()} {site.name}. All rights reserved.
           </p>

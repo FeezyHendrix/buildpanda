@@ -63,10 +63,10 @@ export function HeroVisual() {
       <div className="absolute -bottom-6 -left-4 hidden w-56 rounded-2xl border border-line bg-white p-4 shadow-[0_16px_40px_rgba(13,19,33,0.12)] sm:block">
         <div className="flex items-center gap-2 text-brand">
           <WalletIcon className="h-5 w-5" />
-          <span className="text-xs font-semibold text-ink">Next milestone payment</span>
+          <span className="text-xs font-semibold text-ink">Next payment certificate</span>
         </div>
-        <p className="mt-2 text-lg font-bold text-ink">Released on approval</p>
-        <p className="text-xs text-muted">Funds move only when verified work is signed off.</p>
+        <p className="mt-2 text-lg font-bold text-ink">Awaiting sign-off</p>
+        <p className="text-xs text-muted">Certified once the work is signed off. The money moves through your own bank.</p>
       </div>
 
       <div className="absolute -right-3 -top-5 hidden items-center gap-2 rounded-2xl border border-line bg-white px-4 py-3 shadow-[0_16px_40px_rgba(13,19,33,0.12)] sm:flex">

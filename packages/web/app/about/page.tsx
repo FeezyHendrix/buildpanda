@@ -28,7 +28,7 @@ const values = [
   {
     icon: <ChartIcon className="h-6 w-6" />,
     title: "Accountability with money",
-    text: "Funds follow verified work. We treat every naira of your budget as if it were our own.",
+    text: "We record what was certified and what was paid, so every naira of the budget can be accounted for. The money moves through your own bank.",
   },
   {
     icon: <GlobeIcon className="h-6 w-6" />,
@@ -82,11 +82,10 @@ export default function AboutPage() {
                   distance turns every update into a leap of faith.
                 </p>
                 <p>
-                  BuildPanda was created to change that. We combine hands-on
-                  construction management with software that makes every
-                  milestone, payment and inspection visible. The result is a
-                  build you can follow and trust, from the first conversation to
-                  the day you receive your keys.
+                  BuildPanda was created to change that. We sell software a
+                  contractor runs their own build on, and a managed construction
+                  service where we run the build. Both put every stage, payment
+                  certificate and inspection report on one record you can read.
                 </p>
               </div>
             </div>
@@ -100,8 +99,8 @@ export default function AboutPage() {
               </p>
               <div className="mt-2 grid gap-3">
                 <Belief text="From inception to completion and handover" />
-                <Belief text="Verified work before released payments" />
-                <Belief text="Independent inspections, not assumptions" />
+                <Belief text="Work signed off before a payment is certified" />
+                <Belief text="Inspections on the record, not assumptions" />
                 <Belief text="One platform, accessible from anywhere" />
               </div>
             </div>

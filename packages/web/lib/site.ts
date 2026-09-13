@@ -4,7 +4,7 @@ export const site = {
   url: "https://buildpanda.io",
   tagline: "The Construction OS for modern builders, from first enquiry to final handover.",
   description:
-    "BuildPanda is the Construction OS that runs your entire build. Win the work with proposals and accurate estimates, convert a signed proposal into a live project, then deliver it with milestones, verified payments, documents and independent inspections, from first enquiry to final handover.",
+    "BuildPanda is the Construction OS that runs your entire build. Win the work with proposals and accurate estimates, convert a signed proposal into a live project, then run it with a live schedule, documents, inspections and a payment record that traces back to work that was signed off.",
   // Configure these for the live site.
   email: "hello@buildpanda.ai",
   phones: ["+234 810 991 8957", "+234 906 545 7397"],

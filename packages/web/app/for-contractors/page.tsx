@@ -57,9 +57,9 @@ const deliveryFeatures = [
   },
   {
     icon: <WalletIcon className="h-6 w-6" />,
-    title: "Milestone payments",
+    title: "Payment records",
     description:
-      "Money is released against verified progress. Keep your cash flow healthy by tying funds to completed work.",
+      "Certify work, record what the client paid, and keep an audit trail of both. The money moves through your own bank.",
   },
   {
     icon: <ChartIcon className="h-6 w-6" />,
@@ -85,9 +85,9 @@ export default function ForContractorsPage() {
             Win more work and deliver it without the chaos.
           </h1>
           <p className="max-w-2xl text-pretty text-lg leading-relaxed text-muted">
-            The Construction OS that runs your entire business. Impress clients
-            with professional proposals, then manage the project, milestones,
-            and finances effortlessly from a single dashboard.
+            This is the software you run your own builds on. Win work with
+            professional proposals, then manage the project, the schedule and
+            the finances from a single dashboard.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row mt-4">
             {/* <ButtonLink href={site.appUrl} size="lg">

@@ -8,21 +8,18 @@ import {
   WalletIcon,
   ChartIcon,
   DocumentIcon,
-  ShieldCheckIcon,
-  DroneIcon,
   ArrowRightIcon,
   GlobeIcon,
   CompassIcon,
   KeyIcon,
   UsersIcon,
   ClipboardIcon,
-  LayersIcon,
 } from "@/components/icons";
 
 export const metadata: Metadata = {
   title: "BuildPanda: the Construction OS for modern builders",
   description:
-    "BuildPanda is the Construction OS that runs your whole build. Win work with proposals and estimates, then deliver with milestones, verified payments and independent inspections, from first enquiry to final handover.",
+    "BuildPanda is the software your build runs on. Win work with proposals and estimates, then run the job with a live schedule, inspections and a payment record that traces back to work that was signed off.",
   alternates: { canonical: "https://buildpanda.io" },
 };
 
@@ -35,12 +32,12 @@ const stages = [
   {
     icon: <ChartIcon className="h-6 w-6" />,
     title: "Build & monitor",
-    text: "Convert the signed proposal into a project, then follow daily progress, costs and inspections in real time.",
+    text: "Convert the signed proposal into a project, then follow daily progress, costs and inspection reports as they are filed.",
   },
   {
     icon: <KeyIcon className="h-6 w-6" />,
-    title: "Completion & handover",
-    text: "Sign off on verified work, settle final payments and hand over the keys.",
+    title: "Completion",
+    text: "Sign off the final work and keep the full record of what was built, certified and paid.",
   },
 ];
 
@@ -62,8 +59,8 @@ const features = [
   },
   {
     icon: <WalletIcon className="h-6 w-6" />,
-    title: "Milestone payments",
-    description: "Money is released against verified progress, tying funds directly to completed work.",
+    title: "Payment records",
+    description: "Every payment certificate traces back to work that was signed off. The money moves through your own bank.",
   },
   {
     icon: <ChartIcon className="h-6 w-6" />,
@@ -71,9 +68,9 @@ const features = [
     description: "Allocate budget, track expenses, and watch your spend against the plan.",
   },
   {
-    icon: <DroneIcon className="h-6 w-6" />,
-    title: "On-site & drone monitoring",
-    description: "Photos, daily logs, and drone footage bring the site directly to your screen.",
+    icon: <DocumentIcon className="h-6 w-6" />,
+    title: "On-site monitoring",
+    description: "Site photos and daily logs bring the site directly to your screen.",
   },
 ];
 
@@ -88,10 +85,10 @@ export default function HomePage() {
               The Construction OS, from first enquiry to final handover.
             </h1>
             <p className="max-w-xl text-pretty text-lg leading-relaxed text-muted">
-              BuildPanda runs the whole journey. Win the work with polished
+              BuildPanda is the software your build runs on. Win the work with
               proposals and accurate estimates, convert a signed deal into a live
-              project, then manage milestones, payments and independent
-              inspections, all from one dashboard.
+              project, then run the schedule, the payment record and the
+              inspections from one dashboard.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <ButtonLink href={site.appUrl} size="lg">
@@ -103,7 +100,7 @@ export default function HomePage() {
               </ButtonLink>
             </div>
             <p className="text-sm text-muted">
-              No obligation. A BuildPanda advisor responds within one business day.
+              No obligation. Someone from the BuildPanda team responds within one business day.
             </p>
           </div>
           <HeroVisual />
@@ -133,54 +130,12 @@ export default function HomePage() {
         </Container>
       </section>
 
-      <section className="bg-surface-faint py-16 sm:py-20">
-        <Container className="flex flex-col items-center gap-10">
-          <SectionHeading
-            eyebrow="Drone monitoring"
-            title="See your site from the sky, every week"
-            description="High-resolution drone surveys give you an honest, time-stamped view of progress on the ground."
-          />
-          <div className="grid w-full max-w-5xl gap-6 md:grid-cols-2">
-            {[
-              {
-                src: "/drone-survey-1.mp4",
-                label: "Structure rising, block by block",
-              },
-              {
-                src: "/drone-survey-2.mp4",
-                label: "Inspections and progress, verified on site",
-              },
-            ].map((clip) => (
-              <figure
-                key={clip.src}
-                className="overflow-hidden rounded-2xl border border-line bg-white shadow-xl"
-              >
-                <video
-                  className="aspect-video w-full"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="metadata"
-                  poster="/drone-survey-poster.jpg"
-                >
-                  <source src={clip.src} type="video/mp4" />
-                </video>
-                <figcaption className="px-5 py-4 text-sm text-muted">
-                  {clip.label}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </Container>
-      </section>
-
       <section className="border-y border-line bg-white py-6">
         <Container>
           <div className="grid gap-6 text-center sm:grid-cols-3">
             <Stat value="Enquiry to handover" label="One OS for the entire build" />
             <Stat value="Win more work" label="Proposals and estimates that close" />
-            <Stat value="Verified progress" label="Payments tied to work that is signed off" />
+            <Stat value="Signed-off progress" label="Every payment record traces back to the work" />
           </div>
         </Container>
       </section>
@@ -190,12 +145,12 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="The problem"
             title="Building should not mean flying blind."
-            description="Stop sending money and waiting in the dark. BuildPanda replaces guesswork with verified progress and a single source of truth."
+            description="Stop sending money and waiting in the dark. BuildPanda replaces guesswork with a single record of what was built, certified and paid."
           />
           <div className="grid gap-6 md:grid-cols-3">
             <Pain title="No more guessing" text="See real progress, real costs and real inspection results instead of relying on word of mouth." />
-            <Pain title="No more wasted funds" text="Payments are linked to verified milestones, so money follows the work." />
-            <Pain title="No more wrong contacts" text="Work with vetted professionals and an advisor who manages the build on your behalf." />
+            <Pain title="No more unexplained payments" text="You pay against verified progress, and the record shows what it was paid for." />
+            <Pain title="No more unclear responsibility" text="Every person on the project has a named role, so you know who did what and when." />
           </div>
         </Container>
       </section>
@@ -204,8 +159,8 @@ export default function HomePage() {
         <Container className="flex flex-col gap-12">
           <SectionHeading
             eyebrow="How it works"
-            title="One clear path from idea to keys in hand"
-            description="BuildPanda runs every phase, from winning the work to handing over the keys, with full visibility at every step."
+            title="One clear path from first enquiry to a closed job"
+            description="BuildPanda covers every phase, from winning the work to closing the job out, with the same record open to everyone on it."
           />
           <div className="grid gap-6 md:grid-cols-3">
             {stages.map((stage, index) => (
@@ -229,7 +184,7 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="What BuildPanda does"
             title="Everything you need to run a build, in one place"
-            description="From winning the work to handing over the keys, these are the tools your build runs on."
+            description="From winning the work to closing the job out, these are the tools your build runs on."
           />
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
@@ -257,7 +212,7 @@ export default function HomePage() {
                 Thousands of kilometres away, fully in control.
               </h2>
               <p className="text-pretty text-base leading-relaxed text-white/70 sm:text-lg">
-                Building from abroad? We manage the people, process, and paperwork, giving you a live window into your project so you never feel left in the dark.
+                Building from abroad? This is our managed construction service, where BuildPanda runs the build on the ground and you follow it in the software.
               </p>
               <div>
                 <ButtonLink href="/construction/" variant="white" size="md">
@@ -267,9 +222,9 @@ export default function HomePage() {
               </div>
             </div>
             <div className="grid gap-4">
-              <DarkPoint text="A single advisor accountable for your project" />
-              <DarkPoint text="Independent inspections you can rely on" />
-              <DarkPoint text="Payments released only against verified work" />
+              <DarkPoint text="A named project team, with every role on the record" />
+              <DarkPoint text="Inspections you can request, reported by the inspector who attended" />
+              <DarkPoint text="You pay against verified progress, and the record shows what it was paid for" />
               <DarkPoint text="Live updates across every time zone" />
             </div>
           </div>

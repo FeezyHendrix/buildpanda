@@ -56,7 +56,7 @@ export function ConsultationForm() {
         </span>
         <h3 className="text-xl font-semibold text-ink">Request received</h3>
         <p className="max-w-sm text-sm leading-relaxed text-muted">
-          Thank you. A BuildPanda advisor will reach out within one business day
+          Thank you. Someone from the BuildPanda team will reach out within one business day
           to schedule your consultation and map out the next steps for your
           build.
         </p>
