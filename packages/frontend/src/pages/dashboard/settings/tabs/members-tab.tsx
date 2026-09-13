@@ -25,6 +25,7 @@ import type { Member, CustomRole } from "../team/types";
 import { InviteMemberDialog } from "@/components/molecules/invite-member-dialog";
 import { RoleBuilderDialog } from "@/components/molecules/role-builder-dialog";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { errorMessage } from "@/lib/api-error";
 
 export function MembersTab() {
   const { data: session } = authClient.useSession();
@@ -146,7 +147,7 @@ export function MembersTab() {
           label: formatRoleLabel(role),
         }))}
         isSubmitting={inviteMember.isPending}
-        error={inviteMember.error?.message ?? null}
+        error={inviteMember.error ? errorMessage(inviteMember.error) : null}
         onSubmit={handleInvite}
       />
 
@@ -163,10 +164,7 @@ export function MembersTab() {
             : null
         }
         isSubmitting={roleToEdit ? updateRole.isPending : createRole.isPending}
-        error={
-          (roleToEdit ? updateRole.error?.message : createRole.error?.message) ??
-          null
-        }
+        error={errorMessage(roleToEdit ? updateRole.error : createRole.error, "") || null}
         onSubmit={handleSubmitRole}
       />
 

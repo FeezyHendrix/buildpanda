@@ -120,7 +120,8 @@ const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
 const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
 const ProjectWhatsNext = lazy(() => import("@/pages/project/whats-next"));
-const ProjectPeople = lazy(() => import("@/pages/project/people"));
+const ProjectRisks = lazy(() => import("@/pages/project/risks"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 const MyBuild = lazy(() => import("@/pages/my-build"));
 const AcceptProjectInvite = lazy(() => import("@/pages/accept-project-invite"));
 const PublicProposalPage = lazy(() => import("@/pages/public/proposal-page"));
@@ -320,7 +321,10 @@ export const router = createBrowserRouter([
       { path: "chat", element: pf("collaboration.messaging", <ProjectChat />) },
       { path: "messages", element: pf("collaboration.messaging", <ProjectChat />) },
       { path: "panda-ai", element: pf("ai.insights", <ProjectPandaAi />) },
-      { path: "people", element: pf("collaboration.participants", <ProjectPeople />) },
+      // One People page. /people and /team listed the same participants with
+      // different actions and neither was canonical (finding #17); Team is the
+      // page with access, roles and contacts, so /people now lands there.
+      { path: "people", element: pf("project.team", <ProjectTeam />) },
 
       { path: "documents", element: pf("projects.documents", <ProjectDocuments />) },
       { path: "plans", element: pf("projects.documents", <ProjectPlans />) },
@@ -339,6 +343,7 @@ export const router = createBrowserRouter([
       { path: "selections", element: pf("projects.selections", <ProjectSelections />) },
       { path: "change-requests", element: pf("workflow.changeRequests", <ProjectChangeRequests />) },
       { path: "permits", element: pf("compliance.permits", <ProjectPermits />) },
+      { path: "risks", element: <ProjectRisks /> },
       { path: "key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
       { path: "whats-next", element: <ProjectWhatsNext /> },
 
@@ -377,8 +382,13 @@ export const router = createBrowserRouter([
       { path: "project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "schedule", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "stages", element: pf("projects.schedule", <ProjectStages />) },
+
+      // A mistyped project URL is a 404 inside the project shell, never the
+      // crash boundary (finding F19).
+      { path: "*", element: <NotFound /> },
     ],
   },
+  { path: "*", element: <NotFound /> },
   ], // children of root error-boundary route
   }, // root error-boundary route
 ]);

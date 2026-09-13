@@ -5,36 +5,25 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { RichTextEditor, type UploadedAttachment } from "@/components/molecules/rich-text-editor";
 import {
-  useConvertRfiToChange,
   useProjectRfi,
   useRespondRfi,
   useTransitionRfi,
   useUpdateRfi,
 } from "@/hooks/use-rfis";
-import { useProjectActivities } from "@/hooks/use-activities";
-import { useActionItems } from "@/hooks/use-action-items";
 import { useParticipants } from "@/hooks/use-participants";
+import { errorMessage } from "@/lib/api-error";
+import { isRfiOverdue, overdueLabel, rfiOverdueDays, RFI_STATUS_META } from "@/lib/rfi-meta";
 import { cn } from "@/lib/utils";
-import type { RfiStatus } from "@/lib/project-types";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import {
+  ReferenceChips,
+  ReferencePicker,
+  type RfiReference,
+} from "./rfi-detail/reference-picker";
+import { RfiAuditTrail } from "./rfi-detail/rfi-audit-trail";
+import { ConvertToChangeDialog } from "./rfi-detail/convert-to-change-dialog";
 
-export const RFI_STATUS_META: Record<
-  RfiStatus,
-  { label: string; tone: "neutral" | "info" | "success" | "warning" | "danger" }
-> = {
-  Draft: { label: "Draft", tone: "neutral" },
-  Open: { label: "Open", tone: "info" },
-  InReview: { label: "In review", tone: "warning" },
-  Answered: { label: "Answered", tone: "success" },
-  Closed: { label: "Closed", tone: "neutral" },
-  Void: { label: "Void", tone: "danger" },
-};
-
-interface RfiReference {
-  type: "action_item" | "activity";
-  id: string;
-  label: string;
-}
+export { RFI_STATUS_META };
 
 function formatWhen(value: string): string {
   return formatShortDate(value) || value;
@@ -47,87 +36,26 @@ interface Props {
   rfiId: string | null;
   canManage: boolean;
   canRespond: boolean;
+  /** Opens the edit drawer for this RFI; omit to hide the action. */
+  onEdit?: (rfiId: string) => void;
 }
 
-function ReferencePicker({
-  projectId,
-  onPick,
-}: {
-  projectId: string;
-  onPick: (ref: RfiReference) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const { data: activities = [] } = useProjectActivities(projectId);
-  const { data: actionItems = [] } = useActionItems(projectId);
-
-  if (!open) {
-    return (
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        Reference an item
-      </Button>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border border-line-hair bg-white p-2">
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs font-semibold text-gray-500">Reference an item</span>
-        <button type="button" className="text-xs text-gray-400" onClick={() => setOpen(false)}>
-          Close
-        </button>
-      </div>
-      <div className="max-h-40 overflow-y-auto">
-        {actionItems.length > 0 && (
-          <p className="px-1 py-1 text-[10px] uppercase tracking-wide text-gray-400">Action items</p>
-        )}
-        {actionItems.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            className="block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-gray-50"
-            onClick={() => {
-              onPick({ type: "action_item", id: a.id, label: a.title });
-              setOpen(false);
-            }}
-          >
-            {a.title}
-          </button>
-        ))}
-        {activities.length > 0 && (
-          <p className="px-1 py-1 text-[10px] uppercase tracking-wide text-gray-400">Activities</p>
-        )}
-        {activities.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            className="block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-gray-50"
-            onClick={() => {
-              onPick({ type: "activity", id: a.id, label: a.name });
-              setOpen(false);
-            }}
-          >
-            {a.name}
-          </button>
-        ))}
-        {actionItems.length === 0 && activities.length === 0 && (
-          <p className="px-2 py-2 text-sm text-gray-400">Nothing to reference yet.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canRespond }: Props) {
+function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canRespond, onEdit }: Props) {
   const { data: rfi, isLoading } = useProjectRfi(projectId, rfiId ?? undefined);
   const respond = useRespondRfi();
   const transition = useTransitionRfi();
-  const convert = useConvertRfiToChange();
   const updateRfi = useUpdateRfi();
+  const [convertOpen, setConvertOpen] = useState(false);
   const { data: participants = [] } = useParticipants(projectId);
 
+  // Invited participants are assignable: the ball can sit with the RE before
+  // she has ever signed in (finding F33).
   const assigneeOptions = participants
     .filter((p) => p.userId)
-    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+    .map((p) => ({
+      id: p.userId as string,
+      name: p.status === "invited" ? `${p.name ?? p.email} (invited)` : (p.name ?? p.email),
+    }));
 
   const [html, setHtml] = useState("");
   const [text, setText] = useState("");
@@ -213,6 +141,12 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                     {rfi.dueDate && (
                       <span className="text-xs text-gray-500">Due {formatWhen(rfi.dueDate)}</span>
                     )}
+                    {isRfiOverdue(rfi) ? (
+                      <Badge tone="danger" size="sm">⚠ {overdueLabel(rfiOverdueDays(rfi))}</Badge>
+                    ) : null}
+                    {rfi.reopenedCount > 0 ? (
+                      <Badge tone="warning" size="sm">↻ Reopened ×{rfi.reopenedCount}</Badge>
+                    ) : null}
                   </div>
                   <button
                     type="button"
@@ -281,15 +215,11 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                       ) : (
                         <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{c.body}</p>
                       )}
-                      {c.references && c.references.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {c.references.map((r, i) => (
-                            <Badge key={i} tone="accent" size="sm">
-                              {r.type === "action_item" ? "Action" : "Activity"}: {r.label}
-                            </Badge>
-                          ))}
+                      {c.references && c.references.length > 0 ? (
+                        <div className="mt-2">
+                          <ReferenceChips references={c.references as RfiReference[]} />
                         </div>
-                      )}
+                      ) : null}
                       <p className="mt-1 text-xs text-gray-400">{formatWhen(c.createdAt)}</p>
                     </div>
                   ))}
@@ -307,22 +237,10 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                       onAttach={(a) => setAttachments((prev) => [...prev, a])}
                       placeholder="Write a response…"
                     />
-                    {references.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {references.map((r, i) => (
-                          <Badge key={i} tone="accent" size="sm">
-                            {r.type === "action_item" ? "Action" : "Activity"}: {r.label}
-                            <button
-                              type="button"
-                              className="ml-1"
-                              onClick={() => setReferences((prev) => prev.filter((_, j) => j !== i))}
-                            >
-                              ×
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                    <ReferenceChips
+                      references={references}
+                      onRemove={(index) => setReferences((prev) => prev.filter((_, j) => j !== index))}
+                    />
                     <div className="flex flex-wrap items-center gap-2">
                       <ReferencePicker
                         projectId={projectId}
@@ -351,10 +269,17 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                     </div>
                   </div>
                 )}
+
+                <RfiAuditTrail projectId={projectId} rfiId={rfi.id} />
               </div>
 
               {canManage && (
                 <footer className="flex flex-wrap items-center gap-2 border-t border-line-hair px-6 py-4">
+                  {onEdit && !isClosed ? (
+                    <Button variant="secondary" size="sm" onClick={() => onEdit(rfi.id)}>
+                      Edit RFI
+                    </Button>
+                  ) : null}
                   {!isClosed && (
                     <Button
                       variant="secondary"
@@ -365,7 +290,8 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                       Close RFI
                     </Button>
                   )}
-                  {isClosed && (
+                  {/* An answer that does not settle the question is reopened, not re-raised. */}
+                  {isClosed || rfi.status === "Answered" ? (
                     <Button
                       variant="secondary"
                       size="sm"
@@ -374,22 +300,28 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                     >
                       Reopen
                     </Button>
-                  )}
+                  ) : null}
                   {(rfi.costImpact || rfi.scheduleImpact) && !rfi.changeRequestId && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => convert.mutate({ projectId, rfiId: rfi.id })}
-                      loading={convert.isPending}
-                    >
+                    <Button variant="secondary" size="sm" onClick={() => setConvertOpen(true)}>
                       Convert to change event
                     </Button>
                   )}
                   {rfi.changeRequestId && (
                     <span className="text-xs text-gray-500">Linked to a change event</span>
                   )}
+                  {transition.error ? (
+                    <span className="text-xs text-negative-600">{errorMessage(transition.error)}</span>
+                  ) : null}
                 </footer>
               )}
+              <ConvertToChangeDialog
+                open={convertOpen}
+                onOpenChange={setConvertOpen}
+                projectId={projectId}
+                rfiId={rfi.id}
+                rfiNumber={rfi.number}
+                rfiSubject={rfi.subject}
+              />
             </>
           )}
         </Dialog.Popup>

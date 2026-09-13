@@ -3,6 +3,7 @@ import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
+import { errorFieldName } from "@/lib/api-error";
 import type { Activity, ProjectPhase } from "@/lib/project-types";
 
 export interface CreateActivityValues {
@@ -39,6 +40,8 @@ interface CreateActivityDialogProps {
   onSubmit: (values: CreateActivityValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  /** The raw mutation error, so a 400 can be shown beside the field it names. */
+  errorSource?: unknown;
 }
 
 function toLocalInput(date: Date): string {
@@ -72,6 +75,7 @@ function CreateActivityDialog({
   onSubmit,
   isSubmitting = false,
   error,
+  errorSource,
 }: CreateActivityDialogProps) {
   const [name, setName] = useState("");
   const [activityType, setActivityType] = useState("");
@@ -106,6 +110,13 @@ function CreateActivityDialog({
 
   const actualRangeValid =
     !actualStartAt || !actualEndAt || new Date(actualStartAt) <= new Date(actualEndAt);
+  // Say why the button is grey. A silently-disabled Create is the same thing as
+  // a broken form to the PM (findings #34, #43).
+  const plannedRangeValid =
+    !plannedStartAt || !plannedEndAt || new Date(plannedStartAt) <= new Date(plannedEndAt);
+  const typeMissing = activityType.trim().length === 0;
+  // When the server blames a field, show the message beside that field.
+  const locationRejected = errorFieldName(errorSource) === "location";
   const isValid =
     name.trim().length > 0 &&
     activityType.trim().length > 0 &&
@@ -155,15 +166,19 @@ function CreateActivityDialog({
     
     <div className="grid grid-cols-2 gap-3">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="activity-type">Type</Label>
+        <Label htmlFor="activity-type">Type (required)</Label>
         <input
           id="activity-type"
           value={activityType}
           onChange={(e) => setActivityType(e.target.value)}
-          placeholder="concrete_pour"
+          placeholder="e.g. concrete_pour, earthworks, drainage"
           maxLength={100}
+          aria-invalid={typeMissing || undefined}
           className={INPUT_CLASS}
         />
+        {typeMissing ? (
+          <p className="text-xs text-negative-600">A type is required — a short slug for the kind of work.</p>
+        ) : null}
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="activity-phase">Milestone (optional)</Label>
@@ -206,10 +221,12 @@ function CreateActivityDialog({
         id="activity-location"
         value={location}
         onChange={(e) => setLocation(e.target.value)}
-        placeholder="e.g. Block A · Floor 2"
+        placeholder="e.g. Block A · Floor 2, or ch 0+420"
         maxLength={200}
+        aria-invalid={locationRejected || undefined}
         className={INPUT_CLASS}
       />
+      {locationRejected ? <p className="text-xs text-negative-600">{error}</p> : null}
     </div>
     
     <div className="grid grid-cols-2 gap-3">
@@ -230,8 +247,12 @@ function CreateActivityDialog({
           type="datetime-local"
           value={plannedEndAt}
           onChange={(e) => setPlannedEndAt(e.target.value)}
+          aria-invalid={!plannedRangeValid || undefined}
           className={INPUT_CLASS}
         />
+        {!plannedRangeValid ? (
+          <p className="text-xs text-negative-600">Planned end must be after planned start.</p>
+        ) : null}
       </div>
     </div>
 

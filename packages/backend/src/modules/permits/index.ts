@@ -23,6 +23,11 @@ export interface Permit {
   approvedDate: string | null;
   expiryDate: string | null;
   notes: string | null;
+  documentId: string | null;
+  conditions: string | null;
+  responsiblePerson: string | null;
+  renewalSubmittedAt: string | null;
+  leadTimeDays: number | null;
   urgency: PermitUrgency;
   daysUntilExpiry: number | null;
   createdAt: string;
@@ -40,12 +45,16 @@ function daysBetweenTodayAnd(dateIso: string): number {
 function computeUrgency(
   status: PermitStatus,
   expiryDate: string | null,
+  leadTimeDays: number | null = null,
 ): { urgency: PermitUrgency; daysUntilExpiry: number | null } {
   if (!expiryDate) return { urgency: "none", daysUntilExpiry: null };
   const days = daysBetweenTodayAnd(expiryDate);
   if (status === "Rejected") return { urgency: "none", daysUntilExpiry: days };
   if (days < 0) return { urgency: "expired", daysUntilExpiry: days };
-  if (days <= EXPIRING_WINDOW_DAYS) return { urgency: "expiringSoon", daysUntilExpiry: days };
+  // A fixed 30 days is too late for a permit that takes six weeks to renew, so
+  // the permit's own lead time widens the window when one is set (finding #9).
+  const window = Math.max(EXPIRING_WINDOW_DAYS, leadTimeDays ?? 0);
+  if (days <= window) return { urgency: "expiringSoon", daysUntilExpiry: days };
   return { urgency: "active", daysUntilExpiry: days };
 }
 
@@ -73,12 +82,17 @@ interface PermitRow {
   approved_date: string | null;
   expiry_date: string | null;
   notes: string | null;
+  document_id: string | null;
+  conditions: string | null;
+  responsible_person: string | null;
+  renewal_submitted_at: Date | string | null;
+  lead_time_days: number | null;
   created_at: string;
   updated_at: string;
 }
 
 function toPermit(r: PermitRow): Permit {
-  const { urgency, daysUntilExpiry } = computeUrgency(r.status, r.expiry_date);
+  const { urgency, daysUntilExpiry } = computeUrgency(r.status, r.expiry_date, r.lead_time_days);
   return {
     id: r.id,
     projectId: r.project_id,
@@ -90,6 +104,13 @@ function toPermit(r: PermitRow): Permit {
     approvedDate: r.approved_date,
     expiryDate: r.expiry_date,
     notes: r.notes,
+    documentId: r.document_id ?? null,
+    conditions: r.conditions ?? null,
+    responsiblePerson: r.responsible_person ?? null,
+    renewalSubmittedAt: r.renewal_submitted_at
+      ? new Date(r.renewal_submitted_at).toISOString().slice(0, 10)
+      : null,
+    leadTimeDays: r.lead_time_days ?? null,
     urgency,
     daysUntilExpiry,
     createdAt: r.created_at,
@@ -118,6 +139,11 @@ const bodyProps = {
   approvedDate: { type: ["string", "null"], maxLength: 40 },
   expiryDate: { type: ["string", "null"], maxLength: 40 },
   notes: { type: ["string", "null"], maxLength: 2000 },
+  documentId: { type: ["string", "null"], maxLength: 100 },
+  conditions: { type: ["string", "null"], maxLength: 4000 },
+  responsiblePerson: { type: ["string", "null"], maxLength: 200 },
+  renewalSubmittedAt: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+  leadTimeDays: { type: ["integer", "null"], minimum: 0, maximum: 365 },
 } as const;
 
 const createBody = {
@@ -143,6 +169,11 @@ interface PermitInput {
   approvedDate?: string | null;
   expiryDate?: string | null;
   notes?: string | null;
+  documentId?: string | null;
+  conditions?: string | null;
+  responsiblePerson?: string | null;
+  renewalSubmittedAt?: string | null;
+  leadTimeDays?: number | null;
 }
 
 function toPatch(input: PermitInput): Record<string, unknown> {
@@ -155,6 +186,11 @@ function toPatch(input: PermitInput): Record<string, unknown> {
   if (input.approvedDate !== undefined) patch.approved_date = input.approvedDate;
   if (input.expiryDate !== undefined) patch.expiry_date = input.expiryDate;
   if (input.notes !== undefined) patch.notes = input.notes;
+  if (input.documentId !== undefined) patch.document_id = input.documentId;
+  if (input.conditions !== undefined) patch.conditions = input.conditions;
+  if (input.responsiblePerson !== undefined) patch.responsible_person = input.responsiblePerson;
+  if (input.renewalSubmittedAt !== undefined) patch.renewal_submitted_at = input.renewalSubmittedAt;
+  if (input.leadTimeDays !== undefined) patch.lead_time_days = input.leadTimeDays;
   return patch;
 }
 
@@ -231,6 +267,11 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
         approved_date: approvedDate,
         expiry_date: expiryDate,
         notes: request.body.notes ?? null,
+        document_id: request.body.documentId ?? null,
+        conditions: request.body.conditions ?? null,
+        responsible_person: request.body.responsiblePerson ?? null,
+        renewal_submitted_at: request.body.renewalSubmittedAt ?? null,
+        lead_time_days: request.body.leadTimeDays ?? null,
       };
       await db("permits").insert(record);
       const row = await db<PermitRow>("permits").where({ id: record.id }).first();

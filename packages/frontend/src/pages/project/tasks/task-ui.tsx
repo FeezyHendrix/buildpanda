@@ -10,6 +10,18 @@ export interface AssigneeOption {
 
 export const FIELD = INPUT_CLASS;
 
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Past its due date and not yet done. A done task is never "overdue". */
+export function isTaskOverdue(task: { dueDate: string | null; status?: string | null }, today = todayIso()): boolean {
+  if (!task.dueDate) return false;
+  if (task.status === "done" || task.status === "Done" || task.status === "completed") return false;
+  return task.dueDate.slice(0, 10) < today;
+}
+
 export function htmlToText(html: string): string {
   const el = document.createElement("div");
   el.innerHTML = html;

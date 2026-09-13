@@ -82,6 +82,15 @@ export interface ProjectReportingSnapshot {
     phasesInProgress: PhaseRef[];
     phasesUpcoming: PhaseRef[];
     programmeCostCurve: CashFlowPoint[] | null;
+    // Added by the programme workstream. Optional so the UI works before and
+    // after it lands: a block that has no figure simply does not render.
+    completionDate?: string | null;
+    revisedCompletionDate?: string | null;
+    eotDaysApproved?: number | null;
+    eotDaysPending?: number | null;
+    ldExposure?: number | null;
+    timelineShiftDays?: number | null;
+    delayedActivities?: { count: number; daysLost: number } | null;
   };
   operations: {
     dueActionItems: number;
@@ -90,6 +99,12 @@ export interface ProjectReportingSnapshot {
     pendingApprovals: number;
     expiringPermits: number;
     upcomingKeyDates: number;
+    /** Permits already past their expiry — a different risk from "expiring". */
+    expiredPermits?: number | null;
+    overdueRfis?: number | null;
+    overdueTasks?: number | null;
+    lateMaterialOrders?: number | null;
+    pendingMaterialApprovals?: number | null;
   };
   health: {
     score: number | null;

@@ -22,6 +22,8 @@ import {
 import { formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { canResourceAction, type Permit, type PermitStatus, type PermitUrgency } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
+import { useProjectDocuments } from "@/hooks/use-documents";
 
 const STATUS_META: Record<
   PermitStatus,
@@ -138,6 +140,7 @@ export default function ProjectPermits() {
   const { project, access } = useProjectContext();
   const canManage = Boolean(access && canResourceAction(access, "permits", "manage"));
   const { data: permits = [], isLoading } = usePermits(project.id);
+  const { data: documents = [] } = useProjectDocuments(project.id);
   const createPermit = useCreatePermit();
   const updatePermit = useUpdatePermit();
   const deletePermit = useDeletePermit();
@@ -273,9 +276,10 @@ export default function ProjectPermits() {
           open={createOpen}
           onOpenChange={setCreateOpen}
           mode="create"
+          documents={documents}
           onSubmit={handleCreate}
           isSubmitting={createPermit.isPending}
-          error={createPermit.error?.message}
+          error={createPermit.error ? errorMessage(createPermit.error) : null}
         />
       )}
 
@@ -284,10 +288,11 @@ export default function ProjectPermits() {
           open={Boolean(editPermit)}
           onOpenChange={(o) => !o && setEditPermit(null)}
           mode="edit"
+          documents={documents}
           initial={editPermit}
           onSubmit={handleEdit}
           isSubmitting={updatePermit.isPending}
-          error={updatePermit.error?.message}
+          error={updatePermit.error ? errorMessage(updatePermit.error) : null}
         />
       )}
 

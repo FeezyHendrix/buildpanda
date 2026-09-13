@@ -47,6 +47,12 @@ function countMissedKeyDates(keyDates: KeyDate[], today: number): number {
   }).length;
 }
 
+/** "3 delayed activities (11 days lost)" — the days are the part that matters. */
+function delayedLabel(delayed: { count: number; daysLost: number } | null): string {
+  if (!delayed || delayed.daysLost <= 0) return "delayed activities";
+  return `delayed activities · ${delayed.daysLost} ${delayed.daysLost === 1 ? "day" : "days"} lost`;
+}
+
 /** Ordered by urgency; rows with a zero count are dropped before render. */
 function buildItems(args: {
   snapshot: ProjectReportingSnapshot | undefined;
@@ -60,12 +66,31 @@ function buildItems(args: {
   const staleDays = snapshot?.activity.daysSinceLastUpdate ?? null;
   const items: AttentionItem[] = [
     { key: "blocked", count: ops?.blockedActionItems ?? 0, label: "blocked action items", to: "action-items", tone: "danger" },
-    { key: "overdue-rfis", count: countOverdueRfis(rfis, today), label: "overdue RFIs", to: "rfis", tone: "danger" },
+    {
+      key: "overdue-rfis",
+      count: ops?.overdueRfis ?? countOverdueRfis(rfis, today),
+      label: "overdue RFIs",
+      to: "rfis",
+      tone: "danger",
+    },
     { key: "due-actions", count: ops?.dueActionItems ?? 0, label: "action items due", to: "action-items", tone: "warning" },
     { key: "approvals", count: ops?.pendingApprovals ?? 0, label: "pending approvals", to: "approvals", tone: "warning" },
     { key: "changes", count: submittedChanges, label: "change orders awaiting decision", to: "change-requests", tone: "warning" },
     { key: "inspections", count: snapshot?.inspections.failed ?? 0, label: "failed inspections", to: "inspections", tone: "danger" },
-    { key: "permits", count: ops?.expiringPermits ?? 0, label: "permits expiring", to: "permits", tone: "warning" },
+    // An expired permit and one expiring in a month are different problems; the
+    // tile used to call both "permits expiring" (finding #10).
+    { key: "permits-expired", count: ops?.expiredPermits ?? 0, label: "permits expired", to: "permits", tone: "danger" },
+    { key: "permits", count: ops?.expiringPermits ?? 0, label: "permits expiring within 30 days", to: "permits", tone: "warning" },
+    { key: "overdue-tasks", count: ops?.overdueTasks ?? 0, label: "overdue tasks", to: "tasks", tone: "danger" },
+    {
+      key: "delayed",
+      count: snapshot?.schedule.delayedActivities?.count ?? 0,
+      label: delayedLabel(snapshot?.schedule.delayedActivities ?? null),
+      to: "schedules/activities",
+      tone: "danger",
+    },
+    { key: "late-orders", count: ops?.lateMaterialOrders ?? 0, label: "material orders late", to: "materials", tone: "danger" },
+    { key: "material-approvals", count: ops?.pendingMaterialApprovals ?? 0, label: "material approvals pending", to: "material-approvals", tone: "warning" },
     { key: "invoices", count: snapshot?.finance.invoices.overdueCount ?? 0, label: "overdue invoices", to: `${BUDGET_INVOICES_PATH}?tab=invoices`, tone: "danger" },
     { key: "key-dates", count: countMissedKeyDates(keyDates, today), label: "missed key dates", to: "key-dates", tone: "danger" },
     { key: "risks", count: snapshot?.risks.high ?? 0, label: "high risks", to: "#risk-factors", tone: "warning" },

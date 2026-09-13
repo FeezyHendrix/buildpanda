@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { projectKeys, projectTemplateKeys } from "./query-keys";
 import { projectsApi } from "@/api/projects";
-import type { ProjectTemplateSummary, CreateProjectInput, ProjectSettings, UpdateProjectBudgetInput } from "@/api/projects";
+import type {
+  ProjectTemplateSummary,
+  CreateProjectInput,
+  ProjectSettings,
+  UpdateProjectBudgetInput,
+  UpdateProjectProfileInput,
+} from "@/api/projects";
 
 export type { ProjectTemplateSummary, CreateProjectInput, ProjectSettings, UpdateProjectBudgetInput };
 
@@ -69,6 +75,27 @@ export function useUpdateProjectSettings(projectId: string) {
     mutationFn: (input: ProjectSettings) => projectsApi.updateSettings(projectId, input),
     onSuccess: (settings) => {
       queryClient.setQueryData(projectKeys.settings(projectId), settings);
+    },
+  });
+}
+
+export function useProjectProfile(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? projectKeys.profile(projectId) : projectKeys.profile("__none__"),
+    queryFn: () => projectsApi.profile(projectId!),
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useUpdateProjectProfile(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateProjectProfileInput) => projectsApi.updateProfile(projectId, input),
+    onSuccess: (profile) => {
+      queryClient.setQueryData(projectKeys.profile(projectId), profile);
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
     },
   });
 }

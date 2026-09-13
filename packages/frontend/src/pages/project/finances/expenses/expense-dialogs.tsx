@@ -10,6 +10,7 @@ import { useCreateTransaction, useUpdateTransaction } from "@/hooks/use-transact
 import { useUploadFile, resolveFileUrl } from "@/hooks/use-files";
 import { currencySymbol } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { errorMessage } from "@/lib/api-error";
 import type {
   CreateTransactionInput,
   Stage,
@@ -173,7 +174,7 @@ export function UpsertTransactionDialog({
       submitLabel={isEdit ? "Save changes" : "Save entry"}
       submitting={mutation.isPending || uploadProgress !== null}
       submitDisabled={!isValid || uploadProgress !== null}
-      error={mutation.error?.message}
+      error={mutation.error ? errorMessage(mutation.error) : null}
       onSubmit={handleSubmit}
     >
       <div className="space-y-5">

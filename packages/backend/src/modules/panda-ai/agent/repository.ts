@@ -244,11 +244,31 @@ export function agentRepository(db: Knex) {
         .select("id", "label", "target_date", "actual_date", "status");
     },
 
+    /**
+     * An inspection is an independent service order, so the service status, the
+     * assigned BuildPanda inspector and the outcome all matter to a PM asking
+     * "has anyone been out yet?".
+     */
     inspections(projectId: string) {
       return db("inspections")
+        .leftJoin("user as inspector", "inspector.id", "inspections.inspector_user_id")
         .where({ project_id: projectId })
-        .orderBy("scheduled_at", "desc")
-        .select("id", "title", "category", "status", "risk_level", "scheduled_at");
+        .orderBy("inspections.scheduled_at", "desc")
+        .select(
+          "inspections.id",
+          "inspections.title",
+          "inspections.category",
+          "inspections.status",
+          "inspections.service_status",
+          "inspections.risk_level",
+          "inspections.scheduled_at",
+          "inspections.outcome",
+          "inspections.findings",
+          "inspections.contractor_name",
+          "inspections.report_issued_at",
+          "inspections.inspector_name",
+          "inspector.name as inspector_user_name",
+        );
     },
 
     materials(projectId: string) {

@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { UpsertRiskDialog, type UpsertRiskValues } from "@/components/molecules/upsert-risk-dialog";
 import { useCreateRiskFactor, useDeleteRiskFactor, useEditRiskFactor } from "@/hooks/use-risks";
 import type { RiskFactor } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
 
 const RISK_SEVERITY_TONE: Record<
   RiskFactor["severity"],
@@ -132,15 +133,10 @@ function RiskFactorRow({
         open={editOpen}
         onOpenChange={setEditOpen}
         mode="edit"
-        initial={{
-          title: risk.title,
-          description: risk.description,
-          descriptionHtml: risk.descriptionHtml,
-          severity: risk.severity,
-        }}
+        initial={risk}
         onSubmit={handleEdit}
         isSubmitting={editRisk.isPending}
-        error={(editRisk.error as Error | undefined)?.message ?? null}
+        error={editRisk.error ? errorMessage(editRisk.error) : null}
       />
 
       <ConfirmDialog

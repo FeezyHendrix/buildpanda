@@ -43,12 +43,8 @@ export function useCreateDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      projectId,
-      categoryId,
-      fileId,
-    }: CreateDocumentVariables) => 
-      documentsApi.create(projectId, { categoryId, fileId }),
+    mutationFn: ({ projectId, ...body }: CreateDocumentVariables) =>
+      documentsApi.create(projectId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: documentKeys.all(projectId) });
     },
@@ -59,12 +55,8 @@ export function useEditDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      projectId,
-      documentId,
-      categoryId,
-    }: EditDocumentVariables) => 
-      documentsApi.edit(projectId, documentId, { categoryId }),
+    mutationFn: ({ projectId, documentId, ...body }: EditDocumentVariables) =>
+      documentsApi.edit(projectId, documentId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: documentKeys.all(projectId) });
     },

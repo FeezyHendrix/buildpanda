@@ -593,10 +593,10 @@ export function buildTools(): AgentTool[] {
       return { output: dates.map((d) => ({ label: d.label, target: d.target_date, actual: d.actual_date, status: d.status })) };
     }),
 
-    tool(fn("get_inspections", "Get project inspections with status and risk level."), async (ctx) => {
+    tool(fn("get_inspections", "Get project inspections: the independent inspection service BuildPanda carries out on the client's request. Returns the service status (Requested / Scheduled / Attended / Reported / Cancelled), the assigned BuildPanda inspector, the contractor being inspected, the pass/fail outcome and any findings."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const inspections = await repo.inspections(ctx.projectId);
-      return { output: inspections.map((i) => ({ title: i.title, category: i.category, status: i.status, riskLevel: i.risk_level, scheduledAt: i.scheduled_at })) };
+      return { output: inspections.map((i) => ({ title: i.title, category: i.category, status: i.status, serviceStatus: i.service_status, riskLevel: i.risk_level, scheduledAt: i.scheduled_at, inspector: i.inspector_user_name ?? i.inspector_name, contractorInspected: i.contractor_name, outcome: i.outcome, findings: i.findings, reportIssuedAt: i.report_issued_at })) };
     }),
 
     tool(fn("get_materials", "Get planned material orders and requests (what was ordered) with status, supplier, cost and the deliveries received against each one (quantity, date, delivery-note number, and whether a load was rejected). This is the procurement list, NOT current stock on hand — for how much of a material is currently available, use get_material_stock. For which orders are running late, use get_late_material_orders."), async (ctx) => {

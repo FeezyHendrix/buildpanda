@@ -102,10 +102,12 @@ export function useLinkDailyLogActivity() {
       logDate,
       activityId,
       hoursLogged,
-    }: LinkDailyLogActivityInput) => 
+      postUpdate,
+    }: LinkDailyLogActivityInput) =>
       dailyLogsApi.linkActivity(projectId, logDate, {
         activityId,
         hoursLogged,
+        postUpdate: postUpdate ?? false,
       }),
     onSuccess: (_data, { projectId, logDate }) => {
       queryClient.invalidateQueries({

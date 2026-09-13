@@ -11,6 +11,8 @@
 
 /** Additive capabilities granted to project participants (external stakeholders). */
 export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
+  // The employer. An inspection is a service they ORDER from BuildPanda, so
+  // requesting one is theirs by right; they read the report and never write it.
   client: {
     project: ["view"],
     finances: ["view", "dispute"],
@@ -25,7 +27,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     comments: ["view", "post"],
     updates: ["view"],
     documents: ["view"],
-    inspections: ["view"],
+    inspections: ["view", "request"],
     materials: ["view", "report"],
     contractors: ["view"],
     dailyLog: ["view", "report"],

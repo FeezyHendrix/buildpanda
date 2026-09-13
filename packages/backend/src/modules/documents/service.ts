@@ -11,11 +11,24 @@ import type {
   DocumentRow,
   DocumentStatus,
   DocumentVersion,
+  DocumentVisibility,
   DocumentVersionRow,
   ProjectDocument,
 } from "./types.ts";
 
-export interface CreateDocumentInput {
+export interface DocumentRegisterFields {
+  /** The title a person reads; the filename stays the file's own name. */
+  title?: string | null;
+  /** "Rev C", "P02" — free text; every discipline numbers differently. */
+  revision?: string | null;
+  /** The document this one replaces, so the register shows the chain. */
+  supersedesId?: string | null;
+  visibility?: DocumentVisibility;
+  /** The date on the document itself, not the day it was uploaded. */
+  documentDate?: string | null;
+}
+
+export interface CreateDocumentInput extends DocumentRegisterFields {
   categoryId: string;
   fileId?: string;
   fileName?: string;
@@ -24,7 +37,7 @@ export interface CreateDocumentInput {
   status?: DocumentStatus;
 }
 
-export interface EditDocumentInput {
+export interface EditDocumentInput extends DocumentRegisterFields {
   categoryId?: string;
   fileName?: string;
   status?: DocumentStatus;
@@ -75,6 +88,13 @@ function toDocument(
     versionNo: Math.max(versionCount, row.file_id ? 1 : 0),
     versionCount,
     currentVersionId: row.current_version_id,
+    title: row.title ?? null,
+    revision: row.revision ?? null,
+    supersedesId: row.supersedes_id ?? null,
+    visibility: row.visibility ?? "internal",
+    documentDate: row.document_date
+      ? new Date(row.document_date).toISOString().slice(0, 10)
+      : null,
   };
 }
 
@@ -173,6 +193,11 @@ export function documentsService(
         size_bytes: sizeBytes,
         status: input.status ?? "Pending",
         uploaded_at: uploadedAt,
+        title: input.title?.trim() || null,
+        revision: input.revision?.trim() || null,
+        supersedes_id: input.supersedesId ?? null,
+        visibility: input.visibility ?? "internal",
+        document_date: input.documentDate ?? null,
       });
 
       // First version (only when there is a real file behind it).
@@ -183,7 +208,7 @@ export function documentsService(
           document_id: row.id,
           file_id: fileId,
           version_no: 1,
-          revision_label: null,
+          revision_label: input.revision?.trim() || null,
           file_name: fileName,
           size,
           size_bytes: sizeBytes,
@@ -222,6 +247,11 @@ export function documentsService(
       }
       if (input.fileName !== undefined) patch.file_name = input.fileName;
       if (input.status !== undefined) patch.status = input.status;
+      if (input.title !== undefined) patch.title = input.title?.trim() || null;
+      if (input.revision !== undefined) patch.revision = input.revision?.trim() || null;
+      if (input.supersedesId !== undefined) patch.supersedes_id = input.supersedesId;
+      if (input.visibility !== undefined) patch.visibility = input.visibility;
+      if (input.documentDate !== undefined) patch.document_date = input.documentDate;
 
       const updated = await repository.update(documentId, patch);
       if (!updated) throw new NotFoundError("Document");

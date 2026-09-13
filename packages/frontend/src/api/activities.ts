@@ -56,6 +56,17 @@ export interface ResolveDelayInput {
   preventionNotes?: string;
 }
 
+/**
+ * "Location (optional)" left blank used to send `""`, which the schema rejects
+ * with `must NOT have fewer than 1 characters` (finding #42). Absent means
+ * absent; on an update it is cleared with an explicit null.
+ */
+function withoutBlankLocation<T extends { location?: string | null }>(body: T): T {
+  if (body.location !== "") return body;
+  const { location: _blank, ...rest } = body;
+  return rest as T;
+}
+
 export const activitiesApi = {
   list: (projectId: string, buildingId?: string) =>
     api
@@ -68,10 +79,12 @@ export const activitiesApi = {
     api.get<Activity>(`/projects/${projectId}/activities/${activityId}`).then((r) => r.data),
 
   create: (projectId: string, body: Omit<CreateActivityInput, "projectId">) =>
-    api.post<Activity>(`/projects/${projectId}/activities`, body).then((r) => r.data),
+    api.post<Activity>(`/projects/${projectId}/activities`, withoutBlankLocation(body)).then((r) => r.data),
 
   update: (projectId: string, activityId: string, body: Omit<UpdateActivityInput, "projectId" | "activityId">) =>
-    api.patch<Activity>(`/projects/${projectId}/activities/${activityId}`, body).then((r) => r.data),
+    api
+      .patch<Activity>(`/projects/${projectId}/activities/${activityId}`, withoutBlankLocation(body))
+      .then((r) => r.data),
 
   delete: (projectId: string, activityId: string) =>
     api.delete(`/projects/${projectId}/activities/${activityId}`).then((r) => r.data),

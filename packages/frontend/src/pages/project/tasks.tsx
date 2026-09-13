@@ -201,6 +201,14 @@ export default function ProjectTasks() {
     });
   }
 
+  /** Same move the drag performs, reachable from the card's menu and the keyboard. */
+  function moveTaskToColumn(task: Task, targetColumnId: string): void {
+    if (task.columnId === targetColumnId) return;
+    const targetTasks = tasksByColumn.get(targetColumnId) ?? [];
+    const lastPosition = targetTasks.length ? targetTasks[targetTasks.length - 1]!.position : 0;
+    moveTask.mutate({ taskId: task.id, columnId: targetColumnId, position: lastPosition + 1000 });
+  }
+
   function handleDragEnd(event: DragEndEvent): void {
     const { active, over } = event;
     if (!over) return;
@@ -320,11 +328,13 @@ export default function ProjectTasks() {
               <BoardColumn
                 key={column.id}
                 column={column}
+                columns={board.columns}
                 tasks={tasksByColumn.get(column.id) ?? []}
                 canManage={canManage}
                 canAddCard={canAddTasks}
                 onAddCard={() => openCreate(column.id)}
                 onOpenTask={openEdit}
+                onMoveTask={moveTaskToColumn}
                 onRename={(name) => handleRenameColumn(column.id, name)}
                 onDelete={() => handleDeleteColumn(column.id)}
               />

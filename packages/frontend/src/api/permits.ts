@@ -10,6 +10,15 @@ export interface PermitInput {
   approvedDate?: string | null;
   expiryDate?: string | null;
   notes?: string | null;
+  /** The uploaded instrument itself, from the documents register. */
+  documentId?: string | null;
+  /** Hours, lane widths, signage — a road closure permit always carries them. */
+  conditions?: string | null;
+  responsiblePerson?: string | null;
+  /** Set when a renewal has been lodged: "expired, renewal in" is not "expired". */
+  renewalSubmittedAt?: string | null;
+  /** How long this authority takes; widens the expiry warning window. */
+  leadTimeDays?: number | null;
 }
 
 export const permitsApi = {

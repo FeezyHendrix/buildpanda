@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { useUploadFile } from "@/hooks/use-files";
+import { Button } from "@/components/atoms/button";
+import { errorMessage, isStorageUnavailable } from "@/lib/api-error";
 import type { MediaType, UpdateCategory } from "@/lib/project-types";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
@@ -54,6 +56,12 @@ function UpsertUpdateDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [media, setMedia] = useState<UpsertUpdateMedia[]>([]);
+  // Names of files the user picked that could not be stored. The update is not
+  // posted without them unless the user says so: an update that silently loses
+  // its photos is a lie to the client (finding F51).
+  const [failedUploads, setFailedUploads] = useState<string[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [postWithoutMedia, setPostWithoutMedia] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadFile = useUploadFile();
 
@@ -63,21 +71,37 @@ function UpsertUpdateDialog({
       setTitle(initial?.title ?? "");
       setDescription(initial?.description ?? "");
       setMedia(initial?.media ?? []);
+      setFailedUploads([]);
+      setUploadError(null);
+      setPostWithoutMedia(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }, [open, initial]);
 
-  const isValid = title.trim().length > 0 && description.trim().length > 0;
+  const isValid =
+    title.trim().length > 0 &&
+    description.trim().length > 0 &&
+    (failedUploads.length === 0 || postWithoutMedia);
 
   async function handleFiles(files: FileList | null): Promise<void> {
     if (!files || files.length === 0) return;
+    setUploadError(null);
     for (const file of Array.from(files)) {
-      const uploaded = await uploadFile.mutateAsync({ file, projectId });
-      const type: MediaType = file.type.startsWith("video") ? "video" : "photo";
-      setMedia((prev) => [
-        ...prev,
-        { type, url: `${API_BASE}/files/${uploaded.id}/download` },
-      ]);
+      try {
+        const uploaded = await uploadFile.mutateAsync({ file, projectId });
+        const type: MediaType = file.type.startsWith("video") ? "video" : "photo";
+        setMedia((prev) => [...prev, { type, url: `${API_BASE}/files/${uploaded.id}/download` }]);
+        setFailedUploads((prev) => prev.filter((name) => name !== file.name));
+      } catch (error) {
+        // Keep the draft. The typed 503 from /files tells us it is the store,
+        // not the file, so say so instead of "Internal server error".
+        setFailedUploads((prev) => (prev.includes(file.name) ? prev : [...prev, file.name]));
+        setUploadError(
+          isStorageUnavailable(error)
+            ? `${file.name} could not be uploaded — file storage is unavailable. Your text is kept; try again shortly.`
+            : `${file.name} could not be uploaded — ${errorMessage(error)}`,
+        );
+      }
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -195,9 +219,34 @@ function UpsertUpdateDialog({
           onChange={(e) => void handleFiles(e.target.files)}
           className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-surface-alt file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200"
         />
-        {uploadFile.isPending && (
-          <p className="text-xs text-gray-500">Uploading…</p>
-        )}
+        {uploadFile.isPending ? <p className="text-xs text-gray-500">Uploading…</p> : null}
+
+        {failedUploads.length > 0 ? (
+          <div className="flex flex-col gap-2 rounded-lg bg-negative-50 px-3 py-2.5">
+            <p className="text-xs text-negative-600">{uploadError}</p>
+            <p className="text-xs text-negative-600">
+              Not uploaded: {failedUploads.join(", ")}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Try the upload again
+              </Button>
+              <label className="flex items-center gap-2 text-xs text-negative-700">
+                <input
+                  type="checkbox"
+                  checked={postWithoutMedia}
+                  onChange={(event) => setPostWithoutMedia(event.target.checked)}
+                />
+                Post without {failedUploads.length === 1 ? "it" : "them"}
+              </label>
+            </div>
+          </div>
+        ) : null}
       </div>
     </FormDrawer>
   );

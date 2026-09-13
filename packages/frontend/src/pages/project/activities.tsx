@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ActivitiesTable } from "./activities/activities-table";
+import { DeleteActivityDialog } from "./activities/delete-activity-dialog";
 import {
   ACTIVITY_STATUS_FILTERS,
   matchesActivitySearch,
@@ -7,7 +8,6 @@ import {
 } from "./activities/activity-helpers";
 
 import { Button } from "@/components/atoms/button";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import {
@@ -24,13 +24,14 @@ import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateActivity,
-  useDeleteActivity,
   useProjectActivities,
   useRaiseDelay,
   useUpdateActivity,
 } from "@/hooks/use-activities";
 import { useDelayReasons } from "@/hooks/use-delay-reasons";
 import { icons } from "@/assets/icons/icons";
+import { errorMessage } from "@/lib/api-error";
+import { choiceLabel, participantChoices } from "@/lib/assignee-options";
 import { canResourceAction, type Activity } from "@/lib/project-types";
 
 export default function ProjectActivities() {
@@ -52,13 +53,12 @@ export default function ProjectActivities() {
 
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
-  const deleteActivity = useDeleteActivity();
   const raiseDelay = useRaiseDelay();
 
   const { data: participants = [] } = useParticipants(project.id, canManage);
-  const assigneeOptions = participants
-    .filter((p) => p.userId)
-    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+  const assigneeOptions = participantChoices(participants)
+    .filter((choice) => choice.userId !== null)
+    .map((choice) => ({ id: choice.userId as string, name: choiceLabel(choice) }));
 
   const inProgressCount = activities.filter((a) => a.status === "InProgress").length;
   const delayedCount = activities.filter((a) => a.isDelayed).length;
@@ -127,21 +127,13 @@ export default function ProjectActivities() {
         onDelete={setDeleteTarget}
       />
 
-      <ConfirmDialog
+      <DeleteActivityDialog
         open={deleteTarget !== null}
-        onOpenChange={(o) => !o && setDeleteTarget(null)}
-        loading={deleteActivity.isPending}
-        onConfirm={() => {
-          if (!deleteTarget) return;
-          deleteActivity.mutate(
-            { projectId: project.id, activityId: deleteTarget.id },
-            { onSettled: () => setDeleteTarget(null) },
-          );
+        onOpenChange={(next) => {
+          if (!next) setDeleteTarget(null);
         }}
-        title="Delete activity"
-        description="This permanently removes the activity and its logged delays. This action cannot be undone."
-        confirmLabel="Delete"
-        variant="danger"
+        projectId={project.id}
+        activity={deleteTarget}
       />
 
       <ActivityTemplateDialog
@@ -173,11 +165,8 @@ export default function ProjectActivities() {
         prefill={prefill}
         assigneeOptions={assigneeOptions}
         isSubmitting={createActivity.isPending || updateActivity.isPending}
-        error={
-          createActivity.error || updateActivity.error
-            ? ((createActivity.error ?? updateActivity.error) as Error).message
-            : null
-        }
+        error={errorMessage(createActivity.error ?? updateActivity.error, "") || null}
+        errorSource={createActivity.error ?? updateActivity.error}
         onSubmit={(values) => {
           if (editingTarget) {
             updateActivity.mutate(
@@ -213,7 +202,7 @@ export default function ProjectActivities() {
         activityName={delayTarget?.name ?? ""}
         reasons={reasons}
         isSubmitting={raiseDelay.isPending}
-        error={raiseDelay.error ? (raiseDelay.error as Error).message : null}
+        error={raiseDelay.error ? errorMessage(raiseDelay.error) : null}
         onSubmit={(values) => {
           if (!delayTarget) return;
           raiseDelay.mutate(

@@ -31,6 +31,18 @@ export const lookAheadsApi = {
   update: (projectId: string, lookAheadId: string, body: UpdateLookAheadInput) =>
     api.patch<LookAhead>(`/projects/${projectId}/look-aheads/${lookAheadId}`, body).then((r) => r.data),
 
+  approve: (projectId: string, lookAheadId: string, note?: string | null) =>
+    api
+      .post<LookAhead>(`/projects/${projectId}/look-aheads/${lookAheadId}/approve`, { note: note ?? null })
+      .then((r) => r.data),
+
+  revokeApproval: (projectId: string, lookAheadId: string, reason?: string | null) =>
+    api
+      .post<LookAhead>(`/projects/${projectId}/look-aheads/${lookAheadId}/revoke-approval`, {
+        reason: reason ?? null,
+      })
+      .then((r) => r.data),
+
   delete: (projectId: string, lookAheadId: string) =>
     api.delete(`/projects/${projectId}/look-aheads/${lookAheadId}`).then((r) => r.data),
 };

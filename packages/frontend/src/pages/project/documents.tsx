@@ -57,6 +57,7 @@ export default function ProjectDocuments() {
         open={uploader.open}
         onOpenChange={uploader.handleOpenChange}
         categories={visibleCategories}
+        documents={documents}
         isSubmitting={uploader.isUploading}
         progress={uploader.progress}
         error={uploader.error}

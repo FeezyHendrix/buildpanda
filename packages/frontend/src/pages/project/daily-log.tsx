@@ -18,10 +18,14 @@ import {
   useProjectDailyLog,
   useProjectDailyLogs,
   useUpsertDailyLog,
+  useVoidDailyLog,
 } from "@/hooks/use-daily-logs";
 import { canResourceAction } from "@/lib/project-types";
 import { toast } from "@/lib/toast";
+import { VoidDailyLogDialog } from "@/components/molecules/void-daily-log-dialog";
+import { errorMessage } from "@/lib/api-error";
 import { DailyLogDrawer } from "./daily-log/daily-log-drawer";
+import { PickLogDateDialog } from "./daily-log/pick-log-date-dialog";
 import { DailyLogTable, type DailyLogRowActions } from "./daily-log/daily-log-table";
 import {
   buildRows,
@@ -62,6 +66,8 @@ export default function ProjectDailyLog() {
   });
   const [conditionsDate, setConditionsDate] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [pickDateOpen, setPickDateOpen] = useState(false);
+  const [voidDate, setVoidDate] = useState<string | null>(null);
 
   const listRange = useMemo(
     () => ({ from: range.from || undefined, to: range.to || undefined }),
@@ -70,6 +76,7 @@ export default function ProjectDailyLog() {
   const { data: days = [], isPending } = useProjectDailyLogs(project.id, listRange, selectedBuildingId);
   const conditionsDay = useProjectDailyLog(conditionsDate ? project.id : undefined, conditionsDate ?? undefined);
   const upsert = useUpsertDailyLog();
+  const voidDay = useVoidDailyLog();
   const downloadReport = useDownloadDailyReport();
   const emailReport = useEmailDailyReport();
 
@@ -109,6 +116,7 @@ export default function ProjectDailyLog() {
           onError: () => toast("Could not email report"),
         },
       ),
+    onVoidDay: setVoidDate,
   };
 
   return (
@@ -124,7 +132,7 @@ export default function ProjectDailyLog() {
                 </Button>
               ) : null}
               {canCreateEntry ? (
-                <Button variant="primary" size="md" onClick={() => openDrawer(today, true)}>
+                <Button variant="primary" size="md" onClick={() => setPickDateOpen(true)}>
                   <PlusIcon className="size-4" />
                   Add my log
                 </Button>
@@ -136,7 +144,12 @@ export default function ProjectDailyLog() {
 
       <section className="mt-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
         <KpiCard label="Days logged" value={kpis.daysLogged} />
-        <KpiCard label="Missed days" value={kpis.missedDays} tone={kpis.missedDays > 0 ? "danger" : "default"} />
+        <KpiCard
+          label="Missed days"
+          value={kpis.missedDays}
+          tone={kpis.missedDays > 0 ? "danger" : "default"}
+          helper="days between the first log and today with no log — today and non-working days included"
+        />
         <KpiCard label="Total hours" value={formatHours(kpis.totalHours)} />
         <KpiCard label="Average crew" value={kpis.averageCrew ?? "—"} helper="workers present per logged day" />
       </section>
@@ -168,6 +181,7 @@ export default function ProjectDailyLog() {
         hasAnyDays={days.length > 0}
         canCreateEntry={canCreateEntry}
         canGenerateReport={canGenerateReport}
+        canVoidEntry={canVoidEntry}
         actions={rowActions}
       />
 
@@ -195,13 +209,45 @@ export default function ProjectDailyLog() {
         defaultDate={conditionsDate ?? today}
         projectId={project.id}
         isSubmitting={upsert.isPending}
-        error={upsert.error ? (upsert.error as Error).message : null}
+        error={upsert.error ? errorMessage(upsert.error) : null}
         onSubmit={(values) =>
           upsert.mutate(
             { projectId: project.id, ...values },
             { onSuccess: () => setConditionsDate(null) },
           )
         }
+      />
+
+      <PickLogDateDialog
+        open={pickDateOpen}
+        onOpenChange={setPickDateOpen}
+        today={today}
+        onPick={(logDate) => {
+          setPickDateOpen(false);
+          openDrawer(logDate, true);
+        }}
+      />
+
+      <VoidDailyLogDialog
+        open={voidDate !== null}
+        onOpenChange={(next) => {
+          if (!next) setVoidDate(null);
+        }}
+        logDate={voidDate ?? ""}
+        submitting={voidDay.isPending}
+        error={voidDay.error ? errorMessage(voidDay.error) : null}
+        onConfirm={(reason) => {
+          if (!voidDate) return;
+          voidDay.mutate(
+            { projectId: project.id, logDate: voidDate, reason },
+            {
+              onSuccess: () => {
+                setVoidDate(null);
+                toast("Day voided", "success");
+              },
+            },
+          );
+        }}
       />
 
       {canGenerateReport ? (

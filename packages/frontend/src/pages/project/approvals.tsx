@@ -30,6 +30,7 @@ import { toast } from "@/lib/toast";
 import { canResourceAction } from "@/lib/project-types";
 import type { Approval, ApprovalStatus } from "@/lib/project-types";
 import { MessagesIcon } from "@/components/atoms/project-nav-icons";
+import { errorMessage } from "@/lib/api-error";
 
 const FILTERS: { value: ApprovalStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -219,7 +220,7 @@ export default function ProjectApprovals() {
           reviewerOptions={reviewerOptions}
           onSubmit={handleCreate}
           isSubmitting={createApproval.isPending}
-          error={createApproval.error?.message}
+          error={createApproval.error ? errorMessage(createApproval.error) : null}
         />
       )}
 
@@ -232,7 +233,7 @@ export default function ProjectApprovals() {
           reviewerOptions={reviewerOptions}
           onSubmit={handleEdit}
           isSubmitting={updateApproval.isPending}
-          error={updateApproval.error?.message}
+          error={updateApproval.error ? errorMessage(updateApproval.error) : null}
         />
       )}
 

@@ -100,12 +100,42 @@ const RENOVATION_TIMELINES: TimelineOption[] = [
   { id: "12-24", label: "12 – 24 months" },
 ];
 
+const CIVIL_TYPES = [
+  {
+    id: "road",
+    title: "Road / highway",
+    description: "Rehabilitation, dualisation or new carriageway",
+  },
+  {
+    id: "drainage",
+    title: "Drainage & culverts",
+    description: "Storm drains, box culverts, outfalls",
+  },
+  {
+    id: "structure",
+    title: "Bridge or structure",
+    description: "Bridges, retaining walls, major structures",
+  },
+] as const;
+
+const CIVIL_TIMELINES: TimelineOption[] = [
+  { id: "0-6", label: "Under 6 months" },
+  { id: "6-12", label: "6 – 12 months" },
+  { id: "12-24", label: "12 – 24 months" },
+  { id: "24-36", label: "24 – 36 months" },
+  { id: "36-plus", label: "Over 36 months" },
+];
+
 function buildingTypesForProjectType(projectType: ProjectType | null) {
-  return projectType === "renovate" ? RENOVATION_TYPES : BUILDING_TYPES;
+  if (projectType === "renovate") return RENOVATION_TYPES;
+  if (projectType === "civil") return CIVIL_TYPES;
+  return BUILDING_TYPES;
 }
 
 function timelineOptionsForProjectType(projectType: ProjectType | null): TimelineOption[] {
-  return projectType === "renovate" ? RENOVATION_TIMELINES : TIMELINES;
+  if (projectType === "renovate") return RENOVATION_TIMELINES;
+  if (projectType === "civil") return CIVIL_TIMELINES;
+  return TIMELINES;
 }
 
 type BuildingType = (typeof BUILDING_TYPES)[number]["id"];
@@ -182,9 +212,30 @@ function ProjectDetailsStep({
         </section>
 
         <section>
-          <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Estimated Budget
+          <h3 className="mb-1 text-base font-semibold text-gray-900">
+            Contract sum or budget
           </h3>
+          <p className="mb-4 text-sm text-gray-500 text-pretty">
+            A contract sum is one number, not a range. Enter it once below; the range
+            underneath is only for a job that is still being scoped.
+          </p>
+
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="w-full sm:w-72">
+              <CustomBudgetInput
+                label="Contract sum"
+                symbol={symbol}
+                value={budget[0] === budget[1] ? budget[0] : 0}
+                onChange={(raw) => {
+                  const amount = Math.max(0, Math.round(Number(raw.replace(/[^0-9.]/g, "")) || 0));
+                  onBudgetChange([amount, amount]);
+                }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 sm:pb-3">
+              Sets both figures, so dashboards quote one headline number.
+            </p>
+          </div>
           <div className="space-y-4">
             {/* Currency tabs + Min/Max inputs on the same row */}
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between w-full">
@@ -223,7 +274,10 @@ function ProjectDetailsStep({
             </div>
 
             {/* Preset range chips — equal width, full row */}
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-6 mt-8">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Or a range, while the scope is still moving
+            </p>
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-6 mt-4">
               {BUDGET_PRESETS.map((preset) => {
                 const isActive =
                   activePreset?.min === preset.min &&

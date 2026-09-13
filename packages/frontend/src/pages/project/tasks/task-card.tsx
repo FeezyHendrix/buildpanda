@@ -6,23 +6,31 @@ import { FileViewerDialog } from "@/components/molecules/file-viewer-dialog";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import { resolveFileUrl } from "@/hooks/use-files";
-import type { Task } from "@/lib/project-types";
-import { ENTITY_META, LinkGlyph, PriorityBadge, firstImageFileId, htmlToText } from "./task-ui";
+import type { Task, TaskColumn } from "@/lib/project-types";
+import { ENTITY_META, LinkGlyph, PriorityBadge, firstImageFileId, htmlToText, isTaskOverdue } from "./task-ui";
+import { TaskMoveMenu } from "./task-move-menu";
 
 export function TaskCard({
   task,
   canManage,
+  columns,
   onOpen,
+  onMove,
 }: {
   task: Task;
   canManage: boolean;
+  columns: readonly TaskColumn[];
   onOpen: () => void;
+  onMove: (columnId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
     disabled: !canManage,
   });
   const due = formatDayMonth(task.dueDate) || null;
+  // A past due date was a neutral grey chip with nothing to distinguish it
+  // (finding #28); overdue now reads as overdue, with a word as well as a colour.
+  const overdue = isTaskOverdue(task);
   const coverFileId = firstImageFileId(task.descriptionHtml);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -79,6 +87,14 @@ export function TaskCard({
       <div className="p-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <PriorityBadge priority={task.priority} />
+          {canManage ? (
+            <TaskMoveMenu
+              taskTitle={task.title}
+              columns={columns}
+              currentColumnId={task.columnId}
+              onMove={onMove}
+            />
+          ) : null}
           {task.entityLinkTypes.length > 0 && (
             <div className="flex flex-wrap items-center justify-end gap-1">
               {task.entityLinkTypes.map((type) => (
@@ -151,8 +167,13 @@ export function TaskCard({
                 </span>
               )}
               {due && (
-                <span className="whitespace-nowrap rounded-full bg-surface-alt px-2 py-0.5 text-xs font-medium text-gray-500">
-                  {due}
+                <span
+                  className={cn(
+                    "whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+                    overdue ? "bg-error-50 text-error-600" : "bg-surface-alt text-gray-500",
+                  )}
+                >
+                  {overdue ? `⚠ Overdue · ${due}` : due}
                 </span>
               )}
             </div>

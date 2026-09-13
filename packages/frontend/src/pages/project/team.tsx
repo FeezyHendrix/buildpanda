@@ -30,6 +30,12 @@ import {
 import { cn } from "@/lib/utils";
 import type { ProjectParticipant } from "@/lib/project-types";
 
+const SIDE_LABEL: Record<NonNullable<ProjectParticipant["side"]>, string> = {
+  client: "Client side",
+  contractor: "Contractor side",
+  consultant: "Consultant",
+};
+
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
   client: "Client",
@@ -225,6 +231,12 @@ function ParticipantRow({
         <span className="text-xs text-gray-500">
           {roleLabel(participant.role)}
         </span>
+
+        {participant.side ? (
+          <Badge tone={participant.side === "client" ? "accent" : "neutral"} size="sm">
+            {SIDE_LABEL[participant.side]}
+          </Badge>
+        ) : null}
 
         {isOwner ? (
           <Badge tone="info" size="sm">
