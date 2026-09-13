@@ -29,41 +29,30 @@ const roles = [
 
 export function Roles() {
   return (
-    <section className="py-20 sm:py-24">
-      <Container className="flex flex-col gap-12">
-        <SectionHeading
-          eyebrow="Who it is for"
-          title="Three jobs, one record."
-        />
-        <div className="grid gap-6 lg:grid-cols-3">
+    <section className="bg-surface py-24 sm:py-32 2xl:py-40">
+      <Container className="flex flex-col gap-14 2xl:gap-20">
+        <SectionHeading eyebrow="Who it is for" title="Three jobs, one record." />
+        <div className="grid border-t border-hairline lg:grid-cols-3">
           {roles.map((role) => (
             <div
               key={role.title}
-              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-6 2xl:p-8"
+              className="flex flex-col gap-5 border-b border-hairline py-10 pr-10 lg:border-l lg:pl-10 lg:first:border-l-0 lg:first:pl-0"
             >
-              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
                 {role.label}
               </span>
-              <h3 className="text-xl font-bold leading-snug text-ink 2xl:text-2xl">
+              <h3 className="display max-w-xs text-2xl text-ink 2xl:text-3xl">
                 {role.title}
               </h3>
-              <p className="text-sm leading-relaxed text-muted 2xl:text-base">
+              <p className="max-w-sm text-sm leading-relaxed text-muted 2xl:text-base">
                 {role.body}
               </p>
               <div className="mt-auto flex flex-wrap items-center gap-x-5 gap-y-3 pt-4">
-                <ButtonLink
-                  href={role.cta.href}
-                  variant={role.cta.variant}
-                  size="md"
-                >
+                <ButtonLink href={role.cta.href} variant="ink" size="md">
                   {role.cta.label}
                 </ButtonLink>
                 {role.secondary ? (
-                  <ButtonLink
-                    href={role.secondary.href}
-                    variant="ghost"
-                    size="md"
-                  >
+                  <ButtonLink href={role.secondary.href} variant="ghost" size="md">
                     {role.secondary.label}
                   </ButtonLink>
                 ) : null}

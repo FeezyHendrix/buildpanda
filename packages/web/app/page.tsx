@@ -7,6 +7,7 @@ import { TwoDoors } from "@/components/home/two-doors";
 import { Objections } from "@/components/home/objections";
 import { Verification } from "@/components/home/verification";
 import { ProductShots } from "@/components/home/product-shots";
+import { PandaAi } from "@/components/home/panda-ai";
 import { WhereYouWork } from "@/components/home/where-you-work";
 import { Roles } from "@/components/home/roles";
 import { GoLive } from "@/components/home/go-live";
@@ -34,6 +35,7 @@ export default function HomePage() {
       <Objections />
       <Verification />
       <ProductShots />
+      <PandaAi />
       <WhereYouWork />
       <Roles />
       <GoLive />

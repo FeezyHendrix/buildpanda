@@ -59,7 +59,7 @@ export default function OpengraphImage() {
               textTransform: "uppercase",
             }}
           >
-            Verified construction delivery
+            Construction management software
           </div>
           <div
             style={{
