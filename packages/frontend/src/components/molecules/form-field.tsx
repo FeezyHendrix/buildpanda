@@ -16,7 +16,6 @@ interface FormFieldProps extends InputProps {
   labelProps?: Omit<ComponentPropsWithoutRef<typeof Label>, "htmlFor" | "children">;
 }
 
-/** Label over field, 4px apart; error in 12/20 negative directly under the control. */
 function FormField({
   label,
   error,
@@ -32,7 +31,7 @@ function FormField({
   const hasMessage = !!error || !!helperText;
 
   return (
-    <div className={cn("flex flex-col gap-1", wrapperClassName)}>
+    <div className={cn("flex flex-col gap-1.5", wrapperClassName)}>
       <Label htmlFor={id} {...labelProps}>
         {label}
       </Label>
@@ -49,7 +48,7 @@ function FormField({
           id={messageId}
           className={cn(
             "text-xs text-pretty",
-            error ? "text-negative-500" : "text-ink-muted",
+            error ? "text-red-500" : "text-gray-400",
           )}
         >
           {error ?? helperText}

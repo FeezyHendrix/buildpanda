@@ -18,7 +18,6 @@ interface ConfirmDialogProps {
   children?: ReactNode;
 }
 
-/** The 400px confirm modal: title, one sentence, [Cancel · text][Confirm · primary or negative]. */
 function ConfirmDialog({
   open,
   onOpenChange,
@@ -34,21 +33,21 @@ function ConfirmDialog({
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/20" />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[400px] max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-line-hair bg-white p-6 shadow-lg">
-          <AlertDialog.Title className="text-lg font-medium text-ink text-balance">
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-96 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-lg">
+          <AlertDialog.Title className="text-lg font-semibold text-gray-900 text-balance">
             {title}
           </AlertDialog.Title>
           {description && (
-            <AlertDialog.Description className="mt-2 text-sm text-ink-muted text-pretty">
+            <AlertDialog.Description className="mt-2 text-sm text-gray-500 text-pretty">
               {description}
             </AlertDialog.Description>
           )}
-          <div className="mt-8 flex justify-end gap-4">
+          <div className="mt-6 flex justify-end gap-3">
             <AlertDialog.Close
               className={cn(
-                "flex h-[38px] items-center justify-center rounded-lg px-3 text-sm font-semibold select-none",
-                "bg-transparent text-primary-500 hover:bg-black/5",
-                "outline-none focus-visible:shadow-focus",
+                "flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium select-none",
+                "bg-[#F6F6F6] text-gray-700 hover:bg-gray-200",
+                "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
               )}
             >
               {cancelLabel}
@@ -58,12 +57,12 @@ function ConfirmDialog({
               disabled={loading}
               aria-busy={loading || undefined}
               className={cn(
-                "relative flex h-[38px] items-center justify-center rounded-lg px-3 text-sm font-semibold select-none",
-                "outline-none transition-colors focus-visible:shadow-focus",
+                "relative flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold select-none",
+                "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
                 "disabled:cursor-not-allowed disabled:opacity-60",
                 variant === "danger"
-                  ? "bg-negative-500 text-white hover:bg-negative-600"
-                  : "bg-primary-500 text-white hover:bg-primary-600",
+                  ? "bg-red-500 text-white hover:bg-red-600"
+                  : "bg-[#004DE7] text-white hover:bg-[#0041c4]",
               )}
               onClick={() => {
                 onConfirm();

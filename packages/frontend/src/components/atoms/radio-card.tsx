@@ -24,12 +24,12 @@ function RadioCard({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-4 rounded-lg p-6 text-left",
-        "outline-none focus-visible:shadow-focus",
+        "flex items-center gap-4 rounded-xl p-6 text-left",
+        "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
         "transition-colors",
         selected
-          ? "border-2 border-primary-500 bg-primary-50"
-          : "border-2 border-line-hair bg-white hover:border-gray-300",
+          ? "border-2 border-[#004DE7] bg-[#F0F4FF]"
+          : "border-2 border-[#F6F6F6] bg-white hover:border-gray-300",
         disabled && "cursor-not-allowed opacity-70",
         className,
       )}
@@ -38,7 +38,7 @@ function RadioCard({
         className={cn(
           "flex size-5 shrink-0 items-center justify-center rounded-full border-2",
           selected
-            ? "border-primary-500 bg-primary-500"
+            ? "border-[#004DE7] bg-[#004DE7]"
             : "border-gray-300 bg-white",
         )}
       >
@@ -46,8 +46,8 @@ function RadioCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5">
-        <span className="text-sm font-semibold text-ink">{title}</span>
-        <p className="text-sm text-ink-muted text-pretty">{description}</p>
+        <span className="text-sm font-semibold text-gray-900">{title}</span>
+        <p className="text-sm text-gray-500 text-pretty">{description}</p>
       </div>
     </button>
   );

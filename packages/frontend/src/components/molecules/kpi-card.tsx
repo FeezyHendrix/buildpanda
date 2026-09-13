@@ -10,7 +10,7 @@ interface KpiCardProps {
   label: string;
   /** The headline figure. Ignored when `progress` is set (the percentage becomes the value). */
   value?: ReactNode;
-  /** One short line beside the value ("of $1.5M"). */
+  /** One short line under the value. */
   helper?: ReactNode;
   /** Accepted for compatibility and ignored: a KPI card is a label and a figure, nothing else. */
   icon?: ReactNode;
@@ -21,34 +21,36 @@ interface KpiCardProps {
 }
 
 const VALUE_TONE: Record<KpiTone, string> = {
-  default: "text-ink",
-  danger: "text-negative-500",
+  default: "text-black-500",
+  danger: "text-error-600",
 };
 
 /**
- * The one KPI card (Ernest's card tile): muted 14px title, 26px medium figure
- * with the helper set beside it. Strips are `grid gap-4` with equal cards.
+ * The one KPI card. Every summary strip on the app (stages, key dates, finances,
+ * materials, invoices, the chart report) renders through this molecule so the
+ * cards read as one product: white card, muted label, big tabular figure.
+ * Strips are `grid gap-4` with equal cards — never corner-joined.
  */
 function KpiCard({ label, value, helper, progress, tone = "default", className }: KpiCardProps) {
   const pct = progress === undefined ? undefined : Math.max(0, Math.min(100, Math.round(progress)));
   const headline = pct === undefined ? value : `${pct}%`;
 
   return (
-    <Card padding="md" className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <p className="text-sm font-medium text-ink-muted">{label}</p>
+    <Card padding="md" className={cn("flex min-w-0 flex-col gap-3 p-5", className)}>
+      <p className="text-[13px] font-medium text-black-300">{label}</p>
 
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <div className="flex flex-col gap-2">
         <p
           className={cn(
-            "min-w-0 text-3xl font-medium tabular-nums [overflow-wrap:anywhere]",
+            "text-[25px] font-bold leading-tight tabular-nums [overflow-wrap:anywhere]",
             VALUE_TONE[tone],
           )}
         >
           {headline}
         </p>
-        {helper ? <p className="text-base font-medium text-ink-muted">{helper}</p> : null}
+        {pct !== undefined ? <ProgressBar tone="success" value={pct} size="md" /> : null}
+        {helper ? <p className="text-[13px] text-black-300">{helper}</p> : null}
       </div>
-      {pct !== undefined ? <ProgressBar tone="success" value={pct} size="md" className="mt-2" /> : null}
     </Card>
   );
 }

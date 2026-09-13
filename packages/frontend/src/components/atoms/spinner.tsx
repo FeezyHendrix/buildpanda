@@ -18,7 +18,7 @@ const sizeClass: Record<SpinnerSize, string> = {
 };
 
 const toneClass: Record<SpinnerTone, string> = {
-  brand: "border-gray-200 border-t-primary-500",
+  brand: "border-gray-200 border-t-[#004DE7]",
   current: "border-current/30 border-t-current",
 };
 
