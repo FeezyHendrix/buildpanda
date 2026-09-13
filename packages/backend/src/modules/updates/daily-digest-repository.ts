@@ -17,12 +17,8 @@ const MOVEMENT_SOURCES = [
   { key: "rfisAnswered", heading: "RFIs answered", table: "rfis", at: "official_responded_at", label: "subject" },
   { key: "approvalsRaised", heading: "Approvals submitted", table: "approvals", at: "created_at", label: "title" },
   { key: "approvalsDecided", heading: "Approvals decided", table: "approvals", at: "reviewed_at", label: "title" },
-  { key: "queriesRaised", heading: "Site queries raised", table: "queries", at: "created_at", label: "subject" },
-  { key: "queriesAnswered", heading: "Site queries answered", table: "queries", at: "answered_at", label: "subject" },
   { key: "changesRaised", heading: "Change requests raised", table: "change_requests", at: "created_at", label: "title" },
   { key: "changesDecided", heading: "Change requests decided", table: "change_requests", at: "decided_at", label: "title" },
-  { key: "actionsRaised", heading: "Action items raised", table: "action_items", at: "created_at", label: "title" },
-  { key: "actionsResolved", heading: "Action items resolved", table: "action_items", at: "resolved_at", label: "title" },
   { key: "activitiesCompleted", heading: "Programme activities completed", table: "activities", at: "actual_end_at", label: "name" },
   // Windowed on created_at, not scheduled_at: the latter is display text
   // ("Oct 21, 2023 • 02:15 PM"), so comparing it to a date matches everything.

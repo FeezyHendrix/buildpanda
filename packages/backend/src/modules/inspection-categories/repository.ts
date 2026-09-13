@@ -1,33 +1,40 @@
 import type { Knex } from "knex";
-import type { CategoryOwner, InspectionCategoryRow } from "./types.ts";
+import type { CategoryAudience, InspectionCategoryRow } from "./types.ts";
 
 const TABLE = "inspection_categories";
 
 export function inspectionCategoriesRepository(db: Knex) {
   /**
-   * A project sees its organisation's list plus anything added on the project
-   * itself. A project with no organisation falls back to the global seed rows.
+   * Every project sees BuildPanda's global catalogue plus its own workspace's
+   * additions plus anything added on the project itself — the catalogue is the
+   * service we offer, the rest is the customer extending it. BuildPanda staff
+   * working on the catalogue itself see only the global rows.
    */
-  function scoped(owner: CategoryOwner) {
+  function scoped(audience: CategoryAudience) {
     return db<InspectionCategoryRow>(TABLE).where((builder) => {
-      builder.where({ project_id: owner.projectId });
-      if (owner.organizationId) builder.orWhere({ organization_id: owner.organizationId });
-      else builder.orWhere((global) => global.whereNull("organization_id").whereNull("project_id"));
+      if ("global" in audience) {
+        builder.whereNull("organization_id").whereNull("project_id");
+        return;
+      }
+      builder
+        .where({ project_id: audience.projectId })
+        .orWhere((global) => global.whereNull("organization_id").whereNull("project_id"));
+      if (audience.organizationId) builder.orWhere({ organization_id: audience.organizationId });
     });
   }
 
   return {
-    list: (owner: CategoryOwner, includeArchived: boolean) =>
-      scoped(owner)
+    list: (audience: CategoryAudience, includeArchived: boolean) =>
+      scoped(audience)
         .modify((query) => {
           if (!includeArchived) query.where({ active: true });
         })
         .orderBy([{ column: "sort_order" }, { column: "name" }]),
 
-    byId: (owner: CategoryOwner, id: string) => scoped(owner).andWhere({ id }).first(),
+    byId: (audience: CategoryAudience, id: string) => scoped(audience).andWhere({ id }).first(),
 
-    byName: (owner: CategoryOwner, name: string) =>
-      scoped(owner).andWhereRaw("lower(name) = lower(?)", [name]).first(),
+    byName: (audience: CategoryAudience, name: string) =>
+      scoped(audience).andWhereRaw("lower(name) = lower(?)", [name]).first(),
 
     insert: (row: InspectionCategoryRow) => db<InspectionCategoryRow>(TABLE).insert(row),
 

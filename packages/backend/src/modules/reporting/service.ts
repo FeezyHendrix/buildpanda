@@ -102,9 +102,6 @@ export function reportingService(db: Knex) {
       changeApproved,
       changePending,
       phases,
-      dueActionItems,
-      blockedActionItems,
-      openQueries,
       pendingApprovals,
       expiringPermits,
       overdueActivities,
@@ -171,19 +168,6 @@ export function reportingService(db: Knex) {
         .where({ project_id: projectId })
         .select("id", "name", "status", "progress_percent", "sort_order")
         .orderBy("sort_order", "asc"),
-      db("action_items")
-        .where({ project_id: projectId })
-        .whereNot("status", "Resolved")
-        .count<{ count: string }[]>("id as count")
-        .first(),
-      db("action_items")
-        .where({ project_id: projectId, status: "Blocked" })
-        .count<{ count: string }[]>("id as count")
-        .first(),
-      db("queries")
-        .where({ project_id: projectId, status: "Open" })
-        .count<{ count: string }[]>("id as count")
-        .first(),
       db("approvals")
         .where({ project_id: projectId, kind: "client" })
         .whereIn("status", ["Pending", "Resubmit"])
@@ -301,7 +285,7 @@ export function reportingService(db: Knex) {
         .where({ project_id: projectId })
         .whereNotIn("status", ["Answered", "Closed", "Void", "Draft"])
         .whereNotNull("due_date")
-        .where("due_date", "<", db.raw("to_char(now(), 'YYYY-MM-DD')"))
+        .where("due_date", "<", db.raw("CURRENT_DATE"))
         .count<{ count: string }[]>("id as count")
         .first(),
       db("tasks as t")
@@ -309,7 +293,7 @@ export function reportingService(db: Knex) {
         .where("t.project_id", projectId)
         .whereNot("c.status", "Done")
         .whereNotNull("t.due_date")
-        .where("t.due_date", "<", db.raw("to_char(now(), 'YYYY-MM-DD')"))
+        .where("t.due_date", "<", db.raw("CURRENT_DATE"))
         .count<{ count: string }[]>("t.id as count")
         .first(),
       db("permits")
@@ -321,7 +305,7 @@ export function reportingService(db: Knex) {
               qq
                 .whereNot("status", "Rejected")
                 .whereNotNull("expiry_date")
-                .where("expiry_date", "<", db.raw("to_char(now(), 'YYYY-MM-DD')")),
+                .where("expiry_date", "<", db.raw("CURRENT_DATE")),
             ),
         )
         .count<{ count: string }[]>("id as count")
@@ -330,8 +314,8 @@ export function reportingService(db: Knex) {
         .where({ project_id: projectId })
         .whereNotIn("status", ["Expired", "Rejected"])
         .whereNotNull("expiry_date")
-        .where("expiry_date", ">=", db.raw("to_char(now(), 'YYYY-MM-DD')"))
-        .where("expiry_date", "<=", db.raw("to_char(now() + interval '30 days', 'YYYY-MM-DD')"))
+        .where("expiry_date", ">=", db.raw("CURRENT_DATE"))
+        .where("expiry_date", "<=", db.raw("CURRENT_DATE + 30"))
         .count<{ count: string }[]>("id as count")
         .first(),
     ]);
@@ -521,9 +505,6 @@ export function reportingService(db: Knex) {
             : null,
       },
       operations: {
-        dueActionItems: toNumber(dueActionItems?.count),
-        blockedActionItems: toNumber(blockedActionItems?.count),
-        openQueries: toNumber(openQueries?.count),
         pendingApprovals: toNumber(pendingApprovals?.count),
         expiringPermits: toNumber(expiringPermits?.count),
         overdueActivities: toNumber(overdueActivities?.count),

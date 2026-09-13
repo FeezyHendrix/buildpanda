@@ -2,9 +2,19 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { inspectionCategoriesService } from "./service.ts";
 import type { InspectionCategoriesRepository } from "./repository.ts";
-import type { CategoryOwner, InspectionCategoryRow } from "./types.ts";
+import type { CategoryAudience, CategoryOwner, InspectionCategoryRow } from "./types.ts";
 
 const owner: CategoryOwner = { projectId: "prj_1", organizationId: "org_1" };
+const catalogue: CategoryAudience = { global: true };
+
+/** Mirrors the repository's scoping: global catalogue + workspace + project. */
+function visible(audience: CategoryAudience, r: InspectionCategoryRow): boolean {
+  const isGlobal = r.organization_id === null && r.project_id === null;
+  if ("global" in audience) return isGlobal;
+  if (isGlobal) return true;
+  if (r.project_id) return r.project_id === audience.projectId;
+  return r.organization_id === audience.organizationId;
+}
 
 function row(over: Partial<InspectionCategoryRow> = {}): InspectionCategoryRow {
   return {
@@ -30,31 +40,35 @@ interface FakeState {
 
 function fakeRepository(state: FakeState): InspectionCategoriesRepository {
   return {
-    list: async (_owner, includeArchived) =>
-      state.rows.filter((r) => includeArchived || r.active),
-    byId: async (_owner, id) => state.rows.find((r) => r.id === id),
-    byName: async (_owner, name) =>
-      state.rows.find((r) => r.name.toLowerCase() === name.toLowerCase()),
-    insert: async (r) => {
+    list: async (audience: CategoryAudience, includeArchived: boolean) =>
+      state.rows.filter((r) => visible(audience, r) && (includeArchived || r.active)),
+    byId: async (audience: CategoryAudience, id: string) =>
+      state.rows.find((r) => r.id === id && visible(audience, r)),
+    byName: async (audience: CategoryAudience, name: string) =>
+      state.rows.find(
+        (r) => visible(audience, r) && r.name.toLowerCase() === name.toLowerCase(),
+      ),
+    insert: async (r: InspectionCategoryRow) => {
       state.rows.push(r);
       return [1] as never;
     },
-    update: async (id, patch) => {
+    update: async (id: string, patch: Partial<InspectionCategoryRow>) => {
       const target = state.rows.find((r) => r.id === id);
       if (target) Object.assign(target, patch);
       return 1 as never;
     },
-    remove: async (id) => {
+    remove: async (id: string) => {
       state.removed.push(id);
       state.rows = state.rows.filter((r) => r.id !== id);
       return 1 as never;
     },
-    usageCounts: async (ids) => new Map(ids.map((id) => [id, state.usage.get(id) ?? 0])),
-    renameOnInspections: async (id, name) => {
+    usageCounts: async (ids: string[]) =>
+      new Map(ids.map((id) => [id, state.usage.get(id) ?? 0])),
+    renameOnInspections: async (id: string, name: string) => {
       state.renamed.push({ id, name });
       return 1 as never;
     },
-  } as InspectionCategoriesRepository;
+  } as unknown as InspectionCategoriesRepository;
 }
 
 function build(rows: InspectionCategoryRow[] = [], usage = new Map<string, number>()) {
@@ -153,4 +167,87 @@ test("usage counts ride along so the UI can say what is safe to remove", async (
   const { service } = build([row()], new Map([["insc_1", 7]]));
   const [only] = await service.list(owner);
   assert.equal(only?.usageCount, 7);
+});
+
+// --- BuildPanda's service catalogue ----------------------------------------
+
+function globalRow(over: Partial<InspectionCategoryRow> = {}): InspectionCategoryRow {
+  return row({
+    id: "insc_g1",
+    organization_id: null,
+    project_id: null,
+    name: "Materials testing",
+    created_by_id: null,
+    ...over,
+  });
+}
+
+test("every project sees BuildPanda's catalogue as well as its own workspace's list", async () => {
+  const { service } = build([globalRow(), row()]);
+  const names = (await service.list(owner)).map((c) => c.name).sort();
+  assert.deepEqual(names, ["Drainage", "Materials testing"]);
+});
+
+test("a project with a workspace no longer loses the catalogue", async () => {
+  const { service } = build([globalRow()]);
+  assert.equal((await service.list(owner)).length, 1);
+  assert.equal((await service.list({ projectId: "prj_9", organizationId: null }))[0]?.scope, "global");
+});
+
+test("a catalogue row and a workspace row of the same name show once, workspace wording winning", async () => {
+  const { service } = build([
+    globalRow({ id: "insc_g2", name: "Drainage" }),
+    row({ id: "insc_o1", name: "Drainage" }),
+  ]);
+  const listed = await service.list(owner);
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0]?.id, "insc_o1");
+  assert.equal(listed[0]?.scope, "organization");
+});
+
+test("a workspace cannot rename BuildPanda's catalogue out from under other customers", async () => {
+  const { service } = build([globalRow()]);
+  await assert.rejects(
+    service.update(owner, "insc_g1", { name: "Our own wording" }),
+    /only buildpanda can change it/i,
+  );
+  await assert.rejects(service.remove(owner, "insc_g1"), /only buildpanda can change it/i);
+});
+
+test("a platform admin adds to the catalogue and every project gets it", async () => {
+  const { state, service } = build([]);
+  const created = await service.create(catalogue, { name: "Piling integrity" }, "usr_admin");
+  assert.equal(created.scope, "global");
+  assert.equal(state.rows[0]!.organization_id, null);
+  assert.equal(state.rows[0]!.project_id, null);
+  assert.equal((await service.list(owner))[0]?.name, "Piling integrity");
+});
+
+test("a platform admin renames and archives a catalogue row", async () => {
+  const { state, service } = build([globalRow()], new Map([["insc_g1", 4]]));
+  const renamed = await service.update(catalogue, "insc_g1", { name: "Materials & lab testing" });
+  assert.equal(renamed.name, "Materials & lab testing");
+  assert.deepEqual(state.renamed, [{ id: "insc_g1", name: "Materials & lab testing" }]);
+  const removed = await service.remove(catalogue, "insc_g1");
+  assert.equal(removed.archived, true);
+  assert.equal(state.rows[0]!.active, false);
+});
+
+test("a catalogue row is reordered, not just renamed", async () => {
+  const { service } = build([globalRow()]);
+  assert.equal((await service.update(catalogue, "insc_g1", { sortOrder: 7 })).sortOrder, 7);
+});
+
+test("a workspace adding a name BuildPanda already offers is pointed at the catalogue", async () => {
+  const { service } = build([globalRow()]);
+  await assert.rejects(
+    service.create(owner, { name: "materials testing" }, "usr_1"),
+    /buildpanda's inspection catalogue/i,
+  );
+});
+
+test("the catalogue only ever shows the platform's own rows", async () => {
+  const { service } = build([globalRow(), row(), row({ id: "insc_p1", project_id: "prj_1", organization_id: null, name: "Tunnel lining" })]);
+  const listed = await service.list(catalogue, true);
+  assert.deepEqual(listed.map((c) => c.id), ["insc_g1"]);
 });

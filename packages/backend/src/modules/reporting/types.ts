@@ -108,9 +108,6 @@ export interface ScheduleReportingSlice {
 }
 
 export interface OperationsReportingSlice {
-  dueActionItems: number;
-  blockedActionItems: number;
-  openQueries: number;
   pendingApprovals: number;
   expiringPermits: number;
   overdueActivities: number;

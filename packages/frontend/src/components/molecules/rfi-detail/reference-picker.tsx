@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { useProjectActivities } from "@/hooks/use-activities";
-import { useActionItems } from "@/hooks/use-action-items";
 
 export interface RfiReference {
   type: "action_item" | "activity";
@@ -47,7 +46,6 @@ export function ReferencePicker({
 }) {
   const [open, setOpen] = useState(false);
   const { data: activities = [] } = useProjectActivities(projectId);
-  const { data: actionItems = [] } = useActionItems(projectId);
 
   if (!open) {
     return (
@@ -66,22 +64,6 @@ export function ReferencePicker({
         </button>
       </div>
       <div className="max-h-40 overflow-y-auto">
-        {actionItems.length > 0 && (
-          <p className="px-1 py-1 text-[10px] uppercase tracking-wide text-gray-400">Action items</p>
-        )}
-        {actionItems.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            className="block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-gray-50"
-            onClick={() => {
-              onPick({ type: "action_item", id: a.id, label: a.title });
-              setOpen(false);
-            }}
-          >
-            {a.title}
-          </button>
-        ))}
         {activities.length > 0 && (
           <p className="px-1 py-1 text-[10px] uppercase tracking-wide text-gray-400">Activities</p>
         )}
@@ -98,7 +80,7 @@ export function ReferencePicker({
             {a.name}
           </button>
         ))}
-        {actionItems.length === 0 && activities.length === 0 && (
+        {activities.length === 0 && (
           <p className="px-2 py-2 text-sm text-gray-400">Nothing to reference yet.</p>
         )}
       </div>

@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import type { InspectionCategory } from "@/lib/project-types";
+import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
+import { useProjectActivities } from "@/hooks/use-activities";
+import { useMemo } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
@@ -12,18 +15,23 @@ export interface UpsertInspectionValues {
   scheduledAt: string;
   status: "Scheduled" | "Action Required" | "Completed";
   riskLevel: "Low" | "Medium" | "High";
+  activityId: string | null;
+  location: string | null;
+  holdPoint: boolean;
 }
 
 interface UpsertInspectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "edit";
+  projectId: string;
   initial?: UpsertInspectionValues;
   onSubmit: (values: UpsertInspectionValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
 }
 
+// Unchanged on purpose — see request-inspection-dialog.
 const CATEGORIES: Exclude<InspectionCategory, "All Reports">[] = [
   "Structural",
   "Quantity Survey",
@@ -46,6 +54,7 @@ function UpsertInspectionDialog({
   open,
   onOpenChange,
   mode,
+  projectId,
   initial,
   onSubmit,
   isSubmitting = false,
@@ -57,6 +66,14 @@ function UpsertInspectionDialog({
   const [scheduledAt, setScheduledAt] = useState("");
   const [status, setStatus] = useState<"Scheduled" | "Action Required" | "Completed">("Scheduled");
   const [riskLevel, setRiskLevel] = useState<"Low" | "Medium" | "High">("Low");
+  const [activityId, setActivityId] = useState<string | null>(null);
+  const [location, setLocation] = useState("");
+  const [holdPoint, setHoldPoint] = useState(false);
+  const { data: activities = [] } = useProjectActivities(open ? projectId : undefined);
+  const activityItems = useMemo<ComboItem[]>(
+    () => activities.filter((a) => !a.isSummary).map((a) => ({ id: a.id, label: a.name })),
+    [activities],
+  );
 
   useEffect(() => {
     if (open) {
@@ -66,6 +83,9 @@ function UpsertInspectionDialog({
       setScheduledAt(initial?.scheduledAt ?? "");
       setStatus(initial?.status ?? "Scheduled");
       setRiskLevel(initial?.riskLevel ?? "Low");
+      setActivityId(initial?.activityId ?? null);
+      setLocation(initial?.location ?? "");
+      setHoldPoint(initial?.holdPoint ?? false);
     }
   }, [open, initial]);
 
@@ -80,6 +100,9 @@ function UpsertInspectionDialog({
       scheduledAt: scheduledAt.trim(),
       status,
       riskLevel,
+      activityId,
+      location: location.trim() || null,
+      holdPoint,
     });
   }
 
@@ -137,16 +160,56 @@ function UpsertInspectionDialog({
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="inspection-scheduled">Scheduled date</Label>
+          <input
+            id="inspection-scheduled"
+            type="date"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="inspection-location">Location / chainage</Label>
+          <input
+            id="inspection-location"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            maxLength={200}
+            placeholder="e.g. ch 0+000 – 0+600"
+            className={inputClass}
+          />
+        </div>
+      </div>
+
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="inspection-scheduled">Scheduled Date</Label>
-        <input
-          id="inspection-scheduled"
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
-          placeholder="YYYY-MM-DD"
-          className={inputClass}
+        <Label>Activity being inspected</Label>
+        <ComboSelect
+          items={activityItems}
+          value={activityId}
+          onChange={setActivityId}
+          placeholder="Not linked to an activity"
+          searchPlaceholder="Search activities…"
+          emptyText="No activities match"
         />
       </div>
+
+      <label className="flex items-start gap-2 rounded-lg border border-line-hair p-3 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={holdPoint}
+          onChange={(event) => setHoldPoint(event.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          <span className="font-medium text-gray-900">This is a hold point</span>
+          <span className="mt-0.5 block text-xs text-gray-500">
+            Work must not proceed past it until the inspection passes.
+          </span>
+        </span>
+      </label>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="inspection-status">Status</Label>

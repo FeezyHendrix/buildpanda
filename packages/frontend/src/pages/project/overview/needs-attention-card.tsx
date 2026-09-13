@@ -65,7 +65,6 @@ function buildItems(args: {
   const ops = snapshot?.operations;
   const staleDays = snapshot?.activity.daysSinceLastUpdate ?? null;
   const items: AttentionItem[] = [
-    { key: "blocked", count: ops?.blockedActionItems ?? 0, label: "blocked action items", to: "action-items", tone: "danger" },
     {
       key: "overdue-rfis",
       count: ops?.overdueRfis ?? countOverdueRfis(rfis, today),
@@ -73,7 +72,6 @@ function buildItems(args: {
       to: "rfis",
       tone: "danger",
     },
-    { key: "due-actions", count: ops?.dueActionItems ?? 0, label: "action items due", to: "action-items", tone: "warning" },
     { key: "approvals", count: ops?.pendingApprovals ?? 0, label: "pending approvals", to: "approvals", tone: "warning" },
     { key: "changes", count: submittedChanges, label: "change orders awaiting decision", to: "change-requests", tone: "warning" },
     { key: "inspections", count: snapshot?.inspections.failed ?? 0, label: "failed inspections", to: "inspections", tone: "danger" },
@@ -92,9 +90,8 @@ function buildItems(args: {
     { key: "late-orders", count: ops?.lateMaterialOrders ?? 0, label: "material orders late", to: "materials", tone: "danger" },
     { key: "material-approvals", count: ops?.pendingMaterialApprovals ?? 0, label: "material approvals pending", to: "material-approvals", tone: "warning" },
     { key: "invoices", count: snapshot?.finance.invoices.overdueCount ?? 0, label: "overdue invoices", to: `${BUDGET_INVOICES_PATH}?tab=invoices`, tone: "danger" },
-    { key: "key-dates", count: countMissedKeyDates(keyDates, today), label: "missed key dates", to: "key-dates", tone: "danger" },
+    { key: "key-dates", count: countMissedKeyDates(keyDates, today), label: "missed key dates", to: "schedules/key-dates", tone: "danger" },
     { key: "risks", count: snapshot?.risks.high ?? 0, label: "high risks", to: "#risk-factors", tone: "warning" },
-    { key: "queries", count: ops?.openQueries ?? 0, label: "open queries", to: "queries", tone: "neutral" },
     {
       key: "stale",
       count: staleDays !== null && staleDays >= STALE_UPDATE_DAYS ? staleDays : 0,

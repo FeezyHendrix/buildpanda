@@ -299,7 +299,7 @@ function ProjectCard({ project }: { project: Project }) {
 
       {/* {activePhase && (
         <Link
-          to={`/project/${project.id}/project-chart`}
+          to={`/project/${project.id}/schedules/project-chart`}
           className="relative z-10 rounded-lg border border-line-hair bg-surface-alt p-3 outline-none transition-colors hover:bg-primary-50 focus-visible:shadow-focus"
         >
           <div className="flex items-center justify-between gap-3">

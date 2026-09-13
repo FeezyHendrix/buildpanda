@@ -584,26 +584,6 @@ export function agentRepository(db: Knex) {
         );
     },
 
-    actionItemsOpen(projectId: string) {
-      return db("action_items as ai")
-        .leftJoin("user as u", "u.id", "ai.assignee_id")
-        .where("ai.project_id", projectId)
-        .whereNot("ai.status", "Resolved")
-        .orderBy("ai.due_date", "asc")
-        .limit(50)
-        .select("ai.id", "ai.title", "ai.status", "ai.priority", "ai.due_date", "u.name as assignee");
-    },
-
-    queriesOpen(projectId: string) {
-      return db("queries as q")
-        .leftJoin("user as u", "u.id", "q.assignee_id")
-        .where("q.project_id", projectId)
-        .whereNot("q.status", "Closed")
-        .orderBy("q.due_date", "asc")
-        .limit(50)
-        .select("q.id", "q.subject as title", "q.status", "q.due_date", "u.name as assignee");
-    },
-
     changeRequests(projectId: string) {
       return db("change_requests as cr")
         .leftJoin("user as u", "u.id", "cr.submitted_by_id")
@@ -788,9 +768,6 @@ export function agentRepository(db: Knex) {
     taskEntityLinks(projectId: string) {
       return db("task_entity_links as el")
         .join("tasks as t", "t.id", "el.task_id")
-        .leftJoin("action_items as ai", function () {
-          this.on("el.entity_type", db.raw("?", ["action_item"])).andOn("ai.id", "el.entity_id");
-        })
         .leftJoin("rfis as r", function () {
           this.on("el.entity_type", db.raw("?", ["rfi"])).andOn("r.id", "el.entity_id");
         })
@@ -813,7 +790,7 @@ export function agentRepository(db: Knex) {
           "t.title as taskTitle",
           "el.entity_type as entityType",
           db.raw(
-            "COALESCE(ai.title, r.subject, cr.title, mo.material_name, inv.vendor_name, mp.name) as label",
+            "COALESCE(r.subject, cr.title, mo.material_name, inv.vendor_name, mp.name) as label",
           ),
         );
     },

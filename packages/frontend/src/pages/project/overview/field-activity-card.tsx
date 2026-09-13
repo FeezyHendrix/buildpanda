@@ -81,7 +81,7 @@ export function FieldActivityCard({ projectId, className }: { projectId: string;
           <h3 className="text-[13px] font-semibold text-black-300">Field activity</h3>
         </div>
         <Link
-          to={`/project/${projectId}/daily-log`}
+          to={`/project/${projectId}/schedules/daily-log`}
           className="text-xs font-semibold text-[#004DE7] hover:underline"
         >
           Daily log

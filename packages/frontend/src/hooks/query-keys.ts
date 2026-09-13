@@ -168,22 +168,6 @@ export const buildingKeys = {
   list: (projectId: string) => [...buildingKeys.all(projectId), "list"] as const,
 };
 
-export const actionItemKeys = {
-  all: (projectId: string) => ["projects", projectId, "action-items"] as const,
-  list: (projectId: string, status?: string) =>
-    [...actionItemKeys.all(projectId), "list", status ?? "all"] as const,
-  detail: (projectId: string, itemId: string) =>
-    [...actionItemKeys.all(projectId), "detail", itemId] as const,
-};
-
-export const siteQueryKeys = {
-  all: (projectId: string) => ["projects", projectId, "queries"] as const,
-  list: (projectId: string, status?: string) =>
-    [...siteQueryKeys.all(projectId), "list", status ?? "all"] as const,
-  detail: (projectId: string, queryId: string) =>
-    [...siteQueryKeys.all(projectId), "detail", queryId] as const,
-};
-
 export const rfiKeys = {
   all: (projectId: string) => ["projects", projectId, "rfis"] as const,
   list: (projectId: string, status?: string) =>
@@ -249,7 +233,6 @@ export const keyDateKeys = {
 
 export const insightKeys = {
   insights: (projectId: string) => ["projects", projectId, "insights"] as const,
-  whatsNext: (projectId: string) => ["projects", projectId, "whats-next"] as const,
 };
 
 export const dailyLogKeys = {

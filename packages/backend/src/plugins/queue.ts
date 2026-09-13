@@ -15,7 +15,6 @@ import { registerKeyDateReminderWorker } from "../modules/key-dates/reminder-job
 import { registerLifecycleEmailWorker } from "../modules/lifecycle/index.ts";
 import { registerDecisionChasingWorker } from "../modules/lifecycle/decision-chasing-job.ts";
 import { registerProposalExpiryWorker } from "../modules/proposals/expiry-job.ts";
-import { registerActionItemReminderWorker } from "../modules/action-items/reminder-job.ts";
 import { registerRfiReminderWorker } from "../modules/rfis/reminder-job.ts";
 import { registerBimProcessingWorker } from "../modules/bim/job.ts";
 import { registerBoqImportWorker } from "../modules/materials-equipment/boq-job.ts";
@@ -43,7 +42,6 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
   if (runWorkers) {
     registerPandaAiWorker(fastify.db, manager);
     registerProposalExpiryWorker(fastify.db, manager);
-    registerActionItemReminderWorker(fastify.db, manager);
     registerRfiReminderWorker(fastify.db, manager);
     registerBimProcessingWorker(fastify.db, manager);
     registerBoqImportWorker(fastify.db, manager);

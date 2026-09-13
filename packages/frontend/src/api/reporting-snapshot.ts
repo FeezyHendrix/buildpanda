@@ -93,9 +93,6 @@ export interface ProjectReportingSnapshot {
     delayedActivities?: { count: number; daysLost: number } | null;
   };
   operations: {
-    dueActionItems: number;
-    blockedActionItems: number;
-    openQueries: number;
     pendingApprovals: number;
     expiringPermits: number;
     upcomingKeyDates: number;

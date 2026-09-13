@@ -16,7 +16,7 @@ import {
   useOpenDm,
   useAllChannels,
   useUpdateMembership,
-  useForwardToActionItem,
+  useForwardToTask,
   useChannelMembers,
   useCreateChannel,
 } from "@/hooks/use-chat";
@@ -147,11 +147,11 @@ export default function ProjectChat() {
     toggleReaction.mutate({ messageId: m.id, emoji });
   };
 
-  const forwardToTask = useForwardToActionItem();
+  const forwardToTask = useForwardToTask();
   const handleForward = (m: ChatMessage) => {
     forwardToTask.mutate(m.id, {
-      onSuccess: () => toast("Action item created from message", "success"),
-      onError: () => toast("Could not create action item"),
+      onSuccess: () => toast("Task created from message", "success"),
+      onError: () => toast("Could not create task"),
     });
   };
 

@@ -1,4 +1,9 @@
-export type CategoryScope = "organization" | "project";
+/**
+ * "global" is BuildPanda's own service catalogue — the inspections the platform
+ * offers, visible on every project. "organization" and "project" are a
+ * customer's own additions on top of it.
+ */
+export type CategoryScope = "global" | "organization" | "project";
 
 export interface InspectionCategoryRow {
   id: string;
@@ -26,6 +31,14 @@ export interface CategoryOwner {
   projectId: string;
   organizationId: string | null;
 }
+
+/** BuildPanda staff working on the catalogue itself rather than one project's view. */
+export interface GlobalCatalogue {
+  global: true;
+}
+
+/** Whose list a caller is reading or editing. */
+export type CategoryAudience = CategoryOwner | GlobalCatalogue;
 
 export interface CreateCategoryInput {
   name: string;

@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { inspectionsApi, type RequestInspectionVariables, type EditInspectionVariables, type DeleteInspectionVariables } from "@/api/inspections";
+import {
+  inspectionsApi,
+  type RequestInspectionVariables,
+  type EditInspectionVariables,
+  type DeleteInspectionVariables,
+  type RecordInspectionOutcomeVariables,
+} from "@/api/inspections";
 import { inspectionKeys } from "./query-keys";
 
 export function useProjectInspections(projectId: string | undefined) {
@@ -30,6 +36,18 @@ export function useEditInspection() {
   return useMutation({
     mutationFn: ({ projectId, inspectionId, ...patch }: EditInspectionVariables) => 
       inspectionsApi.edit(projectId, inspectionId, patch),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: inspectionKeys.list(projectId) });
+    },
+  });
+}
+
+export function useRecordInspectionOutcome() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, inspectionId, ...body }: RecordInspectionOutcomeVariables) =>
+      inspectionsApi.recordOutcome(projectId, inspectionId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: inspectionKeys.list(projectId) });
     },

@@ -32,10 +32,8 @@ export const FEATURE_FLAGS = [
   "collaboration.participants",
   "project.updates",
   "workflow.rfis",
-  "workflow.queries",
   "workflow.approvals",
   "workflow.changeRequests",
-  "workflow.actionItems",
   "compliance.permits",
   "compliance.keyDates",
 ] as const;

@@ -77,16 +77,16 @@ test("section-matrix 'edit' grants documents:upload through the backend guard", 
 });
 
 test("section-matrix 'edit' on a workflow section grants comments:post (author parity)", () => {
-  const ctx = ctxWithSectionMatrix("user_1", { "workflow.queries": "edit" });
-  assert.equal(allows(ctx, "queries", "raise"), true);
+  const ctx = ctxWithSectionMatrix("user_1", { "workflow.rfis": "edit" });
+  assert.equal(allows(ctx, "rfis", "create"), true);
   assert.equal(allows(ctx, "comments", "post"), true);
   // must stay author-level only — never the manage/delete action
-  assert.equal(allows(ctx, "queries", "manage"), false);
+  assert.equal(allows(ctx, "rfis", "manage"), false);
 });
 
 test("section-matrix 'view' on a workflow section does NOT grant comments:post", () => {
-  const ctx = ctxWithSectionMatrix("user_1", { "workflow.queries": "view" });
-  assert.equal(allows(ctx, "queries", "view"), true);
+  const ctx = ctxWithSectionMatrix("user_1", { "workflow.rfis": "view" });
+  assert.equal(allows(ctx, "rfis", "view"), true);
   assert.equal(allows(ctx, "comments", "post"), false);
 });
 
@@ -108,7 +108,7 @@ test("assertProjectPermission and canProjectPermission stay in exact parity", ()
     "projects.schedule": "edit",
     "projects.documents": "view",
     "commercial.budget": "edit",
-    "workflow.queries": "edit",
+    "workflow.rfis": "edit",
   });
   const cases: Array<[string, string]> = [
     ["schedule", "view"],
@@ -118,8 +118,8 @@ test("assertProjectPermission and canProjectPermission stay in exact parity", ()
     ["documents", "delete"],
     ["finances", "view"],
     ["finances", "manage"],
-    ["queries", "view"],
-    ["queries", "raise"],
+    ["rfis", "view"],
+    ["rfis", "create"],
     ["teamMembers", "manage"],
   ];
   for (const [resource, action] of cases) {
@@ -216,7 +216,7 @@ test("absent grants fall back to identical legacy compose", () => {
   for (const [res, act] of [
     ["approvals", "decide"],
     ["finances", "dispute"],
-    ["queries", "raise"],
+    ["rfis", "create"],
     ["schedule", "manage"],
   ] as const) {
     assert.equal(allows(dual, res, act), allows(legacy, res, act), `${res}:${act} drifted`);
@@ -246,7 +246,7 @@ test("privileged classification matches the validated partition", () => {
   assert.equal(isPrivilegedGrant("finances", "dispute"), false);
   assert.equal(isPrivilegedGrant("rfis", "respond"), false);
   assert.equal(isPrivilegedGrant("updates", "post"), false);
-  assert.equal(isPrivilegedGrant("queries", "raise"), false);
+  assert.equal(isPrivilegedGrant("rfis", "create"), false);
 });
 
 test("grantable catalog excludes org/sales surfaces", () => {

@@ -280,14 +280,6 @@ export const FEATURE_FLAGS = [
     routePrefixes: ["/projects/:id/rfis", "/rfi-reply"],
   },
   {
-    key: "workflow.queries",
-    label: "Queries",
-    group: "Workflow",
-    description: "Project queries and query responses.",
-    enabledByDefault: true,
-    routePrefixes: ["/projects/:id/queries"],
-  },
-  {
     key: "workflow.approvals",
     label: "Approvals",
     group: "Workflow",
@@ -302,14 +294,6 @@ export const FEATURE_FLAGS = [
     description: "Change requests, budgets and client approvals.",
     enabledByDefault: true,
     routePrefixes: ["/projects/:id/change-requests"],
-  },
-  {
-    key: "workflow.actionItems",
-    label: "Action items",
-    group: "Workflow",
-    description: "Action item tracking and reminders.",
-    enabledByDefault: true,
-    routePrefixes: ["/projects/:id/action-items"],
   },
   {
     key: "compliance.permits",
