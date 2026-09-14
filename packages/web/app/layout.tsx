@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { site } from "@/lib/site";
@@ -11,9 +11,17 @@ import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-LTCX5C0F7N";
 
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+/**
+ * Self-hosted rather than next/font/google. Fetching the face at build time
+ * made every build depend on Google being reachable, and the site's own
+ * requests depend on a third party at runtime. Both files are the variable
+ * font, so one file covers 400 through 800.
+ */
+const jakarta = localFont({
+  src: [
+    { path: "../public/fonts/plus-jakarta-sans-latin.woff2", weight: "400 800", style: "normal" },
+    { path: "../public/fonts/plus-jakarta-sans-latin-ext.woff2", weight: "400 800", style: "normal" },
+  ],
   variable: "--font-jakarta",
   display: "swap",
 });
