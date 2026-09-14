@@ -1,4 +1,8 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useUrlState } from "@/hooks/use-url-state";
+import { QueryError } from "@/components/molecules/query-error";
+import { UnavailableRecord } from "@/components/molecules/unavailable-record";
 import { Button } from "@/components/atoms/button";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
@@ -33,6 +37,9 @@ import {
   type ServiceStatusFilter,
 } from "./inspections/inspection-helpers";
 
+const EMPTY_LIST: never[] = [];
+const STATUS_FILTERS = SERVICE_STATUS_TABS.map(tab => tab.value);
+
 /**
  * The inspection register. An inspection here is a client-facing service order:
  * the client requests it, BuildPanda assigns an inspector who attends and
@@ -50,18 +57,24 @@ export default function ProjectInspections() {
   // Only a workspace admin may extend the category list; the API refuses others.
   const canAddCategory = access?.orgRole === "owner" || access?.orgRole === "admin";
 
-  const { data: inspections = [], isPending } = useProjectInspections(project.id);
-  const { data: activities = [] } = useProjectActivities(project.id);
-  const { data: participants = [] } = useParticipants(
+  const { data: inspections = EMPTY_LIST, isPending, isFetching, error, refetch } = useProjectInspections(project.id);
+  const { data: activities = EMPTY_LIST } = useProjectActivities(project.id);
+  const { data: participants = EMPTY_LIST } = useParticipants(
     project.id,
     Boolean(access?.capabilities.canManageParticipants),
   );
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ServiceStatusFilter>("all");
-  const [requestOpen, setRequestOpen] = useState(false);
-  const [detailTarget, setDetailTarget] = useState<InspectionReport | null>(null);
-  const [editTarget, setEditTarget] = useState<InspectionReport | null>(null);
+  const [, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useUrlState<string>("q", "");
+  const [statusFilter, setStatusFilter] = useUrlState<ServiceStatusFilter>("status", "all", STATUS_FILTERS);
+  const [requestView, setRequestView] = useUrlState<string | null>("request", null);
+  const [detailId, setDetailId] = useUrlState<string | null>("inspection", null);
+  const [editId, setEditId] = useUrlState<string | null>("edit", null);
+  const requestOpen = requestView === "new" && canRequest;
+  const editTarget = inspections.find(report => report.id === editId) ?? null;
+  const setRequestOpen = (open: boolean) => setRequestView(open ? "new" : null);
+  const setDetailTarget = (report: InspectionReport | null) => setDetailId(report?.id ?? null);
+  const setEditTarget = (report: InspectionReport | null) => setEditId(report?.id ?? null);
   const [cancelTarget, setCancelTarget] = useState<InspectionReport | null>(null);
   const [outcomeTarget, setOutcomeTarget] = useState<InspectionReport | null>(null);
   const [attendTarget, setAttendTarget] = useState<InspectionReport | null>(null);
@@ -91,9 +104,7 @@ export default function ProjectInspections() {
     .filter((report) => matchesInspectionSearch(report, search));
 
   // The record in the drawer must follow the cache, not the click that opened it.
-  const detail = detailTarget
-    ? (inspections.find((report) => report.id === detailTarget.id) ?? detailTarget)
-    : null;
+  const detail = inspections.find(report => report.id === detailId) ?? null;
 
   /** Planned but never started: inspecting it is a wasted trip (finding F44). */
   function notStarted(report: InspectionReport | null): boolean {
@@ -109,8 +120,12 @@ export default function ProjectInspections() {
   }
 
   function clearFilters(): void {
-    setSearch("");
-    setStatusFilter("all");
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.delete("q");
+      next.delete("status");
+      return next;
+    }, { replace: true });
   }
 
   return (
@@ -142,12 +157,23 @@ export default function ProjectInspections() {
           onChange={setStatusFilter}
           ariaLabel="Filter by service status"
         />
-        <p className="ml-auto text-sm text-ink-muted">
+        {!isPending && !error ? <p className="ml-auto text-sm text-ink-muted">
           {filtered.length} of {inspections.length} inspections
-        </p>
+        </p> : null}
       </div>
 
-      <InspectionsTable
+      {error ? <QueryError error={error} retry={refetch} noun="inspections" /> : null}
+      {!error && !isFetching && !isPending && ((detailId && !detail) || (editId && !editTarget)) ? (
+        <UnavailableRecord name="Inspection" returnLabel="Return to inspections" onReturn={() => {
+          setSearchParams(previous => {
+            const next = new URLSearchParams(previous);
+            next.delete("inspection");
+            next.delete("edit");
+            return next;
+          }, { replace: true });
+        }} />
+      ) : null}
+      {!error || inspections.length > 0 ? <InspectionsTable
         inspections={filtered}
         totalCount={inspections.length}
         isPending={isPending}
@@ -155,7 +181,7 @@ export default function ProjectInspections() {
         onOpen={setDetailTarget}
         onClearFilters={clearFilters}
         onRequest={canRequest ? () => setRequestOpen(true) : undefined}
-      />
+      /> : null}
 
       <RequestInspectionDialog
         open={requestOpen}
@@ -163,23 +189,21 @@ export default function ProjectInspections() {
         projectId={project.id}
         currency={project.currency}
         canAddCategory={canAddCategory}
-        isSubmitting={requestInspection.isPending}
         error={requestInspection.error ? errorMessage(requestInspection.error) : null}
-        onSubmit={(input) => {
-          requestInspection.mutate(
-            { projectId: project.id, ...input },
-            {
-              onSuccess: () => {
-                setRequestOpen(false);
-                toast("Inspection requested — BuildPanda will assign an inspector", "success");
-              },
-            },
-          );
+        onSubmit={async (input) => {
+          const report = await requestInspection.mutateAsync({ projectId: project.id, ...input });
+          setSearchParams(previous => {
+            const next = new URLSearchParams(previous);
+            next.delete("request");
+            next.set("inspection", report.id);
+            return next;
+          }, { replace: true });
+          toast("Inspection requested — BuildPanda will assign an inspector", "success");
         }}
       />
 
       <InspectionDetailDrawer
-        open={detail !== null}
+        open={detail !== null && !editId && !cancelTarget && !outcomeTarget}
         report={detail}
         activityName={detail?.activityId ? (activityNames.get(detail.activityId) ?? null) : null}
         activityNotStarted={notStarted(detail)}
@@ -198,7 +222,8 @@ export default function ProjectInspections() {
       />
 
       <UpsertInspectionDialog
-        open={editTarget !== null}
+        open={editTarget !== null && canManage}
+        inspectionId={editId ?? ""}
         onOpenChange={(next) => {
           if (!next) setEditTarget(null);
         }}
@@ -222,19 +247,12 @@ export default function ProjectInspections() {
               }
             : undefined
         }
-        isSubmitting={editInspection.isPending}
         error={editInspection.error ? errorMessage(editInspection.error) : null}
-        onSubmit={(values) => {
+        onSubmit={async (values) => {
           if (!editTarget) return;
-          editInspection.mutate(
-            { projectId: project.id, inspectionId: editTarget.id, ...values },
-            {
-              onSuccess: () => {
-                setEditTarget(null);
-                toast("Inspection updated", "success");
-              },
-            },
-          );
+          await editInspection.mutateAsync({ projectId: project.id, inspectionId: editTarget.id, ...values });
+          setEditTarget(null);
+          toast("Inspection updated", "success");
         }}
       />
 
