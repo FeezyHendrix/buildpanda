@@ -10,6 +10,7 @@ import {
   type CreateDocumentInput,
   type EditDocumentInput,
 } from "./service.ts";
+import { DOCUMENT_VISIBILITIES } from "./types.ts";
 
 const projectIdParams = {
   type: "object",
@@ -28,6 +29,14 @@ const documentParams = {
   },
 } as const;
 
+const registerFields = {
+  title: { type: ["string", "null"], maxLength: 300 },
+  revision: { type: ["string", "null"], maxLength: 50 },
+  supersedesId: { type: ["string", "null"], maxLength: 100 },
+  visibility: { type: "string", enum: [...DOCUMENT_VISIBILITIES] },
+  documentDate: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+} as const;
+
 const createDocumentBody = {
   type: "object",
   required: ["categoryId"],
@@ -39,6 +48,7 @@ const createDocumentBody = {
     size: { type: "string", minLength: 1, maxLength: 50 },
     uploadedAt: { type: "string", minLength: 1, maxLength: 100 },
     status: { type: "string", enum: ["Verified", "Pending", "Expired"] },
+    ...registerFields,
   },
 } as const;
 
@@ -50,6 +60,7 @@ const editDocumentBody = {
     categoryId: { type: "string", minLength: 1, maxLength: 100 },
     fileName: { type: "string", minLength: 1, maxLength: 255 },
     status: { type: "string", enum: ["Verified", "Pending", "Expired"] },
+    ...registerFields,
   },
 } as const;
 

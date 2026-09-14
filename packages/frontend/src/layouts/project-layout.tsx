@@ -1,3 +1,4 @@
+import { QueryError } from "@/components/molecules/query-error";
 import {
   Navigate,
   Outlet,
@@ -7,9 +8,9 @@ import {
   useParams,
 } from "react-router-dom";
 import { useState, type ReactNode } from "react";
-import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { Navbar } from "@/components/organisms/navbar";
 import { ProjectSidebar } from "@/components/organisms/project-sidebar";
@@ -21,6 +22,7 @@ import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
 import { BuildingScopeProvider } from "@/contexts/building-scope-context";
+import { useProjectBreadcrumbs } from "./use-project-breadcrumbs";
 import type { Session } from "@/stores/auth";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 
@@ -36,7 +38,7 @@ export function useProjectContext(): ProjectOutletContext {
 export default function ProjectLayout() {
   const { session, isPending: sessionPending, logout } = useAuthGuard();
   const { projectId } = useParams<{ projectId: string }>();
-  const { data: project, isPending: projectPending } = useProject(projectId);
+  const { data: project, isPending: projectPending, error, refetch } = useProject(projectId);
   const { data: access } = useProjectAccess(projectId);
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,6 +64,7 @@ export default function ProjectLayout() {
     return null;
   }
 
+  if (error && !project) return <AppShell session={session} onLogout={logout}><QueryError error={error} retry={refetch} noun="project" /></AppShell>;
   if (!project) {
     return (
       <AppShell session={session} onLogout={logout}>
@@ -69,11 +72,7 @@ export default function ProjectLayout() {
           <EmptyState
             title="Project not found"
             description="We couldn't find the project you're looking for. It may have been removed or you don't have access."
-            action={
-              <Button variant="primary" onClick={() => navigate("/")}>
-                Back to home
-              </Button>
-            }
+            action={{ label: "Back to home", onClick: () => navigate("/") }}
           />
         </main>
       </AppShell>
@@ -91,10 +90,13 @@ export default function ProjectLayout() {
           onClose={() => setSidebarOpen(false)}
           onOpen={() => setSidebarOpen(true)}
         />
-        <main className="relative flex-1 overflow-y-auto no-scrollbar">
-          <ErrorBoundary>
-            <Outlet context={{ project, access } satisfies ProjectOutletContext} />
-          </ErrorBoundary>
+        <main className="flex flex-1 flex-col overflow-y-auto no-scrollbar">
+          <ProjectBreadcrumbs project={project} access={access} />
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <ErrorBoundary>
+              <Outlet context={{ project, access } satisfies ProjectOutletContext} />
+            </ErrorBoundary>
+          </div>
         </main>
         {pandaAiChatEnabled && !location.pathname.endsWith("/chat") && (
           <PandaAiPane projectId={project.id} />
@@ -108,6 +110,20 @@ export default function ProjectLayout() {
       </div>
     </AppShell>
     </BuildingScopeProvider>
+  );
+}
+
+interface ProjectBreadcrumbsProps {
+  project: Project;
+  access: ProjectAccess | undefined;
+}
+
+function ProjectBreadcrumbs({ project, access }: ProjectBreadcrumbsProps) {
+  const items = useProjectBreadcrumbs(project, access?.relationship !== "company");
+  return (
+    <div className="shrink-0 px-4 pt-6 sm:px-10 lg:px-6">
+      <Breadcrumbs items={items} />
+    </div>
   );
 }
 

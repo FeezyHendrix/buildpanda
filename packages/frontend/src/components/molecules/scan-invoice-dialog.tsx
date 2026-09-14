@@ -7,6 +7,7 @@ import { FormDrawer } from "./form-drawer";
 import { cn } from "@/lib/utils";
 import { useUploadFile } from "@/hooks/use-files";
 import { useScanInvoice, type InvoiceScanResult } from "@/hooks/use-invoices";
+import { errorMessage } from "@/lib/api-error";
 
 interface ScanInvoiceDialogProps {
   projectId: string;
@@ -43,7 +44,7 @@ export function ScanInvoiceDialog({
       ? "Finalizing…"
       : `Uploading… ${uploadProgress ?? 0}%`;
 
-  const error = (uploadFile.error as Error | undefined)?.message ?? (scanInvoice.error as Error | undefined)?.message ?? null;
+  const error = errorMessage(uploadFile.error) ?? scanInvoice.error ? errorMessage(scanInvoice.error) : null;
 
   useEffect(() => {
     if (!open) {
@@ -103,8 +104,8 @@ export function ScanInvoiceDialog({
         />
         <div
           className={cn(
-            "flex items-center justify-between gap-3 rounded-lg border-2 border-dashed border-[#D9D9D9] bg-[#FAFAFA] px-3 py-3",
-            file && "border-[#004DE7]/30 bg-[#F5F8FF]",
+            "flex items-center justify-between gap-3 rounded-lg border-2 border-dashed border-line bg-surface-alt px-3 py-3",
+            file && "border-primary-500/30 bg-primary-50",
           )}
         >
           <div className="min-w-0">
@@ -113,7 +114,7 @@ export function ScanInvoiceDialog({
                 <p className="truncate text-sm font-medium text-gray-900">
                   {file.name}
                 </p>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-xs text-gray-500">
                   {formatBytes(file.size)} · {file.type || "Unknown type"}
                 </p>
               </>
@@ -124,9 +125,8 @@ export function ScanInvoiceDialog({
           <Button
             type="button"
             variant="secondary"
-            size="sm"
+            size="md"
             loading={isSubmitting}
-            className="h-9 px-3 text-xs"
             onClick={() => fileInputRef.current?.click()}
           >
             {file ? "Replace" : "Choose file"}
@@ -134,7 +134,7 @@ export function ScanInvoiceDialog({
         </div>
 
         {isSubmitting && (
-          <div className="mt-2 flex flex-col gap-2 rounded-lg border border-[#E4E9F5] bg-[#F5F8FF] px-3 py-3">
+          <div className="mt-2 flex flex-col gap-2 rounded-lg border border-primary-100 bg-primary-50 px-3 py-3">
             <div className="flex items-center gap-2.5">
               <Spinner size="sm" label={statusLabel} />
               <p className="text-sm font-medium text-gray-900">{statusLabel}</p>

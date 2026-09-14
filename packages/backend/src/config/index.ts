@@ -43,6 +43,9 @@ export const config = {
   env,
   isProduction: env === "production",
   isTest: env === "test",
+  // The timezone dates are read in. "Overdue", "this month" and "late" are all
+  // relative to a site's local day, not to UTC.
+  timezone: optional("PROJECT_TIMEZONE", "Africa/Lagos"),
 
   http: {
     host: optional("HOST", "0.0.0.0"),
@@ -130,6 +133,14 @@ export const config = {
     maxFileBytes: optionalNumber("UPLOAD_MAX_BYTES", 25 * 1024 * 1024),
   },
 
+  // Expo over-the-air updates. An empty publish token disables publishing
+  // entirely rather than leaving the endpoint open, so the feature is inert
+  // until CI is given a token.
+  ota: {
+    publishToken: optional("OTA_PUBLISH_TOKEN", ""),
+    maxAssetBytes: optionalNumber("OTA_MAX_ASSET_BYTES", 64 * 1024 * 1024),
+  },
+
   // Web push (VAPID). When the key pair is empty the feature no-ops: the
   // public-key endpoint returns "" (frontend hides the toggle) and delivery
   // logs instead of sending — mirroring how mail degrades without a token.
@@ -168,6 +179,21 @@ export const config = {
     model: optional("OPENAI_MODEL", "gpt-4o-mini"),
     embedModel: optional("OPENAI_EMBED_MODEL", "text-embedding-3-small"),
     timeoutMs: optionalNumber("OPENAI_TIMEOUT_MS", 60_000),
+  },
+
+  // Vision-only provider. DeepSeek V4.1 (served as `deepseek-flash`) reads
+  // drawings and site photos for Panda AI; text/tool calls stay on the
+  // providers above. Empty key => vision falls back to the active text provider.
+  deepseek: {
+    apiKey: optional("DEEPSEEK_API_KEY", ""),
+    baseUrl: optional("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+    model: optional("DEEPSEEK_MODEL", "deepseek-flash"),
+    timeoutMs: optionalNumber("DEEPSEEK_TIMEOUT_MS", 60_000),
+    // Long-document calls (spec/BoQ extraction, schedules, bill build-up) use
+    // the 1M window. The char cap bounds spend per call; the output cap must be
+    // explicit because DeepSeek defaults to 8K output tokens.
+    maxInputChars: optionalNumber("DEEPSEEK_MAX_INPUT_CHARS", 400_000),
+    maxOutputTokens: optionalNumber("DEEPSEEK_MAX_OUTPUT_TOKENS", 32_000),
   },
 
   storage: {

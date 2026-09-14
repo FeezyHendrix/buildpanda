@@ -51,6 +51,7 @@ function toNotification(row: NotificationRow): Notification {
     title: row.title,
     body: row.body,
     projectId: row.project_id,
+    ctaUrl: row.cta_url ?? null,
     readAt: row.read_at ? new Date(row.read_at).toISOString() : null,
     createdAt: new Date(row.created_at).toISOString(),
   };
@@ -101,6 +102,7 @@ export function notificationsService(
           title: input.title,
           body: input.body,
           project_id: input.projectId ?? null,
+          cta_url: input.ctaUrl ?? null,
         });
       }
 

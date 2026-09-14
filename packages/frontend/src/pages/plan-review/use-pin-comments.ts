@@ -4,7 +4,7 @@ import type { useCreateApproval } from "@/hooks/use-approvals";
 import type { useCreateRfi } from "@/hooks/use-rfis";
 import type { useUploadFile } from "@/hooks/use-files";
 import { toast } from "@/lib/toast";
-import { COMMENT_MODE, FOLLOW_UP, type CommentCapture } from "./plan-review-comment-types";
+import { COMMENT_MODE, FOLLOW_UP, type CommentCapture } from "@/lib/markup-meta";
 import { generateId, type Sheet } from "./plan-review-data";
 import { NOTE_TYPE, type Note, type Pin } from "./plan-review-types";
 import type { CommentAnchor, PersistMarkup } from "./use-markup-tools";

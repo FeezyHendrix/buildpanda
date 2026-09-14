@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LlmMessage } from "../../../../lib/llm.ts";
+import { longTextCharBudget } from "../../../../lib/llm-long-text.ts";
 import type { MeasuredBoqItem, TextRun } from "../types.ts";
 
 // Schedule reader: architects put the authoritative door/window counts, sizes
@@ -62,6 +63,7 @@ function normalizeType(raw: string): string | null {
 export async function readSchedules(
   scheduleSheets: { pageNumber: number; lines: string[] }[],
   callLlm: ScheduleLlmCall,
+  maxChars = longTextCharBudget(),
 ): Promise<DrawingSchedules | null> {
   if (scheduleSheets.length === 0) return null;
   const messages: LlmMessage[] = [
@@ -82,7 +84,7 @@ export async function readSchedules(
       content: scheduleSheets
         .map((s) => `SHEET page ${s.pageNumber}:\n${s.lines.join("\n")}`)
         .join("\n\n")
-        .slice(0, 24000),
+        .slice(0, maxChars),
     },
   ];
   const result = await callLlm(messages, scheduleSchema);

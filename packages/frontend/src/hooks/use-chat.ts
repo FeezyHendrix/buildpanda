@@ -64,9 +64,9 @@ export function useLinkPreview(url: string | null) {
   });
 }
 
-export function useForwardToActionItem() {
+export function useForwardToTask() {
   return useMutation({
-    mutationFn: (messageId: string) => chatApi.forwardToActionItem(messageId),
+    mutationFn: (messageId: string) => chatApi.forwardToTask(messageId),
   });
 }
 

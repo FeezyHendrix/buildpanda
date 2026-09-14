@@ -2,7 +2,7 @@ import type { Knex } from "knex";
 import { openStoredFile, streamToBuffer } from "../../../lib/file-storage.ts";
 import { extractDocumentText } from "../../../lib/document-text.ts";
 import { renderPdfPagesToPng, pngToDataUrl } from "../../../lib/document-render.ts";
-import { chatVision, type LlmTool } from "../../../lib/llm.ts";
+import { chatVision } from "../../../lib/llm-vision.ts";
 import {
   assertProjectPermission,
   type ProjectSectionPermissions,
@@ -11,13 +11,19 @@ import type { PermissionMap } from "../../../lib/permissions.ts";
 import type { QueueManager } from "../../../lib/queue/index.ts";
 import { tasksRepository } from "../../tasks/repository.ts";
 import { tasksService } from "../../tasks/service.ts";
-import { queriesRepository } from "../../queries/repository.ts";
-import { queriesService } from "../../queries/service.ts";
 import { rfisRepository } from "../../rfis/repository.ts";
 import { rfisService } from "../../rfis/service.ts";
 import { notificationsRepository } from "../../notifications/repository.ts";
 import { notificationsService } from "../../notifications/service.ts";
+import { financesRepository } from "../../finances/repository.ts";
+import { stageCostsService } from "../../finances/stage-costs.ts";
+import { purchaseOrdersRepository } from "../../purchase-orders/repository.ts";
+import { transactionsRepository } from "../../transactions/repository.ts";
+import { financeTools } from "./finance-tools.ts";
 import { agentRepository } from "./repository.ts";
+import { workRecordsRepository } from "./work-records.ts";
+import { fn, round2, tool, type AgentTool } from "./tool-helpers.ts";
+import { diaryDates, shapeDiary } from "./diary.ts";
 
 export interface ToolResult {
   output: unknown;
@@ -58,11 +64,6 @@ function callerAccessContext(ctx: ToolContext) {
   };
 }
 
-interface AgentTool {
-  spec: LlmTool;
-  run(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult>;
-}
-
 const NAV_TARGETS: Record<string, string> = {
   overview: "overview",
   updates: "updates",
@@ -80,10 +81,7 @@ const NAV_TARGETS: Record<string, string> = {
   "key-dates": "key-dates",
   milestones: "milestones",
   stages: "stages",
-  "whats-next": "whats-next",
   inspections: "inspections",
-  "action-items": "action-items",
-  queries: "queries",
   approvals: "approvals",
   "change-requests": "change-requests",
   permits: "permits",
@@ -107,26 +105,7 @@ const NAV_TARGETS: Record<string, string> = {
   settings: "settings",
 };
 
-function tool(spec: LlmTool, run: AgentTool["run"]): AgentTool {
-  return { spec, run };
-}
-
-function fn(name: string, description: string, properties: Record<string, unknown> = {}, required: string[] = []): LlmTool {
-  return {
-    type: "function",
-    function: {
-      name,
-      description,
-      parameters: { type: "object", properties, required, additionalProperties: false },
-    },
-  };
-}
-
 const MAX_DOC_TEXT_CHARS = 16000;
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
 
 function optionalString(value: unknown, maxLength: number): string | null {
   if (value === undefined || value === null) return null;
@@ -140,13 +119,31 @@ function requiredString(value: unknown, maxLength: number, field: string): strin
   return s;
 }
 
-// The stored invoice workflow statuses; payment state (paid/overdue) is derived
-// from payments + due date, so it is exposed as amountPaid/outstanding/isOverdue.
-const INVOICE_WORKFLOW_STATUSES = ["Draft", "Sent", "Approved", "Submitted"] as const;
-
 export function buildTools(): AgentTool[] {
   return [
-    tool(fn("get_schedule", "Get the project schedule: phases and activities with dates, % complete, milestones and dependency counts. Use for any question about the timeline, Gantt, what's on schedule, or what is late."), async (ctx) => {
+    tool(fn("find_work_records", "Find every record on the project whose text names a particular piece of work — a structure, a location, a chainage or an element such as 'culvert 1', 'ch 0+420', 'the retaining wall', 'kerbing'. It sweeps the records that DESCRIBE WORK in one call: activities, the delays logged against them, RFIs, change requests, risks, inspections and material orders, returning each match with its status, dates and notes. ALWAYS use this FIRST for 'what changed on X', 'what is the story on X', 'what happened with X', 'is there anything open on X', or any question that names a piece of work rather than a whole domain. Drawing markups are NOT where the history of a piece of work lives — do not answer these questions from get_drawing_markups. If this returns nothing, try a shorter or differently spelled term before telling the user there is no information.", {
+      term: { type: "string", description: "The thing the user named, e.g. 'culvert 1', 'ch 0+420', 'asphalt', 'retaining wall'." },
+    }, ["term"]), async (ctx, args) => {
+      const repo = workRecordsRepository(ctx.db);
+      const term = requiredString(args.term, 120, "term");
+      // The phrase first, so "culvert 1" beats a loose word match; only if the
+      // phrase finds nothing do the words go in separately.
+      let hits = await repo.workRecords(ctx.projectId, [term]);
+      const words = term.split(/\s+/).filter((w) => w.length > 0);
+      if (hits.length === 0 && words.length > 1) {
+        hits = await repo.workRecords(ctx.projectId, words);
+      }
+      return {
+        output: {
+          term,
+          matchCount: hits.length,
+          searched: ["activities", "delays", "rfis", "change requests", "risks", "inspections", "material orders"],
+          records: hits,
+        },
+      };
+    }),
+
+    tool(fn("get_schedule","Get the project schedule: phases and activities with dates, % complete, milestones and dependency counts. Activities are named after the work they cover ('Excavate & blind culvert 1 ch 0+420'), so this is where a named piece of work appears on the programme. Use for any question about the timeline, Gantt, what is on schedule, or what is late."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const [phases, activities] = await Promise.all([repo.phases(ctx.projectId), repo.activities(ctx.projectId)]);
       const now = Date.now();
@@ -188,7 +185,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_delays", "Get all logged delays for the project with their cost impact and resolution status. Use for questions about delays, lost time, or schedule slippage."), async (ctx) => {
+    tool(fn("get_delays", "Get all logged delays for the project with their cost impact and resolution status, each tied to the activity it stopped. Use for questions about delays, lost time, or schedule slippage — and to find out what has held up a particular piece of work."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const delays = await repo.delays(ctx.projectId);
       return {
@@ -203,15 +200,76 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_risks", "Get the project risk register (risk factors by severity). Use for questions about risks or what could go wrong."), async (ctx) => {
+    tool(fn("get_schedule_position", "Get the project's contractual schedule position: the contract completion date, the revised completion date after awarded extensions of time, EOT days approved and still pending (time claims are change requests of type eot_only), how far the projected finish has shifted from the baseline programme, and every delay with its days lost, culpability (contractor / client / neutral) and whether it is claimable as an EOT. Use for 'are we late', 'when do we finish now', 'what is our EOT position', 'what are liquidated damages exposure', 'who is at fault for the delays', or any question about completion, time risk or extensions of time. Liquidated-damages exposure is only reported once the contract carries an LD rate."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const [dates, delays, claims, shift] = await Promise.all([
+        repo.scheduleDates(ctx.projectId),
+        repo.delaysWithCulpability(ctx.projectId),
+        repo.eotClaims(ctx.projectId),
+        repo.timelineShift(ctx.projectId),
+      ]);
+      let eotDaysApproved = 0;
+      let eotDaysPending = 0;
+      for (const claim of claims) {
+        if (claim.status === "Approved" || claim.status === "Executed") {
+          eotDaysApproved += Number(claim.days_awarded ?? 0);
+        } else if (claim.status === "Submitted") {
+          eotDaysPending += Number(claim.time_impact_days ?? 0);
+        }
+      }
+      const openDelays = delays.filter((d) => d.resolved_at === null);
+      return {
+        output: {
+          startDate: dates?.start_date ?? null,
+          completionDate: dates?.completion_date ?? null,
+          revisedCompletionDate: dates?.revised_completion_date ?? dates?.completion_date ?? null,
+          eotDaysApproved,
+          eotDaysPending,
+          // Needs the contract's LD rate and cap to be meaningful; never guessed.
+          ldExposure: null,
+          timelineShiftDays: Math.round(Number(shift?.shift ?? 0)),
+          openDelayCount: openDelays.length,
+          daysLostOpen: openDelays.reduce((sum, d) => sum + Number(d.days_lost ?? 0), 0),
+          claims: claims.map((c) => ({
+            title: c.title,
+            status: c.status,
+            daysClaimed: Number(c.time_impact_days ?? 0),
+            daysAwarded: c.days_awarded === null ? null : Number(c.days_awarded),
+            decidedAt: c.decided_at,
+          })),
+          delays: delays.map((d) => ({
+            activity: d.activityName,
+            reason: d.reason_code,
+            daysLost: Number(d.days_lost ?? 0),
+            culpability: d.culpability,
+            eotClaimable: Boolean(d.eot_claimable),
+            startedAt: d.started_at,
+            endedAt: d.ended_at,
+            resolved: d.resolved_at !== null,
+          })),
+        },
+      };
+    }),
+
+    tool(fn("get_risks", "Get the project risk register (risk factors by severity, status and mitigation). Risks are usually written against a specific location or structure, so use this for questions about risks, what could go wrong, and what is threatening a named piece of work."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const risks = await repo.risks(ctx.projectId);
       return { output: risks.map((r) => ({ title: r.title, description: r.description, severity: r.severity })) };
     }),
 
-    tool(fn("get_finances", "Get the project budget, spend, escrow and milestone payments. Use for questions about money, budget, cashflow or payments."), async (ctx) => {
+    tool(fn("get_finances", "Get the project budget, spend, escrow, milestone payments and cost-to-stage (what each build stage has cost: committed = issued purchase orders, actual = logged expenses). Use for questions about money, budget, cashflow, payments, or what a stage has cost."), async (ctx) => {
       const repo = agentRepository(ctx.db);
-      const [fin, milestones] = await Promise.all([repo.finances(ctx.projectId), repo.milestonePayments(ctx.projectId)]);
+      const [fin, milestones, stageCosts, stages] = await Promise.all([
+        repo.finances(ctx.projectId),
+        repo.milestonePayments(ctx.projectId),
+        stageCostsService({
+          finances: financesRepository(ctx.db),
+          transactions: transactionsRepository(ctx.db),
+          purchaseOrders: purchaseOrdersRepository(ctx.db),
+        }).byProject(ctx.projectId).catch(() => ({ stages: [] })),
+        repo.stageNames(ctx.projectId),
+      ]);
+      const stageName = new Map(stages.map((s) => [s.id, s.name]));
       return {
         output: {
           finances: fin ?? null,
@@ -221,6 +279,12 @@ export function buildTools(): AgentTool[] {
             percentComplete: Number(m.percent_complete ?? 0),
             amount: Number(m.amount ?? 0),
             verified: Boolean(m.proof_verified),
+          })),
+          costToStage: stageCosts.stages.map((c) => ({
+            stage: stageName.get(c.stageId) ?? c.stageId,
+            committed: c.committed,
+            actual: c.actual,
+            currency: c.currency,
           })),
         },
       };
@@ -355,53 +419,6 @@ export function buildTools(): AgentTool[] {
           count: typedRows.length,
         },
         navigate: "transactions",
-      };
-    }),
-
-    tool(fn("get_invoices", "Get the project's invoices in detail: number, vendor, billed-to party, workflow status, issue/due dates, total, amount paid, outstanding balance and an isOverdue flag. Use for questions about specific invoices, what is unpaid, or what is overdue. get_finances is only the high-level budget summary.", { status: { type: "string", enum: [...INVOICE_WORKFLOW_STATUSES], description: "Optional workflow status filter" } }), async (ctx, args) => {
-      const repo = agentRepository(ctx.db);
-      const status = optionalString(args.status, 20) ?? undefined;
-      const invoices = (await repo.invoices(ctx.projectId, status)) as Array<{
-        id: string;
-        number: string | null;
-        vendor_name: string;
-        invoice_type: string;
-        status: string;
-        currency: string;
-        issue_date: string | null;
-        due_date: string | null;
-        total_invoiced: string | null;
-        net_payable: string | null;
-        to_party: unknown;
-        amount_paid: string | null;
-      }>;
-      const now = Date.now();
-      return {
-        output: invoices.map((i) => {
-          const paid = round2(Number(i.amount_paid ?? 0));
-          const netPayable = Number(i.net_payable ?? 0);
-          const outstanding = round2(netPayable - paid);
-          const toParty = i.to_party as { name?: string | null } | null;
-          return {
-            id: i.id,
-            number: i.number,
-            vendor: i.vendor_name,
-            billedTo: toParty?.name ?? null,
-            type: i.invoice_type,
-            status: i.status,
-            currency: i.currency,
-            issueDate: i.issue_date,
-            dueDate: i.due_date,
-            total: Number(i.total_invoiced ?? 0),
-            amountPaid: paid,
-            outstanding,
-            isOverdue:
-              Boolean(i.due_date) &&
-              new Date(String(i.due_date)).getTime() < now &&
-              outstanding > 0 &&
-              i.status !== "Draft",
-          };
-        }),
       };
     }),
 
@@ -575,20 +592,17 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_daily_logs", "Get recent daily site logs (weather, workers present, hours, summary). Use for questions about site activity, what happened on site, or recent progress.", { limit: { type: "number", description: "How many recent logs (default 10)" } }), async (ctx, args) => {
+    tool(fn("get_daily_logs", "Get the site diary day by day: the weather and temperature, workers present against workers expected, hours worked, the written diary entries for the day, and — the point of a diary — WHICH ACTIVITIES the hours went on, with the hours logged against each. Use for 'summarise the site diary', 'what happened on site', 'what work was done this week', or recent progress. Always say what work was done from each day's `activities`, not only headcounts and weather. A day whose `isFuture` is true is dated AFTER today: it is a plan somebody wrote ahead, not a record of work done — report it separately as future-dated and never fold it into a week's totals. `totals` is already computed over recorded (non-future, non-voided) days only; quote it rather than adding the rows up yourself.", { limit: { type: "number", description: "How many recent logs (default 10)" } }), async (ctx, args) => {
       const repo = agentRepository(ctx.db);
       const limit = Math.min(Math.max(Number(args.limit ?? 10), 1), 30);
+      const today = new Date().toISOString().slice(0, 10);
       const logs = await repo.dailyLogs(ctx.projectId, limit);
-      return {
-        output: logs.map((l) => ({
-          date: l.log_date,
-          weather: l.weather_condition,
-          temperatureC: l.temperature_c,
-          workers: `${l.workers_present ?? "?"}/${l.workers_expected ?? "?"}`,
-          hours: l.total_hours,
-          summary: l.summary,
-        })),
-      };
+      const dates = diaryDates(logs);
+      const [hours, entries] = await Promise.all([
+        repo.dailyLogActivityHours(ctx.projectId, dates),
+        repo.dailyLogEntries(ctx.projectId, dates),
+      ]);
+      return { output: shapeDiary(logs, hours, entries, today) };
     }),
 
     tool(fn("get_key_dates", "Get project key dates and milestones with their status (upcoming/met/missed)."), async (ctx) => {
@@ -597,16 +611,61 @@ export function buildTools(): AgentTool[] {
       return { output: dates.map((d) => ({ label: d.label, target: d.target_date, actual: d.actual_date, status: d.status })) };
     }),
 
-    tool(fn("get_inspections", "Get project inspections with status and risk level."), async (ctx) => {
+    tool(fn("get_inspections", "Get project inspections: the independent inspection service BuildPanda carries out on the client's request. Returns the service status (Requested / Scheduled / Attended / Reported / Cancelled), the assigned BuildPanda inspector, the contractor being inspected, the pass/fail outcome and any findings."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const inspections = await repo.inspections(ctx.projectId);
-      return { output: inspections.map((i) => ({ title: i.title, category: i.category, status: i.status, riskLevel: i.risk_level, scheduledAt: i.scheduled_at })) };
+      return { output: inspections.map((i) => ({ title: i.title, category: i.category, status: i.status, serviceStatus: i.service_status, riskLevel: i.risk_level, scheduledAt: i.scheduled_at, inspector: i.inspector_user_name ?? i.inspector_name, contractorInspected: i.contractor_name, outcome: i.outcome, findings: i.findings, reportIssuedAt: i.report_issued_at })) };
     }),
 
-    tool(fn("get_materials", "Get planned material orders and requests (what was ordered) with status, supplier and cost. This is the procurement list, NOT current stock on hand — for how much of a material is currently available, use get_material_stock."), async (ctx) => {
+    tool(fn("get_materials", "Get planned material orders and requests (what was ordered) with status, supplier, cost and the deliveries received against each one (quantity, date, delivery-note number, and whether a load was rejected). This is the procurement list, NOT current stock on hand — for how much of a material is currently available, use get_material_stock. For which orders are running late, use get_late_material_orders."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const materials = await repo.materials(ctx.projectId);
-      return { output: materials.map((m) => ({ material: m.material_name, quantity: m.quantity, unit: m.unit, supplier: m.supplier, status: m.status, neededBy: m.needed_by, estimatedCost: m.estimated_cost })) };
+      const deliveries = await repo.deliveriesForOrders(materials.map((m) => m.id));
+      const byOrder = new Map<string, typeof deliveries>();
+      for (const d of deliveries) {
+        const bucket = byOrder.get(d.order_id);
+        if (bucket) bucket.push(d);
+        else byOrder.set(d.order_id, [d]);
+      }
+      return { output: materials.map((m) => ({
+        material: m.material_name,
+        quantity: m.quantity,
+        unit: m.unit,
+        supplier: m.supplier,
+        status: m.status,
+        neededBy: m.needed_by,
+        estimatedCost: m.estimated_cost,
+        deliveries: (byOrder.get(m.id) ?? []).map((d) => ({
+          quantity: d.delivered_qty,
+          deliveredAt: d.delivered_at,
+          deliveryNote: d.delivery_note,
+          rejected: d.rejected,
+          rejectedReason: d.rejected_reason,
+        })),
+      })) };
+    }),
+
+    tool(fn("get_late_material_orders", "Get the material orders that are actually LATE right now: their needed-by date has passed and they have not been delivered, or the supplier's expected delivery date is after the date the material was needed. Cancelled and rejected orders are excluded. Use this for 'which material orders are late', 'what deliveries are overdue', or 'which suppliers do I need to chase' — do NOT infer lateness from get_materials yourself."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const today = new Date().toISOString().slice(0, 10);
+      const orders = await repo.lateMaterials(ctx.projectId, today);
+      return { output: {
+        today,
+        lateOrders: orders.map((m) => ({
+          material: m.material_name,
+          quantity: m.quantity,
+          unit: m.unit,
+          supplier: m.supplier,
+          status: m.status,
+          neededBy: m.needed_by,
+          expectedDeliveryAt: m.expected_delivery_at,
+          daysLate: m.needed_by < today
+            ? Math.floor((Date.parse(today) - Date.parse(m.needed_by)) / 86400000)
+            : 0,
+          reason: m.needed_by < today ? "past its needed-by date" : "supplier promised it after it is needed",
+          estimatedCost: m.estimated_cost,
+        })),
+      } };
     }),
 
     tool(fn("get_precon_boq", "Get the draft preconstruction Bill of Quantities rows measured by Panda AI from uploaded drawings, including element group, code, description, quantity, unit, rate, amount, review status (ai_generated/needs_review/verified/rejected) and confidence. Use for questions about the draft/AI-measured BOQ, takeoff quantities from drawings, review progress, or draft bid totals. The accepted contractual BoQ lives in get_boq_items."), async (ctx) => {
@@ -641,6 +700,56 @@ export function buildTools(): AgentTool[] {
           description: item.description,
           quantity: Number(item.qty ?? 0),
           unit: item.unit,
+        })),
+      };
+    }),
+
+    tool(fn("get_estimate", "Get the accepted estimate this project was converted from: revision, status, contract total, contingency and tax, every priced line (group, description, quantity, unit, rate, total) and the agreed payment stages (label and percent of contract). Use for 'what did we agree with the client', 'what was priced for X', 'what are the payment stages', or contract sum questions. Rates here are the client-facing agreed rates, not live spend."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const result = await repo.acceptedEstimate(ctx.projectId);
+      if (!result) return { output: { estimate: null, note: "No estimate is linked to this project." } };
+      const { estimate, items, schedule } = result;
+      return {
+        output: {
+          proposalTitle: estimate.proposal_title,
+          revision: `Rev ${estimate.revision_no}`,
+          status: estimate.status,
+          currency: estimate.currency,
+          subtotal: Number(estimate.subtotal),
+          contingencyPct: Number(estimate.contingency_pct),
+          taxLabel: estimate.tax_label,
+          taxPct: Number(estimate.tax_pct),
+          taxAmount: Number(estimate.tax_amount),
+          total: Number(estimate.total),
+          acceptedAt: estimate.accepted_at,
+          acceptedBy: estimate.accepted_by_name,
+          items: items.map((i) => ({ group: i.group_label, description: i.description, quantity: Number(i.qty), unit: i.unit, rate: Number(i.unit_rate), total: Number(i.total) })),
+          paymentStages: schedule.map((s) => ({ label: s.label, percent: Number(s.percent), amount: Math.round((Number(estimate.total) * Number(s.percent)) / 100), description: s.description })),
+        },
+      };
+    }),
+
+    tool(fn("get_programme_baseline", "Compare the programme baseline (the dates agreed at handoff from the accepted proposal) with the current planned and actual dates for every activity and milestone. Use for 'are we behind the baseline', 'which activities slipped', 'when was X supposed to finish versus now', or schedule variance questions. slipDays is positive when the current planned finish is later than the baseline finish."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = await repo.programmeBaseline(ctx.projectId);
+      const dayMs = 86_400_000;
+      const slip = (baseline: string | Date | null, planned: string | Date | null) =>
+        baseline && planned ? Math.round((new Date(planned).getTime() - new Date(baseline).getTime()) / dayMs) : null;
+      return {
+        output: rows.map((r) => ({
+          activity: r.name,
+          stage: r.stage,
+          milestone: Boolean(r.is_milestone),
+          status: r.status,
+          percentComplete: Number(r.percent_complete),
+          baselineStart: r.baseline_start_at,
+          baselineFinish: r.baseline_end_at,
+          plannedStart: r.planned_start_at,
+          plannedFinish: r.planned_end_at,
+          actualStart: r.actual_start_at,
+          actualFinish: r.actual_end_at,
+          slipDays: slip(r.baseline_end_at, r.planned_end_at),
+          fromProposalProgramme: Boolean(r.programme_task_id),
         })),
       };
     }),
@@ -689,7 +798,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_task_links", "Get cross-references between tasks and other project records (action items, RFIs, change requests, materials, invoices, milestone payments). Use when asked what a task is linked or related to, or what work connects to a specific RFI, change request, invoice or milestone."), async (ctx) => {
+    tool(fn("get_task_links", "Get cross-references between tasks and other project records (RFIs, change requests, materials, invoices, milestone payments). Use when asked what a task is linked or related to, or what work connects to a specific RFI, change request, invoice or milestone."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const rows = await repo.taskEntityLinks(ctx.projectId);
       const byTask = new Map<string, { entityType: string; label: string }[]>();
@@ -722,27 +831,24 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_open_items", "Get the open items needing attention across RFIs, approvals, action items and site queries — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', or 'what is pending sign-off'."), async (ctx) => {
+    tool(fn("get_open_items", "Get the open items needing attention across RFIs, client approvals and material approval requests — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', 'what is pending sign-off', or 'which materials are awaiting approval'."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const now = Date.now();
       const overdue = (d: unknown): boolean => Boolean(d) && new Date(d as string).getTime() < now;
-      const [rfis, approvals, actionItems, queries] = await Promise.all([
+      const [rfis, approvals] = await Promise.all([
         repo.rfisOpen(ctx.projectId),
         repo.approvalsOpen(ctx.projectId),
-        repo.actionItemsOpen(ctx.projectId),
-        repo.queriesOpen(ctx.projectId),
       ]);
       return {
         output: {
           rfis: rfis.map((r) => ({ title: r.title, status: r.status, priority: r.priority, dueDate: r.due_date, overdue: overdue(r.due_date) })),
-          approvals: approvals.map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
-          actionItems: actionItems.map((a) => ({ title: a.title, status: a.status, priority: a.priority, assignee: a.assignee, dueDate: a.due_date, overdue: overdue(a.due_date) })),
-          queries: queries.map((q) => ({ title: q.title, status: q.status, assignee: q.assignee, dueDate: q.due_date, overdue: overdue(q.due_date) })),
+          approvals: approvals.filter((a) => a.kind !== "material").map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
+          materialApprovals: approvals.filter((a) => a.kind === "material").map((a) => ({ title: a.title, material: a.materialName, quantity: a.materialQuantity, unit: a.materialUnit, supplier: a.materialSupplier, neededBy: a.materialNeededBy, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
         },
       };
     }),
 
-    tool(fn("get_drawing_markups", "Get unresolved markup raised on the project's drawings — redlines, revision clouds and pinned comments, with the sheet and revision they were raised against and whether that revision has since been superseded. Use for 'what is outstanding on the drawings', 'what did the architect flag', 'which comments are on a superseded revision', or 'which RFIs came off a drawing'."), async (ctx) => {
+    tool(fn("get_drawing_markups", "Get unresolved markup raised on the project's DRAWING SHEETS — redlines, revision clouds and pinned comments, with the sheet and revision they were raised against and whether that revision has since been superseded. Use ONLY when the question is about the drawings themselves: 'what is outstanding on the drawings', 'what did the architect flag', 'which comments are on a superseded revision', 'which RFIs came off a drawing'. This tool holds no activities, delays, RFIs, risks, inspections, changes or orders, so it is the WRONG tool for 'what changed on culvert 1' or any question naming a piece of work — use find_work_records for those. Most projects have no markup at all; an empty result here means nothing was redlined, never that the project has no information about the thing asked about."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const markups = await repo.drawingMarkupsOpen(ctx.projectId);
       return {
@@ -761,7 +867,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_change_requests", "Get the project's change requests with their cost and schedule impact and decision status. Use for questions about changes, variations, scope changes, or why the budget or timeline is moving."), async (ctx) => {
+    tool(fn("get_change_requests", "Get the project's change requests with their cost and schedule impact and decision status. A change request is the record of a design or scope change to a specific piece of work, so use this for questions about changes, variations, scope changes, what was varied on a named element, or why the budget or timeline is moving."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const changes = await repo.changeRequests(ctx.projectId);
       return {
@@ -938,34 +1044,6 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("raise_query", "Raise a site query on the project on behalf of the user. ONLY call this when the user explicitly asks to raise/log a query, and confirm the subject and question with them first — never invent content. Returns the created query's id.", {
-      subject: { type: "string", description: "Short query subject (required)" },
-      question: { type: "string", description: "The question body (required)" },
-    }, ["subject", "question"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/queries (queries:raise).
-      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "queries", "raise");
-      const service = queriesService(queriesRepository(ctx.db), {
-        notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
-      });
-      const query = await service.create(
-        ctx.projectId,
-        {
-          subject: requiredString(args.subject, 200, "subject"),
-          question: requiredString(args.question, 4000, "question"),
-        },
-        ctx.caller.user.id,
-      );
-      return {
-        output: {
-          created: true,
-          id: query.id,
-          subject: query.subject,
-          status: query.status,
-          page: `/project/${ctx.projectId}/queries`,
-        },
-      };
-    }),
-
     tool(fn("create_rfi", "Draft an RFI (request for information) on the project, created in Draft status and attributed to the user, so they can review, assign and send it from the RFIs page. ONLY call this when the user explicitly asks to create/raise an RFI, and confirm the subject and question with them first — never invent content. Returns the created RFI's id and number.", {
       subject: { type: "string", description: "Short RFI subject (required)" },
       question: { type: "string", description: "The full question being asked (required)" },
@@ -997,6 +1075,8 @@ export function buildTools(): AgentTool[] {
         },
       };
     }),
+
+    ...financeTools(),
 
     tool(fn("navigate", "Point the user to a page in the app. Returns a navigation target the UI shows as a button. Use when the user asks to go somewhere or you reference a page they should open.", { target: { type: "string", description: `One of: ${Object.keys(NAV_TARGETS).join(", ")}` } }, ["target"]), async (ctx, args) => {
       const key = String(args.target ?? "").toLowerCase();

@@ -6,7 +6,14 @@ import { sendFirstProjectEmail } from "../lifecycle/index.ts";
 import { projectsRepository } from "./repository.ts";
 import { projectsService } from "./service.ts";
 import { PROJECT_TEMPLATES, PROJECT_TEMPLATE_IDS, toTemplateSummary } from "./templates.ts";
-import type { CreateProjectInput, UpdateProjectBudgetInput } from "./types.ts";
+import {
+  AI_UPDATE_CADENCES,
+  PROJECT_TYPES,
+  type CreateProjectInput,
+  type ProjectSettings,
+  type UpdateProjectBudgetInput,
+  type UpdateProjectProfileInput,
+} from "./types.ts";
 
 const listTemplatesResponse = {
   200: {
@@ -15,6 +22,7 @@ const listTemplatesResponse = {
       type: "object",
       properties: {
         id: { type: "string" },
+        projectType: { type: "string", enum: ["build", "renovate"] },
         name: { type: "string" },
         description: { type: "string" },
         stageCount: { type: "integer" },
@@ -45,12 +53,65 @@ const updateCurrencyBody = {
   },
 } as const;
 
+const settingsResponse = {
+  type: "object",
+  properties: {
+    aiUpdateCadence: { type: "string", enum: [...AI_UPDATE_CADENCES] },
+  },
+} as const;
+
+const profileResponse = {
+  type: "object",
+  properties: {
+    name: { type: "string" },
+    address: { type: "string" },
+    startDate: { type: ["string", "null"] },
+    completionDate: { type: ["string", "null"] },
+    revisedCompletionDate: { type: ["string", "null"] },
+    clientName: { type: ["string", "null"] },
+    contractorEntity: { type: ["string", "null"] },
+    projectType: { type: ["string", "null"], enum: [...PROJECT_TYPES, null] },
+    workingDays: { type: "array", items: { type: "integer" } },
+    holidays: { type: "array", items: { type: "string" } },
+    aiUpdateCadence: { type: "string", enum: [...AI_UPDATE_CADENCES] },
+  },
+} as const;
+
+const isoDateField = { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" } as const;
+
+const patchSettingsBody = {
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: {
+    name: { type: "string", minLength: 1, maxLength: 200 },
+    address: { type: "string", minLength: 1, maxLength: 300 },
+    startDate: isoDateField,
+    completionDate: isoDateField,
+    revisedCompletionDate: isoDateField,
+    clientName: { type: ["string", "null"], maxLength: 200 },
+    contractorEntity: { type: ["string", "null"], maxLength: 200 },
+    projectType: { type: ["string", "null"], enum: [...PROJECT_TYPES, null] },
+    workingDays: {
+      type: "array",
+      maxItems: 7,
+      items: { type: "integer", minimum: 0, maximum: 6 },
+    },
+    holidays: {
+      type: "array",
+      maxItems: 400,
+      items: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+    },
+    aiUpdateCadence: { type: "string", enum: [...AI_UPDATE_CADENCES] },
+  },
+} as const;
+
 const updateSettingsBody = {
   type: "object",
-  required: ["aiUpdatesEnabled"],
+  required: ["aiUpdateCadence"],
   additionalProperties: false,
   properties: {
-    aiUpdatesEnabled: { type: "boolean" },
+    aiUpdateCadence: { type: "string", enum: [...AI_UPDATE_CADENCES] },
   },
 } as const;
 
@@ -74,7 +135,8 @@ const createProjectBody = {
       required: ["state", "city", "ownsLand"],
       additionalProperties: false,
       properties: {
-        state: { type: "string", minLength: 1, maxLength: 100 },
+        country: { type: "string", minLength: 1, maxLength: 100 },
+        state: { type: "string", maxLength: 100 },
         city: { type: "string", minLength: 1, maxLength: 100 },
         ownsLand: { type: "boolean" },
       },
@@ -229,20 +291,43 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/settings",
-    { schema: { params: projectIdParams } },
+    { schema: { params: projectIdParams, response: { 200: profileResponse } } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "project", "view");
-      return { aiUpdatesEnabled: project.ai_updates_enabled };
+      return service.getProfile(project.id);
     },
   );
 
-  fastify.put<{ Params: { id: string }; Body: { aiUpdatesEnabled: boolean } }>(
+  // PATCH because a settings page saves one card at a time; PUT stays for the
+  // cadence-only callers that predate the project record.
+  fastify.patch<{ Params: { id: string }; Body: UpdateProjectProfileInput }>(
     "/projects/:id/settings",
-    { schema: { params: projectIdParams, body: updateSettingsBody } },
+    {
+      schema: {
+        params: projectIdParams,
+        body: patchSettingsBody,
+        response: { 200: profileResponse },
+      },
+    },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "project", "manage");
-      await service.updateSettings(project.id, { aiUpdatesEnabled: request.body.aiUpdatesEnabled });
-      return { aiUpdatesEnabled: request.body.aiUpdatesEnabled };
+      return service.updateProfile(project.id, request.body);
+    },
+  );
+
+  fastify.put<{ Params: { id: string }; Body: ProjectSettings }>(
+    "/projects/:id/settings",
+    {
+      schema: {
+        params: projectIdParams,
+        body: updateSettingsBody,
+        response: { 200: settingsResponse },
+      },
+    },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "project", "manage");
+      await service.updateSettings(project.id, request.body);
+      return { aiUpdateCadence: request.body.aiUpdateCadence };
     },
   );
 

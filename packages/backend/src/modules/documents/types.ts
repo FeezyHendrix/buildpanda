@@ -2,6 +2,10 @@ import type { Tone } from "../projects/types.ts";
 
 export type DocumentStatus = "Verified" | "Pending" | "Expired";
 
+/** Internal to the delivery team, or issued to the client. */
+export const DOCUMENT_VISIBILITIES = ["internal", "shared"] as const;
+export type DocumentVisibility = (typeof DOCUMENT_VISIBILITIES)[number];
+
 export type CategoryGroup = "document" | "plan" | "media";
 
 export interface DocumentCategory {
@@ -26,6 +30,11 @@ export interface ProjectDocument {
   versionNo: number;
   versionCount: number;
   currentVersionId: string | null;
+  title: string | null;
+  revision: string | null;
+  supersedesId: string | null;
+  visibility: DocumentVisibility;
+  documentDate: string | null;
 }
 
 export interface DocumentVersion {
@@ -58,6 +67,11 @@ export interface DocumentRow {
   status: DocumentStatus;
   uploaded_at: string;
   current_version_id: string | null;
+  title: string | null;
+  revision: string | null;
+  supersedes_id: string | null;
+  visibility: DocumentVisibility;
+  document_date: Date | string | null;
 }
 
 export interface DocumentVersionRow {
@@ -80,5 +94,5 @@ export interface CategoryAggregateRow {
   tone: Tone;
   group: CategoryGroup;
   file_count: string;
-  total_size: string | null;
+  total_bytes: string | null;
 }

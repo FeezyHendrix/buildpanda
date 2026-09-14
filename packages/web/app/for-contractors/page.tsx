@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/json-ld";
 import {
   Container,
   ButtonLink,
@@ -20,12 +23,13 @@ import {
   DocumentIcon,
 } from "@/components/icons";
 
-export const metadata: Metadata = {
-  title: "BuildPanda for Contractors & Builders",
+export const metadata: Metadata = pageMetadata({
+  path: "for-contractors",
+  title: "Construction management software for contractors",
   description:
-    "Win more work and deliver it without the chaos. BuildPanda gives contractors the tools to capture leads, estimate accurately, and manage delivery from a single OS.",
-  alternates: { canonical: "https://buildpanda.io/for-contractors" },
-};
+    "Run your own builds on BuildPanda: estimates and proposals, programme and delay records, site diaries, inspections, variations, and payment applications that trace to work that was signed off. Book a demo.",
+  socialTitle: "Contractors: run the build and keep the record that proves it",
+});
 
 const winWorkFeatures = [
   {
@@ -57,9 +61,9 @@ const deliveryFeatures = [
   },
   {
     icon: <WalletIcon className="h-6 w-6" />,
-    title: "Milestone payments",
+    title: "Payment records",
     description:
-      "Money is released against verified progress. Keep your cash flow healthy by tying funds to completed work.",
+      "Certify work, record what the client paid, and keep an audit trail of both. The money moves through your own bank.",
   },
   {
     icon: <ChartIcon className="h-6 w-6" />,
@@ -78,6 +82,7 @@ const deliveryFeatures = [
 export default function ForContractorsPage() {
   return (
     <>
+    <JsonLd data={breadcrumbJsonLd([{ name: "For contractors", path: "for-contractors" }])} />
       <section className="bg-white py-16 sm:py-20 lg:py-24">
         <Container className="flex flex-col items-center text-center gap-6">
           <Badge>FOR CONTRACTORS & BUILDERS</Badge>
@@ -85,13 +90,13 @@ export default function ForContractorsPage() {
             Win more work and deliver it without the chaos.
           </h1>
           <p className="max-w-2xl text-pretty text-lg leading-relaxed text-muted">
-            The Construction OS that runs your entire business. Impress clients
-            with professional proposals, then manage the project, milestones,
-            and finances effortlessly from a single dashboard.
+            This is the software you run your own builds on. Win work with
+            professional proposals, then manage the project, the schedule and
+            the finances from a single dashboard.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row mt-4">
             {/* <ButtonLink href={site.appUrl} size="lg">
-              Get started
+              Book a demo
               <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink> */}
             <ButtonLink href="/talk-to-us/" variant="outline" size="lg">

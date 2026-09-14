@@ -1,6 +1,8 @@
 import type { Knex } from "knex";
 import { generateId } from "../../lib/ids.ts";
+import { ledgerWrites } from "./entry-writes.ts";
 import type {
+  CatalogPolicyPatch,
   LedgerEntryFileRow,
   LedgerEntryRow,
   LedgerEntryType,
@@ -8,44 +10,8 @@ import type {
   StockRow,
 } from "./types.ts";
 
-export interface PostEntryInput {
-  id: string;
-  projectId: string;
-  idempotencyKey: string;
-  entryType: LedgerEntryType;
-  materialId: string;
-  materialName: string;
-  unit: string;
-  locationKey: string;
-  quantity: number;
-  stockDelta: number;
-  occurredAt: string;
-  timestampSuspect: boolean;
-  loggedById: string | null;
-  materialOrderId: string | null;
-  taskId: string | null;
-  activityId: string | null;
-  reversalForEntryId: string | null;
-  reason: string | null;
-  notesHtml: string | null;
-  fileIds: string[];
-  actorId: string | null;
-}
-
-export interface PostEntryResult {
-  entryId: string;
-  duplicate: boolean;
-  negativeStock: boolean;
-  onHandQty: number;
-}
-
-export interface CatalogPolicyPatch {
-  low_stock_threshold?: string | null;
-  reorder_quantity?: string | null;
-  lead_time_days?: number | null;
-  preferred_supplier_id?: string | null;
-  auto_reorder_enabled?: boolean;
-}
+// Re-exported so existing importers keep working; the shapes live in types.ts.
+export type { CatalogPolicyPatch, PostEntryInput, PostEntryResult } from "./types.ts";
 
 function normalize(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
@@ -78,25 +44,39 @@ const ENTRY_SELECT = [
   "e.material_id",
   "e.material_name_snapshot",
   "e.unit_snapshot",
-  "e.location_key",
-  "e.quantity",
+    "e.location_key",
+    "e.stage_id",
+    "e.quantity",
   "e.stock_delta",
   "e.occurred_at",
   "e.timestamp_suspect",
   "e.negative_stock",
   "e.logged_by_id",
   "u.name as logged_by_name",
+  "ph.name as stage_name",
+  "e.approval_status",
+  "e.approved_by_id",
+  "au.name as approved_by_name",
+  "e.approved_at",
   "e.material_order_id",
   "e.task_id",
   "e.activity_id",
   "e.reversal_for_entry_id",
   "e.reason",
+  "e.supplier",
+  "e.delivery_note",
+  "e.self_approved",
   "e.created_at",
 ] as const;
 
 export function materialsLedgerRepository(db: Knex) {
   function entryBase() {
-    return db("material_ledger_entries as e").leftJoin("user as u", "u.id", "e.logged_by_id");
+    // leftJoin, not inner: stage_id is nullable, and an inner join would
+    // silently drop every entry logged before a stage was chosen.
+    return db("material_ledger_entries as e")
+      .leftJoin("user as u", "u.id", "e.logged_by_id")
+      .leftJoin("project_phases as ph", "ph.id", "e.stage_id")
+      .leftJoin("user as au", "au.id", "e.approved_by_id");
   }
 
   function catalogBase() {
@@ -187,8 +167,10 @@ export function materialsLedgerRepository(db: Knex) {
             "COALESCE(SUM(CASE WHEN entry_type = 'USED' THEN quantity ELSE 0 END), 0) as total_used",
           ),
         )
-        .where({ project_id: projectId })
-        .groupBy("material_id");
+          // Received/used totals count accepted movements only, matching
+          // on_hand_qty, which approve() is the only thing that moves.
+          .where({ project_id: projectId, approval_status: "Approved" })
+          .groupBy("material_id");
 
       return db("materials_stock as s")
         .join("materials_catalog as c", "c.id", "s.material_id")
@@ -208,7 +190,8 @@ export function materialsLedgerRepository(db: Knex) {
         .orderBy("c.name", "asc");
     },
 
-    findOrCreateCatalog(
+
+      findOrCreateCatalog(
       projectId: string,
       name: string,
       unit: string,
@@ -217,99 +200,10 @@ export function materialsLedgerRepository(db: Knex) {
       return db.transaction((trx) => findOrCreateCatalogTrx(trx, projectId, name, unit, actorId));
     },
 
-    /**
-     * Post a ledger entry and move stock in one transaction. Idempotent on
-     * (project_id, idempotency_key): a duplicate key returns the existing entry
-     * without moving stock again. The stock row is locked FOR UPDATE so
-     * concurrent IN/USED on the same material can never lose an update.
-     */
-    async postEntry(input: PostEntryInput): Promise<PostEntryResult> {
-      return db.transaction(async (trx) => {
-        const existing = await trx<LedgerEntryRow>("material_ledger_entries")
-          .where({ project_id: input.projectId, idempotency_key: input.idempotencyKey })
-          .first();
-        if (existing) {
-          const stockRow = await trx<{ on_hand_qty: string }>("materials_stock")
-            .where({ project_id: input.projectId, material_id: existing.material_id, location_key: existing.location_key })
-            .first();
-          return {
-            entryId: existing.id,
-            duplicate: true,
-            negativeStock: existing.negative_stock,
-            onHandQty: stockRow ? Number(stockRow.on_hand_qty) : 0,
-          };
-        }
-
-        await trx("materials_stock")
-          .insert({
-            project_id: input.projectId,
-            material_id: input.materialId,
-            location_key: input.locationKey,
-            on_hand_qty: 0,
-          })
-          .onConflict(["project_id", "material_id", "location_key"])
-          .ignore();
-
-        const locked = await trx("materials_stock")
-          .where({ project_id: input.projectId, material_id: input.materialId, location_key: input.locationKey })
-          .forUpdate()
-          .first<{ on_hand_qty: string }>();
-        const current = locked ? Number(locked.on_hand_qty) : 0;
-        const nextOnHand = current + input.stockDelta;
-        const negativeStock = nextOnHand < 0;
-
-        await trx("material_ledger_entries").insert({
-          id: input.id,
-          project_id: input.projectId,
-          idempotency_key: input.idempotencyKey,
-          entry_type: input.entryType,
-          status: "Posted",
-          material_id: input.materialId,
-          material_name_snapshot: input.materialName,
-          unit_snapshot: input.unit,
-          location_key: input.locationKey,
-          quantity: input.quantity,
-          stock_delta: input.stockDelta,
-          occurred_at: input.occurredAt,
-          timestamp_suspect: input.timestampSuspect,
-          negative_stock: negativeStock,
-          logged_by_id: input.loggedById,
-          material_order_id: input.materialOrderId,
-          task_id: input.taskId,
-          activity_id: input.activityId,
-          reversal_for_entry_id: input.reversalForEntryId,
-          reason: input.reason,
-          notes_html: input.notesHtml,
-        });
-
-        await trx("materials_stock")
-          .where({ project_id: input.projectId, material_id: input.materialId, location_key: input.locationKey })
-          .update({ on_hand_qty: nextOnHand, last_ledger_entry_id: input.id, updated_at: trx.fn.now() });
-
-        if (input.reversalForEntryId) {
-          await trx("material_ledger_entries")
-            .where({ id: input.reversalForEntryId })
-            .update({ status: "Voided", updated_at: trx.fn.now() });
-        }
-
-        if (input.fileIds.length > 0) {
-          await trx("material_ledger_entry_files").insert(
-            input.fileIds.map((fileId) => ({ entry_id: input.id, file_id: fileId, purpose: "ProofPhoto" })),
-          );
-        }
-
-        await trx("material_ledger_entry_events").insert({
-          id: generateId("mlev"),
-          project_id: input.projectId,
-          entry_id: input.id,
-          event_type: input.entryType === "VOID" ? "voided" : "created",
-          actor_id: input.actorId,
-          detail: JSON.stringify({ entryType: input.entryType, stockDelta: input.stockDelta }),
-        });
-
-        return { entryId: input.id, duplicate: false, negativeStock, onHandQty: nextOnHand };
-      });
-    },
+    // The two stock-moving writes live in entry-writes.ts, where the
+    // transaction and the FOR UPDATE lock that guard the ledger's invariants
+    // are kept together.
+    ...ledgerWrites(db),
   };
 }
 

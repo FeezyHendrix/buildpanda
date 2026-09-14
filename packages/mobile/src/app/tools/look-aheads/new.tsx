@@ -2,10 +2,14 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Text } from "@/components/atoms";
+import { ActivityChecklist } from "@/components/molecules/activity-checklist";
 import { Page } from "@/components/molecules/page";
+import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { todayIso } from "@/db/daily-logs-repository";
 import { useLocalDb } from "@/db/provider";
+import { useActivities } from "@/hooks/use-activities";
 import { useCreateLookAhead } from "@/hooks/use-local-look-aheads";
+import { useProjectBuilding } from "@/hooks/use-project-building";
 import { useFieldSession } from "@/lib/field-session";
 import { useSyncState } from "@/lib/sync-provider";
 
@@ -20,18 +24,41 @@ export default function NewLookAhead() {
   const { db } = useLocalDb();
   const create = useCreateLookAhead(db, projectId);
   const { isOnline } = useSyncState();
+  const activities = useActivities(projectId);
 
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState(todayIso());
   const [endDate, setEndDate] = useState(plusDays(todayIso(), 14));
   const [workers, setWorkers] = useState("");
+  const [activityIds, setActivityIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { buildingId, buildings, needsChoice, selectBuilding } = useProjectBuilding();
+  // The API refuses a look ahead without a block on a multi-building project,
+  // so ask before the crew member fills the form rather than on submit. Open
+  // is derived: the sheet shows while a choice is outstanding and has not been
+  // waved away, so no effect has to push it open once the buildings load.
+  const [pickerDismissed, setPickerDismissed] = useState(false);
+  const buildingPickerOpen = needsChoice && !pickerDismissed;
 
   const canSubmit = name.trim().length > 0 && !saving;
 
+  function toggleActivity(activityId: string) {
+    setActivityIds((prev) =>
+      prev.includes(activityId) ? prev.filter((id) => id !== activityId) : [...prev, activityId],
+    );
+  }
+
   async function submit() {
     if (!canSubmit) return;
+    if (!buildingId && buildings.length > 1) {
+      setPickerDismissed(false);
+      return;
+    }
+    if (!buildingId && buildings.length === 0) {
+      setError("This project's buildings haven't loaded yet. Connect once so they can, then try again.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -40,21 +67,23 @@ export default function NewLookAhead() {
         startDate,
         endDate,
         totalWorkers: Number.parseInt(workers, 10) || null,
+        buildingId,
+        activityIds,
       });
       router.back();
     } catch (err) {
       setSaving(false);
-      setError(err instanceof Error ? err.message : "Could not save this look-ahead.");
+      setError(err instanceof Error ? err.message : "Could not save this look ahead.");
     }
   }
 
   return (
     <Page
-      title="New look-ahead"
+      title="New look ahead"
       onBack={() => router.back()}
       footer={
         <Button onPress={submit} disabled={!canSubmit} loading={saving}>
-          Create look-ahead
+          Create look ahead
         </Button>
       }
     >
@@ -81,7 +110,25 @@ export default function NewLookAhead() {
           <Field label="End" value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" autoCapitalize="none" className="flex-1" />
         </View>
         <Field label="Total crew" value={workers} onChangeText={setWorkers} keyboardType="number-pad" />
+        <ActivityChecklist
+          activities={activities.data ?? []}
+          selectedIds={activityIds}
+          onToggle={toggleActivity}
+          isLoading={activities.isPending}
+        />
       </View>
+
+      <WorkspaceSheet
+        title="Choose a building"
+        visible={buildingPickerOpen}
+        workspaces={buildings.map((building) => ({
+          id: building.id,
+          name: building.code ? `${building.name} (${building.code})` : building.name,
+        }))}
+        activeId={buildingId}
+        onSelect={selectBuilding}
+        onClose={() => setPickerDismissed(true)}
+      />
     </Page>
   );
 }

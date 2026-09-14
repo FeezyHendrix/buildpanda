@@ -1,9 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SyncIndicator, Text } from "@/components/atoms";
+import { ICON_INVERSE } from "@/constants/colors";
 import { useSyncState } from "@/lib/sync-provider";
 import { cn } from "@/lib/utils";
 import { ScopeSelector } from "./scope-selector";
@@ -19,7 +20,8 @@ interface PageProps {
   onPressSync?: () => void;
   workspaceName?: string;
   projectName?: string;
-  onPressWorkspace?: () => void;
+  /** Keeps the scope slot in place with a spinner while the project name loads. */
+  projectPending?: boolean;
   onPressProject?: () => void;
   /** Set false when the child owns scrolling (FlatList screens). */
   scroll?: boolean;
@@ -45,7 +47,7 @@ export function Page({
   onPressSync,
   workspaceName,
   projectName,
-  onPressWorkspace,
+  projectPending = false,
   onPressProject,
   scroll = true,
   footer,
@@ -53,10 +55,14 @@ export function Page({
   children,
 }: PageProps) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const sync = useSyncState();
+  // Project names are long ("Marbella Modern Phase 2 Block C"); give the
+  // switcher just under half the bar, capped so a tablet does not stretch it.
+  const scopeWidth = Math.min(320, Math.round(width * 0.45));
   const isCentred = variant === "default";
   const hasBar = Boolean(onBack || title || rightButtons || showSync);
-  const hasScope = Boolean(projectName || workspaceName);
+  const hasScope = Boolean(projectName || workspaceName || projectPending);
   const handleSyncPress = onPressSync ?? (() => router.push("/sync"));
 
   return (
@@ -72,15 +78,15 @@ export function Page({
                   accessibilityLabel="Go back"
                   className="-ml-2 h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
                 >
-                  <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+                  <Ionicons name="chevron-back" size={24} color={ICON_INVERSE} />
                 </Pressable>
               ) : null}
               {hasScope ? (
-                <View className="min-w-0" style={{ maxWidth: 150 }}>
+                <View className="min-w-0" style={{ maxWidth: scopeWidth }}>
                   <ScopeSelector
                     workspaceName={workspaceName}
                     projectName={projectName}
-                    onPressWorkspace={onPressWorkspace}
+                    projectPending={projectPending}
                     onPressProject={onPressProject}
                     compact
                   />
@@ -116,7 +122,7 @@ export function Page({
               <View
                 pointerEvents="none"
                 className="absolute inset-0 items-center justify-center"
-                style={{ paddingHorizontal: hasScope ? 150 : 56 }}
+                style={{ paddingHorizontal: hasScope ? scopeWidth : 56 }}
               >
                 {title ? (
                   <Text weight="bold" tone="inverse" className="text-[17px]" numberOfLines={1}>
@@ -135,23 +141,25 @@ export function Page({
 
       </View>
 
-      {scroll ? (
-        <ScrollView
-          className={cn("px-4", className)}
-          contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 24 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View className={cn("flex-1 px-4 pt-4", className)}>{children}</View>
-      )}
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        {scroll ? (
+          <ScrollView
+            className={cn("px-4", className)}
+            contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 24 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View className={cn("flex-1 px-4 pt-4", className)}>{children}</View>
+        )}
 
-      {footer ? (
-        <View className="px-4 pt-3" style={{ paddingBottom: insets.bottom + 12 }}>
-          {footer}
-        </View>
-      ) : null}
+        {footer ? (
+          <View className="px-4 pt-3" style={{ paddingBottom: insets.bottom + 12 }}>
+            {footer}
+          </View>
+        ) : null}
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -25,27 +25,26 @@ export function RecentUpdatesPanel({
     <Card className={className}>
       <div className="flex items-center justify-between py-3 px-5">
         <div className="flex gap-2 items-center">
-          <ReactSVG src={icons.refresh} />
           <h3 className="text-[13px] font-semibold text-black-300">
             Latest Site Updates
           </h3>
         </div>
         <Link
           to={`/project/${projectId}/updates`}
-          className="text-xs font-semibold text-[#004DE7] bg-white rounded-[100px] py-[4px] px-[16px]"
+          className="text-xs font-semibold text-[#004DE7] hover:underline"
         >
           View All
         </Link>
       </div>
 
-      <div className="bg-white rounded-[12px] h-full m-1 p-6">
+      <div className="h-full px-5 pb-5">
         <div className="flex flex-col gap-6">
           {updates.length === 0 ? (
             <EmptyState
-              title="No active updates"
-              icon={(<ReactSVG src={icons.updateEmpty} />)}
-              description="Add a risk factor to track and mitigate issues on this project."
-              className="py-6"
+              variant="inline"
+              title="No updates yet"
+              icon={<ReactSVG src={icons.updateEmpty} />}
+              description="Progress updates posted on this project will appear here."
             />
           ) : (
             <ul className="flex flex-col gap-4">

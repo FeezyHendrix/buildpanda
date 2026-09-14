@@ -22,6 +22,14 @@ export function drawingMarkupRepository(db: Knex) {
         .where({ document_id: documentId })
         .orderBy("created_at", "asc"),
 
+    listBySession: (preconSessionId: string, preconSheetId?: string): Promise<DrawingMarkupRow[]> =>
+      db<DrawingMarkupRow>("drawing_markups")
+        .where({ precon_session_id: preconSessionId })
+        .modify((q) => {
+          if (preconSheetId !== undefined) q.where({ precon_sheet_id: preconSheetId });
+        })
+        .orderBy("created_at", "asc"),
+
     byId: (id: string) => db<DrawingMarkupRow>("drawing_markups").where({ id }).first(),
 
     insertMarkup: (row: DrawingMarkupRow) => db<DrawingMarkupRow>("drawing_markups").insert(row),

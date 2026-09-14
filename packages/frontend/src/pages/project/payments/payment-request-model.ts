@@ -1,4 +1,5 @@
 import type { PaymentClaim, PaymentClaimInput, PaymentClaimStatus } from "@/hooks/use-payment-claims";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 /**
  * Form model + status metadata for payment requests. "Payment request" is the
@@ -46,8 +47,7 @@ export const EMPTY: RequestValues = {
   notes: "",
 };
 
-export const inputClass =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
+export const inputClass = INPUT_CLASS;
 
 export function toInput(values: RequestValues): PaymentClaimInput {
   return {

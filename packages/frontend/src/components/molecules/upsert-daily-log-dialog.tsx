@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { useCurrentWeather, type WeatherSnapshot } from "@/hooks/use-weather";
-import { cn } from "@/lib/utils";
 import type { DailyLogDay, WeatherCondition } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 const WEATHER_OPTIONS: { value: WeatherCondition; label: string }[] = [
   { value: "Sunny", label: "Sunny" },
@@ -36,6 +37,14 @@ interface UpsertDailyLogDialogProps {
   error?: string | null;
 }
 
+/** A shift longer than this per worker is almost always a typo. */
+const MAX_HOURS_PER_WORKER = 12;
+
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function numOrNull(value: string): number | null {
   if (value.trim().length === 0) return null;
   const parsed = Number(value);
@@ -62,6 +71,7 @@ function UpsertDailyLogDialog({
   const [workersPresent, setWorkersPresent] = useState("");
   const [totalHours, setTotalHours] = useState("");
   const prefilledRef = useRef(false);
+  const today = todayIso();
 
   const weather = useCurrentWeather(projectId, open);
 
@@ -106,7 +116,16 @@ function UpsertDailyLogDialog({
     }
   }, [open, initial, weather.data, applyWeather]);
 
-  const isValid = /^\d{4}-\d{2}-\d{2}$/.test(logDate);
+  const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(logDate);
+  // A daily log is a record of a day that has happened; a future date is a
+  // phantom record the list page cannot even show (findings F6).
+  const isFuture = isIsoDate && logDate > today;
+  const isValid = isIsoDate && !isFuture;
+
+  const present = Math.max(0, Number(workersPresent) || 0);
+  const hours = Math.max(0, Number(totalHours) || 0);
+  // A warning, never a block: night shifts and double-shifts are real.
+  const hoursImplausible = present > 0 && hours > present * MAX_HOURS_PER_WORKER;
 
   function handleSubmit(): void {
     if (!isValid) return;
@@ -136,10 +155,17 @@ function UpsertDailyLogDialog({
         id="log-date"
         type="date"
         value={logDate}
+        max={today}
+        aria-invalid={isFuture || undefined}
         onChange={(e) => setLogDate(e.target.value)}
         disabled={!!initial}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:opacity-60"
+        className={INPUT_CLASS}
       />
+      {isFuture ? (
+        <p className="text-xs text-negative-600">
+          A daily log records a day that has happened — pick today or an earlier date.
+        </p>
+      ) : null}
     </div>
     
     <div className="flex flex-col gap-1.5">
@@ -157,19 +183,17 @@ function UpsertDailyLogDialog({
       </div>
       <div className="flex flex-wrap gap-2">
         {WEATHER_OPTIONS.map((opt) => (
-          <button
+          <Button
             key={opt.value}
             type="button"
+            size="sm"
+            aria-pressed={weatherCondition === opt.value}
+            variant={weatherCondition === opt.value ? "primary" : "secondary"}
             onClick={() => setWeatherCondition(opt.value)}
-            className={cn(
-              "h-9 rounded-full px-3.5 text-xs font-medium transition-colors",
-              weatherCondition === opt.value
-                ? "bg-[#004DE7] text-white"
-                : "bg-[#F6F6F6] text-gray-700 hover:bg-[#EDEDED]",
-            )}
           >
+            {weatherCondition === opt.value ? "✓ " : ""}
             {opt.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -180,9 +204,10 @@ function UpsertDailyLogDialog({
         <input
           id="log-temp"
           type="number"
+          step="any"
           value={temperatureC}
           onChange={(e) => setTemperatureC(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -190,10 +215,11 @@ function UpsertDailyLogDialog({
         <input
           id="log-rain"
           type="number"
+          step="any"
           min={0}
           value={precipitationMm}
           onChange={(e) => setPrecipitationMm(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -201,10 +227,11 @@ function UpsertDailyLogDialog({
         <input
           id="log-wind"
           type="number"
+          step="any"
           min={0}
           value={windKph}
           onChange={(e) => setWindKph(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
     </div>
@@ -218,7 +245,7 @@ function UpsertDailyLogDialog({
           min={0}
           value={workersExpected}
           onChange={(e) => setWorkersExpected(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -229,7 +256,7 @@ function UpsertDailyLogDialog({
           min={0}
           value={workersPresent}
           onChange={(e) => setWorkersPresent(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -237,13 +264,21 @@ function UpsertDailyLogDialog({
         <input
           id="log-hours"
           type="number"
+          step="any"
           min={0}
           value={totalHours}
           onChange={(e) => setTotalHours(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
     </div>
+
+    {hoursImplausible ? (
+      <p className="rounded-lg bg-warning-50 px-3 py-2 text-xs text-warning-700">
+        ⚠ {hours}h across {present} worker{present === 1 ? "" : "s"} is over{" "}
+        {MAX_HOURS_PER_WORKER}h each. Save it if that is right — otherwise check the figure.
+      </p>
+    ) : null}
     </FormDrawer>
   );
 }

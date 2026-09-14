@@ -1,5 +1,6 @@
 import { Badge } from "@/components/atoms/badge";
 import type { TaskEntityType, TaskLinkType, TaskPriority } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 export interface AssigneeOption {
   kind: "user" | "team";
@@ -7,8 +8,19 @@ export interface AssigneeOption {
   name: string;
 }
 
-export const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+export const FIELD = INPUT_CLASS;
+
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Past its due date and not yet done. A done task is never "overdue". */
+export function isTaskOverdue(task: { dueDate: string | null; status?: string | null }, today = todayIso()): boolean {
+  if (!task.dueDate) return false;
+  if (task.status === "done" || task.status === "Done" || task.status === "completed") return false;
+  return task.dueDate.slice(0, 10) < today;
+}
 
 export function htmlToText(html: string): string {
   const el = document.createElement("div");
@@ -78,23 +90,21 @@ export const LINK_TYPE_LABELS: Record<TaskLinkType, string> = {
 export const LINK_TYPE_ORDER: TaskLinkType[] = ["blocks", "blocked_by", "relates_to", "duplicates"];
 
 export const LINK_TYPE_TONE: Record<TaskLinkType, string> = {
-  blocks: "bg-[#FEE2E2] text-[#B42318]",
-  blocked_by: "bg-[#FEF0C7] text-[#B54708]",
-  relates_to: "bg-[#EEF2FF] text-[#004DE7]",
-  duplicates: "bg-[#F2F4F7] text-[#475467]",
+  blocks: "bg-negative-50 text-negative-500",
+  blocked_by: "bg-warning-50 text-warning-500",
+  relates_to: "bg-primary-50 text-primary-500",
+  duplicates: "bg-neutral-50 text-neutral-500",
 };
 
 export const ENTITY_META: Record<TaskEntityType, { label: string; route: string }> = {
-  action_item: { label: "Action item", route: "action-items" },
   rfi: { label: "RFI", route: "rfis" },
   change_request: { label: "Change request", route: "change-requests" },
   material: { label: "Material", route: "materials" },
-  invoice: { label: "Invoice", route: "finances/invoices" },
-  milestone_payment: { label: "Stage payment", route: "finances/payments" },
+  invoice: { label: "Invoice", route: "finances/budget-invoices?tab=invoices" },
+  milestone_payment: { label: "Stage payment", route: "finances/budget-invoices?tab=payments" },
 };
 
 export const ENTITY_ORDER: TaskEntityType[] = [
-  "action_item",
   "rfi",
   "change_request",
   "material",

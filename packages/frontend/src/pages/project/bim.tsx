@@ -1,9 +1,13 @@
 import { lazy, Suspense, useState } from "react";
+import { Boxes } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { UploadBimDialog } from "@/components/molecules/upload-bim-dialog";
 import type { SelectedElement } from "@/components/molecules/bim-viewer";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -17,6 +21,7 @@ import {
 import { useFeatureFlag, useFeatureFlagState } from "@/hooks/use-feature-flags";
 import { useParticipants } from "@/hooks/use-participants";
 import { canResourceAction } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
 import type { BimModel } from "@/lib/project-types";
 
 const BimViewer = lazy(() => import("@/components/molecules/bim-viewer"));
@@ -45,12 +50,12 @@ function ModelCard({
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-gray-900">{model.name}</p>
+          <p className="text-sm font-medium text-ink">{model.name}</p>
           {model.discipline && (
-            <p className="text-xs text-gray-500">{model.discipline}</p>
+            <p className="text-xs text-ink-muted">{model.discipline}</p>
           )}
           {model.elementCount != null && (
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-ink-muted">
               {model.elementCount} elements
             </p>
           )}
@@ -167,12 +172,12 @@ export default function ProjectBim() {
   if (active) {
     return (
       <div className="absolute inset-0 flex flex-col bg-white">
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-line-hair px-5 py-3">
           <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold text-gray-900">
+            <h2 className="truncate text-base font-semibold text-ink">
               {active.name}
             </h2>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-ink-muted">
               Click any element to see its details and assign it.
             </p>
           </div>
@@ -185,8 +190,8 @@ export default function ProjectBim() {
             {xktModelUrl ? (
               <Suspense
                 fallback={
-                  <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
-                    Loading viewer…
+                  <div className="flex h-full items-center justify-center bg-ink text-white/70">
+                    <Spinner size="md" tone="current" />
                   </div>
                 }
               >
@@ -197,8 +202,8 @@ export default function ProjectBim() {
             ) : modelUrl ? (
               <Suspense
                 fallback={
-                  <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
-                    Loading viewer…
+                  <div className="flex h-full items-center justify-center bg-ink text-white/70">
+                    <Spinner size="md" tone="current" />
                   </div>
                 }
               >
@@ -207,7 +212,7 @@ export default function ProjectBim() {
                 </div>
               </Suspense>
             ) : (
-              <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
+              <div className="flex h-full items-center justify-center bg-ink text-sm text-white/70">
                 Preparing model…
               </div>
             )}
@@ -216,8 +221,8 @@ export default function ProjectBim() {
           {dashboardPreview ? (
             <Suspense
               fallback={
-                <aside className="flex w-[360px] shrink-0 items-center justify-center border-l border-[#F0F0F0] bg-[#FAFAFA] text-sm text-gray-400">
-                  Loading panel…
+                <aside className="flex w-[360px] shrink-0 items-center justify-center border-l border-line-hair bg-surface-alt">
+                  <Spinner size="md" />
                 </aside>
               }
             >
@@ -235,25 +240,25 @@ export default function ProjectBim() {
               />
             </Suspense>
           ) : (
-            <aside className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-l border-gray-200 bg-white">
+            <aside className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-l border-line-hair bg-white">
               {selected?.guid ? (
                 <div className="flex flex-col">
-                  <div className="border-b border-gray-100 px-5 py-4">
+                  <div className="border-b border-line-hair px-5 py-4">
                     {selected.ifcType && (
-                      <span className="inline-block rounded-md bg-[#EEF2FF] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#004DE7]">
+                      <span className="inline-block rounded-md bg-primary-50 px-2 py-0.5 text-xs font-medium uppercase text-primary-500">
                         {selected.ifcType.replace(/^Ifc/, "")}
                       </span>
                     )}
-                    <p className="mt-2 text-sm font-semibold text-gray-900">
+                    <p className="mt-2 text-sm font-semibold text-ink">
                       {selected.name ?? "Unnamed element"}
                     </p>
-                    <p className="mt-1 break-all text-[11px] text-gray-400">
+                    <p className="mt-1 break-all text-xs text-ink-muted">
                       {selected.guid}
                     </p>
                   </div>
 
                   <div className="px-5 py-4">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    <p className="mb-2 text-xs font-medium uppercase text-ink-muted">
                       Properties
                     </p>
                     {selected.properties.length > 0 ? (
@@ -263,9 +268,9 @@ export default function ProjectBim() {
                             key={p.label}
                             className="flex justify-between gap-3 text-xs"
                           >
-                            <dt className="shrink-0 text-gray-500">{p.label}</dt>
+                            <dt className="shrink-0 text-ink-muted">{p.label}</dt>
                             <dd
-                              className="truncate text-right font-medium text-gray-900"
+                              className="truncate text-right font-medium text-ink"
                               title={p.value}
                             >
                               {p.value}
@@ -274,27 +279,27 @@ export default function ProjectBim() {
                         ))}
                       </dl>
                     ) : (
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-ink-muted">
                         No extra properties on this element.
                       </p>
                     )}
                   </div>
 
                   {canManage && (
-                    <div className="mt-auto border-t border-gray-100 bg-gray-50/60 px-5 py-4">
-                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    <div className="mt-auto border-t border-line-hair bg-surface-alt px-5 py-4">
+                      <p className="mb-2 text-xs font-medium uppercase text-ink-muted">
                         Assign this element
                       </p>
                       <input
                         value={issueTitle}
                         onChange={(e) => setIssueTitle(e.target.value)}
                         placeholder={`e.g. Check ${selected.ifcType?.replace(/^Ifc/, "") ?? "element"}`}
-                        className="mb-2 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+                        className={cn(INPUT_SM_CLASS, "mb-2")}
                       />
                       <select
                         value={issueAssignee}
                         onChange={(e) => setIssueAssignee(e.target.value)}
-                        className="mb-3 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+                        className={cn(INPUT_SM_CLASS, "mb-3")}
                       >
                         <option value="">Select a person…</option>
                         {assigneeOptions.map((a) => (
@@ -318,10 +323,10 @@ export default function ProjectBim() {
                 </div>
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm font-medium text-ink">
                     No element selected
                   </p>
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-xs text-ink-muted">
                     Click a wall, beam, duct or any part of the model to see its
                     details and assign it to a person.
                   </p>
@@ -335,10 +340,9 @@ export default function ProjectBim() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="BIM models"
-        description="Import your Revit, ArchiCAD or Navisworks model (via IFC) and view it in 3D. Anchor coordination issues to elements and promote them to RFIs."
         actions={
           canUpload ? (
             <Button variant="primary" size="md" onClick={() => setUploadOpen(true)}>
@@ -351,24 +355,16 @@ export default function ProjectBim() {
 
       <div className="mt-6 flex flex-col gap-3">
         {isLoading ? (
-          <p className="py-8 text-center text-sm text-gray-400">Loading…</p>
+          <div className="flex justify-center py-10">
+            <Spinner size="md" />
+          </div>
         ) : models.length === 0 ? (
-          <Card className="p-10 text-center">
-            <p className="text-sm text-gray-500">No BIM models yet.</p>
-            <p className="mt-1 text-xs text-gray-400">
-              Import from Revit, ArchiCAD, Navisworks and more.
-            </p>
-            {canUpload && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="mt-3"
-                onClick={() => setUploadOpen(true)}
-              >
-                Import your first model
-              </Button>
-            )}
-          </Card>
+          <EmptyState
+            icon={<Boxes />}
+            title="No BIM models yet"
+            description="Import from Revit, ArchiCAD, Navisworks and more to explore the model here."
+            action={canUpload ? { label: "Import your first model", onClick: () => setUploadOpen(true) } : undefined}
+          />
         ) : (
           models.map((model) => (
             <ModelCard

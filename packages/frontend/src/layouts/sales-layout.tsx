@@ -100,7 +100,7 @@ function SalesNavLink({ item }: { item: (typeof salesNav)[0] }) {
         cn(
           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors",
           "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          isActive && "bg-[#EDEDED] text-gray-900",
+          isActive && "bg-gray-100 text-gray-900",
         )
       }
     >
@@ -198,14 +198,14 @@ function SalesSidebar({
           className={cn(
             "absolute right-0 top-1/2 -translate-y-1/2 translate-x-full",
             "flex h-14 w-7 items-center justify-center",
-            "rounded-r-xl border border-l-0 border-[#EFEFEF] bg-[#F8F8F8] shadow-sm",
+            "rounded-r-xl border border-l-0 border-line-disabled bg-surface-alt shadow-sm",
             "lg:hidden",
           )}
         >
           <ChevronRightIcon />
         </button>
 
-        <aside className="flex h-full w-[240px] flex-col border-r border-[#EFEFEF] bg-[#F8F8F8]">
+        <aside className="flex h-full w-[240px] flex-col border-r border-line-disabled bg-surface-alt">
           <div className="flex flex-col gap-3 px-3 pb-4 pt-5">
             <Link to="/sales" className="px-1" aria-label="BuildPanda home">
               <img src={logo} alt="BuildPanda" className="h-8 w-auto" />
@@ -229,7 +229,7 @@ function SalesSidebar({
             ))}
           </nav>
 
-          <div className="border-t border-[#EFEFEF] px-3 py-3">
+          <div className="border-t border-line-disabled px-3 py-3">
             <UserMenu
               variant="full"
               name={user.name}

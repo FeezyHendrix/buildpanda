@@ -1,8 +1,9 @@
 import { Pressable, View } from "react-native";
-import { Text } from "@/components/atoms";
+import { PendingBadge, Text } from "@/components/atoms";
 import type { Activity } from "@/api/activities";
 import type { KeyDate } from "@/api/key-dates";
 import type { Stage } from "@/api/stages";
+import { formatDateRange, formatShortDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 interface LookAheadListItem {
@@ -12,14 +13,6 @@ interface LookAheadListItem {
   totalWorkers: number | null;
   status: string;
   isPendingSync?: boolean;
-}
-
-function dayLabel(iso: string | null): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
 function Chip({ label, tone }: { label: string; tone: "neutral" | "danger" | "brand" }) {
@@ -61,7 +54,7 @@ export function ActivityRow({ activity }: { activity: Activity }) {
       title={activity.name}
       subtitle={
         [activity.phaseName, activity.location].filter(Boolean).join(" · ") ||
-        `${dayLabel(activity.plannedStartAt)} – ${dayLabel(activity.plannedEndAt)}`
+        formatDateRange(activity.plannedStartAt, activity.plannedEndAt)
       }
       right={
         activity.isDelayed ? (
@@ -78,7 +71,7 @@ export function StageRow({ stage }: { stage: Stage }) {
   return (
     <Row
       title={stage.name}
-      subtitle={stage.dateRange ?? `${dayLabel(stage.startDate)} – ${dayLabel(stage.endDate)}`}
+      subtitle={stage.dateRange ?? formatDateRange(stage.startDate, stage.endDate)}
       right={<Chip label={`${stage.progressPercent}%`} tone="brand" />}
     />
   );
@@ -90,20 +83,10 @@ export function KeyDateRow({ keyDate }: { keyDate: KeyDate }) {
       title={keyDate.label}
       subtitle={
         keyDate.actualDate
-          ? `Actual ${dayLabel(keyDate.actualDate)}`
-          : `Target ${dayLabel(keyDate.targetDate)}`
+          ? `Actual ${formatShortDate(keyDate.actualDate) || "—"}`
+          : `Target ${formatShortDate(keyDate.targetDate) || "—"}`
       }
       right={<Chip label={keyDate.status} tone="neutral" />}
-    />
-  );
-}
-
-export function TimelineRow({ activity }: { activity: Activity }) {
-  return (
-    <Row
-      title={activity.name}
-      subtitle={`${dayLabel(activity.plannedStartAt)} – ${dayLabel(activity.plannedEndAt)}`}
-      right={<Chip label={activity.status} tone={activity.isDelayed ? "danger" : "neutral"} />}
     />
   );
 }
@@ -119,10 +102,10 @@ export function LookAheadRow({
     <Pressable onPress={onPress} accessibilityRole="button" className="active:bg-surface-alt">
       <Row
         title={lookAhead.name}
-        subtitle={`${dayLabel(lookAhead.startDate)} – ${dayLabel(lookAhead.endDate)}${
+        subtitle={`${formatDateRange(lookAhead.startDate, lookAhead.endDate)}${
           lookAhead.totalWorkers ? ` · ${lookAhead.totalWorkers} workers` : ""
         }`}
-        right={<Chip label={lookAhead.isPendingSync ? "Pending" : lookAhead.status} tone={lookAhead.isPendingSync ? "brand" : "neutral"} />}
+        right={lookAhead.isPendingSync ? <PendingBadge /> : <Chip label={lookAhead.status} tone="neutral" />}
       />
     </Pressable>
   );

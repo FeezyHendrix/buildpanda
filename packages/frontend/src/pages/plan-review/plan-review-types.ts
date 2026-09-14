@@ -83,6 +83,8 @@ export function toLocalMarkup(server: DrawingMarkup[]): { pins: Pin[]; markups: 
   const pins: Pin[] = [];
   const markups: Markup[] = [];
   for (const item of server) {
+    // plan review lists project drawings only; a take-off-anchored markup has no document
+    if (item.documentId === null) continue;
     const base = { id: item.id, sheetId: item.documentId, color: item.color };
     const g = item.geometry;
     if (g.kind === MARKUP_KIND.PIN) {

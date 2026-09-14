@@ -1,252 +1,80 @@
-import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { Button } from "@/components/atoms";
-import { authClient } from "@/lib/auth-client";
-import {
-  PENDING_ORG_INVITE_KEY,
-  PENDING_PROJECT_INVITE_KEY,
-  homePathFor,
-} from "@/lib/route-guards";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
+import { isInvalidRecoveryLink } from "@/api/auth-recovery";
+import { useEmailVerification } from "@/hooks/use-auth-recovery";
+import { clearAuthRecovery, readAuthRecovery } from "@/lib/auth-recovery";
+import { safeReturnPath, signInPath } from "@/lib/return-path";
+import { PENDING_ORG_INVITE_KEY, PENDING_PROJECT_INVITE_KEY, homePathFor } from "@/lib/route-guards";
+import { VerificationEmailForm } from "./verification-email-form";
 
-function continueAfterVerifyPath(redirectTo?: string | null): string {
-  // Org invitations are auto-accepted at sign-up, so bouncing back to the
-  // accept-invitation page would just show "already handled". Send them home.
-  const pendingOrgInvite = localStorage.getItem(PENDING_ORG_INVITE_KEY);
-  if (pendingOrgInvite) {
-    localStorage.removeItem(PENDING_ORG_INVITE_KEY);
-    return "/";
-  }
-  if (redirectTo?.startsWith("/accept-invitation/")) return "/";
-  if (redirectTo) return redirectTo;
-  const pendingProjectInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
-  return pendingProjectInvite
-    ? `/accept-project-invite/${pendingProjectInvite}`
-    : "/";
+function verificationDestination(target: string | null) {
+  // Organization invitations are accepted by the verification endpoint.
+  if (target?.startsWith("/accept-invitation/")) return "/";
+  if (target) return target;
+  try {
+    const projectInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
+    return projectInvite ? `/accept-project-invite/${encodeURIComponent(projectInvite)}` : "/";
+  } catch { return "/"; }
 }
 
-const RESEND_COOLDOWN_S = 30;
-
 export default function VerifyEmailPage() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const [params] = useSearchParams();
+  const token = params.get("token");
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as { email?: string; redirectTo?: string | null } | null;
-  const email = state?.email ?? null;
-  const redirectTo = state?.redirectTo ?? null;
-
-  const [loading, setLoading] = useState(!!token);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [resending, setResending] = useState(false);
-  const [resent, setResent] = useState(false);
-  const [resendError, setResendError] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
-  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [saved] = useState(() => readAuthRecovery("verification"));
+  const email = state?.email ?? saved?.email ?? "";
+  const redirectTo = safeReturnPath(params.get("redirect")) ?? safeReturnPath(state?.redirectTo) ?? saved?.redirectTo ?? null;
+  const [fallback] = useState(() => verificationDestination(redirectTo));
+  const target = redirectTo ? verificationDestination(redirectTo) : fallback;
+  const verify = useEmailVerification(token);
+  const verified = Boolean(token) && verify.isSuccess;
+  const invalid = isInvalidRecoveryLink(verify.error);
+  const accountType = verify.data?.user.accountType;
+  const signedIn = Boolean(verify.data?.user);
 
   useEffect(() => {
-    return () => {
-      if (cooldownRef.current) clearInterval(cooldownRef.current);
-    };
-  }, []);
+    if (!verified) return;
+    clearAuthRecovery("verification");
+    try { localStorage.removeItem(PENDING_ORG_INVITE_KEY); } catch { /* Storage unavailable. */ }
+    if (signedIn) navigate(target === "/" ? homePathFor(accountType) : target, { replace: true });
+  }, [verified, signedIn, target, accountType, navigate]);
 
-  async function handleResend() {
-    if (!email || resending || cooldown > 0) return;
-
-    setResending(true);
-    setResent(false);
-    setResendError(null);
-
-    const { error: sendError } = await authClient.sendVerificationEmail({
-      email,
-      callbackURL: "/",
-    });
-
-    setResending(false);
-
-    if (sendError) {
-      setResendError(sendError.message ?? "Couldn't resend the email. Please try again.");
-      return;
-    }
-
-    setResent(true);
-    setCooldown(RESEND_COOLDOWN_S);
-    cooldownRef.current = setInterval(() => {
-      setCooldown((prev) => {
-        if (prev <= 1) {
-          if (cooldownRef.current) clearInterval(cooldownRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+  if (token && verify.isPending) {
+    return <div className="flex flex-col gap-4" role="status">
+      <h1 className="text-2xl font-medium text-ink">Verifying email</h1>
+      <Spinner />
+    </div>;
   }
 
-  useEffect(() => {
-    if (!token) return;
-
-    let isMounted = true;
-
-    async function verify() {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"}/api/auth/verify-email?token=${token}`,
-          { credentials: "include" }
-        );
-
-        if (!isMounted) return;
-
-        if (res.ok) {
-          setSuccess(true);
-          // autoSignInAfterVerification establishes a session on the verify
-          // response; refetch it and, if signed in, land the user in-app
-          // automatically instead of asking them to click Continue.
-          const { data: session } = await authClient.getSession();
-          if (isMounted && session?.user) {
-            const accountType = (session.user as { accountType?: string }).accountType;
-            const target = continueAfterVerifyPath(redirectTo);
-            navigate(target === "/" ? homePathFor(accountType) : target, { replace: true });
-          }
-        } else {
-          setError("Verification failed. The link may have expired.");
-        }
-      } catch (err) {
-        if (!isMounted) return;
-        setError("Verification failed. The link may have expired.");
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    verify();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [token]);
-
-  if (!token) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
-            Check your email
-          </h1>
-          <p className="text-sm text-gray-500 text-pretty">
-            We sent a verification link
-            {email ? (
-              <>
-                {" "}to <span className="font-semibold text-gray-700">{email}</span>
-              </>
-            ) : null}
-            . Check your inbox and click the link to verify your account.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {resent ? (
-            <p className="text-sm text-green-600 text-pretty" role="status">
-              Verification email sent. Check your inbox.
-            </p>
-          ) : null}
-          {resendError ? (
-            <p className="text-sm text-red-600 text-pretty" role="alert">
-              {resendError}
-            </p>
-          ) : null}
-
-          <Button
-            type="button"
-            className="w-full"
-            onClick={handleResend}
-            disabled={!email || resending || cooldown > 0}
-          >
-            {resending
-              ? "Sending..."
-              : cooldown > 0
-                ? `Resend in ${cooldown}s`
-                : "Resend verification email"}
-          </Button>
-
-          {!email ? (
-            <p className="text-xs text-gray-400 text-pretty text-center">
-              Sign in to resend your verification email.
-            </p>
-          ) : null}
-
-          <Link to="/auth/sign-in">
-            <Button type="button" variant="secondary" className="w-full">
-              Back to sign in
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
+  if (verified) {
+    return <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-medium text-ink">Email verified</h1>
+      <p className="text-sm text-ink-muted">Your email is verified. Continue to your account.</p>
+      <Link to={signInPath(target)}><Button className="w-full">Continue</Button></Link>
+    </div>;
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
-            Verifying email
-          </h1>
-          <p className="text-sm text-gray-500 text-pretty">
-            Verifying your email...
-          </p>
-        </div>
-      </div>
-    );
+  if (token && !invalid) {
+    return <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-medium text-ink">Could not verify your email</h1>
+      <p role="alert" className="text-sm text-ink-muted">We could not complete verification. Check your connection and try again.</p>
+      <Button onClick={() => void verify.refetch()} loading={verify.isFetching} disabled={verify.isFetching}>Try again</Button>
+      <Link className="text-sm text-primary-500" to={signInPath(target)}>Back to sign in</Link>
+    </div>;
   }
 
-  if (success) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
-            Email verified
-          </h1>
-          <p className="text-sm text-gray-500 text-pretty">
-            Your email has been successfully verified.
-          </p>
-        </div>
-
-        <p className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-600">
-          Email verified!
-        </p>
-
-        <Link to={continueAfterVerifyPath(redirectTo)}>
-          <Button type="button" className="w-full h-[48px]">
-            Continue
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-gray-900 text-balance">
-          Verification failed
-        </h1>
-        <p className="text-sm text-gray-500 text-pretty">
-          We could not verify your email address.
-        </p>
-      </div>
-
-      <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-        {error}
-      </p>
-
-      <Link to="/auth/sign-in">
-        <Button type="button" variant="secondary" className="w-full h-[48px]">
-          Back to sign in
-        </Button>
-      </Link>
+  return <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-2">
+      <h1 className="text-2xl font-medium text-ink">{invalid ? "Verification link expired or invalid" : "Check your email"}</h1>
+      <p className="text-sm text-ink-muted">{invalid
+        ? "Request a new link below to finish verifying your account."
+        : "Open the verification link in your inbox, or request a new one below."}</p>
     </div>
-  );
+    <VerificationEmailForm initialEmail={email} redirectTo={target} />
+    <Link to={signInPath(target)}><Button variant="secondary" className="w-full">Back to sign in</Button></Link>
+  </div>;
 }

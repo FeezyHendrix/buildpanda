@@ -5,13 +5,26 @@ import { ProgressBar } from "@/components/atoms/progress-bar";
 import { Spinner } from "@/components/atoms/spinner";
 import { FormDrawer } from "./form-drawer";
 import { cn } from "@/lib/utils";
-import type { DocumentCategory } from "@/lib/project-types";
+import type { DocumentCategory, DocumentVisibility, ProjectDocument } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+
+export interface UploadDocumentInput {
+  categoryId: string;
+  file: File;
+  title: string | null;
+  revision: string | null;
+  supersedesId: string | null;
+  visibility: DocumentVisibility;
+  documentDate: string | null;
+}
 
 interface UploadDocumentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: DocumentCategory[];
-  onSubmit: (input: { categoryId: string; file: File }) => void;
+  /** Existing documents, so a new revision can name the one it supersedes. */
+  documents?: ProjectDocument[];
+  onSubmit: (input: UploadDocumentInput) => void;
   isSubmitting?: boolean;
   progress?: number | null;
   error?: string | null;
@@ -27,6 +40,7 @@ function UploadDocumentDialog({
   open,
   onOpenChange,
   categories,
+  documents = [],
   onSubmit,
   isSubmitting = false,
   progress = null,
@@ -34,12 +48,22 @@ function UploadDocumentDialog({
 }: UploadDocumentDialogProps) {
   const [categoryId, setCategoryId] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [revision, setRevision] = useState("");
+  const [supersedesId, setSupersedesId] = useState("");
+  const [visibility, setVisibility] = useState<DocumentVisibility>("internal");
+  const [documentDate, setDocumentDate] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) {
       setCategoryId("");
       setFile(null);
+      setTitle("");
+      setRevision("");
+      setSupersedesId("");
+      setVisibility("internal");
+      setDocumentDate("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }, [open]);
@@ -53,14 +77,23 @@ function UploadDocumentDialog({
 
   function handleSubmit(): void {
     if (!file || !categoryId) return;
-    onSubmit({ categoryId, file });
+    onSubmit({
+      categoryId,
+      file,
+      title: title.trim() || null,
+      revision: revision.trim() || null,
+      supersedesId: supersedesId || null,
+      visibility,
+      documentDate: documentDate || null,
+    });
   }
 
   return (
     <FormDrawer open={open}
     onOpenChange={onOpenChange}
     title="Upload document"
-    description="Pick a category and choose a file. Size and filename are read automatically."
+    description="A register needs more than a filename: give the document a title and a revision so the next issue can supersede it."
+    width="lg"
     submitLabel="Upload"
     submitDisabled={!isValid}
     submitting={isSubmitting}
@@ -72,7 +105,7 @@ function UploadDocumentDialog({
         value={categoryId}
         onChange={(e) => setCategoryId(e.target.value)}
         disabled={isSubmitting}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-60"
+        className={INPUT_CLASS}
       >
         <option value="">Select a category</option>
         {categories.map((cat) => (
@@ -83,6 +116,84 @@ function UploadDocumentDialog({
       </select>
     </div>
     
+    <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="document-title">Title</Label>
+        <input
+          id="document-title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={300}
+          disabled={isSubmitting}
+          placeholder="e.g. Typical cross-section, ch 0+000 – 1+200"
+          className={INPUT_CLASS}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="document-revision">Revision</Label>
+        <input
+          id="document-revision"
+          value={revision}
+          onChange={(e) => setRevision(e.target.value)}
+          maxLength={50}
+          disabled={isSubmitting}
+          placeholder="e.g. Rev C"
+          className={INPUT_CLASS}
+        />
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="document-date">Date on the document</Label>
+        <input
+          id="document-date"
+          type="date"
+          value={documentDate}
+          onChange={(e) => setDocumentDate(e.target.value)}
+          disabled={isSubmitting}
+          className={INPUT_CLASS}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="document-visibility">Visibility</Label>
+        <select
+          id="document-visibility"
+          value={visibility}
+          onChange={(e) => setVisibility(e.target.value as DocumentVisibility)}
+          disabled={isSubmitting}
+          className={INPUT_CLASS}
+        >
+          <option value="internal">Internal — the delivery team only</option>
+          <option value="shared">Issued to the client</option>
+        </select>
+      </div>
+    </div>
+
+    {documents.length > 0 ? (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="document-supersedes">Supersedes</Label>
+        <select
+          id="document-supersedes"
+          value={supersedesId}
+          onChange={(e) => setSupersedesId(e.target.value)}
+          disabled={isSubmitting}
+          className={INPUT_CLASS}
+        >
+          <option value="">Nothing — this is a new document</option>
+          {documents.map((doc) => (
+            <option key={doc.id} value={doc.id}>
+              {doc.title ?? doc.fileName}
+              {doc.revision ? ` · ${doc.revision}` : ""}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-500">
+          The superseded document stays on file; the register shows the chain.
+        </p>
+      </div>
+    ) : null}
+
     <div className="flex flex-col gap-1.5">
       <Label htmlFor="document-file">File</Label>
       <input
@@ -97,8 +208,8 @@ function UploadDocumentDialog({
       />
       <div
         className={cn(
-          "flex items-center justify-between gap-3 rounded-lg border-2 border-dashed border-[#D9D9D9] bg-[#FAFAFA] px-3 py-3",
-          file && "border-[#004DE7]/30 bg-[#F5F8FF]",
+          "flex items-center justify-between gap-3 rounded-lg border-2 border-dashed border-line bg-surface-alt px-3 py-3",
+          file && "border-primary-500/30 bg-primary-50",
         )}
       >
         <div className="min-w-0">
@@ -107,7 +218,7 @@ function UploadDocumentDialog({
               <p className="truncate text-sm font-medium text-gray-900">
                 {file.name}
               </p>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-xs text-gray-500">
                 {formatBytes(file.size)} · {file.type || "Unknown type"}
               </p>
             </>
@@ -118,9 +229,8 @@ function UploadDocumentDialog({
         <Button
           type="button"
           variant="secondary"
-          size="sm"
+          size="md"
           loading={isSubmitting}
-          className="h-9 px-3 text-xs"
           onClick={() => fileInputRef.current?.click()}
         >
           {file ? "Replace" : "Choose file"}
@@ -128,7 +238,7 @@ function UploadDocumentDialog({
       </div>
 
       {isSubmitting && (
-        <div className="flex flex-col gap-2 rounded-lg border border-[#E4E9F5] bg-[#F5F8FF] px-3 py-3">
+        <div className="flex flex-col gap-2 rounded-lg border border-primary-100 bg-primary-50 px-3 py-3">
           <div className="flex items-center gap-2.5">
             <Spinner size="sm" label={statusLabel} />
             <p className="text-sm font-medium text-gray-900">{statusLabel}</p>

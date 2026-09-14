@@ -25,10 +25,21 @@ export type UpdateStatus =
   | "Resolved"
   | "Escalated";
 
+// What Panda AI drafts for a project. The audience differs per value: `weekly`
+// is the homeowner-facing client update, `daily` is the internal end-of-day
+// digest written for the build team and never addressed to the client.
+export const AI_UPDATE_CADENCES = ["off", "daily", "weekly", "both"] as const;
+export type AiUpdateCadence = (typeof AI_UPDATE_CADENCES)[number];
+
+// The non-null values of `ProjectUpdate.generatedKind`.
+export const AI_DRAFT_KINDS = ["weekly", "daily"] as const;
+export type AiDraftKind = (typeof AI_DRAFT_KINDS)[number];
+
 export type MediaType = "photo" | "video";
 export type DocumentStatus = "Verified" | "Pending" | "Expired";
 export type InspectionStatus = "Action Required" | "Completed" | "Scheduled";
 export type MilestoneStatus = "Completed" | "InProgress" | "Pending";
+export type MilestoneClaimState = "pending" | "claimable" | "claimed" | "certified" | "paid";
 export type SignOffStatus = "Verified" | "Scheduled" | "Pending";
 export type LedgerType = "Release" | "Deposit" | "Hold";
 export type DisputeStatus = "Open" | "Resolved" | "Withdrawn";
@@ -44,100 +55,51 @@ export type WeatherCondition =
   | "Storm"
   | "Fog"
   | "ExtremeHeat";
-export type InspectionCategory =
-  | "All Reports"
-  | "Structural"
-  | "Quantity Survey"
-  | "General Progress"
-  | "Electrical"
-  | "Plumbing";
+// BuildPanda's seeded service catalogue. It is no longer the list the UI
+// renders — that comes from `GET /projects/:id/inspection-categories`, which
+// adds each workspace's own categories on top. Kept only as the seed names.
+export const INSPECTION_CATEGORIES = [
+  "Structural",
+  "Quantity Survey",
+  "General Progress",
+  "Electrical",
+  "Plumbing",
+] as const;
+export type InspectionCategory = "All Reports" | (typeof INSPECTION_CATEGORIES)[number];
+
+export const INSPECTION_OUTCOMES = ["pass", "fail"] as const;
+export type InspectionOutcome = (typeof INSPECTION_OUTCOMES)[number];
+
+/**
+ * Where the service order has got to. An inspection is a job BuildPanda is
+ * asked to do, not a note the builder writes about its own work: the client
+ * requests it, BuildPanda schedules it by assigning an inspector, the
+ * inspector attends, and the report is issued.
+ */
+export const SERVICE_STATUSES = [
+  "Requested",
+  "Scheduled",
+  "Attended",
+  "Reported",
+  "Cancelled",
+] as const;
+export type ServiceStatus = (typeof SERVICE_STATUSES)[number];
+
+/** Which side of the contract asked for the inspection. Recorded, not claimed. */
+export type RequesterSide = "client" | "contractor";
 export type NotificationType =
   | "update_posted"
   | "update_action_required"
   | "inspection_scheduled"
   | "milestone_released"
   | "milestone_disputed"
-  | "document_uploaded"
-  | "action_item_due"
-  | "action_item_assigned";
+  | "document_uploaded";
 
 export interface ProjectPhase {
   id: string;
   name: string;
   status: PhaseStatus;
   dateRange: string;
-}
-
-export type ActionStatus = "Open" | "InProgress" | "Blocked" | "Resolved";
-export type ActionPriority = "Low" | "Medium" | "High" | "Urgent";
-export type RecurrenceUnit = "day" | "week" | "month";
-
-export interface ActionItem {
-  id: string;
-  projectId: string;
-  title: string;
-  description: string | null;
-  descriptionHtml: string | null;
-  status: ActionStatus;
-  priority: ActionPriority;
-  assigneeId: string | null;
-  assigneeName: string | null;
-  dueDate: string | null;
-  resolvedAt: string | null;
-  recurrenceUnit: RecurrenceUnit | null;
-  recurrenceInterval: number | null;
-  recurrenceUntil: string | null;
-  recurrenceParentId: string | null;
-  commentCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ActionComment {
-  id: string;
-  actionItemId: string;
-  authorId: string;
-  authorName: string;
-  body: string;
-  createdAt: string;
-}
-
-export interface ActionItemDetail extends ActionItem {
-  comments: ActionComment[];
-}
-
-export type QueryStatus = "Open" | "Answered" | "Closed";
-
-export interface SiteQuery {
-  id: string;
-  projectId: string;
-  subject: string;
-  question: string;
-  status: QueryStatus;
-  answer: string | null;
-  dueDate: string | null;
-  askedById: string | null;
-  answeredById: string | null;
-  answeredByName: string | null;
-  assigneeId: string | null;
-  assigneeName: string | null;
-  answeredAt: string | null;
-  commentCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SiteQueryComment {
-  id: string;
-  queryId: string;
-  authorId: string;
-  authorName: string;
-  body: string;
-  createdAt: string;
-}
-
-export interface SiteQueryDetail extends SiteQuery {
-  comments: SiteQueryComment[];
 }
 
 export type RfiStatus = "Draft" | "Open" | "InReview" | "Answered" | "Closed" | "Void";
@@ -149,6 +111,7 @@ export interface Rfi {
   number: number;
   subject: string;
   question: string;
+  questionHtml: string | null;
   status: RfiStatus;
   priority: RfiPriority;
   visibility: "internal" | "shared";
@@ -158,6 +121,7 @@ export interface Rfi {
   assigneeRole: string | null;
   dueDate: string | null;
   officialResponse: string | null;
+  officialResponseHtml: string | null;
   officialRespondedById: string | null;
   officialRespondedByName: string | null;
   officialRespondedAt: string | null;
@@ -251,6 +215,7 @@ export interface Approval {
   description: string | null;
   status: ApprovalStatus;
   response: string | null;
+  responseHtml: string | null;
   dueDate: string | null;
   submittedById: string | null;
   requestedReviewerId: string | null;
@@ -310,7 +275,50 @@ export interface Selection {
   updatedAt: string;
 }
 
-export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Rejected";
+export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Executed" | "Rejected";
+
+/**
+ * What kind of change this is. A variation adds work, an omission removes it,
+ * an EOT-only claim asks for time and no money, and a provisional-sum
+ * adjustment converts a sum already in the contract into measured work.
+ */
+export const CHANGE_TYPES = ["variation", "omission", "eot_only", "provisional_sum"] as const;
+export type ChangeType = (typeof CHANGE_TYPES)[number];
+
+/** The actions that move a change request. Status is never set by hand. */
+export const CHANGE_ACTIONS = ["submit", "approve", "reject", "resubmit", "execute"] as const;
+export type ChangeAction = (typeof CHANGE_ACTIONS)[number];
+
+/**
+ * One submitted version of the change. "v1 ₦4.8m rejected → v2 ₦4.2m approved"
+ * is the negotiation, and a list that silently shows ₦4.2m as if it had always
+ * been that is not a record of it.
+ */
+export interface ChangeRevision {
+  version: number;
+  costImpact: number;
+  timeImpactDays: number;
+  reason: string | null;
+  status: ChangeStatus;
+  actorId: string | null;
+  actorName: string;
+  at: string;
+}
+
+/**
+ * One delay a time claim is argued from. A contractor-culpable delay is never
+ * claimable, so the server refuses a claim citing one and names it.
+ */
+export interface ChangeDelay {
+  id: string;
+  activityId: string;
+  activityName: string;
+  reasonCode: string;
+  daysLost: number;
+  culpability: Culpability | string;
+  eotClaimable: boolean;
+  startedAt: string;
+}
 
 export interface ChangeRequest {
   id: string;
@@ -318,6 +326,7 @@ export interface ChangeRequest {
   title: string;
   description: string | null;
   reason: string | null;
+  reasonHtml: string | null;
   status: ChangeStatus;
   costImpact: number;
   timeImpactDays: number;
@@ -329,6 +338,23 @@ export interface ChangeRequest {
   assigneeName: string | null;
   decidedAt: string | null;
   commentCount: number;
+  /** Contract created when the change order was executed; null until then. */
+  contractId?: string | null;
+  type: ChangeType;
+  /** The build stage the change moves; its end date shifts on Execute. */
+  stageId: string | null;
+  /** The RFI this change came out of, when it did. */
+  rfiId: string | null;
+  /**
+   * Days actually granted on a time claim; null until it is decided. An award
+   * is usually fewer days than were claimed, and the gap is the negotiation.
+   */
+  daysAwarded: number | null;
+  /** The delay events a time claim is argued from. */
+  delays: ChangeDelay[];
+  rejectedReason: string | null;
+  submittedAt: string | null;
+  revisions: ChangeRevision[];
   createdAt: string;
   updatedAt: string;
 }
@@ -361,6 +387,11 @@ export interface Permit {
   approvedDate: string | null;
   expiryDate: string | null;
   notes: string | null;
+  documentId: string | null;
+  conditions: string | null;
+  responsiblePerson: string | null;
+  renewalSubmittedAt: string | null;
+  leadTimeDays: number | null;
   urgency: PermitUrgency;
   daysUntilExpiry: number | null;
   createdAt: string;
@@ -377,6 +408,12 @@ export interface KeyDate {
   actualDate: string | null;
   status: KeyDateStatus;
   notes: string | null;
+  /** The activity that delivers this date; the cascade moves it when that activity slips. */
+  linkedActivityId: string | null;
+  /** A contract date with LD consequences — only an approved EOT moves it. */
+  isContractual: boolean;
+  /** Server-stamped once, with the originally programmed target, the first time the date moves. */
+  revisedFrom: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -384,39 +421,9 @@ export interface KeyDate {
 
 export interface ProjectInsights {
   progress: { stagesTotal: number; stagesComplete: number; overallPercent: number };
-  openItems: { actionItems: number; blocked: number; queries: number; awaitingApproval: number };
+  openItems: { awaitingApproval: number };
   budget: { currency: string; total: number; released: number; remaining: number; approvedChangeCost: number };
-  scheduleRisk: { approvedChangeDays: number; permitsAtRisk: number; missedKeyDates: number; blockedItems: number };
-}
-
-export interface GlobalWhatsNextItem {
-  id: string;
-  project_id: string;
-  projectName: string;
-}
-
-export interface GlobalWhatsNext {
-  windowDays: number;
-  from: string;
-  to: string;
-  dueActionItems: (GlobalWhatsNextItem & { title: string; priority: string; due_date: string; status: string })[];
-  dueQueries: (GlobalWhatsNextItem & { subject: string; due_date: string })[];
-  dueApprovals: (GlobalWhatsNextItem & { title: string; due_date: string; status: string })[];
-  upcomingKeyDates: (GlobalWhatsNextItem & { label: string; target_date: string })[];
-  expiringPermits: (GlobalWhatsNextItem & { title: string; expiry_date: string })[];
-}
-
-export interface WhatsNext {
-  windowDays: number;
-  from: string;
-  to: string;
-  stagesInProgress: Array<{ id: string; name: string; progress_percent: number; date_range: string | null }>;
-  upcomingStages: Array<{ id: string; name: string; start_date: string }>;
-  dueActionItems: Array<{ id: string; title: string; priority: string; due_date: string; status: string }>;
-  dueQueries: Array<{ id: string; subject: string; due_date: string }>;
-  dueApprovals: Array<{ id: string; title: string; due_date: string; status: string }>;
-  upcomingKeyDates: Array<{ id: string; label: string; target_date: string }>;
-  expiringPermits: Array<{ id: string; title: string; expiry_date: string }>;
+  scheduleRisk: { approvedChangeDays: number; permitsAtRisk: number; missedKeyDates: number };
 }
 
 export type StageStatus = PhaseStatus;
@@ -431,6 +438,14 @@ export type KnownParticipantRole =
   | "materials_approver";
 export type ParticipantRole = KnownParticipantRole | (string & {});
 export type ParticipantStatus = "invited" | "active" | "revoked";
+
+/**
+ * Which side of the contract a person sits on. It decides who can be
+ * ball-in-court on an RFI, who approves a valuation and who signs an
+ * inspection — a "Client" role label alone never said (finding #14).
+ */
+export const PARTICIPANT_SIDES = ["client", "contractor", "consultant"] as const;
+export type ParticipantSide = (typeof PARTICIPANT_SIDES)[number];
 export type SectionPermission = "hidden" | "view" | "edit";
 export type ParticipantPermissions = Record<string, SectionPermission>;
 
@@ -441,6 +456,7 @@ export interface ProjectParticipant {
   name: string | null;
   email: string;
   role: ParticipantRole | "owner";
+  side: ParticipantSide | null;
   status: ParticipantStatus;
   permissions: ParticipantPermissions;
   grants: Record<string, string[]> | null;
@@ -464,7 +480,12 @@ export interface ProjectAccess {
     canManageParticipants: boolean;
     canDecideApprovals: boolean;
     canDecideSelections: boolean;
-    canRaiseQueries: boolean;
+    /**
+     * The cost position is the contractor's own — expenses, purchase orders,
+     * budget vs actual, cost variance. A client-side participant sees the
+     * contract they are party to and never the costs behind it.
+     */
+    canViewCosts: boolean;
     canComment: boolean;
   };
 }
@@ -481,8 +502,12 @@ export function canViewSection(
   access: ProjectAccess | undefined,
   _sectionKey: string | undefined,
   resource?: string,
+  /** The action the section needs; `view` when omitted (cost pages pass `viewCosts`). */
+  action?: string,
 ): boolean {
-  return canViewResource(access, resource);
+  if (!resource || !access) return true;
+  if (!action || action === "view") return canViewResource(access, resource);
+  return canResourceAction(access, resource, action);
 }
 
 /**
@@ -539,6 +564,16 @@ export interface Stage {
   progressPercent: number;
   value: number;
   sortOrder: number;
+  /** Contract (main or change order) that prices this phase; null until assigned. */
+  contractId?: string | null;
+  /** Estimated figures a PM types on the Phases tab; costs are read from expenses and POs. */
+  expectedCost?: number | null;
+  estimatedLaborHours?: number | null;
+  laborBudget?: number | null;
+  materialBudget?: number | null;
+  usedLaborHours?: number | null;
+  usedMaterialCost?: number | null;
+  totalCost?: number | null;
 }
 
 export interface Project {
@@ -633,7 +668,16 @@ export interface ProjectDocument {
   versionNo: number;
   versionCount: number;
   currentVersionId: string | null;
+  title: string | null;
+  revision: string | null;
+  supersedesId: string | null;
+  visibility: DocumentVisibility;
+  documentDate: string | null;
 }
+
+/** Internal to the delivery team, or issued to the client. */
+export const DOCUMENT_VISIBILITIES = ["internal", "shared"] as const;
+export type DocumentVisibility = (typeof DOCUMENT_VISIBILITIES)[number];
 
 export interface DocumentVersion {
   id: string;
@@ -652,12 +696,32 @@ export interface InspectionReport {
   id: string;
   projectId: string;
   inspector: Person;
+  /** The BuildPanda inspector's user id — null until BuildPanda assigns one. */
+  inspectorUserId: string | null;
   title: string;
-  category: InspectionCategory;
+  /** A name from the project's category list, not a fixed union. */
+  category: string;
   description: string;
   status: InspectionStatus;
+  serviceStatus: ServiceStatus;
   riskLevel: RiskLevel;
   scheduledAt: string;
+  activityId: string | null;
+  location: string | null;
+  holdPoint: boolean;
+  outcome: InspectionOutcome | null;
+  findings: string | null;
+  reinspectionDate: string | null;
+  inspectedAt: string | null;
+  inspectedByName: string | null;
+  requestedById: string | null;
+  requestedBySide: RequesterSide;
+  /** The party being inspected. The contractor is the subject, never the author. */
+  contractorName: string | null;
+  reportIssuedAt: string | null;
+  /** Recorded, never charged — money is logged, not transacted. */
+  feeAmount: number | null;
+  feeCurrency: string | null;
   media: MediaItem[];
   reportUrl?: string;
 }
@@ -685,7 +749,8 @@ export type MaterialOrderStatus =
   | "Ordered"
   | "PartiallyDelivered"
   | "Delivered"
-  | "Cancelled";
+  | "Cancelled"
+  | "Rejected";
 export type EquipmentRequestStatus =
   | "Draft"
   | "Requested"
@@ -706,6 +771,23 @@ export interface LifecycleLinks {
   documentName: string | null;
 }
 
+/** One recorded drop against a material order — the goods actually arrived. */
+export interface MaterialDelivery {
+  id: string;
+  orderId: string;
+  deliveredQty: number;
+  deliveredAt: string;
+  deliveryNote: string | null;
+  receivedById: string | null;
+  receivedByName: string | null;
+  notes: string | null;
+  rejected: boolean;
+  rejectedReason: string | null;
+  ledgerEntryId: string | null;
+  transactionId: string | null;
+  createdAt: string;
+}
+
 export interface MaterialOrder extends LifecycleLinks {
   id: string;
   projectId: string;
@@ -713,22 +795,44 @@ export interface MaterialOrder extends LifecycleLinks {
   materialName: string;
   quantity: number;
   unit: string;
+  /** Free-text fallback kept for rows typed before the supplier register. */
   supplier: string | null;
+  supplierId: string | null;
+  supplierName: string | null;
   status: MaterialOrderStatus;
   priority: RequestPriority;
   neededBy: string;
   orderedAt: string | null;
   expectedDeliveryAt: string | null;
   deliveredAt: string | null;
+  unitRate: number | null;
   estimatedCost: number;
   actualCost: number;
   currency: Currency;
   deliveryLocation: string | null;
   notes: string | null;
+  cancelReason: string | null;
+  rejectedReason: string | null;
   requestedById: string | null;
   procurementId: string | null;
+  /** Computed by the backend, never stored: past its needed-by, or promised after it. */
+  late: boolean;
+  deliveredQuantity: number;
+  outstandingQuantity: number;
+  deliveries: MaterialDelivery[];
+  /** Status of the material-approval request covering this material, if any. */
+  approvalStatus: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One recorded push of the off-hire date, kept as an append-only log. */
+export interface EquipmentHireExtension {
+  at: string;
+  from: string | null;
+  to: string;
+  reason: string | null;
+  actorId: string | null;
 }
 
 export interface EquipmentRequest extends LifecycleLinks {
@@ -739,6 +843,8 @@ export interface EquipmentRequest extends LifecycleLinks {
   equipmentType: string;
   quantity: number;
   supplier: string | null;
+  supplierId: string | null;
+  supplierName: string | null;
   status: EquipmentRequestStatus;
   bucket: EquipmentBucket;
   priority: RequestPriority;
@@ -746,13 +852,23 @@ export interface EquipmentRequest extends LifecycleLinks {
   neededUntil: string;
   mobilizedAt: string | null;
   returnedAt: string | null;
+  onHireAt: string | null;
+  offHireAt: string | null;
+  plantRef: string | null;
+  dailyRate: number | null;
+  hireDays: number | null;
+  extensions: EquipmentHireExtension[];
   estimatedCost: number;
   actualCost: number;
   currency: Currency;
   deliveryLocation: string | null;
   operatorRequired: boolean;
   notes: string | null;
+  cancelReason: string | null;
+  rejectedReason: string | null;
   requestedById: string | null;
+  /** Computed server-side: wanted on site before today and not yet on hire. */
+  late: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -766,6 +882,7 @@ export interface MilestonePayment {
   amount: number;
   proof: { fileName: string; verified: boolean } | null;
   inspectorSignOff: SignOffStatus;
+  claimState: MilestoneClaimState;
 }
 
 export interface PaymentLedgerEntry {
@@ -906,13 +1023,29 @@ export interface FinalAccount {
   createdAt: string;
 }
 
+export const RISK_STATUSES = ["open", "mitigated", "closed", "occurred"] as const;
+export type RiskStatus = (typeof RISK_STATUSES)[number];
+
 export interface RiskFactor {
   id: string;
   title: string;
   description: string;
   descriptionHtml: string | null;
   severity: RiskLevel;
+  status: RiskStatus;
+  ownerId: string | null;
+  ownerName: string | null;
+  mitigation: string | null;
+  reviewDate: string | null;
+  linkedActivityId: string | null;
+  closedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
+
+/** Who carries the time risk. A contractor-culpable delay can never be EOT-claimable. */
+export const CULPABILITIES = ["contractor", "client", "neutral"] as const;
+export type Culpability = (typeof CULPABILITIES)[number];
 
 export interface ActivityDelay {
   id: string;
@@ -921,12 +1054,37 @@ export interface ActivityDelay {
   reasonName: string;
   reasonCategory: string;
   description: string | null;
+  descriptionHtml?: string | null;
   startedAt: string;
+  /** When work resumed; null while the delay is still running. */
+  endedAt: string | null;
+  /** Measured lost time, in working days on the project calendar. */
+  daysLost: number;
+  culpability: Culpability;
+  eotClaimable: boolean;
+  linkedRfiId: string | null;
+  linkedChangeRequestId: string | null;
+  linkedMaterialOrderId: string | null;
+  /** Working days this delay has already pushed the chain by — the cascade's ledger. */
+  appliedShiftDays: number;
   resolvedAt: string | null;
+  resolvedById: string | null;
   costImpact: number;
   currency: Currency;
   preventionNotes: string | null;
   recordedBy: { id: string; name: string | null } | null;
+  createdAt: string;
+}
+
+/** One line of the programme audit trail: who moved what, by how many days, and why. */
+export interface ActivityEvent {
+  id: string;
+  activityId: string;
+  kind: string;
+  summary: string;
+  daysDelta: number;
+  delayId: string | null;
+  actorId: string | null;
   createdAt: string;
 }
 
@@ -967,17 +1125,22 @@ export interface Activity {
   baselineEndAt: string | null;
   isMilestone: boolean;
   source: string;
+  /** Planned duration on the project's working calendar, both ends inclusive. */
+  durationWorkingDays: number;
   delays: ActivityDelay[];
   createdAt: string;
   updatedAt: string;
 }
 
+/** `GET /delay-reasons` answers with the raw rows, so these stay snake_case. */
 export interface DelayReason {
   code: string;
   category: string;
   name: string;
   description: string;
   is_active?: boolean;
+  default_culpability?: Culpability;
+  default_eot_claimable?: boolean;
 }
 
 export interface DailyLogActivityLink {
@@ -1042,6 +1205,7 @@ export interface DailyLogDay {
   totalHours: number;
   activities: DailyLogActivityLink[];
   entries: DailyLogEntry[];
+  voidedAt: string | null;
 }
 
 export type ReportPeriod = "weekly" | "monthly" | "quarterly" | "semiAnnual" | "annual";
@@ -1055,6 +1219,7 @@ export const REPORT_PERIOD_OPTIONS: { value: ReportPeriod; label: string }[] = [
 ];
 
 export interface Notification {
+  ctaUrl?: string | null;
   id: string;
   type: NotificationType;
   title: string;
@@ -1258,7 +1423,6 @@ export interface TaskLink {
 }
 
 export const TASK_ENTITY_TYPES = [
-  "action_item",
   "rfi",
   "change_request",
   "material",
@@ -1341,6 +1505,12 @@ export interface LedgerEntry {
   materialName: string;
   unit: string;
   locationKey: string;
+  stageId: string | null;
+  stageName: string | null;
+  approvalStatus: string;
+  approvedById: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
   quantity: number;
   stockDelta: number;
   occurredAt: string;
@@ -1354,6 +1524,12 @@ export interface LedgerEntry {
   reversalForEntryId: string | null;
   reason: string | null;
   notesHtml: string | null;
+  /** Who the goods came from, snapshotted on the receipt. */
+  supplier: string | null;
+  /** Delivery-note number the receipt was signed on. */
+  deliveryNote: string | null;
+  /** Approved by the same person who logged it — maker/checker breached. */
+  selfApproved: boolean;
   files: LedgerEntryFile[];
   createdAt: string;
 }
@@ -1370,15 +1546,24 @@ export interface StockLevel {
   lowStock: boolean;
 }
 
+/** "project" = raised on this job; "organization" = on the company register. */
+export type SupplierScope = "project" | "organization";
+
 export interface Supplier {
   id: string;
-  projectId: string;
+  projectId: string | null;
+  organizationId: string | null;
+  scope: SupplierScope;
   name: string;
   contactName: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
   notes: string | null;
+  trade: string | null;
+  approved: boolean;
+  leadTimeDays: number | null;
+  paymentTerms: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1437,6 +1622,10 @@ export interface LookAhead {
   endDate: string;
   totalWorkers: number | null;
   activities: LookAheadActivitySummary[];
+  approvedById: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
+  approvalNote: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1478,6 +1667,14 @@ export interface Transaction {
   vendor: string | null;
   reference: string | null;
   receiptFileId: string | null;
+  stageId: string | null;
+  stageName: string | null;
+  /** A refund or credit note against this category, not an outlay. */
+  credit: boolean;
+  /** A refundable outlay — a plant-hire deposit, a bond — not final cost. */
+  recoverable: boolean;
+  /** Dated before the project started: legitimate, but not recoverable under the contract. */
+  preContract: boolean;
   createdById: string | null;
   createdByName: string | null;
   createdAt: string;
@@ -1515,6 +1712,7 @@ export interface TransactionAnalytics {
 
 export interface TransactionListFilters {
   category?: string;
+  stageId?: string;
   from?: string;
   to?: string;
   search?: string;
@@ -1529,6 +1727,9 @@ export interface CreateTransactionInput {
   vendor?: string | null;
   reference?: string | null;
   receiptFileId?: string | null;
+  stageId?: string | null;
+  credit?: boolean;
+  recoverable?: boolean;
 }
 
 export interface UpdateTransactionInput {
@@ -1540,6 +1741,9 @@ export interface UpdateTransactionInput {
   vendor?: string | null;
   reference?: string | null;
   receiptFileId?: string | null;
+  stageId?: string | null;
+  credit?: boolean;
+  recoverable?: boolean;
 }
 
 export interface CreateCustomCategoryInput {
@@ -1567,15 +1771,43 @@ export type RetentionReleaseMode = (typeof RETENTION_RELEASE_MODES)[number];
 export const ADVANCE_RECOVERY_MODES = ["percentage", "fixed"] as const;
 export type AdvanceRecoveryMode = (typeof ADVANCE_RECOVERY_MODES)[number];
 
+export const CONTRACT_FORMS = ["fidic_red", "fidic_yellow", "jct", "nec", "bespoke"] as const;
+export type ContractForm = (typeof CONTRACT_FORMS)[number];
+
+export const VALUATION_FREQUENCIES = ["monthly", "milestone"] as const;
+export type ValuationFrequency = (typeof VALUATION_FREQUENCIES)[number];
+
+/**
+ * Every rate here is a FRACTION on the wire (0.05 = 5%) — the UI shows a
+ * percentage and converts at the form boundary, so a consumer never has to
+ * guess which of two neighbouring fields is which.
+ * `liquidatedDamagesRate` is the one money-per-day figure.
+ */
 export interface ContractTerms {
   contractType: ContractType;
   retentionRate: number;
   retentionReleaseMode: RetentionReleaseMode;
+  /** Retention stops accruing at this share of the contract. 0 = uncapped. */
+  retentionCapPercent: number;
   advancePercentage: number;
   advanceRecoveryMode: AdvanceRecoveryMode;
   advanceRecoveryRate: number;
+  /** Recovery of the advance starts on this certificate number (IPC 2 by default). */
+  advanceRecoveryFromCertificate: number;
   paymentTermsDays: number;
   defectsLiabilityDays: number;
+  defectsPeriodMonths: number;
+  vatRate: number;
+  /** Money per calendar day late — not a fraction. */
+  liquidatedDamagesRate: number;
+  /** LDs stop accruing at this share of the adjusted contract. 0 = uncapped. */
+  liquidatedDamagesCapPercent: number;
+  commencementDate: string | null;
+  completionDate: string | null;
+  employerName: string | null;
+  contractorName: string | null;
+  contractForm: ContractForm | null;
+  valuationFrequency: ValuationFrequency;
   contractNotes: string | null;
 }
 
@@ -1584,11 +1816,23 @@ export interface UpdateContractTermsInput {
   contractType?: ContractType;
   retentionRate?: number;
   retentionReleaseMode?: RetentionReleaseMode;
+  retentionCapPercent?: number;
   advancePercentage?: number;
   advanceRecoveryMode?: AdvanceRecoveryMode;
   advanceRecoveryRate?: number;
+  advanceRecoveryFromCertificate?: number;
   paymentTermsDays?: number;
   defectsLiabilityDays?: number;
+  defectsPeriodMonths?: number;
+  vatRate?: number;
+  liquidatedDamagesRate?: number;
+  liquidatedDamagesCapPercent?: number;
+  commencementDate?: string | null;
+  completionDate?: string | null;
+  employerName?: string | null;
+  contractorName?: string | null;
+  contractForm?: ContractForm | null;
+  valuationFrequency?: ValuationFrequency;
   contractNotes?: string | null;
 }
 

@@ -10,7 +10,7 @@ export function SegmentedPermission({
 }) {
   const options: SectionPermission[] = ["hidden", "view", "edit"];
   return (
-    <div className="flex rounded-lg bg-gray-100 p-0.5">
+    <div className="flex rounded-lg bg-surface-track p-0.5">
       {options.map((opt) => (
         <button
           key={opt}
@@ -18,7 +18,7 @@ export function SegmentedPermission({
           onClick={() => onChange(opt)}
           className={cn(
             "flex-1 rounded-md py-1 text-xs font-medium capitalize transition-all duration-150",
-            value === opt ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600",
+            value === opt ? "bg-white text-ink shadow-card" : "text-ink-muted hover:text-ink",
           )}
         >
           {opt}

@@ -1,4 +1,5 @@
 import { Badge } from "@/components/atoms/badge";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { Switcher } from "@/components/atoms/switcher";
 import type { StageScheduleOfValue } from "@/hooks/use-stages";
@@ -23,9 +24,6 @@ export interface DraftLine {
 export const MAX_PERCENT = 100;
 
 const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
-
-const FIELD =
-  "h-10 rounded-lg bg-[#F6F6F6] px-3 text-sm text-black-500 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-60";
 
 /** Client-side row identity: periods can repeat or sit blank mid-edit. */
 let lineSeq = 0;
@@ -121,9 +119,9 @@ export function ScheduleLineRow({
   const position = index + 1;
 
   return (
-    <li className="rounded-xl border border-grey-50 bg-white p-3">
+    <li className="rounded-lg border border-line-hair bg-white p-3">
       <div className="flex items-center gap-2">
-        <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-50 text-[11px] font-semibold text-primary-700">
+        <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-semibold text-primary-700">
           {position}
         </span>
         <input
@@ -131,24 +129,26 @@ export function ScheduleLineRow({
           value={line.period}
           disabled={!editable}
           aria-label={`Line ${position} billing month`}
+          aria-invalid={!periodOk || undefined}
           onChange={(event) => onChange(line.key, { period: event.target.value })}
-          className={cn(FIELD, "min-w-0 flex-1", !periodOk && "ring-2 ring-error-300")}
+          className={cn(INPUT_SM_CLASS, "min-w-0 flex-1")}
         />
         <div className="flex shrink-0 items-center gap-1.5">
           <MoneyInput
             value={line.percent}
             disabled={!editable}
             aria-label={`Line ${position} percent of stage value`}
+            aria-invalid={!percentOk || undefined}
             onChange={(next) => onChange(line.key, { percent: next })}
-            className={cn("h-10 w-[76px] px-3", !percentOk && "ring-2 ring-error-300")}
+            className="h-[38px] w-[76px] px-3"
           />
-          <span className="text-sm font-medium text-black-200">%</span>
+          <span className="text-sm font-medium text-ink-muted">%</span>
         </div>
       </div>
 
       <div className="mt-2 flex items-center justify-between gap-3 pl-8">
-        <p className="min-w-0 truncate text-xs tabular-nums text-black-300">
-          <span className="font-semibold text-black-500">
+        <p className="min-w-0 truncate text-xs tabular-nums text-ink-muted">
+          <span className="font-semibold text-ink">
             {formatCurrency(amount, currency)}
           </span>
           {` · ${formatPeriodLabel(line.period)}`}
@@ -156,7 +156,7 @@ export function ScheduleLineRow({
         <div className="flex shrink-0 items-center gap-2">
           {editable ? (
             <>
-              <span className="text-[11px] font-medium uppercase tracking-wide text-black-200">
+              <span className="text-xs font-medium uppercase text-ink-muted">
                 Billed
               </span>
               <Switcher
@@ -167,7 +167,7 @@ export function ScheduleLineRow({
                 type="button"
                 aria-label={`Remove line ${position}`}
                 onClick={() => onRemove(line.key)}
-                className="flex size-7 items-center justify-center rounded-md text-black-200 outline-none transition-colors hover:bg-error-50 hover:text-error-600 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                className="flex size-7 items-center justify-center rounded-md p-1.5 text-ink-muted outline-none transition-colors hover:bg-black/5 hover:text-ink focus-visible:shadow-focus"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
                   <path

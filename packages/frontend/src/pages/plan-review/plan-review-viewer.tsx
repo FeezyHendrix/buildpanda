@@ -1,13 +1,15 @@
 import { ChevronLeft, ChevronRight, Square } from "lucide-react";
 import { BlendComparisonPanel } from "./plan-review-blend-panel";
+import { MarkupThreadPopover } from "@/components/molecules/markup-thread/markup-thread-popover";
 import { CommentComposerPopover } from "./plan-review-comment";
-import type { CommentAssignee, CommentCapture } from "./plan-review-comment-types";
+import type { CommentAssignee, CommentCapture } from "@/lib/markup-meta";
 import { SHEET_KIND, formatClock, type Sheet } from "./plan-review-data";
 import { PlanReviewSplit } from "./plan-review-split";
 import { PlanReviewStage } from "./plan-review-stage";
 import { REC_STATUS, SELECTION_KIND, type PopoverId } from "./plan-review-types";
 import { IconBtn } from "./plan-review-ui";
 import type { CommentAnchor, MarkupToolsController } from "./use-markup-tools";
+import type { MarkupThreadController } from "./use-markup-thread";
 import type { RecordingController } from "./use-plan-recording";
 import type { SheetNavigationController } from "./use-sheet-navigation";
 import type { SheetScaleController } from "./use-sheet-scale";
@@ -34,12 +36,14 @@ interface PlanReviewViewerProps {
   drawingRef: React.RefObject<HTMLDivElement | null>;
   popover: { open: PopoverId | null; onOpen: (id: PopoverId | null) => void };
   comment: ViewerComment;
+  thread: MarkupThreadController;
 }
 
 /**
  * The viewer pane: one sheet or a split compare, with the controls that belong
  * to the viewport rather than the drawing — the revision blend panel, the
- * recording stop button, the PDF page switcher and the comment composer.
+ * recording stop button, the PDF page switcher, the comment composer and the
+ * thread open on a persisted markup.
  */
 export function PlanReviewViewer({
   sheet,
@@ -54,6 +58,7 @@ export function PlanReviewViewer({
   drawingRef,
   popover,
   comment,
+  thread,
 }: PlanReviewViewerProps) {
   const blendReady =
     nav.blendPanelOpen &&
@@ -61,6 +66,8 @@ export function PlanReviewViewer({
     canCompare &&
     sheet.kind === SHEET_KIND.IMAGE &&
     compareSheet?.kind === SHEET_KIND.IMAGE;
+
+  const threadMarkup = thread.target ? (markup.serverMarkups.get(thread.target.id) ?? null) : null;
 
   function submitCalibration(): void {
     const selection = markup.selection;
@@ -113,7 +120,7 @@ export function PlanReviewViewer({
           aria-label="Stop recording"
           title="Stop recording"
           onClick={recording.stop}
-          className="absolute bottom-16 right-4 z-30 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xl hover:bg-red-500"
+          className="absolute bottom-16 right-4 z-30 flex items-center gap-2 rounded-full bg-negative-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-negative-600"
         >
           <span className="size-2 animate-pulse rounded-full bg-white" />
           <Square size={13} fill="currentColor" /> Stop · {formatClock(recording.seconds)}
@@ -122,7 +129,7 @@ export function PlanReviewViewer({
 
       {/* ── Page switcher — fixed to the viewer, never inside the pan/zoom surface ── */}
       {nav.pdfPageCount > 1 && !nav.split.open && (
-        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-white/95 p-1 shadow-xl ring-1 ring-black/5">
+        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-white/95 p-1 border border-line shadow-card">
           <IconBtn
             label="Previous page"
             disabled={nav.pdfPage <= 1}
@@ -144,6 +151,19 @@ export function PlanReviewViewer({
           </IconBtn>
         </div>
       )}
+
+      {thread.target && threadMarkup ? (
+        <MarkupThreadPopover
+          anchor={thread.target.anchor}
+          markup={threadMarkup}
+          subtitle={`${sheet.code} · ${threadMarkup.revisionLabel ?? currentRevision}`}
+          canEdit={thread.canEdit}
+          actions={thread.actions}
+          assignees={thread.assignees}
+          links={thread.linksFor(threadMarkup)}
+          onClose={() => thread.setTarget(null)}
+        />
+      ) : null}
 
       {comment.anchor && (
         <CommentComposerPopover

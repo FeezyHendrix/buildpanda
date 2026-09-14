@@ -1,3 +1,5 @@
+import { useDraftFiles } from "@/hooks/use-draft-files";
+import { useDraftState, clearDraftGroup } from "@/hooks/use-draft-state";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
@@ -18,9 +20,13 @@ import {
   RISK_OPTIONS_CONFIG,
 } from "@/components/molecules/management-step";
 import { ProjectTemplateStep } from "@/components/molecules/project-template-step";
-import { ProjectTitleStep } from "@/components/molecules/project-title-step";
+import {
+  ProjectTitleStep,
+  type ProjectContractDetails,
+} from "@/components/molecules/project-title-step";
+import { projectsApi } from "@/api/projects";
 import { ProjectSummaryStep } from "@/components/molecules/project-summary-step";
-import { useCreateProject } from "@/hooks/use-projects";
+import { useCreateProject, useProjectTemplates } from "@/hooks/use-projects";
 import { useUploadBimModel } from "@/hooks/use-bim";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
@@ -65,32 +71,37 @@ export default function CreateProject() {
   const uploadBimModel = useUploadBimModel();
   const [submitting, setSubmitting] = useState(false);
 
-  const [projectType, setProjectType] = useState<ProjectType | null>(null);
+  const [projectType, setProjectType] = useDraftState<ProjectType | null>("project-create:projectType", null);
 
   // null = "Start blank"; templates seed stages + starter tasks server-side.
-  const [templateId, setTemplateId] = useState<string | null>(null);
+  const [templateId, setTemplateId] = useDraftState<string | null>("project-create:templateId", null);
+  const { data: templates = [] } = useProjectTemplates();
+  const selectedTemplate = templates.find(template => template.id === templateId && template.projectType === projectType);
 
-  const [locationState, setLocationState] = useState<string | null>(null);
-  const [city, setCity] = useState("");
+  const [country, setCountry] = useDraftState<string | null>("project-create:country", null);
+  const [locationState, setLocationState] = useDraftState<string | null>("project-create:locationState", null);
+  const [city, setCity] = useDraftState("project-create:city", "");
 
-  const [bimFiles, setBimFiles] = useState<FileList | null>(null);
+  const bimDraft = useDraftFiles("project-create:bim");
+  const bimFiles = bimDraft.files;
+  const setBimFiles = (files: FileList | null) => bimDraft.setFiles(Array.from(files ?? []));
   const { data: orgProfile } = useOrgProfile();
   const { data: flagsData } = useFeatureFlags();
   const bimEnabled = useMemo(() => {
     const flag = (flagsData?.flags ?? []).find((f) => f.key === "projects.bim");
     return flag ? flag.enabled : true;
   }, [flagsData]);
-  const [buildingType, setBuildingType] = useState<string | null>(null);
-  const [currency, setCurrency] = useState<Currency>("NGN");
-  const [currencyTouched, setCurrencyTouched] = useState(false);
+  const [buildingType, setBuildingType] = useDraftState<string | null>("project-create:buildingType", null);
+  const [currency, setCurrency] = useDraftState<Currency>("project-create:currency", "NGN");
+  const [currencyTouched, setCurrencyTouched] = useDraftState("project-create:currencyTouched", false);
   useEffect(() => {
     if (!currencyTouched && orgProfile?.defaultCurrency) {
       setCurrency(orgProfile.defaultCurrency as Currency);
     }
   }, [orgProfile?.defaultCurrency, currencyTouched]);
-  const [budget, setBudget] = useState<[number, number]>([10_000_000, 50_000_000]);
-  const [timeline, setTimeline] = useState<string | null>(null);
-  const [fundingMethod, setFundingMethod] = useState<string | null>(null);
+  const [budget, setBudget] = useDraftState<[number, number]>("project-create:budget", [10_000_000, 50_000_000]);
+  const [timeline, setTimeline] = useDraftState<string | null>("project-create:timeline", null);
+  const [fundingMethod, setFundingMethod] = useDraftState<string | null>("project-create:fundingMethod", null);
 
   const { data: session } = authClient.useSession();
   const accountType =
@@ -101,9 +112,9 @@ export default function CreateProject() {
     accountType === "construction_company" || accountType === "project_manager";
 
   const [involvementLevel, setInvolvementLevel] =
-    useState<InvolvementLevel | null>(null);
+    useDraftState<InvolvementLevel | null>("project-create:involvementLevel", null);
   const [riskOptions, setRiskOptions] =
-    useState<RiskOption[]>(DEFAULT_RISK_OPTIONS);
+    useDraftState<RiskOption[]>("project-create:riskOptions", DEFAULT_RISK_OPTIONS);
 
   useEffect(() => {
     if (skipInvolvementStep && involvementLevel === null) {
@@ -111,18 +122,27 @@ export default function CreateProject() {
     }
   }, [skipInvolvementStep, involvementLevel]);
 
-  // Contractors and project managers skip the management step entirely, so the
-  // wizard runs on the active step ids rather than a fixed 1..N range.
-  const steps = skipInvolvementStep ? [1, 2, 3, 4, 6] : [1, 2, 3, 4, 5, 6];
+  // Civil projects have no matching templates; continue directly to location.
+  const steps = [1, 2, 3, 4, 5, 6].filter(id =>
+    !(id === 2 && projectType === "civil") && !(id === 5 && skipInvolvementStep));
   const stepIndex = steps.indexOf(step);
   const displayStep = stepIndex === -1 ? steps.length : stepIndex + 1;
   const isLastStep = step === steps[steps.length - 1];
 
   useEffect(() => {
-    if (!isReview && stepIndex === -1) setStep(4);
-  }, [isReview, stepIndex, setStep]);
+    if (!projectType && step > 1) setStep(1);
+    else if (step > 3 && (!country || !city.trim())) setStep(3);
+    else if (!isReview && stepIndex === -1) setStep(step === 2 ? 3 : 4);
+  }, [projectType, country, city, step, isReview, stepIndex, setStep]);
 
-  const [projectTitle, setProjectTitle] = useState("");
+  const [projectTitle, setProjectTitle] = useDraftState("project-create:projectTitle", "");
+  // The contract frame. Creation does not take these yet, so they are applied
+  // to the new project's profile immediately after it exists (finding #8).
+  const [contract, setContract] = useDraftState<ProjectContractDetails>("project-create:contract", {
+    clientName: "",
+    startDate: "",
+    completionDate: "",
+  });
 
   const handleRiskToggle = (id: string) => {
     setRiskOptions((prev) =>
@@ -132,18 +152,48 @@ export default function CreateProject() {
     );
   };
 
+  function selectProjectType(next: ProjectType) {
+    if (next === projectType) return;
+    setProjectType(next);
+    setTemplateId(null);
+    setBuildingType(null);
+    setTimeline(null);
+  }
+
+  function selectCountry(next: string | null) {
+    if (next === country) return;
+    setCountry(next);
+    setLocationState(null);
+    setCity("");
+  }
+
   const canContinue = () => {
     if (isReview) return true;
     if (step === 1) return !!projectType;
     if (step === 2) return true; // template is optional — blank is a valid choice
-    if (step === 3) return !!locationState && city.trim() !== "";
+    if (step === 3) return !!country && city.trim() !== "";
     if (step === 4) return !!buildingType && !!timeline && !!fundingMethod;
     if (step === 5) return skipInvolvementStep || !!involvementLevel;
     if (step === 6) return !!projectTitle.trim();
     return false;
   };
 
-  async function seedBimModel(projectId: string, files: FileList): Promise<void> {
+  /** Best effort: a failed profile PATCH must not lose the created project. */
+  async function applyContractDetails(projectId: string): Promise<void> {
+    const patch: Record<string, string | null> = {};
+    if (contract.clientName.trim()) patch["clientName"] = contract.clientName.trim();
+    if (contract.startDate) patch["startDate"] = contract.startDate;
+    if (contract.completionDate) patch["completionDate"] = contract.completionDate;
+    if (projectType === "civil") patch["projectType"] = "civil";
+    if (Object.keys(patch).length === 0) return;
+    try {
+      await projectsApi.updateProfile(projectId, patch);
+    } catch {
+      toast("The project was created, but its contract dates could not be saved. Set them in Settings.");
+    }
+  }
+
+  async function seedBimModel(projectId: string, files: File[]): Promise<void> {
     const file = files[0];
     if (!file || !/\.ifc$/i.test(file.name)) return;
     try {
@@ -160,7 +210,8 @@ export default function CreateProject() {
   async function handleFinish(): Promise<void> {
     if (
       !projectType ||
-      !locationState ||
+      !country ||
+      !city.trim() ||
       !buildingType ||
       !timeline ||
       !fundingMethod ||
@@ -173,9 +224,10 @@ export default function CreateProject() {
       const project = await createProject.mutateAsync({
         title: projectTitle.trim(),
         projectType,
-        templateId: templateId ?? undefined,
+        templateId: selectedTemplate?.id,
         location: {
-          state: locationState,
+          country,
+          state: locationState?.trim() ?? "",
           city: city.trim(),
           ownsLand: true,
         },
@@ -192,9 +244,12 @@ export default function CreateProject() {
           riskOptions: riskOptions.filter((r) => r.enabled).map((r) => r.id),
         },
       });
+      await applyContractDetails(project.id);
       if (bimEnabled && bimFiles && bimFiles.length > 0) {
         await seedBimModel(project.id, bimFiles);
       }
+      await bimDraft.clear();
+      clearDraftGroup(session?.user.id ?? "anonymous", "project-create:");
       navigate(`/project/${project.id}/overview`);
     } catch (err) {
       toast(
@@ -228,6 +283,7 @@ export default function CreateProject() {
 
   return (
     <WizardLayout
+      className={!isReview && step === 3 ? "max-w-3xl" : undefined}
       currentStep={displayStep}
       totalSteps={steps.length}
       onCancel={handleBack}
@@ -240,18 +296,21 @@ export default function CreateProject() {
       hideContinue={isReview}
     >
       {!isReview && step === 1 && (
-        <ProjectTypeStep selected={projectType} onSelect={setProjectType} />
+        <ProjectTypeStep selected={projectType} onSelect={selectProjectType} />
       )}
       {!isReview && step === 2 && (
-        <ProjectTemplateStep selected={templateId} onSelect={setTemplateId} />
+        <ProjectTemplateStep projectType={projectType} selected={selectedTemplate?.id ?? null} onSelect={setTemplateId} />
       )}
       {!isReview && step === 3 && (
         <LocationStep
+          country={country}
           state={locationState}
           city={city}
+          onCountryChange={selectCountry}
           onStateChange={setLocationState}
           onCityChange={setCity}
           onBimFileChange={setBimFiles}
+          bimFile={bimFiles[0]}
           showBim={bimEnabled}
         />
       )}
@@ -284,7 +343,9 @@ export default function CreateProject() {
       {!isReview && step === 6 && (
         <ProjectTitleStep
           title={projectTitle}
+          contract={contract}
           onTitleChange={setProjectTitle}
+          onContractChange={setContract}
           onSubmit={() => setStep("review")}
         />
       )}
@@ -293,10 +354,11 @@ export default function CreateProject() {
           data={{
             projectTitle,
             projectType,
+            country,
             locationState,
             city,
             buildingType,
-          currency,
+            currency,
             budget,
             timeline,
             fundingMethod,

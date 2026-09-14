@@ -2,8 +2,10 @@ import type { Knex } from "knex";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import type {
   EquipmentBucket,
+  EquipmentHireExtension,
   EquipmentRequestRow,
   EquipmentRequestStatus,
+  MaterialDeliveryRow,
   MaterialOrderRow,
   MaterialOrderStatus,
   RequestPriority,
@@ -17,6 +19,7 @@ export interface NewMaterialOrderRecord {
   quantity: string;
   unit: string;
   supplier: string | null;
+  supplier_id: string | null;
   status: MaterialOrderStatus;
   priority: RequestPriority;
   phase_id: string | null;
@@ -27,11 +30,14 @@ export interface NewMaterialOrderRecord {
   ordered_at: string | null;
   expected_delivery_at: string | null;
   delivered_at: string | null;
+  unit_rate: string | null;
   estimated_cost: string;
   actual_cost: string;
   currency: CurrencyCode;
   delivery_location: string | null;
   notes: string | null;
+  cancel_reason: string | null;
+  rejected_reason: string | null;
   invoice_id: string | null;
   invoice_line_item_id: string | null;
 }
@@ -48,6 +54,7 @@ export interface NewEquipmentRequestRecord {
   equipment_type: string;
   quantity: number;
   supplier: string | null;
+  supplier_id: string | null;
   status: EquipmentRequestStatus;
   priority: RequestPriority;
   phase_id: string | null;
@@ -58,17 +65,38 @@ export interface NewEquipmentRequestRecord {
   needed_until: string;
   mobilized_at: string | null;
   returned_at: string | null;
+  on_hire_at: string | null;
+  off_hire_at: string | null;
+  plant_ref: string | null;
+  daily_rate: string | null;
+  extensions: string;
   estimated_cost: string;
   actual_cost: string;
   currency: CurrencyCode;
   delivery_location: string | null;
   operator_required: string;
   notes: string | null;
+  cancel_reason: string | null;
+  rejected_reason: string | null;
 }
 
 export type EquipmentRequestPatch = Partial<Omit<NewEquipmentRequestRecord, "id" | "project_id" | "requested_by_id">> & {
   updated_at?: Date;
 };
+
+export interface NewMaterialDeliveryRecord {
+  id: string;
+  project_id: string;
+  order_id: string;
+  delivered_qty: string;
+  delivered_at: string;
+  delivery_note: string | null;
+  received_by_id: string | null;
+  notes: string | null;
+  rejected: boolean;
+  rejected_reason: string | null;
+  created_by_id: string | null;
+}
 
 const MATERIAL_SELECT = [
   "mo.id",
@@ -78,6 +106,8 @@ const MATERIAL_SELECT = [
   "mo.quantity",
   "mo.unit",
   "mo.supplier",
+  "mo.supplier_id",
+  "sup.name as supplier_name",
   "mo.status",
   "mo.priority",
   "mo.phase_id",
@@ -91,11 +121,14 @@ const MATERIAL_SELECT = [
   "mo.ordered_at",
   "mo.expected_delivery_at",
   "mo.delivered_at",
+  "mo.unit_rate",
   "mo.estimated_cost",
   "mo.actual_cost",
   "mo.currency",
   "mo.delivery_location",
   "mo.notes",
+  "mo.cancel_reason",
+  "mo.rejected_reason",
   "mp.id as procurement_id",
   "mo.created_at",
   "mo.updated_at",
@@ -109,6 +142,8 @@ const EQUIPMENT_SELECT = [
   "er.equipment_type",
   "er.quantity",
   "er.supplier",
+  "er.supplier_id",
+  "sup.name as supplier_name",
   "er.status",
   "er.priority",
   "er.phase_id",
@@ -122,14 +157,39 @@ const EQUIPMENT_SELECT = [
   "er.needed_until",
   "er.mobilized_at",
   "er.returned_at",
+  "er.on_hire_at",
+  "er.off_hire_at",
+  "er.plant_ref",
+  "er.daily_rate",
+  "er.extensions",
   "er.estimated_cost",
   "er.actual_cost",
   "er.currency",
   "er.delivery_location",
   "er.operator_required",
   "er.notes",
+  "er.cancel_reason",
+  "er.rejected_reason",
   "er.created_at",
   "er.updated_at",
+] as const;
+
+const DELIVERY_SELECT = [
+  "d.id",
+  "d.project_id",
+  "d.order_id",
+  "d.delivered_qty",
+  "d.delivered_at",
+  "d.delivery_note",
+  "d.received_by_id",
+  "u.name as received_by_name",
+  "d.notes",
+  "d.rejected",
+  "d.rejected_reason",
+  "d.ledger_entry_id",
+  "d.transaction_id",
+  "d.created_by_id",
+  "d.created_at",
 ] as const;
 
 export function materialsEquipmentRepository(db: Knex) {
@@ -138,6 +198,7 @@ export function materialsEquipmentRepository(db: Knex) {
       .leftJoin("project_phases as pp", "pp.id", "mo.phase_id")
       .leftJoin("activities as a", "a.id", "mo.activity_id")
       .leftJoin("project_documents as pd", "pd.id", "mo.document_id")
+      .leftJoin("suppliers as sup", "sup.id", "mo.supplier_id")
       .leftJoin("material_procurements as mp", "mp.material_order_id", "mo.id");
   }
 
@@ -145,7 +206,8 @@ export function materialsEquipmentRepository(db: Knex) {
     return db("equipment_requests as er")
       .leftJoin("project_phases as pp", "pp.id", "er.phase_id")
       .leftJoin("activities as a", "a.id", "er.activity_id")
-      .leftJoin("project_documents as pd", "pd.id", "er.document_id");
+      .leftJoin("project_documents as pd", "pd.id", "er.document_id")
+      .leftJoin("suppliers as sup", "sup.id", "er.supplier_id");
   }
 
   return {
@@ -173,6 +235,56 @@ export function materialsEquipmentRepository(db: Knex) {
 
     async deleteMaterialOrder(id: string): Promise<number> {
       return db("material_orders").where({ id }).delete();
+    },
+
+    /** One batched read for a page of orders — never one query per order. */
+    listDeliveriesForOrders(orderIds: string[]): Promise<MaterialDeliveryRow[]> {
+      if (orderIds.length === 0) return Promise.resolve([]);
+      return db("material_deliveries as d")
+        .leftJoin("user as u", "u.id", "d.received_by_id")
+        .whereIn("d.order_id", orderIds)
+        .select(...DELIVERY_SELECT)
+        .orderBy("d.delivered_at", "asc");
+    },
+
+    async insertDelivery(record: NewMaterialDeliveryRecord): Promise<MaterialDeliveryRow> {
+      await db("material_deliveries").insert(record);
+      const row = await db("material_deliveries as d")
+        .leftJoin("user as u", "u.id", "d.received_by_id")
+        .where("d.id", record.id)
+        .select(...DELIVERY_SELECT)
+        .first();
+      if (!row) throw new Error("Failed to insert material delivery");
+      return row as MaterialDeliveryRow;
+    },
+
+    async linkDeliveryRecords(
+      deliveryId: string,
+      links: { ledger_entry_id?: string | null; transaction_id?: string | null },
+    ): Promise<void> {
+      await db("material_deliveries").where({ id: deliveryId }).update(links);
+    },
+
+    /**
+     * Approval status of the material-approval request covering each order's
+     * material, worst-first: a Rejected or Pending sample blocks the order.
+     */
+    async approvalStatusByMaterial(projectId: string): Promise<Map<string, string>> {
+      const rows = await db("approvals as a")
+        .join("material_approval_details as d", "d.approval_id", "a.id")
+        .where({ "a.project_id": projectId, "a.kind": "material" })
+        .orderBy("a.created_at", "desc")
+        .select("d.material_name", "a.status");
+      const byMaterial = new Map<string, string>();
+      for (const row of rows as Array<{ material_name: string; status: string }>) {
+        const key = row.material_name.trim().toLowerCase();
+        const current = byMaterial.get(key);
+        // The latest decision wins unless an earlier one is still unresolved.
+        if (!current || (current === "Approved" && row.status !== "Approved")) {
+          byMaterial.set(key, row.status);
+        }
+      }
+      return byMaterial;
     },
 
     async createMaterialProcurementFromOrder(order: MaterialOrderRow): Promise<void> {
@@ -219,6 +331,17 @@ export function materialsEquipmentRepository(db: Knex) {
       return this.findEquipmentRequest(id);
     },
 
+    async appendHireExtension(
+      id: string,
+      extensions: EquipmentHireExtension[],
+      patch: EquipmentRequestPatch,
+    ): Promise<EquipmentRequestRow | undefined> {
+      await db("equipment_requests")
+        .where({ id })
+        .update({ ...patch, extensions: JSON.stringify(extensions), updated_at: new Date() });
+      return this.findEquipmentRequest(id);
+    },
+
     async deleteEquipmentRequest(id: string): Promise<number> {
       return db("equipment_requests").where({ id }).delete();
     },
@@ -236,7 +359,7 @@ export function equipmentStatusesForBucket(bucket: EquipmentBucket): EquipmentRe
     case "on-hire":
       return ["Scheduled", "OnHire"];
     case "returns":
-      return ["Returned", "Cancelled"];
+      return ["Returned", "Cancelled", "Rejected"];
   }
 }
 

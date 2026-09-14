@@ -78,7 +78,7 @@ export function TaskImageGallery({ descriptionHtml, onDescriptionChange, project
               key={img.fileId}
               type="button"
               onClick={() => setViewerImage(img)}
-              className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-gray-200 hover:ring-2 hover:ring-[#004DE7]/40"
+              className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-line hover:ring-2 hover:ring-primary-500/40"
             >
               <img
                 src={img.url}
@@ -90,7 +90,7 @@ export function TaskImageGallery({ descriptionHtml, onDescriptionChange, project
           ))}
 
           <label
-            className="flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#004DE7] hover:text-[#004DE7]"
+            className="flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-primary-500 hover:text-primary-500"
           >
             <input
               type="file"

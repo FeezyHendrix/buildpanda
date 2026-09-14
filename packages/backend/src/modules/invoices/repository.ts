@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import type {
+  InvoiceDirection,
   InvoiceLineItemRow,
   InvoiceParty,
   InvoicePaymentRow,
@@ -48,6 +49,10 @@ export interface NewInvoiceRecord {
   header_text: string | null;
   footer_text: string | null;
   source_file_id: string | null;
+  contract_id: string | null;
+  direction: InvoiceDirection;
+  counterparty: string | null;
+  advance_recovery: string;
 }
 
 export interface InvoiceUpdatePatch {
@@ -90,6 +95,14 @@ export interface InvoiceUpdatePatch {
   public_token?: string | null;
   viewed_at?: Date | string | null;
   pdf_storage_key?: string | null;
+  billing_period?: string | null;
+  contract_id?: string | null;
+  direction?: InvoiceDirection;
+  counterparty?: string | null;
+  advance_recovery?: string;
+  voided_at?: Date | string | null;
+  voided_by_id?: string | null;
+  void_reason?: string | null;
 }
 
 export interface InvoiceOrganizationRow {
@@ -124,6 +137,8 @@ export interface NewPaymentRecord {
   method: PaymentMethod;
   paid_at: string | null;
   note: string | null;
+  credit: boolean;
+  recorded_by_id: string | null;
 }
 
 export interface NewInvoiceStageLineRecord {
@@ -225,6 +240,11 @@ export function invoicesRepository(db: Knex) {
           "o.default_retention_pct",
         )
         .first<InvoiceOrgDefaultsRow>();
+    },
+
+    /** The billing-sheet month a pay application was raised for. */
+    async setBillingPeriod(invoiceId: string, period: string): Promise<void> {
+      await db("project_invoices").where({ id: invoiceId }).update({ billing_period: period });
     },
 
     findPayment(paymentId: string): Promise<InvoicePaymentRow | undefined> {

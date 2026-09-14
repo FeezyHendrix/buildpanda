@@ -1,6 +1,7 @@
 import { useId, useMemo, useState, type ChangeEvent } from "react";
 import { Popover } from "@base-ui/react/popover";
 import { Badge } from "@/components/atoms/badge";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
 /** The plain, comparable value a column yields for search, sort and filtering. */
@@ -100,18 +101,15 @@ function FunnelIcon() {
 FunnelIcon.displayName = "FunnelIcon";
 
 const popupClass = cn(
-  "w-64 origin-top rounded-xl border border-grey-50 bg-white p-1.5 shadow-lg outline-none",
+  "w-64 origin-top rounded-lg border border-line bg-white p-1.5 shadow-card outline-none",
   "animate-fade-in",
 );
 const clearButtonClass = cn(
-  "rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-primary-500",
-  "outline-none hover:bg-primary-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+  "rounded-md px-1.5 py-0.5 text-xs font-semibold text-primary-500",
+  "outline-none hover:bg-primary-50 focus-visible:shadow-focus",
   "disabled:pointer-events-none disabled:opacity-40",
 );
-const fieldClass = cn(
-  "h-9 w-full rounded-lg bg-[#F6F6F6] px-2.5 text-xs text-gray-900",
-  "outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-);
+const fieldClass = cn(INPUT_SM_CLASS, "px-2.5 text-xs");
 
 function SelectFilterPanel({
   options,
@@ -154,7 +152,7 @@ function SelectFilterPanel({
 
       <div className="max-h-56 overflow-y-auto">
         {visible.length === 0 ? (
-          <p className="px-2 py-3 text-center text-xs text-gray-400">
+          <p className="px-2 py-3 text-center text-xs text-ink-muted">
             No options
           </p>
         ) : (
@@ -163,7 +161,7 @@ function SelectFilterPanel({
               key={option.value}
               className={cn(
                 "flex select-none items-center gap-2.5 rounded-lg px-2 py-1.5",
-                "text-sm text-gray-700 hover:bg-[#F6F6F6]",
+                "text-sm text-ink hover:bg-surface-alt",
               )}
             >
               <input
@@ -199,7 +197,7 @@ function DateFilterPanel({
       <div>
         <label
           htmlFor={`${fieldId}-from`}
-          className="mb-1 block text-[11px] font-medium text-gray-500"
+          className="mb-1 block text-xs font-medium text-ink-muted"
         >
           From
         </label>
@@ -217,7 +215,7 @@ function DateFilterPanel({
       <div>
         <label
           htmlFor={`${fieldId}-to`}
-          className="mb-1 block text-[11px] font-medium text-gray-500"
+          className="mb-1 block text-xs font-medium text-ink-muted"
         >
           To
         </label>
@@ -265,10 +263,10 @@ function DataGridFilterPopover({
         }
         className={cn(
           "inline-flex shrink-0 items-center gap-1 rounded-md p-1 outline-none transition-colors",
-          "hover:bg-white focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "hover:bg-white focus-visible:shadow-focus",
           active
             ? "bg-white text-primary-500"
-            : "text-gray-400 hover:text-gray-600",
+            : "text-ink-muted hover:text-ink",
         )}
       >
         <FunnelIcon />
@@ -288,7 +286,7 @@ function DataGridFilterPopover({
         >
           <Popover.Popup className={popupClass}>
             <div className="flex items-center justify-between gap-2 px-1.5 pb-1.5 pt-1">
-              <Popover.Title className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              <Popover.Title className="text-xs font-medium uppercase text-ink-muted">
                 {label}
               </Popover.Title>
               <button

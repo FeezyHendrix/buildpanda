@@ -21,11 +21,6 @@ export const documentKeys = {
   list: (projectId: string | undefined) => [...documentKeys.all(projectId), "list"] as const,
 };
 
-export const rfiKeys = {
-  all: (projectId: string | undefined) => ["rfis", projectId ?? "none"] as const,
-  list: (projectId: string | undefined) => [...rfiKeys.all(projectId), "list"] as const,
-};
-
 export const stageKeys = {
   all: (projectId: string | undefined) => ["stages", projectId ?? "none"] as const,
   list: (projectId: string | undefined) => [...stageKeys.all(projectId), "list"] as const,
@@ -34,6 +29,11 @@ export const stageKeys = {
 export const keyDateKeys = {
   all: (projectId: string | undefined) => ["key-dates", projectId ?? "none"] as const,
   list: (projectId: string | undefined) => [...keyDateKeys.all(projectId), "list"] as const,
+};
+
+export const participantKeys = {
+  all: (projectId: string | undefined) => ["participants", projectId ?? "none"] as const,
+  list: (projectId: string | undefined) => [...participantKeys.all(projectId), "list"] as const,
 };
 
 export const updateKeys = {

@@ -1,17 +1,23 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
-import { useCallback, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { requestVoiceReport } from "@/api/voice-report";
 import type { VoiceReport } from "@/api/voice-report-types";
 import { Button, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { VoiceActionsReview } from "@/components/molecules/voice-actions-review";
+import { ICON_DANGER, ICON_INVERSE, ICON_SUCCESS, palette } from "@/constants/colors";
 import { useApplyProposedAction } from "@/hooks/use-voice-report";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { useFieldSession } from "@/lib/field-session";
 import { useSyncState } from "@/lib/sync-provider";
 import { cn } from "@/lib/utils";
+import {
+  mergeMissingValues,
+  outstandingCount,
+  type MissingFieldValues,
+} from "@/lib/voice-missing-fields";
 
 type Phase = "record" | "processing" | "review" | "saving" | "done";
 
@@ -28,38 +34,58 @@ function formatClock(totalSeconds: number): string {
  * offline outbox, so a confirm on-site with no signal still lands.
  */
 export default function Capture() {
+  // the recording already happened, in a sheet over whatever the crew member
+  // was looking at; this page exists for the part that is genuinely a task
+  const { uri, seconds } = useLocalSearchParams<{ uri?: string; seconds?: string }>();
   const { projectId } = useFieldSession();
   const { isOnline } = useSyncState();
   const recorder = useVoiceRecorder();
   const applyAction = useApplyProposedAction();
 
-  const [phase, setPhase] = useState<Phase>("record");
+  const [phase, setPhase] = useState<Phase>(uri ? "processing" : "record");
   const [report, setReport] = useState<VoiceReport | null>(null);
   const [included, setIncluded] = useState<Set<number>>(new Set());
+  const [fieldValues, setFieldValues] = useState<MissingFieldValues>({});
   const [error, setError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
+  const [awaitingCount, setAwaitingCount] = useState(0);
 
   const close = useCallback(() => router.back(), []);
 
-  const handleStop = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      const uri = await recorder.stop();
-      if (!uri) {
-        setError("Nothing was recorded. Try again.");
-        return;
-      }
+  const transcribe = useCallback(
+    async (audioUri: string) => {
+      if (!projectId) return;
       setPhase("processing");
       setError(null);
-      const result = await requestVoiceReport(projectId, uri);
-      setReport(result);
-      setIncluded(new Set(result.actions.map((_, index) => index)));
-      setPhase("review");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not process the recording.");
-      setPhase("record");
+      try {
+        const result = await requestVoiceReport(projectId, audioUri);
+        setReport(result);
+        setIncluded(new Set(result.actions.map((_, index) => index)));
+        setFieldValues({});
+        setPhase("review");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not process the recording.");
+        setPhase("record");
+      }
+    },
+    [projectId],
+  );
+
+  const started = useRef(false);
+  useEffect(() => {
+    if (!uri || started.current || !projectId) return;
+    started.current = true;
+    void transcribe(uri);
+  }, [uri, projectId, transcribe]);
+
+  const handleStop = useCallback(async () => {
+    const recording = await recorder.stop();
+    if (!recording) {
+      setError("Nothing was recorded. Try again.");
+      return;
     }
-  }, [projectId, recorder]);
+    await transcribe(recording.uri);
+  }, [recorder, transcribe]);
 
   const toggle = useCallback((index: number) => {
     setIncluded((prev) => {
@@ -70,22 +96,35 @@ export default function Capture() {
     });
   }, []);
 
+  const changeField = useCallback((actionIndex: number, fieldName: string, value: string) => {
+    setFieldValues((prev) => ({
+      ...prev,
+      [actionIndex]: { ...prev[actionIndex], [fieldName]: value },
+    }));
+  }, []);
+
   const handleConfirm = useCallback(async () => {
     if (!report) return;
+    if (outstandingCount(report.actions, included, fieldValues) > 0) return;
     setPhase("saving");
     setError(null);
     try {
-      const chosen = report.actions.filter((_, index) => included.has(index));
-      for (const action of chosen) {
-        await applyAction(action);
+      const chosen = report.actions
+        .map((action, index) => ({ action, index }))
+        .filter((entry) => included.has(entry.index));
+      let awaiting = 0;
+      for (const { action, index } of chosen) {
+        const result = await applyAction(mergeMissingValues(action, fieldValues[index]));
+        if (result?.awaitingApproval) awaiting += 1;
       }
       setSavedCount(chosen.length);
+      setAwaitingCount(awaiting);
       setPhase("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save these records.");
       setPhase("review");
     }
-  }, [report, included, applyAction]);
+  }, [report, included, fieldValues, applyAction]);
 
   if (phase === "processing") {
     return (
@@ -107,13 +146,18 @@ export default function Capture() {
     return (
       <Page title="Captured" showSync={false} scroll={false}>
         <View className="flex-1 items-center justify-center px-6">
-          <Ionicons name="checkmark-circle" size={56} color="#18D085" />
+          <Ionicons name="checkmark-circle" size={56} color={ICON_SUCCESS} />
           <Text weight="bold" className="pt-4 text-lg">
             {savedCount} {savedCount === 1 ? "record" : "records"} queued
           </Text>
           <Text tone="secondary" className="pt-1 text-center text-[13px]">
             They&apos;ll sync when you&apos;re online. You can edit them any time from Field Tools.
           </Text>
+          {awaitingCount > 0 ? (
+            <Text className="pt-2 text-center text-[13px] text-amber-600">
+              {awaitingCount} awaiting a manager&apos;s approval before it counts toward stock.
+            </Text>
+          ) : null}
           <View className="mt-8 w-full">
             <Button onPress={close}>Done</Button>
           </View>
@@ -124,17 +168,32 @@ export default function Capture() {
 
   if ((phase === "review" || phase === "saving") && report) {
     const count = included.size;
+    const outstanding = outstandingCount(report.actions, included, fieldValues);
     return (
       <Page
         title="Review"
         showSync={false}
         onBack={phase === "review" ? close : undefined}
         footer={
-          <Button onPress={handleConfirm} disabled={count === 0 || phase === "saving"} loading={phase === "saving"}>
-            {count === 0
-              ? "Select at least one"
-              : `Apply ${count} ${count === 1 ? "action" : "actions"}`}
-          </Button>
+          <View className="gap-2">
+            {outstanding > 0 ? (
+              <View className="flex-row items-center justify-center gap-1.5">
+                <Ionicons name="alert-circle" size={14} color={ICON_DANGER} />
+                <Text tone="danger" weight="semibold" className="text-[13px]">
+                  Fill in {outstanding} {outstanding === 1 ? "detail" : "details"} before saving
+                </Text>
+              </View>
+            ) : null}
+            <Button
+              onPress={handleConfirm}
+              disabled={count === 0 || outstanding > 0 || phase === "saving"}
+              loading={phase === "saving"}
+            >
+              {count === 0
+                ? "Select at least one"
+                : `Apply ${count} ${count === 1 ? "action" : "actions"}`}
+            </Button>
+          </View>
         }
       >
         <View className="rounded-xl bg-surface-alt px-4 py-3">
@@ -146,7 +205,7 @@ export default function Capture() {
 
         {report.actions.length === 0 ? (
           <View className="items-center py-12">
-            <Text weight="semibold" className="text-base">
+            <Text weight="semibold" className="text-center text-base">
               Nothing to create
             </Text>
             <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
@@ -156,9 +215,16 @@ export default function Capture() {
         ) : (
           <View className="pt-4">
             <Text tone="secondary" className="pb-3 text-[13px]">
-              Tap to include or exclude. Nothing is saved or updated until you confirm.
+              Tap a card to include or exclude it. Anything Panda AI couldn&apos;t hear is asked for below.
+              Nothing is saved or updated until you confirm.
             </Text>
-            <VoiceActionsReview actions={report.actions} includedIndexes={included} onToggle={toggle} />
+            <VoiceActionsReview
+              actions={report.actions}
+              includedIndexes={included}
+              values={fieldValues}
+              onToggle={toggle}
+              onChangeField={changeField}
+            />
           </View>
         )}
 
@@ -197,14 +263,14 @@ export default function Capture() {
               !canRecord && "opacity-40",
             )}
             style={{
-              shadowColor: recorder.isRecording ? "#E9301C" : "#004DE7",
+              shadowColor: recorder.isRecording ? palette.error500 : palette.primary500,
               shadowOpacity: 0.3,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 6 },
               elevation: 8,
             }}
           >
-            <Ionicons name={recorder.isRecording ? "stop" : "mic"} size={40} color="#FFFFFF" />
+            <Ionicons name={recorder.isRecording ? "stop" : "mic"} size={40} color={ICON_INVERSE} />
           </Pressable>
           <Text tone="secondary" className="pt-4 text-[13px]">
             {recorder.isRecording ? "Tap to stop" : "Tap to start recording"}

@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { ReactSVG } from "react-svg";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { icons } from "@/assets/icons/icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { UploadDocumentDialog } from "@/components/molecules/upload-document-dialog";
 import { FileViewerDialog } from "@/components/molecules/file-viewer-dialog";
-import { PlayIcon } from "@/components/atoms/project-nav-icons";
+import { CameraIcon, PlayIcon } from "@/components/atoms/project-nav-icons";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   documentVersionViewUrl,
@@ -76,17 +76,16 @@ export default function ProjectMediaLibrary() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Media Library"
-        description="Site photos and videos captured in the field."
         actions={
           canManage ? (
             <Button
               variant="primary"
               size="md"
               onClick={() => uploader.handleOpenChange(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+              className="h-[32px] cursor-pointer hover:bg-primary text-sm font-semibold px-[20px] py-[12px]"
             >
               <ReactSVG src={icons.upload} />
               Upload media
@@ -125,12 +124,11 @@ export default function ProjectMediaLibrary() {
 
       <section className="mt-6">
         {mediaDocuments.length === 0 ? (
-          <Card padding="lg" className="border border-dashed border-[#D9D9D9] bg-[#FAFAFA] text-center shadow-none">
-            <p className="text-sm font-medium text-gray-900">No media yet</p>
-            <p className="mt-1 text-xs text-gray-500">
-              Photos and videos uploaded from site will appear here.
-            </p>
-          </Card>
+          <EmptyState
+            icon={<CameraIcon />}
+            title="No media yet"
+            description="Photos and videos uploaded from site will appear here."
+          />
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {mediaDocuments.map((doc) => (
@@ -209,7 +207,7 @@ function FilterChip({
         "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
         active
           ? "border-primary-600 bg-primary-50 text-primary-700"
-          : "border-[#EDEDED] bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900",
+          : "border-line-hair bg-white text-gray-600 hover:border-line-hover hover:text-gray-900",
       )}
     >
       {label}
@@ -238,7 +236,7 @@ function MediaTile({
   const isVideo = VIDEO_EXTS.has(ext);
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-[#EDEDED] bg-white">
+    <div className="group relative overflow-hidden rounded-lg border border-line-hair bg-white">
       <button
         type="button"
         onClick={onView}
@@ -246,7 +244,7 @@ function MediaTile({
         aria-label={`View ${doc.fileName}`}
         className="block w-full cursor-pointer disabled:cursor-default"
       >
-        <div className="flex aspect-square w-full items-center justify-center overflow-hidden bg-[#F6F6F6]">
+        <div className="flex aspect-square w-full items-center justify-center overflow-hidden bg-surface-alt">
           {isImage ? (
             <img
               src={url}
@@ -268,7 +266,7 @@ function MediaTile({
 
       <div className="px-3 py-2.5">
         <p className="truncate text-xs font-medium text-gray-900">{doc.fileName}</p>
-        <p className="truncate text-[11px] text-gray-500">
+        <p className="truncate text-xs text-gray-500">
           {doc.category} · {formatShortDate(doc.uploadedAt) || doc.uploadedAt}
         </p>
       </div>

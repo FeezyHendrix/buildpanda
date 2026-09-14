@@ -1,5 +1,18 @@
 import { ForbiddenError } from "./errors.ts";
-import { isEmployeeRole, mapAllows, statement, type PermissionMap } from "./permissions.ts";
+import { mapAllows, statement, type PermissionMap } from "./permissions.ts";
+import { PARTICIPANT_PERMISSIONS, ROLE_PRESET_SIDES } from "./role-presets.ts";
+import {
+  composeParticipantPermissions,
+  sectionsToPermissions,
+  type ProjectSectionPermissions,
+  type SectionValue,
+} from "./section-permissions.ts";
+
+// Re-exported so every existing importer keeps its one import site.
+export { PARTICIPANT_PERMISSIONS, ROLE_PRESET_SIDES };
+export { composeParticipantPermissions, sectionsToPermissions };
+export type { ProjectSectionPermissions, SectionValue };
+
 
 // viewer is excluded: read-only stakeholders must not mutate project data.
 const WRITE_ROLES: ReadonlySet<string> = new Set(["owner", "admin", "member"]);
@@ -30,12 +43,11 @@ export interface EnrichedAccessContext extends AccessContext {
   orgPermissions: ReadonlyMap<string, PermissionMap>;
 }
 
-// Org membership grants access to every project in the org — except for
-// employee-role members, who are scoped to their assigned projects only.
+// Org membership grants read access to every project in the org. Mutating a
+// project still goes through WRITE_ROLES / resource-action checks below.
 function hasOrgWideProjectAccess(orgId: string | null, ctx: AccessContext): boolean {
   if (orgId === null) return false;
-  const role = ctx.orgRoles.get(orgId);
-  return role !== undefined && !isEmployeeRole(role);
+  return ctx.orgRoles.has(orgId);
 }
 
 /** The caller's participant role on this project, if any (e.g. "client"). */
@@ -80,6 +92,34 @@ export function assertCanDeleteProject(project: ProjectScope, ctx: AccessContext
   throw new ForbiddenError("You do not have permission to delete this project");
 }
 
+/**
+ * Reference data an organisation defines once and every project draws from —
+ * inspection categories, and anything like them. Editing the list is an admin
+ * act: a site agent picks from it, the company decides what is on it.
+ */
+export function assertCanManageOrgReference(project: ProjectScope, ctx: AccessContext): void {
+  if (project.ownerId === ctx.userId) return;
+  if (project.organizationId !== null) {
+    const role = ctx.orgRoles.get(project.organizationId);
+    if (role !== undefined && DELETE_ROLES.has(role)) return;
+  }
+  throw new ForbiddenError("Only a workspace admin can change this list");
+}
+
+/**
+ * Which side of the contract a caller is acting from, derived from their
+ * participant role — never from the self-declared accountType. A consultant
+ * (architect, resident engineer, materials engineer) acts FOR the employer, so
+ * they count as client-side; anybody with no participant role at all is
+ * workspace staff, i.e. the party doing the building.
+ *
+ * Used to record who asked for an independent inspection.
+ */
+export function contractSideOf(participantRole: string | undefined): "client" | "contractor" {
+  if (!participantRole) return "contractor";
+  return ROLE_PRESET_SIDES[participantRole] === "contractor" ? "contractor" : "client";
+}
+
 function canModify(project: ProjectScope, ctx: AccessContext): boolean {
   try {
     assertCanModifyProject(project, ctx);
@@ -90,8 +130,8 @@ function canModify(project: ProjectScope, ctx: AccessContext): boolean {
 }
 
 /**
- * Actions that belong to the homeowner: deciding approvals, raising queries,
- * commenting. Allowed for company staff with write access OR an active "client"
+ * Actions that belong to the homeowner: deciding approvals, deciding
+ * selections, commenting. Allowed for company staff with write access OR an active "client"
  * participant. Company viewers and unrelated users are rejected.
  */
 export function assertCanActAsClient(project: ProjectScope, ctx: AccessContext): void {
@@ -103,299 +143,6 @@ export function assertCanActAsClient(project: ProjectScope, ctx: AccessContext):
 // ---------------------------------------------------------------------------
 // Phase 2: unified resource-action permission check
 // ---------------------------------------------------------------------------
-
-/** Additive capabilities granted to project participants (external stakeholders). */
-export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
-  client: {
-    project: ["view"],
-    finances: ["view", "dispute"],
-    approvals: ["view", "decide"],
-    selections: ["view", "decide"],
-    queries: ["view", "raise"],
-    "change-requests": ["view"],
-    "action-items": ["view"],
-    stages: ["view"],
-    buildings: ["view"],
-    "key-dates": ["view"],
-    comments: ["view", "post"],
-    updates: ["view"],
-    documents: ["view"],
-    inspections: ["view"],
-    materials: ["view", "report"],
-    contractors: ["view"],
-    dailyLog: ["view", "report"],
-    messages: ["view", "send"],
-    participants: ["view"],
-    teamMembers: ["view"],
-    schedule: ["view"],
-    rfis: ["view", "create"],
-    bim: ["view"],
-  },
-  project_manager: {
-    project: ["view"],
-    tasks: ["view", "add", "remove"],
-    finances: ["view"],
-    schedule: ["view", "manage"],
-    documents: ["view", "upload"],
-    inspections: ["view", "request", "manage"],
-    materials: ["view", "manage", "report", "request"],
-    contractors: ["view"],
-    dailyLog: ["view", "create", "report"],
-    updates: ["view", "post"],
-    messages: ["view", "send"],
-    comments: ["view", "post"],
-    participants: ["view"],
-    teamMembers: ["view"],
-    stages: ["view"],
-    buildings: ["view", "manage"],
-    "key-dates": ["view", "manage"],
-    queries: ["view", "raise", "manage"],
-    rfis: ["view", "create", "respond", "manage"],
-    approvals: ["view"],
-    selections: ["view"],
-    "change-requests": ["view", "manage"],
-    "action-items": ["view", "manage"],
-    permits: ["view", "manage"],
-    risks: ["view", "manage"],
-    bim: ["view", "upload"],
-  },
-  architect: {
-    project: ["view"],
-    tasks: ["view"],
-    finances: ["view"],
-    approvals: ["view"],
-    selections: ["view"],
-    queries: ["view", "raise"],
-    "change-requests": ["view"],
-    "action-items": ["view"],
-    stages: ["view"],
-    buildings: ["view"],
-    "key-dates": ["view"],
-    comments: ["view", "post"],
-    updates: ["view"],
-    documents: ["view"],
-    inspections: ["view"],
-    materials: ["view", "report"],
-    contractors: ["view"],
-    dailyLog: ["view", "report"],
-    messages: ["view", "send"],
-    participants: ["view"],
-    teamMembers: ["view"],
-    schedule: ["view"],
-    rfis: ["view", "create", "respond"],
-    bim: ["view"],
-  },
-  inspector: {
-    project: ["view"],
-    tasks: ["view"],
-    finances: ["view"],
-    approvals: ["view"],
-    selections: ["view"],
-    queries: ["view"],
-    "action-items": ["view"],
-    stages: ["view"],
-    buildings: ["view"],
-    "key-dates": ["view"],
-    comments: ["view", "post"],
-    updates: ["view"],
-    documents: ["view"],
-    inspections: ["view", "request"],
-    materials: ["view", "report"],
-    contractors: ["view"],
-    dailyLog: ["view", "report"],
-    participants: ["view"],
-    schedule: ["view"],
-    rfis: ["view"],
-    bim: ["view"],
-  },
-  guest: {
-    project: ["view"],
-    tasks: ["view"],
-    finances: ["view"],
-    approvals: ["view"],
-    selections: ["view"],
-    updates: ["view"],
-    documents: ["view"],
-    inspections: ["view"],
-    materials: ["view", "report"],
-    contractors: ["view"],
-    dailyLog: ["view", "report"],
-    participants: ["view"],
-    schedule: ["view"],
-    stages: ["view"],
-    buildings: ["view"],
-    "key-dates": ["view"],
-  },
-  materials_requester: {
-    project: ["view"],
-    tasks: ["view"],
-    approvals: ["view"],
-    selections: ["view"],
-    queries: ["view", "raise"],
-    "action-items": ["view"],
-    stages: ["view"],
-    buildings: ["view"],
-    "key-dates": ["view"],
-    comments: ["view", "post"],
-    updates: ["view"],
-    documents: ["view"],
-    inspections: ["view"],
-    materials: ["view", "report", "request"],
-    contractors: ["view"],
-    dailyLog: ["view", "create", "report"],
-    messages: ["view", "send"],
-    participants: ["view"],
-    teamMembers: ["view"],
-    schedule: ["view"],
-    rfis: ["view", "create"],
-    bim: ["view"],
-  },
-  materials_approver: {
-    project: ["view"],
-    tasks: ["view"],
-    approvals: ["view"],
-    selections: ["view"],
-    queries: ["view", "raise"],
-    "action-items": ["view"],
-    stages: ["view"],
-    buildings: ["view"],
-    "key-dates": ["view"],
-    comments: ["view", "post"],
-    updates: ["view"],
-    documents: ["view"],
-    inspections: ["view"],
-    materials: ["view", "report", "request", "approve"],
-    contractors: ["view"],
-    dailyLog: ["view", "create", "report"],
-    messages: ["view", "send"],
-    participants: ["view"],
-    teamMembers: ["view"],
-    schedule: ["view"],
-    rfis: ["view", "create"],
-    bim: ["view"],
-  },
-};
-
-export type SectionValue = "hidden" | "view" | "edit";
-export type ProjectSectionPermissions = Record<string, SectionValue>;
-
-// The per-participant permission matrix (invite/edit drawer) uses dotted
-// per-PAGE keys; backend auth uses resource+action. This is the single canonical
-// bridge. `view`/`edit` grant only safe read/author actions — never manage,
-// approve, decide or delete (those stay privileged, off the UI matrix).
-const SECTION_MAP: Record<
-  string,
-  { resource: string; view: string[]; edit: string[]; viewExtra?: Record<string, string[]>; editExtra?: Record<string, string[]> }
-> = {
-  "projects.documents": { resource: "documents", view: ["view"], edit: ["view", "upload"] },
-  "projects.schedule": {
-    resource: "schedule",
-    view: ["view"],
-    edit: ["view", "manage"],
-    viewExtra: { stages: ["view"], buildings: ["view"] },
-    editExtra: { stages: ["view", "manage"], buildings: ["view", "manage"] },
-  },
-  "projects.bim": { resource: "bim", view: ["view"], edit: ["view", "upload"] },
-  "quality.inspections": { resource: "inspections", view: ["view"], edit: ["view", "request"] },
-  "quality.dailyLogs": { resource: "dailyLog", view: ["view", "report"], edit: ["view", "create", "report"] },
-  "quality.risks": { resource: "risks", view: ["view"], edit: ["view"] },
-  "commercial.finances": { resource: "finances", view: ["view"], edit: ["view"] },
-  "commercial.budget": { resource: "finances", view: ["view"], edit: ["view"] },
-  "commercial.invoices": { resource: "finances", view: ["view"], edit: ["view"] },
-  "commercial.paymentClaims": { resource: "finances", view: ["view"], edit: ["view"] },
-  "commercial.purchaseOrders": { resource: "finances", view: ["view"], edit: ["view"] },
-  "commercial.materialsEquipment": { resource: "materials", view: ["view"], edit: ["view", "request"] },
-  "commercial.materialsLedger": { resource: "materials", view: ["view", "report"], edit: ["view", "report"] },
-  "workflow.rfis": { resource: "rfis", view: ["view"], edit: ["view", "create", "respond"], editExtra: { comments: ["view", "post"] } },
-  "workflow.queries": { resource: "queries", view: ["view"], edit: ["view", "raise"], editExtra: { comments: ["view", "post"] } },
-  "workflow.approvals": { resource: "approvals", view: ["view"], edit: ["view", "decide"], editExtra: { comments: ["view", "post"] } },
-  "workflow.changeRequests": { resource: "change-requests", view: ["view"], edit: ["view"], editExtra: { comments: ["view", "post"] } },
-  "workflow.actionItems": { resource: "action-items", view: ["view"], edit: ["view"], editExtra: { comments: ["view", "post"] } },
-  "compliance.permits": { resource: "permits", view: ["view"], edit: ["view"] },
-  "compliance.keyDates": { resource: "key-dates", view: ["view"], edit: ["view"] },
-  "project.updates": { resource: "updates", view: ["view"], edit: ["view", "post"] },
-  "collaboration.messaging": { resource: "messages", view: ["view"], edit: ["view", "send"] },
-  "projects.selections": { resource: "selections", view: ["view"], edit: ["view", "decide"] },
-};
-
-// Fold a participant's section matrix into a resource->actions map. Sections
-// sharing a resource union their actions; "hidden" contributes nothing. Only
-// resources named by the matrix are affected — untouched resources fall through
-// to the caller's precedence (role default).
-export function sectionsToPermissions(
-  sections: ProjectSectionPermissions,
-): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  for (const [key, value] of Object.entries(sections)) {
-    const entry = SECTION_MAP[key];
-    if (!entry || value === "hidden") continue;
-    const actions = value === "edit" ? entry.edit : entry.view;
-    out[entry.resource] = [...new Set([...(out[entry.resource] ?? []), ...actions])];
-    if (entry.viewExtra) {
-      for (const [res, extra] of Object.entries(entry.viewExtra)) {
-        out[res] = [...new Set([...(out[res] ?? []), ...extra])];
-      }
-    }
-    if (value === "edit" && entry.editExtra) {
-      for (const [res, extra] of Object.entries(entry.editExtra)) {
-        out[res] = [...new Set([...(out[res] ?? []), ...extra])];
-      }
-    }
-  }
-  return out;
-}
-
-// Actions the section matrix is capable of granting per resource (union of all
-// view/edit bridges). The matrix may only revoke what it could have granted:
-// actions outside this vocabulary (e.g. finances:dispute, materials:approve)
-// stay governed by the participant's role default even when the matrix names
-// the resource. editExtra grants are additive side-effects, never revocations.
-const MATRIX_EXPRESSIBLE: Record<string, ReadonlySet<string>> = (() => {
-  const map: Record<string, Set<string>> = {};
-  for (const entry of Object.values(SECTION_MAP)) {
-    const set = (map[entry.resource] ??= new Set());
-    for (const action of [...entry.view, ...entry.edit]) set.add(action);
-  }
-  return map;
-})();
-
-/**
- * Effective participant permissions: role defaults overlaid with the
- * per-participant section matrix. When the matrix names a resource it is the
- * source of truth for that resource's matrix-expressible actions — "hidden"
- * genuinely revokes them. Resources (and non-expressible actions) the matrix
- * does not name fall through to the role default. Org permissions are NOT
- * composed here; callers keep them additive.
- */
-export function composeParticipantPermissions(
-  roleDefaults: Record<string, readonly string[]> | undefined,
-  sections: ProjectSectionPermissions | undefined,
-): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  if (sections) {
-    for (const [res, actions] of Object.entries(sectionsToPermissions(sections))) {
-      out[res] = [...actions];
-    }
-  }
-  if (!roleDefaults) return out;
-
-  const covered = new Set<string>();
-  if (sections) {
-    for (const key of Object.keys(sections)) {
-      const entry = SECTION_MAP[key];
-      if (entry) covered.add(entry.resource);
-    }
-  }
-  for (const [resource, actions] of Object.entries(roleDefaults)) {
-    const retained = covered.has(resource)
-      ? actions.filter((action) => !MATRIX_EXPRESSIBLE[resource]?.has(action))
-      : actions;
-    if (retained.length > 0) {
-      out[resource] = [...new Set([...(out[resource] ?? []), ...retained])];
-    }
-  }
-  return out;
-}
 
 export function effectiveParticipantGrants(
   project: ProjectScope & { id: string },
@@ -519,6 +266,11 @@ export function rolePresets(): Record<string, Record<string, string[]>> {
     out[role] = grants;
   }
   return out;
+}
+
+/** The contract side each starter role defaults to, for the invite editor. */
+export function rolePresetSides(): Record<string, string> {
+  return { ...ROLE_PRESET_SIDES };
 }
 
 export interface GrantValidationContext extends EnrichedAccessContext {

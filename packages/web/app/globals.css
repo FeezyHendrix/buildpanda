@@ -22,7 +22,17 @@
   --color-surface: #ffffff;
   --color-surface-muted: #f6f6f6;
   --color-surface-faint: #fafafa;
-  --color-line: #ededed;
+  --color-line: #e3e6ea;
+  --color-hairline: #d7dce2;
+
+  /* Flat tint fills for the stacked rows. Every one is a tint of a colour the
+     product already owns — brand blue, success, warning — so the page reads as
+     BuildPanda rather than as a borrowed pastel set. */
+  --color-tint-brand: #c9dcff;
+  --color-tint-sky: #cfe9fb;
+  --color-tint-indigo: #d9dbff;
+  --color-tint-mint: #ccecd8;
+  --color-tint-amber: #ffe3bd;
 }
 
 html {
@@ -30,7 +40,7 @@ html {
 }
 
 body {
-  background-color: #ffffff;
+  background-color: #f4f6f8;
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -39,4 +49,57 @@ body {
 ::selection {
   background-color: #004de7;
   color: #ffffff;
+}
+
+/* The container width is declared here rather than as stacked Tailwind
+   breakpoint variants: an arbitrary min-[] variant does not reliably beat a
+   named one in the cascade, so the widest step was silently losing and the
+   page stayed a 1400px ribbon on a 3800px screen. */
+.site-container {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 72rem;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .site-container { padding-inline: 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .site-container { padding-inline: 2rem; }
+}
+
+@media (min-width: 1536px) {
+  .site-container { max-width: 1400px; }
+}
+
+@media (min-width: 1800px) {
+  .site-container { max-width: 1680px; padding-inline: 3rem; }
+}
+
+@media (min-width: 2600px) {
+  .site-container { max-width: 2040px; }
+}
+
+/* The reference sets its headlines large and light rather than small and bold.
+   Plus Jakarta Sans at 400-500 holds up at display sizes and is what gives the
+   page its air. */
+.display {
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+/* Answer lines arrive one after another rather than all at once. */
+@keyframes answer-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Never two bars at the foot of the page: the sticky call to action waits
+   until the cookie choice is made. */
+body[data-consent-open] [data-sticky-cta] {
+  display: none;
 }

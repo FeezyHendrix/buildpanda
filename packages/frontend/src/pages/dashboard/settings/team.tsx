@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
 import { InviteMemberDialog } from "@/components/molecules/invite-member-dialog";
@@ -28,6 +30,7 @@ import { InvitationsSection } from "./team/invitations-section";
 import { RolesSection } from "./team/roles-section";
 import { formatRoleLabel } from "./team/utils";
 import type { Member, CustomRole } from "./team/types";
+import { errorMessage } from "@/lib/api-error";
 
 export default function TeamSettings() {
   const { data: session } = authClient.useSession();
@@ -119,7 +122,6 @@ export default function TeamSettings() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <PageHeader
         title="Team settings"
-        description="Manage members, invitations, and custom roles."
         actions={
           canManage && (
             <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
@@ -127,14 +129,14 @@ export default function TeamSettings() {
         }
       />
 
-      <div className="mb-8 mt-6 rounded-xl border border-gray-200 p-5">
-        <Label htmlFor="org-name" className="text-sm font-semibold text-gray-900">Workspace name</Label>
+      <div className="mb-8 mt-6 rounded-lg border border-line-hair p-5">
+        <Label htmlFor="org-name" className="text-sm font-semibold text-ink">Workspace name</Label>
         <div className="mt-2 flex gap-3">
           <input
             id="org-name"
             value={orgName}
             onChange={(e) => setOrgName(e.target.value)}
-            className="h-10 flex-1 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={cn(INPUT_SM_CLASS, "flex-1")}
           />
           <Button
             size="sm"
@@ -193,7 +195,7 @@ export default function TeamSettings() {
           label: formatRoleLabel(role),
         }))}
         isSubmitting={inviteMember.isPending}
-        error={inviteMember.error?.message ?? null}
+        error={inviteMember.error ? errorMessage(inviteMember.error) : null}
         onSubmit={handleInvite}
       />
 
@@ -210,10 +212,7 @@ export default function TeamSettings() {
             : null
         }
         isSubmitting={roleToEdit ? updateRole.isPending : createRole.isPending}
-        error={
-          (roleToEdit ? updateRole.error?.message : createRole.error?.message) ??
-          null
-        }
+        error={errorMessage(roleToEdit ? updateRole.error : createRole.error, "") || null}
         onSubmit={handleSubmitRole}
       />
 

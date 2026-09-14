@@ -1,4 +1,4 @@
-import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { ForbiddenError, NotFoundError, ServiceUnavailableError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import {
   getDownloadUrl,
@@ -30,6 +30,47 @@ export interface FileBytes {
   bytes: Buffer;
 }
 
+// Codes the S3/MinIO client surfaces when the object store is simply not there.
+// An AggregateError wraps them when the host resolves to several addresses.
+const OUTAGE_CODES = new Set([
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "ETIMEDOUT",
+  "ECONNRESET",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EPIPE",
+]);
+
+function isStorageOutage(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; errors?: unknown; cause?: unknown; name?: unknown };
+  if (typeof candidate.code === "string" && OUTAGE_CODES.has(candidate.code)) return true;
+  if (Array.isArray(candidate.errors)) return candidate.errors.some(isStorageOutage);
+  if (candidate.cause) return isStorageOutage(candidate.cause);
+  return false;
+}
+
+/**
+ * The object store being down is a 503 with a name the client can act on, not
+ * an unhandled 500 — that is what lets the UI keep a half-written diary entry
+ * and say "storage is unavailable" instead of "Internal server error".
+ */
+async function throughStorage<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (isStorageOutage(error)) {
+      throw new ServiceUnavailableError(
+        "File storage is unavailable right now. Your text is safe — try attaching the file again shortly.",
+        "storage_unavailable",
+      );
+    }
+    throw error;
+  }
+}
+
 function toFile(row: UploadedFileRow): UploadedFile {
   return {
     id: row.id,
@@ -43,7 +84,7 @@ function toFile(row: UploadedFileRow): UploadedFile {
 export function filesService(repository: FilesRepository) {
   return {
     async upload(ownerId: string, incoming: IncomingFile): Promise<UploadedFile> {
-      const stored: StoredFile = await saveStream(ownerId, incoming.data);
+      const stored: StoredFile = await throughStorage(() => saveStream(ownerId, incoming.data));
       const row = await repository.create({
         id: generateId("file"),
         owner_id: ownerId,
@@ -68,11 +109,11 @@ export function filesService(repository: FilesRepository) {
     },
 
     async presignViewUrl(row: UploadedFileRow): Promise<string> {
-      return getDownloadUrl(row.storage_path);
+      return throughStorage(() => getDownloadUrl(row.storage_path));
     },
 
     async open(row: UploadedFileRow): Promise<DownloadHandle> {
-      const stream = await openStoredFile(row.storage_path);
+      const stream = await throughStorage(() => openStoredFile(row.storage_path));
       return {
         fileName: row.file_name,
         mimeType: row.mime_type,
@@ -88,8 +129,8 @@ export function filesService(repository: FilesRepository) {
     async readBytes(id: string): Promise<FileBytes | null> {
       const row = await repository.findById(id);
       if (!row) return null;
-      const stream = await openStoredFile(row.storage_path);
-      const bytes = await streamToBuffer(stream);
+      const stream = await throughStorage(() => openStoredFile(row.storage_path));
+      const bytes = await throughStorage(() => streamToBuffer(stream));
       return { fileName: row.file_name, mimeType: row.mime_type, bytes };
     },
   };

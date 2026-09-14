@@ -3,11 +3,17 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { FormDrawer } from "@/components/molecules/form-drawer";
-import { Input } from "@/components/atoms/input";
+import { JobProfilePicker } from "@/components/molecules/job-profile-picker";
+import type { JobProfile } from "@/api/proposals";
+import { Input, INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { useProposals, useCreateProposal } from "@/hooks/use-proposals";
+import { useCreateProposalFromTemplate, useProposalTemplates } from "@/hooks/use-proposal-templates";
+import { JOB_PROFILE_LABEL } from "@/api/proposal-templates";
 import { PROPOSAL_STATUSES, type ProposalStatus, type ProposalListItem } from "@/api/proposals";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 import { formatShortDate, formatWholeCurrency } from "@/lib/formatters";
@@ -22,28 +28,25 @@ import { PageHeader } from "@/components";
 function ProposalRow({ row }: { row: ProposalListItem }) {
   const navigate = useNavigate();
   return (
-    <tr
-      className="cursor-pointer border-b border-gray-100 hover:bg-gray-50"
-      onClick={() => navigate(`/sales/proposals/${row.id}`)}
-    >
-      <td className="px-4 py-3">
+    <TableRow onClick={() => navigate(`/sales/proposals/${row.id}`)}>
+      <TableCell>
         <span className="font-mono text-xs font-medium text-gray-500">{row.numberLabel}</span>
-      </td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell>
         <p className="font-medium text-gray-900">{row.title}</p>
         <p className="text-xs text-gray-500">{row.clientName}</p>
-      </td>
-      <td className="px-4 py-3 text-sm text-gray-600">{row.location ?? "-"}</td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell className="text-gray-600">{row.location ?? "-"}</TableCell>
+      <TableCell>
         <Badge tone={STATUS_TONE[row.status] ?? "neutral"}>
           {LABEL_MAP[row.status] ?? row.status}
         </Badge>
-      </td>
-      <td className="px-4 py-3 text-sm text-gray-700">
+      </TableCell>
+      <TableCell className="text-gray-700">
         {row.estimateTotal != null ? formatWholeCurrency(row.estimateTotal, row.currency) : "-"}
-      </td>
-      <td className="px-4 py-3 text-xs text-gray-400">{formatShortDate(row.createdAt)}</td>
-    </tr>
+      </TableCell>
+      <TableCell className="text-xs text-gray-400">{formatShortDate(row.createdAt)}</TableCell>
+    </TableRow>
   );
 }
 
@@ -55,6 +58,7 @@ interface PrefillSource {
   clientPhone?: string;
   location?: string;
   brief?: string;
+  templateId?: string;
 }
 
 function CreateProposalDrawer({
@@ -68,6 +72,9 @@ function CreateProposalDrawer({
 }) {
   const navigate = useNavigate();
   const create = useCreateProposal();
+  const createFromTemplate = useCreateProposalFromTemplate();
+  const { data: templates = [] } = useProposalTemplates();
+  const template = prefill?.templateId ? templates.find((t) => t.id === prefill.templateId) ?? null : null;
 
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [clientName, setClientName] = useState(prefill?.clientName ?? "");
@@ -75,9 +82,11 @@ function CreateProposalDrawer({
   const [clientPhone, setClientPhone] = useState(prefill?.clientPhone ?? "");
   const [location, setLocation] = useState(prefill?.location ?? "");
   const [brief, setBrief] = useState(prefill?.brief ?? "");
+  const [jobProfile, setJobProfile] = useState<JobProfile>("full_contract");
 
   useEffect(() => {
     if (!open) return;
+    setJobProfile("full_contract");
     setTitle(prefill?.title ?? "");
     setClientName(prefill?.clientName ?? "");
     setClientEmail(prefill?.clientEmail ?? "");
@@ -104,7 +113,7 @@ function CreateProposalDrawer({
 
   async function handleSubmit() {
     if (!isValid) return;
-    const proposal = await create.mutateAsync({
+    const input = {
       title: title.trim(),
       clientName: clientName.trim(),
       clientEmail: clientEmail.trim() || undefined,
@@ -112,9 +121,14 @@ function CreateProposalDrawer({
       location: location.trim() || undefined,
       brief: brief.trim() || undefined,
       leadId: prefill?.leadId,
-    });
+      jobProfile,
+    };
+    // a template creates the proposal and its first revision in one call
+    const proposalId = prefill?.templateId
+      ? (await createFromTemplate.mutateAsync({ ...input, templateId: prefill.templateId })).proposal.id
+      : (await create.mutateAsync(input)).id;
     onOpenChange(false);
-    navigate(`/sales/proposals/${proposal.id}`);
+    navigate(`/sales/proposals/${proposalId}`);
   }
 
   const inputClass = "w-full";
@@ -127,10 +141,15 @@ function CreateProposalDrawer({
       description="Enter the client details to get started. You can add an estimate from the workspace."
       submitLabel="Create proposal"
       submitDisabled={!isValid}
-      submitting={create.isPending}
-      error={create.isError ? "Failed to create proposal. Please try again." : null}
+      submitting={create.isPending || createFromTemplate.isPending}
+      error={create.isError || createFromTemplate.isError ? "Failed to create proposal. Please try again." : null}
       onSubmit={handleSubmit}
     >
+      {template ? (
+        <p className="rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          Starting from the <strong>{template.name}</strong> template ({JOB_PROFILE_LABEL[template.jobProfile]}). Its payment stages, terms and pack text are applied to the first revision.
+        </p>
+      ) : null}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="prop-title">Project title *</Label>
         <Input
@@ -184,6 +203,10 @@ function CreateProposalDrawer({
         />
       </div>
       <div className="flex flex-col gap-1.5">
+        <Label>Job profile *</Label>
+        <JobProfilePicker value={jobProfile} onChange={setJobProfile} />
+      </div>
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="prop-brief">Brief / notes</Label>
         <textarea
           id="prop-brief"
@@ -191,16 +214,17 @@ function CreateProposalDrawer({
           value={brief}
           onChange={(e) => setBrief(e.target.value)}
           placeholder="Short description of the project scope…"
-          className={cn(
-            "w-full rounded-lg bg-[#F6F6F6] px-4 py-3 text-sm text-gray-900",
-            "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            "resize-none placeholder:text-gray-400",
-          )}
+          className={cn(INPUT_CLASS, "h-auto min-h-24 resize-none py-3")}
         />
       </div>
     </FormDrawer>
   );
 }
+
+const STATUS_FILTERS = [
+  { value: "", label: "All" },
+  ...PROPOSAL_STATUSES.map((status) => ({ value: status, label: LABEL_MAP[status] })),
+] as const;
 
 export default function ProposalsPage() {
   const [statusFilter, setStatusFilter] = useState<ProposalStatus | "">("");
@@ -216,19 +240,20 @@ export default function ProposalsPage() {
     clientPhone: searchParams.get("clientPhone") ?? undefined,
     location: searchParams.get("location") ?? undefined,
     brief: searchParams.get("brief") ?? undefined,
+    templateId: searchParams.get("templateId") ?? undefined,
   };
 
   useEffect(() => {
-    if (searchParams.get("clientName") || searchParams.get("leadId")) {
+    if (searchParams.get("clientName") || searchParams.get("leadId") || searchParams.get("templateId")) {
       setDrawerOpen(true);
     }
   }, [searchParams]);
 
   function handleDrawerOpenChange(v: boolean) {
     setDrawerOpen(v);
-    if (!v && (searchParams.get("leadId") || searchParams.get("clientName"))) {
+    if (!v && (searchParams.get("leadId") || searchParams.get("clientName") || searchParams.get("templateId"))) {
       const next = new URLSearchParams(searchParams);
-      ["leadId", "title", "clientName", "clientEmail", "clientPhone", "location", "brief"].forEach((k) =>
+      ["leadId", "title", "clientName", "clientEmail", "clientPhone", "location", "brief", "templateId"].forEach((k) =>
         next.delete(k),
       );
       setSearchParams(next, { replace: true });
@@ -250,7 +275,6 @@ export default function ProposalsPage() {
     <div className="flex flex-col gap-6 p-6">
       <PageHeader
         title="Proposals"
-        description="Pre-construction proposals and estimates for your clients."
         actions={
           <Can do="create" on="proposals">
             <Button
@@ -265,25 +289,16 @@ export default function ProposalsPage() {
         }
       />
 
-      <div className="flex items-center gap-3">
-        <select
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs
+          items={STATUS_FILTERS}
           value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as ProposalStatus | "");
+          onChange={(status) => {
+            setStatusFilter(status);
             setOffset(0);
           }}
-          className={cn(
-            "h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700",
-            "outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/25",
-          )}
-        >
-          <option value="">All statuses</option>
-          {PROPOSAL_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {LABEL_MAP[s]}
-            </option>
-          ))}
-        </select>
+          ariaLabel="Filter proposals by status"
+        />
 
         {total > 0 && (
           <span className="text-sm text-gray-400">
@@ -312,36 +327,24 @@ export default function ProposalsPage() {
         />
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl border border-gray-200">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50">
+          <div className="overflow-hidden rounded-lg border border-line">
+            <Table>
+              <TableHead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    #
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Project
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Location
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Estimate
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Created
-                  </th>
+                  <TableHeaderCell>#</TableHeaderCell>
+                  <TableHeaderCell>Project</TableHeaderCell>
+                  <TableHeaderCell>Location</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>Estimate</TableHeaderCell>
+                  <TableHeaderCell>Created</TableHeaderCell>
                 </tr>
-              </thead>
-              <tbody>
+              </TableHead>
+              <TableBody>
                 {rows.map((row) => (
                   <ProposalRow key={row.id} row={row} />
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {(hasPrev || hasNext) && (

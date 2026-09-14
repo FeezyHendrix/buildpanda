@@ -3,9 +3,8 @@ import { Gantt, Willow } from "@svar-ui/react-gantt";
 import "@svar-ui/react-gantt/all.css";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { CalendarIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
@@ -17,6 +16,7 @@ import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
@@ -40,6 +40,8 @@ export default function ProjectSchedule() {
   const { data: keyDates = [], isPending: isKeyDatesPending } = useKeyDates(canViewKeyDates ? project.id : undefined, selectedBuildingId);
   const { data: dailyLogs = [] } = useProjectDailyLogs(project.id);
   const { data: finances } = useProjectFinances(project.id);
+  // The completion position is the project's, not the chart's — same source as the overview.
+  const { data: snapshot } = useReportingSnapshot(project.id);
   const milestones = finances?.milestones ?? [];
   const [importOpen, setImportOpen] = useState(false);
   const canEdit = Boolean(access && canResourceAction(access, "schedule", "manage"));
@@ -92,26 +94,18 @@ export default function ProjectSchedule() {
   const hasSchedule = tasks.length > 0;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-[#FCFCFD] [&_.wx-willow-theme]:flex [&_.wx-willow-theme]:min-h-0 [&_.wx-willow-theme]:flex-1 [&_.wx-willow-theme]:flex-col">
-      <div className="shrink-0 border-b border-[#EDEDED] bg-white px-6 py-4 sm:px-8">
-        <Breadcrumbs
-          items={[
-            { label: "Schedule", to: `/project/${project.id}/schedule` },
-            { label: "Project Chart" },
-          ]}
-          className="mb-4"
-        />
+    <div className="flex h-full min-h-0 w-full flex-col bg-surface-alt [&_.wx-willow-theme]:flex [&_.wx-willow-theme]:min-h-0 [&_.wx-willow-theme]:flex-1 [&_.wx-willow-theme]:flex-col">
+      <div className="shrink-0 border-b border-line-hair bg-white px-6 py-4 sm:px-8">
         <PageHeader
-          title="Project Chart"
-          description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."
+          title="Project chart"
           actions={
             <div className="flex items-center gap-2">
               {canEdit && isProgrammeImportEnabled && (
-                <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+                <Button variant="secondary" size="md" onClick={() => setImportOpen(true)}>
                   Import programme
                 </Button>
               )}
-              <Button variant="secondary" size="sm" onClick={downloadReport}>
+              <Button variant="secondary" size="md" onClick={downloadReport}>
                 Export report
               </Button>
             </div>
@@ -142,33 +136,34 @@ export default function ProjectSchedule() {
 
       {isSchedulePending ? (
         <div className="flex flex-1 items-center justify-center p-6">
-          <Card padding="lg" className="text-center text-sm text-gray-500">
-            Loading schedule…
-          </Card>
+          <Spinner size="md" />
         </div>
       ) : !hasSchedule ? (
         <div className="flex flex-1 items-center justify-center p-6">
-          <Card padding="lg">
-            <EmptyState
-              icon={<CalendarIcon className="size-8 text-gray-300" />}
-              title="No scheduled activities"
-              description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
-              action={
-                canEdit && isProgrammeImportEnabled ? (
-                  <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
-                    Import programme of works
-                  </Button>
-                ) : undefined
-              }
-            />
-          </Card>
+          <EmptyState
+            icon={<CalendarIcon />}
+            title="No scheduled activities yet"
+            description="Create milestone work items from Site activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
+            action={
+              canEdit && isProgrammeImportEnabled
+                ? { label: "Import programme of works", onClick: () => setImportOpen(true) }
+                : undefined
+            }
+          />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col bg-white">
-          <ScheduleReportPanel report={report} currency={project.currency} />
+          <ScheduleReportPanel
+            report={report}
+            currency={project.currency}
+            timelineShiftDays={snapshot?.schedule.timelineShiftDays ?? null}
+            revisedCompletionDate={
+              snapshot?.schedule.revisedCompletionDate ?? snapshot?.schedule.completionDate ?? null
+            }
+          />
           <div className="bp-gantt flex min-h-0 w-full flex-1 flex-col overflow-hidden">
             {canEdit && (
-              <div className="flex items-center gap-2 border-b border-[#F0F0F0] px-4 py-2">
+              <div className="flex items-center gap-2 border-b border-line-hair px-4 py-2">
                 <span className="text-xs text-gray-500">
                   Drag bars to reschedule. Changes save automatically.
                 </span>

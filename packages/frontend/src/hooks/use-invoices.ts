@@ -14,17 +14,34 @@ export type {
   PaymentInput,
   SendInvoiceInput,
   InvoiceAllocation,
-  ExtractedInvoice,
-  ExtractedInvoiceLineItem,
-  ExtractedInvoiceParty,
-  InvoiceScanResult,
-  InvoiceDocumentKind,
-  InvoiceScanConfidence,
   PayApplicationLine,
   PayApplicationSummary,
   PayApplicationLineInput,
+  InvoicePaymentsRow,
+  InvoicePaymentsTotals,
+  InvoicePaymentsResponse,
+  InvoiceDirection,
+  InvoiceEvent,
+  InvoiceEventType,
+  InvoiceCertificate,
 } from "@/api/invoices";
-import { invoiceKeys } from "./query-keys";
+export type {
+  ExtractedInvoice, ExtractedInvoiceLineItem, ExtractedInvoiceParty,
+  InvoiceScanResult, InvoiceDocumentKind, InvoiceScanConfidence,
+} from "@/api/invoice-scan-types";
+import { financeKeys, invoiceKeys, stageKeys } from "./query-keys";
+
+/**
+ * Certifying, paying or voiding an invoice moves the contract position, so
+ * every invoice write refreshes the one money model alongside the register.
+ */
+function invalidateInvoiceAndPosition(
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId: string,
+): void {
+  queryClient.invalidateQueries({ queryKey: invoiceKeys.all(projectId) });
+  queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
+}
 
 export function useProjectInvoices(projectId: string | undefined) {
   return useQuery({
@@ -46,6 +63,16 @@ export function useInvoiceDetail(projectId: string | undefined, invoiceId: strin
   });
 }
 
+/** Recorded invoice payments; consumers distinguish unavailable data from an empty ledger. */
+export function useInvoicePayments(projectId: string | undefined) {
+  return useQuery({
+    queryKey: invoiceKeys.payments(projectId ?? "__none__"),
+    queryFn: () => invoicesApi.payments(projectId!),
+    enabled: Boolean(projectId),
+    retry: false,
+  });
+}
+
 interface CreateInvoiceVariables extends InvoiceInput {
   projectId: string;
 }
@@ -55,9 +82,7 @@ export function useCreateInvoice() {
 
   return useMutation({
     mutationFn: ({ projectId, ...body }: CreateInvoiceVariables) => invoicesApi.create(projectId, body),
-    onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
-    },
+    onSuccess: (_data, { projectId }) => invalidateInvoiceAndPosition(queryClient, projectId),
   });
 }
 
@@ -71,10 +96,7 @@ export function useEditInvoice() {
 
   return useMutation({
     mutationFn: ({ projectId, invoiceId, ...patch }: EditInvoiceVariables) => invoicesApi.update(projectId, invoiceId, patch),
-    onSuccess: (_data, { projectId, invoiceId }) => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(projectId, invoiceId) });
-    },
+    onSuccess: (_data, { projectId }) => invalidateInvoiceAndPosition(queryClient, projectId),
   });
 }
 
@@ -88,9 +110,7 @@ export function useDeleteInvoice() {
 
   return useMutation({
     mutationFn: ({ projectId, invoiceId }: DeleteInvoiceVariables) => invoicesApi.delete(projectId, invoiceId),
-    onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
-    },
+    onSuccess: (_data, { projectId }) => invalidateInvoiceAndPosition(queryClient, projectId),
   });
 }
 
@@ -104,10 +124,7 @@ export function useAddInvoicePayment() {
 
   return useMutation({
     mutationFn: ({ projectId, invoiceId, ...body }: AddPaymentVariables) => invoicesApi.addPayment(projectId, invoiceId, body),
-    onSuccess: (_data, { projectId, invoiceId }) => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(projectId, invoiceId) });
-    },
+    onSuccess: (_data, { projectId }) => invalidateInvoiceAndPosition(queryClient, projectId),
   });
 }
 
@@ -122,10 +139,7 @@ export function useDeleteInvoicePayment() {
 
   return useMutation({
     mutationFn: ({ projectId, invoiceId, paymentId }: DeletePaymentVariables) => invoicesApi.deletePayment(projectId, invoiceId, paymentId),
-    onSuccess: (_data, { projectId, invoiceId }) => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(projectId, invoiceId) });
-    },
+    onSuccess: (_data, { projectId }) => invalidateInvoiceAndPosition(queryClient, projectId),
   });
 }
 
@@ -139,10 +153,59 @@ export function useSendInvoice() {
 
   return useMutation({
     mutationFn: ({ projectId, invoiceId, ...body }: SendInvoiceVariables) => invoicesApi.send(projectId, invoiceId, body),
-    onSuccess: (_data, { projectId, invoiceId }) => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(projectId, invoiceId) });
-    },
+    onSuccess: (_data, { projectId }) => invalidateInvoiceAndPosition(queryClient, projectId),
+  });
+}
+
+/**
+ * The interim-certificate structure for one invoice — previous certified, this
+ * certificate, cumulative, and the deductions the contract terms produce. The
+ * backend seeds it from the terms; the drawer never types these figures.
+ */
+export function useInvoiceCertificate(
+  projectId: string | undefined,
+  invoiceId: string | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: invoiceKeys.certificate(projectId ?? "__none__", invoiceId ?? "__none__"),
+    queryFn: () => invoicesApi.certificate(projectId!, invoiceId!),
+    enabled: Boolean(projectId && invoiceId) && enabled,
+  });
+}
+
+/** Every status change on the certificate, with actor and reason. */
+export function useInvoiceHistory(
+  projectId: string | undefined,
+  invoiceId: string | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: invoiceKeys.history(projectId ?? "__none__", invoiceId ?? "__none__"),
+    queryFn: () => invoicesApi.history(projectId!, invoiceId!),
+    enabled: Boolean(projectId && invoiceId) && enabled,
+  });
+}
+
+/** Voiding keeps the certificate and its receipts on file and reverses its figures. */
+export function useVoidInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, invoiceId, reason }: { projectId: string; invoiceId: string; reason: string }) =>
+      invoicesApi.void(projectId, invoiceId, reason),
+    onSuccess: (_data, { projectId }) => invalidateInvoiceAndPosition(queryClient, projectId),
+  });
+}
+
+/** A client query is a formal dispute on a certificate: it always has a reason. */
+export function useQueryInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, invoiceId, reason }: { projectId: string; invoiceId: string; reason: string }) =>
+      invoicesApi.query(projectId, invoiceId, reason),
+    onSuccess: (_data, { projectId }) => invalidateInvoiceAndPosition(queryClient, projectId),
   });
 }
 
@@ -202,16 +265,20 @@ export function useSetPayApplication() {
       projectId,
       invoiceId,
       lines,
+      period,
     }: {
       projectId: string;
       invoiceId: string;
       lines: PayApplicationLineInput[];
-    }) => invoicesApi.setPayApplication(projectId, invoiceId, lines),
-    onSuccess: (_data, { projectId, invoiceId }) => {
+      /** Billing-sheet month this application invoices; flags it billed. */
+      period?: string;
+    }) => invoicesApi.setPayApplication(projectId, invoiceId, lines, period),
+    onSuccess: (_data, { projectId, invoiceId, period }) => {
       queryClient.invalidateQueries({
         queryKey: invoiceKeys.payApplication(projectId, invoiceId),
       });
       queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
+      if (period) queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
     },
   });
 }

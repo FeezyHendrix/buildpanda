@@ -50,13 +50,27 @@ export function parseDate(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function delayEnd(delay: ActivityDelay, activityEnd: Date): Date {
-  const resolved = delay.resolvedAt ? parseDate(delay.resolvedAt) : null;
-  if (resolved) return resolved;
+/**
+ * How long a delay actually ran, as a bar on the chart.
+ *
+ * A delay is a stoppage of a known length, not "everything up to the activity's
+ * planned end": a one-day stop is one day wide wherever it falls. The record
+ * says when work resumed (`endedAt`); while it is still running the only
+ * measure is the days lost so far, and a stop that has lost no days yet still
+ * reads as one day so it stays visible.
+ */
+export function delayBarEnd(delay: ActivityDelay): Date | null {
+  const started = parseDate(delay.startedAt);
+  if (!started) return null;
 
-  const started = parseDate(delay.startedAt) ?? activityEnd;
-  const today = new Date();
-  return new Date(Math.max(activityEnd.getTime(), started.getTime() + DAY_MS, today.getTime()));
+  const ended = delay.endedAt ? parseDate(delay.endedAt) : null;
+  const finish = ended && ended > started
+    ? ended
+    : new Date(started.getTime() + Math.max(1, delay.daysLost) * DAY_MS);
+
+  // A stop recorded as starting and ending on the same day still cost a day;
+  // a zero-width bar would simply vanish off the chart.
+  return new Date(Math.max(finish.getTime(), started.getTime() + DAY_MS));
 }
 
 export function delaySummary(activities: Activity[]): DelaySummary {
@@ -97,10 +111,8 @@ export function buildReport(
       delayCount += 1;
       delayCost += delay.costImpact;
       if (delay.resolvedAt === null) openDelayCount += 1;
-      if (end) {
-        const delayedEnd = delayEnd(delay, end);
-        if (!projectedEnd || delayedEnd > projectedEnd) projectedEnd = delayedEnd;
-      }
+      const delayedEnd = delayBarEnd(delay);
+      if (delayedEnd && (!projectedEnd || delayedEnd > projectedEnd)) projectedEnd = delayedEnd;
     }
   }
 

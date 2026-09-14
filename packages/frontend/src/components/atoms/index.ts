@@ -24,7 +24,6 @@ export {
 export { Input, type InputProps } from "./input";
 export { Label, type LabelProps } from "./label";
 export { LogOutIcon, type LogOutIconProps } from "./logout-icon";
-export { MapPlaceholder, type MapPlaceholderProps } from "./map-placeholder";
 export { NotificationBell, type NotificationBellProps } from "./notification-bell";
 export { OptionCard, type OptionCardProps } from "./option-card";
 export {

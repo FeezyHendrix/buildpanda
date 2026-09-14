@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/atoms/button";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
+import { Table, TableBody } from "@/components/atoms/table";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "./empty-state";
 import {
@@ -56,7 +57,7 @@ const DEFAULT_EMPTY_STATE = (
   <EmptyState
     title="Nothing to show yet"
     description="Records will appear here once they have been added."
-    className="py-2"
+    variant="inline"
   />
 );
 
@@ -224,7 +225,7 @@ function DataGrid<T>({
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="w-full max-w-xs rounded-lg bg-[#F6F6F6]">
+        <div className="w-full max-w-xs rounded-lg bg-surface-alt">
           <SearchInput
             value={searchDraft}
             onChange={handleSearchChange}
@@ -235,7 +236,7 @@ function DataGrid<T>({
 
         {isNarrowed ? (
           <div className="flex items-center gap-2">
-            <p aria-live="polite" className="text-xs text-gray-500">
+            <p aria-live="polite" className="text-xs text-ink-muted">
               {total} {total === 1 ? "match" : "matches"}
             </p>
             <Button
@@ -251,62 +252,51 @@ function DataGrid<T>({
         ) : null}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-grey-50 bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left">
-            <DataGridHeaderRow
-              columns={columns}
-              sortColumnId={sort?.columnId ?? null}
-              sortDirection={sort?.direction ?? null}
-              filters={filters}
-              filterOptions={filterOptions}
-              onToggleSort={handleToggleSort}
-              onFilterChange={handleFilterChange}
-            />
-            <tbody>
-              {state === "loading" ? (
-                <DataGridStateRow colSpan={columns.length}>
-                  <Spinner size="md" />
-                </DataGridStateRow>
-              ) : null}
+      <div className="overflow-hidden rounded-lg border border-grey-50 bg-white">
+        <Table className="min-w-[640px] border-collapse">
+          <DataGridHeaderRow
+            columns={columns}
+            sortColumnId={sort?.columnId ?? null}
+            sortDirection={sort?.direction ?? null}
+            filters={filters}
+            filterOptions={filterOptions}
+            onToggleSort={handleToggleSort}
+            onFilterChange={handleFilterChange}
+          />
+          <TableBody>
+            {state === "loading" ? (
+              <DataGridStateRow colSpan={columns.length}>
+                <Spinner size="md" />
+              </DataGridStateRow>
+            ) : null}
 
-              {state === "empty" ? (
-                <DataGridStateRow colSpan={columns.length}>
-                  {isNarrowed ? (
-                    <EmptyState
-                      title="No matching records"
-                      description="Adjust your search or clear the column filters to see everything."
-                      className="py-2"
-                      action={
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleReset}
-                        >
-                          Reset filters
-                        </Button>
-                      }
-                    />
-                  ) : (
-                    (emptyState ?? DEFAULT_EMPTY_STATE)
-                  )}
-                </DataGridStateRow>
-              ) : null}
+            {state === "empty" ? (
+              <DataGridStateRow colSpan={columns.length}>
+                {isNarrowed ? (
+                  <EmptyState
+                    title="No matching records"
+                    description="Adjust your search or clear the column filters to see everything."
+                    variant="inline"
+                    action={{ label: "Reset filters", onClick: handleReset }}
+                  />
+                ) : (
+                  (emptyState ?? DEFAULT_EMPTY_STATE)
+                )}
+              </DataGridStateRow>
+            ) : null}
 
-              {state === "rows"
-                ? pageRows.map((row) => (
-                    <DataGridRow
-                      key={getRowId(row)}
-                      row={row}
-                      columns={columns}
-                      onRowClick={onRowClick}
-                    />
-                  ))
-                : null}
-            </tbody>
-          </table>
-        </div>
+            {state === "rows"
+              ? pageRows.map((row) => (
+                  <DataGridRow
+                    key={getRowId(row)}
+                    row={row}
+                    columns={columns}
+                    onRowClick={onRowClick}
+                  />
+                ))
+              : null}
+          </TableBody>
+        </Table>
 
         {state === "rows" ? (
           <DataGridPagination

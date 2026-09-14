@@ -1,0 +1,1 @@
+ALTER TABLE `rfis` ADD `question_html` text;

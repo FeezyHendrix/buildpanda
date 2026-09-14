@@ -234,7 +234,7 @@ export function PayApplicationDrawer({
         </div>
       ) : (
         <>
-          <section className="sticky top-0 z-10 -mx-6 -mt-5 border-b border-grey-50 bg-white px-6 pb-4 pt-5">
+          <section className="sticky top-0 z-10 -mx-6 -mt-5 border-b border-line-hair bg-white px-6 pb-4 pt-5">
             <div className="grid grid-cols-3 gap-4">
               <SummaryFigure
                 label="This period"
@@ -267,7 +267,7 @@ export function PayApplicationDrawer({
                 "mt-3 rounded-lg px-3 py-2 text-xs",
                 overBilled > 0
                   ? "bg-error-50 font-medium text-error-600"
-                  : "bg-[#F8F8F8] text-black-300",
+                  : "bg-surface-alt text-ink-muted",
               )}
             >
               {overBilled > 0
@@ -277,25 +277,25 @@ export function PayApplicationDrawer({
           </section>
 
           <div className="flex items-center justify-between">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-black-200">
+            <h3 className="text-xs font-medium uppercase text-ink-muted">
               Stages on this application
             </h3>
-            <span className="text-[11px] text-black-200">
+            <span className="text-xs text-ink-muted">
               {draft.length} {draft.length === 1 ? "stage" : "stages"}
             </span>
           </div>
 
           {!hasStages ? (
             <EmptyState
+              variant="inline"
               title="No build stages yet"
-              description="A progress application bills against build stages. Add stages to the contract first, then come back to record what was completed this period."
-              className="py-2"
+              description="A progress application bills against build stages, so add stages to the contract first and then come back to record what was completed this period."
             />
           ) : draft.length === 0 ? (
             <EmptyState
-              title="Nothing billed on this application"
+              variant="inline"
+              title="No lines on this application yet"
               description="Put a build stage on the application, then record what was completed this period, what is stored on site, and what is being held back."
-              className="py-2"
             />
           ) : (
             <ul className="flex flex-col gap-2">
@@ -323,7 +323,7 @@ export function PayApplicationDrawer({
             />
           ) : null}
 
-          <p className="mt-auto pt-2 text-[11px] text-black-200">
+          <p className="mt-auto pt-2 text-xs text-ink-muted">
             Billed in previous applications is derived from the other
             applications on each stage. These lines record billing that happened
             off-platform — BuildPanda never charges or moves money.

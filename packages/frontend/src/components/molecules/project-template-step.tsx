@@ -9,8 +9,11 @@ import {
 import { OptionCard } from "@/components/atoms/option-card";
 import { Spinner } from "@/components/atoms/spinner";
 import { useProjectTemplates, type ProjectTemplateSummary } from "@/hooks/use-projects";
+import { QueryError } from "./query-error";
+import type { ProjectType } from "./project-type-step";
 
 interface ProjectTemplateStepProps {
+  projectType: ProjectType | null;
   /** null = "Start blank" (the default). */
   selected: string | null;
   onSelect: (templateId: string | null) => void;
@@ -48,18 +51,21 @@ function TemplateCard({
   );
 }
 
-function ProjectTemplateStep({ selected, onSelect }: ProjectTemplateStepProps) {
-  const { data: templates = [], isPending } = useProjectTemplates();
+function ProjectTemplateStep({ projectType, selected, onSelect }: ProjectTemplateStepProps) {
+  const { data: templates = [], isPending, error, refetch } = useProjectTemplates();
+  const matchingTemplates = templates.filter(template => template.projectType === projectType);
 
   return (
     <div>
-      <h2 className="text-center text-[25px] font-bold text-gray-900 text-balance">
-        Start from a template?
+      <h2 className="text-center text-[25px] font-medium text-gray-900 text-balance">
+        {projectType === "renovate" ? "Choose a renovation template" : "Choose a home-building template"}
       </h2>
-      <p className="mt-2 text-center text-sm text-[#929292] text-pretty">
-        Templates pre-fill your project with typical construction stages and starter
-        tasks. You can rename, reorder or delete everything later.
+      <p className="mt-2 text-center text-sm text-gray-400 text-pretty">
+        Choose a starting programme for your {projectType === "renovate" ? "renovation" : "new home"},
+        or start blank. You can edit the stages and tasks later.
       </p>
+
+      {error ? <QueryError error={error} retry={refetch} noun="project templates" /> : null}
 
       {isPending ? (
         <div className="mt-12 flex justify-center">
@@ -70,12 +76,12 @@ function ProjectTemplateStep({ selected, onSelect }: ProjectTemplateStepProps) {
           <OptionCard
             icon={<PlusIcon className="size-9" />}
             title="Start blank"
-            subtitle="Begin with the standard stage list only and build your own plan from scratch."
+            subtitle="Start without stages or tasks and build your own programme."
             selected={selected === null}
             onClick={() => onSelect(null)}
             className="p-6"
           />
-          {templates.map((template) => (
+          {matchingTemplates.map((template) => (
             <TemplateCard
               key={template.id}
               template={template}

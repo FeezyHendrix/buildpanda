@@ -1,51 +1,106 @@
+import { useParams } from "react-router-dom";
+import { useUrlState } from "@/hooks/use-url-state";
+import { ActivityDestination } from "./activities/activity-destination";
 import { useState } from "react";
-import { ActivityCard } from "./activities/activity-card";
+import { ActivitiesTable } from "./activities/activities-table";
+import { DeleteActivityDialog } from "./activities/delete-activity-dialog";
+import { buildDelayLinkOptions } from "./activities/delay-link-options";
+import {
+  ACTIVITY_STATUS_FILTERS,
+  matchesActivitySearch,
+  type ActivityStatusFilter,
+} from "./activities/activity-helpers";
 
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { SearchInput } from "@/components/atoms/search-input";
 import {
   CreateActivityDialog,
   type ActivityPrefill,
 } from "@/components/molecules/create-activity-dialog";
 import { ActivityTemplateDialog } from "@/components/molecules/activity-template-dialog";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
-import { EmptyState } from "@/components/molecules/empty-state";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDelayDialog } from "@/components/molecules/raise-delay-dialog";
+import { ActivityDelaysDrawer } from "@/components/molecules/activity-delays-drawer";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useProjectRfis } from "@/hooks/use-rfis";
+import { useChangeRequests } from "@/hooks/use-change-requests";
+import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateActivity,
   useProjectActivities,
+  useProjectActivity,
   useRaiseDelay,
   useUpdateActivity,
 } from "@/hooks/use-activities";
 import { useDelayReasons } from "@/hooks/use-delay-reasons";
+import { useProjectInspections } from "@/hooks/use-inspections";
+import { useProjectProfile } from "@/hooks/use-projects";
+import { defaultLibraryForProjectType } from "@/lib/work-items";
+import { openHoldPointsByActivity } from "@/lib/hold-points";
+import { icons } from "@/assets/icons/icons";
+import { errorMessage } from "@/lib/api-error";
+import { choiceLabel, participantChoices } from "@/lib/assignee-options";
 import { canResourceAction, type Activity } from "@/lib/project-types";
 
 export default function ProjectActivities() {
+  const { activityId } = useParams();
+  const [delayed, setDelayed] = useUrlState<string>("delayed", "");
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
   const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const { data: activities = [], isPending } = useProjectActivities(project.id, selectedBuildingId);
+  const focusedActivity = useProjectActivity(project.id, activityId);
   const { data: reasons = [] } = useDelayReasons();
+  // A hold point has to show on the work it gates, not only on the inspections
+  // page the person about to build the thing never opens.
+  const { data: inspections = [] } = useProjectInspections(project.id);
+  const holdPoints = openHoldPointsByActivity(inspections);
+  // A road job is offered road work items, not NRM2 building sections — every
+  // civil activity was being typed from blank otherwise (finding F70).
+  const { data: profile } = useProjectProfile(project.id);
+  const workItemLibraryId = defaultLibraryForProjectType(profile?.projectType);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [prefill, setPrefill] = useState<ActivityPrefill | null>(null);
   const [editingTarget, setEditingTarget] = useState<Activity | null>(null);
   const [delayTarget, setDelayTarget] = useState<Activity | null>(null);
+  const [delaysTarget, setDelaysTarget] = useState<Activity | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null);
+
+  const [search, setSearch] = useUrlState<string>("q", "");
+  const [statusFilter, setStatusFilter] = useUrlState<ActivityStatusFilter>("status", "all", ACTIVITY_STATUS_FILTERS.map(f => f.value));
 
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
   const raiseDelay = useRaiseDelay();
 
+  // A delay's cause is usually already a record; linking it is what makes the
+  // delay arguable in a dispute (findings F22, F55).
+  const { data: rfis = [] } = useProjectRfis(project.id);
+  const { data: changeRequests = [] } = useChangeRequests(project.id);
+  const { data: materialOrders = [] } = useMaterialOrders(project.id);
+  const delayLinks = buildDelayLinkOptions(rfis, changeRequests, materialOrders);
+
   const { data: participants = [] } = useParticipants(project.id, canManage);
-  const assigneeOptions = participants
-    .filter((p) => p.userId)
-    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+  const assigneeOptions = participantChoices(participants)
+    .filter((choice) => choice.userId !== null)
+    .map((choice) => ({ id: choice.userId as string, name: choiceLabel(choice) }));
+
+  const inProgressCount = activities.filter((a) => a.status === "InProgress").length;
+  const delayedCount = activities.filter((a) => a.isDelayed).length;
+  const completedCount = activities.filter((a) => a.status === "Completed").length;
+
+  const focused = focusedActivity.data;
+  const filtered = activities
+    .filter(activity => !delayed || activity.isDelayed)
+    .filter((a) => statusFilter === "all" || a.status === statusFilter)
+    .filter((a) => matchesActivitySearch(a, search));
 
   function startNewActivity(): void {
     setEditingTarget(null);
@@ -54,65 +109,102 @@ export default function ProjectActivities() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Schedule", to: `/project/${project.id}/schedule` },
-          { label: "Site Activities" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
-        title="Site Activities"
-        description="Track discrete work items with planned vs actual times and delay causes."
+        title="Site activity"
         actions={
           canManage ? (
             <Button variant="primary" size="md" onClick={startNewActivity}>
               <PlusIcon className="size-4" />
-              Add New Activity
+              Add activity
             </Button>
           ) : undefined
         }
       />
 
-      <section className="mt-8 flex flex-col gap-1 bg-[#F8F8F8] rounded-[16px] p-1">
-        {isPending ? (
-          <Card padding="lg" className="text-center text-sm text-gray-500">
-            Loading activities…
-          </Card>
-        ) : activities.length === 0 ? (
-          <EmptyState
-            icon={<CalendarIcon className="size-8 text-gray-300" />}
-            title="No activities yet"
-            description="Track field work to capture planned vs actual progress and delay causes."
-            action={
-              canManage ? (
-                <Button variant="primary" size="md" onClick={startNewActivity}>
-                  <PlusIcon className="size-4" />
-                  Add the first one
-                </Button>
-              ) : undefined
-            }
+      {activityId && !focusedActivity.isPending ? (
+        <ActivityDestination
+          projectId={project.id}
+          activity={focused}
+          onEdit={canManage && focused ? () => {
+            setEditingTarget(focused);
+            setCreateOpen(true);
+          } : undefined}
+        />
+      ) : null}
+      {delayed ? <Button variant="secondary" onClick={() => setDelayed("")}>Showing delayed activities · Clear</Button> : null}
+      {activities.length > 0 ? (
+        <section aria-label="Activity summary" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard label="Total activities" icon={icons.calendarSearch} value={activities.length} />
+          <KpiCard label="In progress" icon={icons.penSquare} value={inProgressCount} />
+          <KpiCard label="Delayed" icon={icons.hourglass} value={delayedCount} />
+          <KpiCard label="Completed" icon={icons.verifiedCheck} value={completedCount} />
+        </section>
+      ) : null}
+
+      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 flex-1 rounded-lg border border-line-hair bg-white lg:max-w-md">
+          <SearchInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search activities"
+            aria-label="Search activities"
           />
-        ) : (
-          activities.map((activity) => (
-            <ActivityCard
-              key={activity.id}
-              projectId={project.id}
-              activity={activity}
-              onEdit={() => {
-                setEditingTarget(activity);
-                setCreateOpen(true);
-              }}
-              onRaiseDelay={() => setDelayTarget(activity)}
-            />
-          ))
-        )}
-      </section>
+        </div>
+        <FilterTabs
+          items={ACTIVITY_STATUS_FILTERS}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          ariaLabel="Filter activities"
+        />
+      </div>
+
+      <ActivitiesTable
+        activities={filtered}
+        totalCount={activities.length}
+        isPending={isPending}
+        canManage={canManage}
+        holdPoints={holdPoints}
+        onEdit={(activity) => {
+          setEditingTarget(activity);
+          setCreateOpen(true);
+        }}
+        onRaiseDelay={setDelayTarget}
+        onDelete={setDeleteTarget}
+        onOpenDelays={setDelaysTarget}
+        onProgressChange={(activity, percentComplete) =>
+          updateActivity.mutate({
+            projectId: project.id,
+            activityId: activity.id,
+            percentComplete,
+          })
+        }
+      />
+
+      <ActivityDelaysDrawer
+        open={delaysTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDelaysTarget(null);
+        }}
+        projectId={project.id}
+        activity={delaysTarget}
+        canManage={canManage}
+        links={delayLinks}
+      />
+
+      <DeleteActivityDialog
+        open={deleteTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDeleteTarget(null);
+        }}
+        projectId={project.id}
+        activity={deleteTarget}
+      />
 
       <ActivityTemplateDialog
         open={templateOpen}
         onOpenChange={setTemplateOpen}
+        defaultLibraryId={workItemLibraryId}
         onPick={(item) => {
           setPrefill({ name: item.name, activityType: item.type });
           setTemplateOpen(false);
@@ -138,12 +230,12 @@ export default function ProjectActivities() {
         initial={editingTarget}
         prefill={prefill}
         assigneeOptions={assigneeOptions}
+        predecessorOptions={activities
+          .filter((a) => a.id !== editingTarget?.id)
+          .map((a) => ({ id: a.id, name: a.name }))}
         isSubmitting={createActivity.isPending || updateActivity.isPending}
-        error={
-          createActivity.error || updateActivity.error
-            ? ((createActivity.error ?? updateActivity.error) as Error).message
-            : null
-        }
+        error={errorMessage(createActivity.error ?? updateActivity.error, "") || null}
+        errorSource={createActivity.error ?? updateActivity.error}
         onSubmit={(values) => {
           if (editingTarget) {
             updateActivity.mutate(
@@ -178,8 +270,9 @@ export default function ProjectActivities() {
         }}
         activityName={delayTarget?.name ?? ""}
         reasons={reasons}
+        links={delayLinks}
         isSubmitting={raiseDelay.isPending}
-        error={raiseDelay.error ? (raiseDelay.error as Error).message : null}
+        error={raiseDelay.error ? errorMessage(raiseDelay.error) : null}
         onSubmit={(values) => {
           if (!delayTarget) return;
           raiseDelay.mutate(

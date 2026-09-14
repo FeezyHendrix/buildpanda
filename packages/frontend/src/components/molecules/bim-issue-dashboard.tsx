@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 import type { SelectedElement } from "./bim-viewer";
 import type { BimCoordinationIssue } from "@/lib/project-types";
@@ -52,7 +53,7 @@ export function BimIssueDashboard({
   const openCount = elementIssues.filter((i) => i.status === "Open").length;
 
   return (
-    <aside className="flex w-[360px] shrink-0 flex-col gap-4 overflow-y-auto border-l border-[#F0F0F0] bg-[#FAFAFA] p-4">
+    <aside className="flex w-[360px] shrink-0 flex-col gap-4 overflow-y-auto border-l border-line-hair bg-surface-alt p-4">
       {!selected?.guid ? (
         <EmptyHint />
       ) : (
@@ -94,7 +95,7 @@ BimIssueDashboard.displayName = "BimIssueDashboard";
 function EmptyHint() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-      <div className="flex size-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+      <div className="flex size-12 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -110,8 +111,8 @@ function EmptyHint() {
           <path d="m2 12 10 5 10-5" />
         </svg>
       </div>
-      <p className="text-sm font-semibold text-gray-900">Select a component</p>
-      <p className="text-xs text-gray-500 text-pretty">
+      <p className="text-sm font-semibold text-ink">Select a component</p>
+      <p className="text-xs text-ink-muted text-pretty">
         Click any element in the model to open its coordination panel — status,
         location and due date.
       </p>
@@ -131,12 +132,12 @@ function Panel({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-[#F0F0F0] bg-white p-4",
+        "rounded-lg border border-line-hair bg-white p-4",
         className,
       )}
     >
       {title ? (
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <p className="mb-3 text-xs font-medium uppercase text-ink-muted">
           {title}
         </p>
       ) : null}
@@ -159,17 +160,17 @@ function HeadlineCard({
   return (
     <Panel>
       {ifcType ? (
-        <span className="inline-block rounded-md bg-primary-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary-700">
+        <span className="inline-block rounded-md bg-primary-50 px-2 py-0.5 text-xs font-medium uppercase text-primary-700">
           {ifcType.replace(/^Ifc/, "")}
         </span>
       ) : null}
-      <h2 className="mt-2 text-lg font-bold leading-tight text-gray-900 text-balance">
+      <h2 className="mt-2 text-lg font-medium leading-tight text-ink text-balance">
         {headlineIssue ? headlineIssue.title : element}
       </h2>
       {headlineIssue ? (
-        <p className="mt-1 text-xs text-gray-500">on {element}</p>
+        <p className="mt-1 text-xs text-ink-muted">on {element}</p>
       ) : (
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-ink-muted">
           No coordination issue on this component yet.
         </p>
       )}
@@ -187,7 +188,7 @@ function HeadlineCard({
           </Badge>
         )}
         {openCount > 1 ? (
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-ink-muted">
             +{openCount - 1} more open
           </span>
         ) : null}
@@ -222,12 +223,12 @@ function DueDateCard({ issue }: { issue: BimCoordinationIssue | null }) {
   return (
     <Panel title="Due date">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-ink-muted">
           {issue ? "Tracked once scheduled" : "No issue to schedule"}
         </span>
-        <span className="text-sm font-semibold text-gray-400">Not set</span>
+        <span className="text-sm font-semibold text-ink-muted">Not set</span>
       </div>
-      <p className="mt-2 text-[11px] text-gray-400 text-pretty">
+      <p className="mt-2 text-xs text-ink-muted text-pretty">
         Due dates for BIM issues arrive with the scheduling update.
       </p>
     </Panel>
@@ -241,9 +242,9 @@ function IssueListCard({ issues }: { issues: BimCoordinationIssue[] }) {
         {issues.slice(0, 6).map((issue) => (
           <li
             key={issue.id}
-            className="flex items-center justify-between gap-3 rounded-lg bg-[#FAFAFA] px-3 py-2"
+            className="flex items-center justify-between gap-3 rounded-lg bg-surface-alt px-3 py-2"
           >
-            <span className="truncate text-sm text-gray-800">
+            <span className="truncate text-sm text-ink">
               {issue.title}
             </span>
             <Badge
@@ -280,8 +281,7 @@ function CreateIssueCard({
   onCreateIssue: () => void;
   creating: boolean;
 }) {
-  const inputClass =
-    "h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30";
+  const inputClass = INPUT_SM_CLASS;
   return (
     <Panel title="Flag this component">
       <input
@@ -327,11 +327,11 @@ function Row({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="shrink-0 text-gray-500">{label}</dt>
+      <dt className="shrink-0 text-ink-muted">{label}</dt>
       <dd
         className={cn(
-          "truncate text-right font-medium text-gray-900",
-          mono && "font-mono text-xs text-gray-500",
+          "truncate text-right font-medium text-ink",
+          mono && "font-mono text-xs text-ink-muted",
         )}
         title={value}
       >

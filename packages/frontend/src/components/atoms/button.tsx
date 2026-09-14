@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { Spinner, type SpinnerTone } from "@/components/atoms/spinner";
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -15,12 +15,14 @@ const spinnerTone: Record<ButtonVariant, SpinnerTone> = {
   primary: "current",
   secondary: "brand",
   ghost: "brand",
+  danger: "current",
 };
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: "bg-[#004DE7] text-white hover:bg-[#0041c4] active:bg-[#003aad]",
   secondary: "bg-[#F6F6F6] text-gray-900 hover:bg-gray-200 active:bg-gray-300",
   ghost: "bg-transparent text-gray-600 hover:bg-gray-100 active:bg-gray-200",
+  danger: "bg-transparent text-red-600 hover:bg-red-50 active:bg-red-100",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -38,12 +40,18 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       loading = false,
       disabled,
       children,
+      // A bare <button> inside a <form> submits it. Every chip, toggle and
+      // row action in this app is a Button, so an unmarked one used to submit
+      // the drawer it sits in (weather chips, inspection category chips).
+      // Submitting is opt-in: FormDrawer/FormDialog pass type="submit".
+      type = "button",
       ...props
     },
     ref,
   ) => (
     <button
       ref={ref}
+      type={type}
       disabled={disabled ?? loading}
       aria-busy={loading || undefined}
       className={cn(
@@ -70,4 +78,4 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = "Button";
 
-export { Button, type ButtonProps };
+export { Button, type ButtonProps, type ButtonVariant, type ButtonSize };

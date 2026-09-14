@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { MARKUP_KIND, type MarkupGeometry } from "@/api/drawing-markup";
+import { useRef, useState } from "react";
+import { MARKUP_KIND, type DrawingMarkup, type MarkupGeometry } from "@/api/drawing-markup";
 import type {
   useCreateDrawingMarkup,
   useDeleteDrawingMarkup,
@@ -7,15 +7,8 @@ import type {
 } from "@/hooks/use-drawing-markup";
 import { generateId, type Pt, type Sheet } from "./plan-review-data";
 import { hitTestMarkup, normalizedRect, type Markup } from "./plan-review-markup";
-import {
-  SELECTION_KIND,
-  TOOL,
-  toLocalMarkup,
-  type Note,
-  type Pin,
-  type Selection,
-  type Tool,
-} from "./plan-review-types";
+import { SELECTION_KIND, TOOL, type Note, type Pin, type Selection, type Tool } from "./plan-review-types";
+import { usePersistedMarkup } from "./use-persisted-markup";
 
 const DEFAULT_MARKUP_COLOR = "#004DE7";
 /** Pen samples closer than this (in sheet percent) are dropped, so a stroke stays a light polyline. */
@@ -30,6 +23,12 @@ export interface CommentAnchor {
   x: number;
   y: number;
   at: Pt;
+}
+
+/** A persisted markup whose thread is open, and where on screen the popover hangs. */
+export interface ThreadTarget {
+  id: string;
+  anchor: { x: number; y: number };
 }
 
 export type PersistMarkup = (
@@ -56,6 +55,8 @@ interface MarkupToolsArgs {
   pendingPinId: string | null;
   setPendingPinId: React.Dispatch<React.SetStateAction<string | null>>;
   setCommentAnchor: React.Dispatch<React.SetStateAction<CommentAnchor | null>>;
+  /** Open (or close, with null) the thread of a persisted markup. */
+  setThreadTarget: (target: ThreadTarget | null) => void;
 }
 
 export interface MarkupToolsController {
@@ -76,6 +77,12 @@ export interface MarkupToolsController {
   /** Persisted markup for the active sheet unioned with anything still local. */
   sheetMarkups: Markup[];
   sheetPins: Pin[];
+  /** The server records behind the persisted pins and markup, by id. */
+  serverMarkups: ReadonlyMap<string, DrawingMarkup>;
+  /** Resolved, or raised on a superseded revision — drawn faded. */
+  dimmedIds: ReadonlySet<string>;
+  /** Open a persisted markup's thread; a no-op for local (unsaved) markup. */
+  openThread: (id: string, anchor: { x: number; y: number }) => void;
   /** The rubber-band line drawn between the first measure click and the cursor. */
   measureDraft: Markup | null;
   selectTool: (tool: Tool) => void;
@@ -113,6 +120,7 @@ export function useMarkupTools({
   pendingPinId,
   setPendingPinId,
   setCommentAnchor,
+  setThreadTarget,
 }: MarkupToolsArgs): MarkupToolsController {
   const [activeTool, setActiveTool] = useState<Tool>(TOOL.SELECT);
   const [markupColor, setMarkupColor] = useState(DEFAULT_MARKUP_COLOR);
@@ -132,7 +140,8 @@ export function useMarkupTools({
   const suppressNextClick = useRef(false);
 
   /** Server markup is the source of truth; local state only holds the in-progress draft. */
-  const persisted = useMemo(() => toLocalMarkup(markupQuery.data ?? []), [markupQuery.data]);
+  const persisted = usePersistedMarkup(markupQuery.data);
+  const serverMarkups = persisted.byId;
   const sheetPins = sheet ? [...persisted.pins, ...pins.filter((p) => p.sheetId === sheet.id)] : [];
   const sheetMarkups = sheet
     ? [...persisted.markups, ...markups.filter((m) => m.sheetId === sheet.id)]
@@ -140,6 +149,7 @@ export function useMarkupTools({
 
   function resetTransient(): void {
     setSelection(null);
+    setThreadTarget(null);
     setMeasureStart(null);
     setDraft(null);
   }
@@ -148,12 +158,23 @@ export function useMarkupTools({
     setActiveTool(tool);
     setMeasureStart(null);
     setDraft(null);
-    if (tool !== TOOL.SELECT) setSelection(null);
+    if (tool !== TOOL.SELECT) {
+      setSelection(null);
+      setThreadTarget(null);
+    }
+  }
+
+  function openThread(id: string, anchor: { x: number; y: number }): void {
+    const record = serverMarkups.get(id);
+    if (!record) return;
+    setSelection({ kind: record.kind === MARKUP_KIND.PIN ? SELECTION_KIND.PIN : SELECTION_KIND.MARKUP, id });
+    setThreadTarget({ id, anchor });
   }
 
   function deleteSelection(): void {
     if (!selection) return;
-    const isPersisted = (markupQuery.data ?? []).some((m) => m.id === selection.id);
+    const isPersisted = serverMarkups.has(selection.id);
+    setThreadTarget(null);
     if (isPersisted) {
       deleteMarkup.mutate(selection.id);
     } else if (selection.kind === SELECTION_KIND.PIN) {
@@ -224,6 +245,11 @@ export function useMarkupTools({
     if (activeTool === TOOL.SELECT) {
       const hit = hitTestMarkup(sheetMarkups, point);
       setSelection(hit ? { kind: SELECTION_KIND.MARKUP, id: hit.id } : null);
+      if (hit && serverMarkups.has(hit.id)) {
+        setThreadTarget({ id: hit.id, anchor: { x: e.clientX, y: e.clientY + COMMENT_ANCHOR_OFFSET_PX } });
+      } else {
+        setThreadTarget(null);
+      }
     }
   }
 
@@ -351,6 +377,9 @@ export function useMarkupTools({
     canvasRef,
     sheetMarkups,
     sheetPins,
+    serverMarkups,
+    dimmedIds: persisted.dimmedIds,
+    openThread,
     measureDraft,
     selectTool,
     resetTransient,

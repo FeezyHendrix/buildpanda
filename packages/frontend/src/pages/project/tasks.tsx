@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { TaskBoardHeader, type TaskBoardScope } from "./tasks/task-board-header";
+import { QueryError } from "@/components/molecules/query-error";
+import { useMemo, useState } from "react";
+import { useTaskDestination } from "./tasks/use-task-destination";
+import { useUrlState } from "@/hooks/use-url-state";
 import {
   DndContext,
   MouseSensor,
@@ -18,9 +21,7 @@ const SortableContext = BaseSortableContext as any;
 
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
-import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
 import {
@@ -36,13 +37,10 @@ import {
   useReorderColumns,
 } from "@/hooks/use-tasks";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 import { canResourceAction, type Task, type TaskPriority } from "@/lib/project-types";
 import { type AssigneeOption, FIELD } from "./tasks/task-ui";
 import { BoardColumn } from "./tasks/task-board-column";
 import { UpsertTaskDialog } from "./tasks/upsert-task-dialog";
-
-type TaskBoardScope = "assigned" | "all";
 
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
@@ -51,9 +49,9 @@ export default function ProjectTasks() {
   const canRemoveTasks = Boolean(access && canResourceAction(access, "tasks", "remove"));
   const canManage = canAddTasks;
   const canSeeAllTasks = canRemoveTasks;
-  const [boardScope, setBoardScope] = useState<TaskBoardScope>("all");
+  const [boardScope, setBoardScope] = useUrlState<TaskBoardScope>("scope", "all", ["all", "assigned"]);
   const requestedScope: TaskBoardScope = canSeeAllTasks ? boardScope : "assigned";
-  const { data: board, isLoading } = useTaskBoard(project.id, requestedScope, Boolean(access), selectedBuildingId);
+  const { data: board, isLoading, error, refetch } = useTaskBoard(project.id, requestedScope, Boolean(access), selectedBuildingId);
   const { data: assignable = [] } = useAssignableUsers(project.id);
 
   const createTask = useCreateTask(project.id);
@@ -65,37 +63,12 @@ export default function ProjectTasks() {
   const deleteColumn = useDeleteColumn(project.id);
   const reorderColumns = useReorderColumns(project.id);
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const focusedTaskId = searchParams.get("task");
+  const destination = useTaskDestination(project.id);
+  const editing = destination.task;
+  const dialogOpen = destination.creating || Boolean(editing);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Task | null>(null);
-  const [createColumnId, setCreateColumnId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<Task | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
-
-  useEffect(() => {
-    if (!focusedTaskId || !board) return;
-    const target = board.tasks.find((t) => t.id === focusedTaskId);
-    if (target) {
-      setEditing(target);
-      setCreateColumnId(null);
-      setDialogOpen(true);
-    }
-  }, [focusedTaskId, board]);
-
-  function setFocusedTask(taskId: string | null): void {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (taskId) next.set("task", taskId);
-        else next.delete("task");
-        return next;
-      },
-      { replace: true },
-    );
-  }
 
   const userOptions: AssigneeOption[] = useMemo(
     () =>
@@ -129,6 +102,7 @@ export default function ProjectTasks() {
     }),
   );
 
+  if (error && !board) return <QueryError error={error} retry={refetch} noun="tasks" />;
   if (isLoading || !board) {
     return (
       <div className="flex flex-1 items-center justify-center py-32">
@@ -150,21 +124,15 @@ export default function ProjectTasks() {
     );
 
   function openCreate(columnId: string): void {
-    setEditing(null);
-    setCreateColumnId(columnId);
-    setDialogOpen(true);
+    destination.open("new", columnId);
   }
 
   function openEdit(task: Task): void {
-    setEditing(task);
-    setCreateColumnId(null);
-    setDialogOpen(true);
-    setFocusedTask(task.id);
+    destination.open(task.id);
   }
 
   function handleDialogOpenChange(open: boolean): void {
-    setDialogOpen(open);
-    if (!open) setFocusedTask(null);
+    if (!open) destination.close();
   }
 
   function handleAddColumn(): void {
@@ -194,6 +162,14 @@ export default function ProjectTasks() {
         toast(message ?? "Could not delete column");
       },
     });
+  }
+
+  /** Same move the drag performs, reachable from the card's menu and the keyboard. */
+  function moveTaskToColumn(task: Task, targetColumnId: string): void {
+    if (task.columnId === targetColumnId) return;
+    const targetTasks = tasksByColumn.get(targetColumnId) ?? [];
+    const lastPosition = targetTasks.length ? targetTasks[targetTasks.length - 1]!.position : 0;
+    moveTask.mutate({ taskId: task.id, columnId: targetColumnId, position: lastPosition + 1000 });
   }
 
   function handleDragEnd(event: DragEndEvent): void {
@@ -228,7 +204,7 @@ export default function ProjectTasks() {
     });
   }
 
-  function handleSubmit(values: {
+  async function handleSubmit(values: {
     title: string;
     description: string;
     descriptionHtml: string;
@@ -236,92 +212,25 @@ export default function ProjectTasks() {
     dueDate: string | null;
     priority: TaskPriority;
     labels: string[];
-  }): void {
-    const assigneeFields = { assignees: values.assignees.map(({ kind, id }) => ({ kind, id })) };
-    if (editing) {
-      updateTask.mutate(
-        {
-          taskId: editing.id,
-          input: {
-            title: values.title,
-            description: values.description,
-            descriptionHtml: values.descriptionHtml,
-            dueDate: values.dueDate,
-            priority: values.priority,
-            labels: values.labels,
-            ...assigneeFields,
-          },
-        },
-        {
-          onSuccess: () => handleDialogOpenChange(false),
-          onError: () => toast("Could not update task"),
-        },
-      );
-    } else {
-      createTask.mutate(
-        {
-          title: values.title,
-          description: values.description,
-          descriptionHtml: values.descriptionHtml,
-          dueDate: values.dueDate,
-          priority: values.priority,
-          labels: values.labels,
-          columnId: createColumnId,
-          ...assigneeFields,
-        },
-        {
-          onSuccess: () => handleDialogOpenChange(false),
-          onError: () => toast("Could not create task"),
-        },
-      );
-    }
+  }): Promise<void> {
+    const input = { ...values, assignees: values.assignees.map(({ kind, id }) => ({ kind, id })) };
+    if (editing) await updateTask.mutateAsync({ taskId: editing.id, input });
+    else await createTask.mutateAsync({ ...input, columnId: destination.columnId });
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <PageHeader
-        title="Tasks"
-        description={
-          board.scope === "assigned"
-            ? "Your personal task board shows only tasks assigned to you. Moving a card updates the shared team board."
-            : "Plan and track work across the team. Drag cards between columns."
-        }
-        actions={
-          canAddTasks && board.columns[0] ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => openCreate(board.columns[0]!.id)}
-            >
-              <PlusIcon className="size-4" />
-              New task
-            </Button>
-          ) : null
-        }
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
+      <TaskBoardHeader
+        onCreate={canAddTasks && board.columns[0] ? () => openCreate(board.columns[0]!.id) : undefined}
+        scope={requestedScope}
+        onScopeChange={canSeeAllTasks ? setBoardScope : undefined}
       />
 
-      {canSeeAllTasks ? (
-        <div className="mt-4 inline-flex rounded-xl bg-[#F6F6F6] p-1">
-          <button
-            type="button"
-            onClick={() => setBoardScope("assigned")}
-            className={cn(
-              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-              requestedScope === "assigned" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
-            )}
-          >
-            My tasks
-          </button>
-          <button
-            type="button"
-            onClick={() => setBoardScope("all")}
-            className={cn(
-              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-              requestedScope === "all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
-            )}
-          >
-            All tasks
-          </button>
+      {destination.pending ? <Spinner size="sm" /> : null}
+      {destination.error ? (
+        <div className="my-4">
+          <QueryError error={destination.error} retry={destination.retry} noun="task" />
+          <Button variant="secondary" onClick={destination.close}>Return to task board</Button>
         </div>
       ) : null}
 
@@ -335,11 +244,13 @@ export default function ProjectTasks() {
               <BoardColumn
                 key={column.id}
                 column={column}
+                columns={board.columns}
                 tasks={tasksByColumn.get(column.id) ?? []}
                 canManage={canManage}
                 canAddCard={canAddTasks}
                 onAddCard={() => openCreate(column.id)}
                 onOpenTask={openEdit}
+                onMoveTask={moveTaskToColumn}
                 onRename={(name) => handleRenameColumn(column.id, name)}
                 onDelete={() => handleDeleteColumn(column.id)}
               />
@@ -349,7 +260,7 @@ export default function ProjectTasks() {
           {canManage && (
             <div className="w-[85vw] shrink-0 snap-start sm:w-72">
               {addingColumn ? (
-                <div className="flex flex-col gap-2 rounded-2xl bg-[#FAFAFA] p-3">
+                <div className="flex flex-col gap-2 rounded-lg bg-surface-alt p-3">
                   <input
                     autoFocus
                     value={newColumnName}
@@ -389,7 +300,7 @@ export default function ProjectTasks() {
                 <button
                   type="button"
                   onClick={() => setAddingColumn(true)}
-                  className="flex w-full items-center gap-1.5 rounded-2xl border border-dashed border-gray-300 px-3 py-3 text-sm font-medium text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900"
+                  className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-3 text-sm font-medium text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900"
                 >
                   <PlusIcon className="size-4" />
                   Add column
@@ -409,40 +320,9 @@ export default function ProjectTasks() {
         userOptions={userOptions}
         teamOptions={teamOptions}
         selfId={selfId}
-        submitting={createTask.isPending || updateTask.isPending}
         onSubmit={handleSubmit}
-        onRequestDelete={
-          editing && canRemoveTasks
-            ? () => {
-                setDeleting(editing);
-                setDialogOpen(false);
-              }
-            : undefined
-        }
-        onOpenTask={(taskId) => {
-          const target = board.tasks.find((t) => t.id === taskId);
-          if (target) openEdit(target);
-        }}
-      />
-
-      <ConfirmDialog
-        open={!!deleting}
-        onOpenChange={(open) => {
-          if (!open) setDeleting(null);
-        }}
-        onConfirm={() => {
-          if (deleting) {
-            deleteTask.mutate(deleting.id, {
-              onError: () => toast("Could not delete task"),
-            });
-          }
-        }}
-        title="Delete task"
-        description={
-          deleting ? `Delete "${deleting.title}"? This cannot be undone.` : ""
-        }
-        confirmLabel="Delete"
-        variant="danger"
+        onDelete={editing && canRemoveTasks ? async () => { await deleteTask.mutateAsync(editing.id); } : undefined}
+        onOpenTask={destination.open}
       />
     </div>
   );

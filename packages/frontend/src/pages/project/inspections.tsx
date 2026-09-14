@@ -1,338 +1,319 @@
 import { useMemo, useState } from "react";
-import { Badge } from "@/components/atoms/badge";
+import { useSearchParams } from "react-router-dom";
+import { useUrlState } from "@/hooks/use-url-state";
+import { QueryError } from "@/components/molecules/query-error";
+import { UnavailableRecord } from "@/components/molecules/unavailable-record";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
-import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
-import { MediaGallery } from "@/components/molecules/media-gallery";
-import { PageHeader } from "@/components/molecules/page-header";
-import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";
-import {
-  UpsertInspectionDialog,
-  type UpsertInspectionValues,
-} from "@/components/molecules/upsert-inspection-dialog";
+import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { SearchInput } from "@/components/atoms/search-input";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { KanbanBoard } from "@/components/molecules/kanban-board";
-import {
-  INSPECTION_COLUMNS,
-  textMeta,
-} from "@/components/molecules/kanban-configs";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { PageHeader } from "@/components/molecules/page-header";
+import { CancelInspectionDialog } from "@/components/molecules/cancel-inspection-dialog";
+import { InspectionOutcomeDialog } from "@/components/molecules/inspection-outcome-dialog";
+import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";
+import { UpsertInspectionDialog } from "@/components/molecules/upsert-inspection-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useSession } from "@/stores/auth";
+import { useProjectActivities } from "@/hooks/use-activities";
+import { useParticipants } from "@/hooks/use-participants";
 import {
+  useCancelInspection,
+  useEditInspection,
+  useMarkInspectionAttended,
   useProjectInspections,
   useRequestInspection,
-  useEditInspection,
-  useDeleteInspection,
 } from "@/hooks/use-inspections";
-import { INSPECTION_STATUS_TONE, RISK_LEVEL_TONE } from "@/lib/project-meta";
-import { cn } from "@/lib/utils";
+import { errorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
+import { canResourceAction, type InspectionReport } from "@/lib/project-types";
+import { InspectionDetailDrawer } from "./inspections/inspection-detail-drawer";
+import { InspectionsTable } from "./inspections/inspections-table";
 import {
-  canResourceAction,
-  type InspectionCategory,
-  type InspectionReport,
-  type InspectionStatus,
-} from "@/lib/project-types";
-import { icons } from "@/assets/icons/icons";
-import { ReactSVG } from "react-svg";
+  canCancelInspection,
+  isAssignedInspector,
+  matchesInspectionSearch,
+  SERVICE_STATUS_TABS,
+  type ServiceStatusFilter,
+} from "./inspections/inspection-helpers";
 
-const FILTERS: InspectionCategory[] = [
-  "All Reports",
-  "Structural",
-  "Quantity Survey",
-  "General Progress",
-  "Electrical",
-  "Plumbing",
-];
+const EMPTY_LIST: never[] = [];
+const STATUS_FILTERS = SERVICE_STATUS_TABS.map(tab => tab.value);
 
+/**
+ * The inspection register. An inspection here is a client-facing service order:
+ * the client requests it, BuildPanda assigns an inspector who attends and
+ * issues the report, and the contractor is the subject of that report. Nothing
+ * on this page lets the party being inspected record its own result.
+ */
 export default function ProjectInspections() {
   const { project, access } = useProjectContext();
-  const canRequestInspection = Boolean(
-    access && canResourceAction(access, "inspections", "request"),
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  const isPlatformAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
+
+  const canRequest = Boolean(access && canResourceAction(access, "inspections", "request"));
+  const canManage = Boolean(access && canResourceAction(access, "inspections", "manage"));
+  // Only a workspace admin may extend the category list; the API refuses others.
+  const canAddCategory = access?.orgRole === "owner" || access?.orgRole === "admin";
+
+  const { data: inspections = EMPTY_LIST, isPending, isFetching, error, refetch } = useProjectInspections(project.id);
+  const { data: activities = EMPTY_LIST } = useProjectActivities(project.id);
+  const { data: participants = EMPTY_LIST } = useParticipants(
+    project.id,
+    Boolean(access?.capabilities.canManageParticipants),
   );
-  const canManageInspections = Boolean(
-    access && canResourceAction(access, "inspections", "manage"),
-  );
-  const { data: inspections = [] } = useProjectInspections(project.id);
-  const [activeFilter, setActiveFilter] =
-    useState<InspectionCategory>("All Reports");
-  const [requestOpen, setRequestOpen] = useState(false);
-  const [view, setView] = useState<"list" | "board">("list");
+
+  const [, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useUrlState<string>("q", "");
+  const [statusFilter, setStatusFilter] = useUrlState<ServiceStatusFilter>("status", "all", STATUS_FILTERS);
+  const [requestView, setRequestView] = useUrlState<string | null>("request", null);
+  const [detailId, setDetailId] = useUrlState<string | null>("inspection", null);
+  const [editId, setEditId] = useUrlState<string | null>("edit", null);
+  const requestOpen = requestView === "new" && canRequest;
+  const editTarget = inspections.find(report => report.id === editId) ?? null;
+  const setRequestOpen = (open: boolean) => setRequestView(open ? "new" : null);
+  const setDetailTarget = (report: InspectionReport | null) => setDetailId(report?.id ?? null);
+  const setEditTarget = (report: InspectionReport | null) => setEditId(report?.id ?? null);
+  const [cancelTarget, setCancelTarget] = useState<InspectionReport | null>(null);
+  const [outcomeTarget, setOutcomeTarget] = useState<InspectionReport | null>(null);
+  const [attendTarget, setAttendTarget] = useState<InspectionReport | null>(null);
+
   const requestInspection = useRequestInspection();
   const editInspection = useEditInspection();
+  const cancelInspection = useCancelInspection();
+  const markAttended = useMarkInspectionAttended();
 
-  const visible = useMemo(
+  const activityById = useMemo(() => new Map(activities.map((a) => [a.id, a])), [activities]);
+  const activityNames = useMemo(
+    () => new Map(activities.map((a) => [a.id, a.name])),
+    [activities],
+  );
+  const nameByUserId = useMemo(
     () =>
-      activeFilter === "All Reports"
-        ? inspections
-        : inspections.filter((i) => i.category === activeFilter),
-    [inspections, activeFilter],
+      new Map(
+        participants
+          .filter((p) => p.userId !== null)
+          .map((p) => [p.userId as string, p.name ?? p.email]),
+      ),
+    [participants],
   );
 
-  function handleMove(
-    report: InspectionReport,
-    status: InspectionStatus,
-  ): void {
-    if (report.status === status) return;
-    editInspection.mutate({
-      projectId: project.id,
-      inspectionId: report.id,
-      status,
-    });
+  const filtered = inspections
+    .filter((report) => statusFilter === "all" || report.serviceStatus === statusFilter)
+    .filter((report) => matchesInspectionSearch(report, search));
+
+  // The record in the drawer must follow the cache, not the click that opened it.
+  const detail = inspections.find(report => report.id === detailId) ?? null;
+
+  /** Planned but never started: inspecting it is a wasted trip (finding F44). */
+  function notStarted(report: InspectionReport | null): boolean {
+    if (!report?.activityId) return false;
+    const activity = activityById.get(report.activityId);
+    return Boolean(activity && activity.status === "Planned" && !activity.actualStartAt);
+  }
+
+  function requesterName(report: InspectionReport): string | null {
+    if (!report.requestedById) return null;
+    if (report.requestedById === userId) return "You";
+    return nameByUserId.get(report.requestedById) ?? null;
+  }
+
+  function clearFilters(): void {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.delete("q");
+      next.delete("status");
+      return next;
+    }, { replace: true });
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+    <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
-        title="Independent Inspections & Quality Reports"
-        description="Verified structural and progress assessments for peace of mind."
+        title="Inspections & hold points"
         actions={
-          canRequestInspection ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setRequestOpen(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
-            >
-              <ReactSVG src={icons.plusCircle} />
-              Request New Inspection
+          canRequest ? (
+            <Button variant="primary" size="md" onClick={() => setRequestOpen(true)}>
+              <PlusIcon className="size-4" />
+              Request an inspection
             </Button>
           ) : undefined
         }
       />
 
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1 rounded-lg border border-line-hair bg-white sm:max-w-xs">
+          <SearchInput
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by title, contractor or chainage"
+            aria-label="Search inspections"
+          />
+        </div>
+        <FilterTabs
+          items={SERVICE_STATUS_TABS}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          ariaLabel="Filter by service status"
+        />
+        {!isPending && !error ? <p className="ml-auto text-sm text-ink-muted">
+          {filtered.length} of {inspections.length} inspections
+        </p> : null}
+      </div>
+
+      {error ? <QueryError error={error} retry={refetch} noun="inspections" /> : null}
+      {!error && !isFetching && !isPending && ((detailId && !detail) || (editId && !editTarget)) ? (
+        <UnavailableRecord name="Inspection" returnLabel="Return to inspections" onReturn={() => {
+          setSearchParams(previous => {
+            const next = new URLSearchParams(previous);
+            next.delete("inspection");
+            next.delete("edit");
+            return next;
+          }, { replace: true });
+        }} />
+      ) : null}
+      {!error || inspections.length > 0 ? <InspectionsTable
+        inspections={filtered}
+        totalCount={inspections.length}
+        isPending={isPending}
+        activityNames={activityNames}
+        onOpen={setDetailTarget}
+        onClearFilters={clearFilters}
+        onRequest={canRequest ? () => setRequestOpen(true) : undefined}
+      /> : null}
+
       <RequestInspectionDialog
         open={requestOpen}
         onOpenChange={setRequestOpen}
-        isSubmitting={requestInspection.isPending}
-        error={
-          requestInspection.error
-            ? (requestInspection.error as Error).message
-            : null
+        projectId={project.id}
+        currency={project.currency}
+        canAddCategory={canAddCategory}
+        error={requestInspection.error ? errorMessage(requestInspection.error) : null}
+        onSubmit={async (input) => {
+          const report = await requestInspection.mutateAsync({ projectId: project.id, ...input });
+          setSearchParams(previous => {
+            const next = new URLSearchParams(previous);
+            next.delete("request");
+            next.set("inspection", report.id);
+            return next;
+          }, { replace: true });
+          toast("Inspection requested — BuildPanda will assign an inspector", "success");
+        }}
+      />
+
+      <InspectionDetailDrawer
+        open={detail !== null && !editId && !cancelTarget && !outcomeTarget}
+        report={detail}
+        activityName={detail?.activityId ? (activityNames.get(detail.activityId) ?? null) : null}
+        activityNotStarted={notStarted(detail)}
+        requestedByName={detail ? requesterName(detail) : null}
+        isInspector={Boolean(detail && isAssignedInspector(detail, userId, isPlatformAdmin))}
+        canEdit={canManage}
+        canCancel={Boolean(detail && canCancelInspection(detail, userId, isPlatformAdmin))}
+        attending={markAttended.isPending}
+        onOpenChange={(next) => {
+          if (!next) setDetailTarget(null);
+        }}
+        onEdit={() => setEditTarget(detail)}
+        onCancel={() => setCancelTarget(detail)}
+        onMarkAttended={() => setAttendTarget(detail)}
+        onRecordOutcome={() => setOutcomeTarget(detail)}
+      />
+
+      <UpsertInspectionDialog
+        open={editTarget !== null && canManage}
+        inspectionId={editId ?? ""}
+        onOpenChange={(next) => {
+          if (!next) setEditTarget(null);
+        }}
+        mode="edit"
+        projectId={project.id}
+        currency={project.currency}
+        canAddCategory={canAddCategory}
+        initial={
+          editTarget
+            ? {
+                title: editTarget.title,
+                category: editTarget.category,
+                description: editTarget.description,
+                scheduledAt: editTarget.scheduledAt.slice(0, 10),
+                activityId: editTarget.activityId,
+                location: editTarget.location,
+                holdPoint: editTarget.holdPoint,
+                contractorName: editTarget.contractorName,
+                feeAmount: editTarget.feeAmount,
+                feeCurrency: editTarget.feeCurrency,
+              }
+            : undefined
         }
-        onSubmit={(input) => {
-          requestInspection.mutate(
-            { projectId: project.id, ...input },
-            { onSuccess: () => setRequestOpen(false) },
+        error={editInspection.error ? errorMessage(editInspection.error) : null}
+        onSubmit={async (values) => {
+          if (!editTarget) return;
+          await editInspection.mutateAsync({ projectId: project.id, inspectionId: editTarget.id, ...values });
+          setEditTarget(null);
+          toast("Inspection updated", "success");
+        }}
+      />
+
+      <CancelInspectionDialog
+        open={cancelTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setCancelTarget(null);
+        }}
+        inspectionTitle={cancelTarget?.title ?? ""}
+        isSubmitting={cancelInspection.isPending}
+        error={cancelInspection.error ? errorMessage(cancelInspection.error) : null}
+        onSubmit={(reason) => {
+          if (!cancelTarget) return;
+          cancelInspection.mutate(
+            { projectId: project.id, inspectionId: cancelTarget.id, reason },
+            {
+              onSuccess: () => {
+                setCancelTarget(null);
+                setDetailTarget(null);
+                toast("Inspection cancelled", "success");
+              },
+            },
           );
         }}
       />
 
-      <div className="mt-8 flex flex-col lg:flex-row items-center justify-between gap-3">
-        <FilterTabs
-          filters={FILTERS}
-          active={activeFilter}
-          onChange={setActiveFilter}
-        />
-        <div className="inline-flex shrink-0 rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 self-end lg:self-auto">
-          {(["list", "board"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setView(v)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                view === v
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900",
-              )}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {view === "board" ? (
-        <div className="mt-6">
-          <KanbanBoard
-            items={visible}
-            columns={INSPECTION_COLUMNS}
-            canManage={canManageInspections}
-            getId={(r) => r.id}
-            getStatus={(r) => r.status}
-            getTitle={(r) => r.title}
-            renderMeta={(r) => textMeta(r.category)}
-            renderFooter={(r) => (
-              <span className="truncate text-xs text-gray-500">
-                {r.inspector.name}
-              </span>
-            )}
-            onMove={handleMove}
-            onOpen={() => undefined}
-          />
-        </div>
-      ) : (
-        <section className="mt-6 flex flex-col gap-4">
-          {visible.length === 0 ? (
-            <Card padding="lg" className="text-center text-sm text-gray-500">
-              No inspections match this filter.
-            </Card>
-          ) : (
-            visible.map((report) => (
-              <InspectionCard
-                key={report.id}
-                projectId={project.id}
-                report={report}
-              />
-            ))
-          )}
-        </section>
-      )}
-    </div>
-  );
-}
-
-interface FilterTabsProps {
-  filters: readonly InspectionCategory[];
-  active: InspectionCategory;
-  onChange: (filter: InspectionCategory) => void;
-  className?: string;
-}
-
-function FilterTabs({ filters, active, onChange, className }: FilterTabsProps) {
-  return (
-    <div
-      role="tablist"
-      aria-label="Inspection categories"
-      className={cn(
-        "flex bg-[#F6F6F6] rounded-[1000px] h-[32px] overflow-x-auto max-w-full lg:max-w-[657px]",
-        className,
-      )}
-    >
-      {filters.map((filter) => (
-        <button
-          key={filter}
-          type="button"
-          role="tab"
-          aria-selected={filter === active}
-          onClick={() => onChange(filter)}
-          className={cn(
-            "rounded-full whitespace-nowrap px-4 text-xs font-medium transition-colors m-1 cursor-pointer",
-            "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            filter === active
-              ? "bg-[#FFFFFF] text-black-500"
-              : "bg-transparent text-black-300 hover:bg-[#EDEDED]",
-          )}
-        >
-          {filter}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function InspectionCard({
-  projectId,
-  report,
-}: {
-  projectId: string;
-  report: InspectionReport;
-}) {
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const editInspection = useEditInspection();
-  const deleteInspection = useDeleteInspection();
-
-  function handleEdit(values: UpsertInspectionValues): void {
-    editInspection.mutate(
-      { projectId, inspectionId: report.id, ...values },
-      { onSuccess: () => setEditOpen(false) },
-    );
-  }
-
-  function handleDelete(): void {
-    deleteInspection.mutate({ projectId, inspectionId: report.id });
-  }
-
-  return (
-    <Card padding="lg" className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3 ">
-          <div>
-            <p className="text-base font-semibold text-[#131B2E]">
-              {report.title}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Badge tone={INSPECTION_STATUS_TONE[report.status]} size="md">
-            {report.status}
-          </Badge>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-start gap-4 sm:gap-6 border-b border-[#F6F6F6] pb-6">
-        <div className="flex flex-col gap-1">
-          <p className="text-[13px] font-medium text-black-300">Inspector</p>
-          <p className="text-[13px] text-black-500">{report.inspector.name}</p>
-        </div>
-        <div className="flex flex-col gap-1">
-          <p className="text-[13px] font-medium text-black-300">Date & Time</p>
-          <p className="text-[13px] text-black-500">{report.scheduledAt}</p>
-        </div>
-        <div className="flex flex-col gap-1">
-          <p className="text-[13px] font-medium text-black-300">Risk Level</p>
-          <Badge
-            tone={RISK_LEVEL_TONE[report.riskLevel]}
-            size="md"
-            dot
-            className="bg-transparent p-0 m-0"
-          >
-            {report.riskLevel}
-          </Badge>
-        </div>
-      </div>
-
-      <p className="text-sm text-gray-600 text-pretty">{report.description}</p>
-
-      <MediaGallery items={report.media} />
-
-      <div className="flex items-center justify-between border-t border-[#F0F0F0] pt-4">
-        <span className="text-xs text-gray-500">
-          Category · {report.category}
-        </span>
-        {report.reportUrl && report.reportUrl !== "#" ? (
-          <a
-            href={report.reportUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] hover:underline"
-          >
-            View Full Report
-            <ChevronRightIcon className="size-3.5" />
-          </a>
-        ) : null}
-      </div>
-
-      <UpsertInspectionDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        mode="edit"
-        initial={{
-          title: report.title,
-          category: report.category as Exclude<
-            InspectionCategory,
-            "All Reports"
-          >,
-          description: report.description,
-          scheduledAt: report.scheduledAt,
-          status: report.status,
-          riskLevel: report.riskLevel,
-        }}
-        onSubmit={handleEdit}
-        isSubmitting={editInspection.isPending}
-        error={(editInspection.error as Error | undefined)?.message ?? null}
-      />
-
       <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        onConfirm={handleDelete}
-        title="Delete inspection"
-        description="This permanently removes the inspection report. This action cannot be undone."
-        confirmLabel="Delete"
-        variant="danger"
+        open={attendTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setAttendTarget(null);
+        }}
+        loading={markAttended.isPending}
+        title="Mark attended"
+        description="Confirm you attended site for this inspection. The report is issued separately, when you record the outcome."
+        confirmLabel="I attended"
+        onConfirm={() => {
+          if (!attendTarget) return;
+          markAttended.mutate(
+            { projectId: project.id, inspectionId: attendTarget.id },
+            {
+              onSuccess: () => {
+                setAttendTarget(null);
+                toast("Attendance recorded", "success");
+              },
+              onError: (error) => {
+                setAttendTarget(null);
+                toast(errorMessage(error), "error");
+              },
+            },
+          );
+        }}
       />
-    </Card>
+
+      <InspectionOutcomeDialog
+        open={outcomeTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setOutcomeTarget(null);
+        }}
+        projectId={project.id}
+        inspection={outcomeTarget}
+      />
+    </div>
   );
 }

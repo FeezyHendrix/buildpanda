@@ -1,8 +1,10 @@
 import type { Knex } from "knex";
 import type {
   ActivityDelayRow,
+  ActivityEventRow,
   ActivityRow,
   ActivityStatus,
+  Culpability,
   Currency,
   DelayReasonRow,
 } from "./types.ts";
@@ -50,6 +52,19 @@ export interface ActivityUpdatePatch {
   predecessors?: string;
   percent_complete?: number;
   is_milestone?: boolean;
+  baseline_start_at?: string | null;
+  baseline_end_at?: string | null;
+}
+
+export interface NewActivityEventRecord {
+  id: string;
+  project_id: string;
+  activity_id: string;
+  kind: string;
+  summary: string;
+  days_delta: number;
+  delay_id: string | null;
+  actor_id: string | null;
 }
 
 export interface NewDelayRecord {
@@ -59,6 +74,14 @@ export interface NewDelayRecord {
   description: string | null;
   description_html: string | null;
   started_at: string;
+  ended_at: string | null;
+  days_lost: number;
+  culpability: Culpability;
+  eot_claimable: boolean;
+  linked_rfi_id: string | null;
+  linked_change_request_id: string | null;
+  linked_material_order_id: string | null;
+  applied_shift_days: number;
   cost_impact: number;
   currency: Currency;
   prevention_notes: string | null;
@@ -66,7 +89,16 @@ export interface NewDelayRecord {
 }
 
 export interface DelayResolvePatch {
-  resolved_at: string;
+  resolved_at?: string;
+  resolved_by_id?: string | null;
+  ended_at?: string | null;
+  days_lost?: number;
+  culpability?: Culpability;
+  eot_claimable?: boolean;
+  linked_rfi_id?: string | null;
+  linked_change_request_id?: string | null;
+  linked_material_order_id?: string | null;
+  applied_shift_days?: number;
   prevention_notes?: string | null;
 }
 
@@ -92,18 +124,22 @@ export function activitiesRepository(db: Knex) {
 
     delaysForActivities(activityIds: string[]): Promise<ActivityDelayRow[]> {
       if (activityIds.length === 0) return Promise.resolve([]);
-      return db<ActivityDelayRow>("activity_delays")
-        .whereIn("activity_id", activityIds)
+      return db<ActivityDelayRow>("activity_delays as d")
+        .leftJoin("user as u", "u.id", "d.recorded_by_id")
+        .select("d.*", "u.name as recorded_by_name")
+        .whereIn("d.activity_id", activityIds)
         .orderBy([
-          { column: "activity_id", order: "asc" },
-          { column: "started_at", order: "desc" },
+          { column: "d.activity_id", order: "asc" },
+          { column: "d.started_at", order: "desc" },
         ]);
     },
 
     delaysForActivity(activityId: string): Promise<ActivityDelayRow[]> {
-      return db<ActivityDelayRow>("activity_delays")
-        .where({ activity_id: activityId })
-        .orderBy("started_at", "desc");
+      return db<ActivityDelayRow>("activity_delays as d")
+        .leftJoin("user as u", "u.id", "d.recorded_by_id")
+        .select("d.*", "u.name as recorded_by_name")
+        .where({ "d.activity_id": activityId })
+        .orderBy("d.started_at", "desc");
     },
 
     findDelayById(id: string): Promise<ActivityDelayRow | undefined> {
@@ -166,6 +202,52 @@ export function activitiesRepository(db: Knex) {
         .update(patch)
         .returning<ActivityDelayRow[]>("*");
       return row;
+    },
+
+    /** Every delay on the project with its activity name — the delay register. */
+    delaysForProject(projectId: string): Promise<Array<ActivityDelayRow & { activity_name: string }>> {
+      return db<ActivityDelayRow>("activity_delays as d")
+        .join("activities as a", "a.id", "d.activity_id")
+        .where("a.project_id", projectId)
+        .orderBy("d.started_at", "desc")
+        .select("d.*", "a.name as activity_name") as unknown as Promise<
+        Array<ActivityDelayRow & { activity_name: string }>
+      >;
+    },
+
+    delaysByIds(ids: string[]): Promise<ActivityDelayRow[]> {
+      if (ids.length === 0) return Promise.resolve([]);
+      return db<ActivityDelayRow>("activity_delays").whereIn("id", ids);
+    },
+
+    async recordEvent(record: NewActivityEventRecord): Promise<void> {
+      await db("activity_events").insert(record);
+    },
+
+    eventsForActivity(activityId: string): Promise<ActivityEventRow[]> {
+      return db<ActivityEventRow>("activity_events")
+        .where({ activity_id: activityId })
+        .orderBy("created_at", "desc")
+        .limit(200);
+    },
+
+    /** How many activities still hang off a stage — what blocks deleting it. */
+    async countByPhase(phaseId: string): Promise<number> {
+      const row = await db("activities")
+        .where({ phase_id: phaseId })
+        .count<{ count: string }[]>("id as count")
+        .first();
+      return Number(row?.count ?? 0);
+    },
+
+    /** The project's working calendar; the cascade and every duration read it. */
+    projectCalendar(
+      projectId: string,
+    ): Promise<{ working_days: unknown; holidays: unknown } | undefined> {
+      return db("projects")
+        .where({ id: projectId })
+        .select("working_days", "holidays")
+        .first();
     },
   };
 }

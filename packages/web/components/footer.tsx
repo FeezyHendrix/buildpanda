@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { nav, site } from "@/lib/site";
+import { site } from "@/lib/site";
 import { Container } from "@/components/ui";
 import { MailIcon, PhoneIcon } from "@/components/icons";
+import { ConsentReset } from "@/components/consent";
 
 const productLinks = [
   { label: "For contractors", href: "/for-contractors/" },
@@ -29,9 +30,9 @@ export function Footer() {
               className="h-8 w-auto brightness-0 invert"
             />
             <p className="max-w-xs text-sm leading-relaxed text-white/70">
-              The construction management platform that takes you from inception
-              to completion and handover, whether you build from Lagos or from
-              the diaspora.
+              Software a contractor runs their own build on, and a managed
+              construction service in Nigeria for clients who would rather we ran
+              the build.
             </p>
           </div>
 
@@ -60,34 +61,21 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-white/15 pt-6 sm:flex-row sm:items-center">
+        <div className="mt-12 border-t border-white/15 pt-6">
+          <p className="max-w-3xl text-sm leading-relaxed text-white/60">
+            BuildPanda records construction progress and payment. It is not a
+            bank, an escrow agent or a payment institution, and does not hold or
+            transfer funds.
+          </p>
+        </div>
+
+        {/* Legal only: every nav link in here also sits in the columns
+            above, and repeating them made the base of the page a wall. */}
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <p className="text-sm text-white/70">
             &copy; {new Date().getFullYear()} {site.name}. All rights reserved.
           </p>
           <ul className="flex flex-wrap items-center gap-5">
-            {nav.flatMap((item) =>
-              item.children
-                ? item.children.map((child) => (
-                    <li key={child.href}>
-                      <Link
-                        href={child.href}
-                        className="text-sm text-white/70 hover:text-white"
-                      >
-                        {child.label}
-                      </Link>
-                    </li>
-                  ))
-                : [
-                    <li key={item.href}>
-                      <Link
-                        href={item.href ?? "/"}
-                        className="text-sm text-white/70 hover:text-white"
-                      >
-                        {item.label}
-                      </Link>
-                    </li>,
-                  ],
-            )}
             <li>
               <Link
                 href="/terms-of-service/"
@@ -111,6 +99,11 @@ export function Footer() {
               >
                 Data Policy
               </Link>
+            </li>
+            <li>
+              {/* Only renders once a choice has been made, so there is always a
+                  way back to it — which both the GDPR and the NDPR require. */}
+              <ConsentReset />
             </li>
           </ul>
         </div>
