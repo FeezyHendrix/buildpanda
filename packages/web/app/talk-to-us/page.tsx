@@ -8,14 +8,14 @@ import { CalendlyWidget } from "@/components/calendly-widget";
 
 export const metadata: Metadata = pageMetadata({
   path: "talk-to-us",
-  title: "Talk to us about your build",
+  title: "Book a construction software demo or consultation",
   description:
-    "Tell us about the job. If you want to run it yourself we will show you the software; if you would rather we ran it, we will tell you on the call whether it is one we can take.",
+    "Book a BuildPanda software demo or discuss your construction project. Tell us about your build to explore the tools or managed service you need.",
   socialTitle: "Tell us about the job and we will say which product fits",
 });
 
 const assurances = [
-  "A team that understands building in Nigeria",
+  "A team that understands your building project",
   "A clear plan from land and design through to handover",
   "Inspections you can request, with the report on the record",
   "One dashboard you can watch from anywhere in the world",

@@ -44,7 +44,7 @@ export function Objections() {
                 &ldquo;{item.quote}&rdquo;
               </p>
               <p className="max-w-md text-sm leading-relaxed text-muted 2xl:text-base">
-                &rarr; {item.answer}
+                {item.answer}
               </p>
             </div>
           ))}

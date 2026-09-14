@@ -27,7 +27,7 @@ export function DeviceCluster({ tone = "light" }: { tone?: "light" | "dark" }) {
               width={2468}
               height={1542}
               priority
-              sizes="(max-width: 1024px) 94vw, 1050px"
+              sizes="(max-width: 1023px) 90vw, (max-width: 1535px) 520px, (max-width: 1799px) 620px, (max-width: 2599px) 740px, 920px"
               className="block w-full"
             />
           </div>
@@ -50,7 +50,7 @@ export function DeviceCluster({ tone = "light" }: { tone?: "light" | "dark" }) {
               alt="Field tools on a tablet: the permits and compliance register for the same road job, with an expired environmental approval flagged and two active permits and their expiry dates"
               width={2008}
               height={1506}
-              sizes="(max-width: 1024px) 46vw, 500px"
+              sizes="(max-width: 1023px) 44vw, (max-width: 1535px) 250px, (max-width: 1799px) 300px, (max-width: 2599px) 350px, 440px"
               className="block w-full"
             />
           </div>

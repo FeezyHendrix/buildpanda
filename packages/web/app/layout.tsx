@@ -36,21 +36,20 @@ export const metadata: Metadata = {
   applicationName: site.name,
   keywords: [
     "construction management software",
-    "construction project management software Nigeria",
+    "construction project management software",
     "payment certificates construction",
     "site inspection software",
     "construction programme and delay tracking",
     "bill of quantities software",
     "extension of time claims",
-    "managed construction service Nigeria",
-    "build a house in Nigeria from abroad",
+    "managed construction service",
+    "remote construction project management",
     "BuildPanda",
   ],
   authors: [{ name: site.name }],
   alternates: { canonical: canonicalUrl("") },
   openGraph: {
     type: "website",
-    locale: "en_NG",
     url: canonicalUrl(""),
     siteName: site.name,
     title: `${site.name}: verified construction delivery`,
@@ -77,9 +76,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={jakarta.variable}>
       <body className="font-sans antialiased">
+        <a href="#main-content" className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-md bg-white px-5 py-3 font-semibold text-brand shadow-lg focus:translate-y-0">
+          Skip to content
+        </a>
         <JsonLd data={[organizationJsonLd, websiteJsonLd]} />
         <Navbar />
-        <main>{children}</main>
+        <main id="main-content" tabIndex={-1}>{children}</main>
         <Footer />
         {/* Analytics load only after consent; see components/consent.tsx. */}
         <Analytics measurementId={GA_MEASUREMENT_ID} />

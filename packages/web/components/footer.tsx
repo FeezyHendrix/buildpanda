@@ -30,9 +30,9 @@ export function Footer() {
               className="h-8 w-auto brightness-0 invert"
             />
             <p className="max-w-xs text-sm leading-relaxed text-white/70">
-              Software a contractor runs their own build on, and a managed
-              construction service in Nigeria for clients who would rather we ran
-              the build.
+              Construction management software for contractors, developers and
+              project owners. We also manage construction projects, from planning
+              to handover.
             </p>
           </div>
 
