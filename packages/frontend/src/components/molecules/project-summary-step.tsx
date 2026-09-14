@@ -17,6 +17,7 @@ import logo from "@/assets/images/logo.svg";
 interface ProjectSummaryData {
   projectTitle: string;
   projectType: ProjectType | null;
+  country: string | null;
   locationState: string | null;
   city: string;
   buildingType: string | null;
@@ -65,7 +66,7 @@ function BlueprintPage({
     timelineOptions.find((t) => t.id === data.timeline)?.label ??
     TIMELINES.find((t) => t.id === data.timeline)?.label ??
     "-";
-  const locationText = [data.city, data.locationState]
+  const locationText = [data.city.trim(), data.locationState?.trim(), data.country]
     .filter(Boolean)
     .join(", ");
 

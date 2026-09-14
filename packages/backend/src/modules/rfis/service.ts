@@ -190,6 +190,7 @@ export function rfisService(
     projectId: string,
     subject: string,
     actorId: string,
+    rfiId: string,
   ): void {
     if (!deps.notifications || !assigneeId || assigneeId === actorId) return;
     void deps.notifications
@@ -197,6 +198,7 @@ export function rfisService(
         title: "An RFI was assigned to you",
         body: subject,
         projectId,
+        ctaUrl: `/project/${projectId}/rfis?rfi=${rfiId}`,
       })
       .catch(() => undefined);
   }
@@ -288,7 +290,7 @@ export function rfisService(
           ballInCourtId: input.ballInCourtId ?? null,
           ballInCourtEmail: input.ballInCourtEmail ?? null,
         });
-        notifyRfiAssignee(input.ballInCourtId, projectId, row.subject, actor.id);
+        notifyRfiAssignee(input.ballInCourtId, projectId, row.subject, actor.id, row.id);
       }
       return toRfi(row, 0);
     },
@@ -340,7 +342,7 @@ export function rfisService(
           ballInCourtId: nextBallInCourtId,
           ballInCourtEmail: nextBallInCourtEmail,
         });
-        notifyRfiAssignee(nextBallInCourtId, projectId, row.subject, actor.id);
+        notifyRfiAssignee(nextBallInCourtId, projectId, row.subject, actor.id, row.id);
       }
       const counts = await repository.commentCounts([rfiId]);
       return toRfi(row, counts.get(rfiId) ?? 0);
@@ -395,6 +397,7 @@ export function rfisService(
               title: "Your RFI was answered",
               body: current.subject,
               projectId,
+              ctaUrl: `/project/${projectId}/rfis?rfi=${rfiId}`,
             })
             .catch(() => undefined);
         }

@@ -1,4 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
+import { readAuthRecovery } from "@/lib/auth-recovery";
+import { safeReturnPath } from "@/lib/return-path";
 import authIllustration from "@/assets/images/auth-illustration.mp4";
 import authIllustrationPoster from "@/assets/images/auth-illustration-poster.jpg";
 import logo from "@/assets/images/logo.svg";
@@ -13,8 +15,12 @@ const headerMap: Record<string, { text: string; linkText: string; to: string }> 
 };
 
 export default function AuthLayout() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const header = headerMap[pathname] ?? headerMap["/auth/sign-up"]!;
+  const recovery = pathname === "/auth/verify-email" ? readAuthRecovery("verification") : null;
+  const passwordRecovery = pathname === "/auth/reset-password" || pathname === "/auth/forgot-password" ? readAuthRecovery("password") : null;
+  const redirect = safeReturnPath(new URLSearchParams(search).get("redirect")) ?? recovery?.redirectTo ?? passwordRecovery?.redirectTo;
+  const headerPath = redirect ? `${header.to}?redirect=${encodeURIComponent(redirect)}` : header.to;
 
   return (
     <div className="flex h-dvh p-2 sm:p-4">
@@ -59,7 +65,7 @@ export default function AuthLayout() {
           <p className="text-sm text-gray-500 text-pretty">
             {header.text}{" "}
             <Link
-              to={header.to}
+              to={headerPath}
               className="font-semibold text-primary-500 hover:underline"
             >
               {header.linkText}

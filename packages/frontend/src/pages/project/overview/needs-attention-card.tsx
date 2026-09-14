@@ -1,3 +1,4 @@
+import { QueryError } from "@/components/molecules/query-error";
 import { Link } from "react-router-dom";
 import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
@@ -69,10 +70,10 @@ function buildItems(args: {
       key: "overdue-rfis",
       count: ops?.overdueRfis ?? countOverdueRfis(rfis, today),
       label: "overdue RFIs",
-      to: "rfis",
+      to: "rfis?status=overdue",
       tone: "danger",
     },
-    { key: "approvals", count: ops?.pendingApprovals ?? 0, label: "pending approvals", to: "approvals", tone: "warning" },
+    { key: "approvals", count: ops?.pendingApprovals ?? 0, label: "pending approvals", to: "approvals?status=Pending", tone: "warning" },
     { key: "changes", count: submittedChanges, label: "change orders awaiting decision", to: "change-requests", tone: "warning" },
     { key: "inspections", count: snapshot?.inspections.failed ?? 0, label: "failed inspections", to: "inspections", tone: "danger" },
     // An expired permit and one expiring in a month are different problems; the
@@ -84,12 +85,12 @@ function buildItems(args: {
       key: "delayed",
       count: snapshot?.schedule.delayedActivities?.count ?? 0,
       label: delayedLabel(snapshot?.schedule.delayedActivities ?? null),
-      to: "schedules/activities",
+      to: "schedules/activities?delayed=1",
       tone: "danger",
     },
-    { key: "late-orders", count: ops?.lateMaterialOrders ?? 0, label: "material orders late", to: "materials", tone: "danger" },
+    { key: "late-orders", count: ops?.lateMaterialOrders ?? 0, label: "material orders late", to: "materials?late=late", tone: "danger" },
     { key: "material-approvals", count: ops?.pendingMaterialApprovals ?? 0, label: "material approvals pending", to: "material-approvals", tone: "warning" },
-    { key: "invoices", count: snapshot?.finance.invoices.overdueCount ?? 0, label: "overdue invoices", to: `${BUDGET_INVOICES_PATH}?tab=invoices`, tone: "danger" },
+    { key: "invoices", count: snapshot?.finance.invoices.overdueCount ?? 0, label: "overdue invoices", to: `${BUDGET_INVOICES_PATH}?tab=invoices&status=Overdue`, tone: "danger" },
     { key: "key-dates", count: countMissedKeyDates(keyDates, today), label: "missed key dates", to: "schedules/key-dates", tone: "danger" },
     { key: "risks", count: snapshot?.risks.high ?? 0, label: "high risks", to: "#risk-factors", tone: "warning" },
     {
@@ -132,7 +133,7 @@ export function NeedsAttentionCard({ projectId, className }: { projectId: string
   const rfis = useProjectRfis(projectId);
   const keyDates = useKeyDates(projectId);
   const changes = useChangeRequestSummary(projectId);
-  const isPending = snapshot.isPending || rfis.isPending || keyDates.isPending;
+  const isPending = snapshot.isPending || rfis.isPending || keyDates.isPending || changes.isPending;
 
   const items = isPending
     ? []
@@ -152,7 +153,9 @@ export function NeedsAttentionCard({ projectId, className }: { projectId: string
         ) : null}
       </div>
       <div className="h-full px-2 pb-2">
-        {isPending ? (
+        {snapshot.error || rfis.error || keyDates.error || changes.error ? <QueryError
+          error={snapshot.error || rfis.error || keyDates.error || changes.error}
+          retry={() => Promise.all([snapshot.refetch(), rfis.refetch(), keyDates.refetch(), changes.refetch()])} noun="attention items" /> : isPending ? (
           <div className="flex h-full min-h-[160px] items-center justify-center">
             <Spinner size="md" />
           </div>

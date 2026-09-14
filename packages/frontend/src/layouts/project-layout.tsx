@@ -1,3 +1,4 @@
+import { QueryError } from "@/components/molecules/query-error";
 import {
   Navigate,
   Outlet,
@@ -37,7 +38,7 @@ export function useProjectContext(): ProjectOutletContext {
 export default function ProjectLayout() {
   const { session, isPending: sessionPending, logout } = useAuthGuard();
   const { projectId } = useParams<{ projectId: string }>();
-  const { data: project, isPending: projectPending } = useProject(projectId);
+  const { data: project, isPending: projectPending, error, refetch } = useProject(projectId);
   const { data: access } = useProjectAccess(projectId);
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,6 +64,7 @@ export default function ProjectLayout() {
     return null;
   }
 
+  if (error && !project) return <AppShell session={session} onLogout={logout}><QueryError error={error} retry={refetch} noun="project" /></AppShell>;
   if (!project) {
     return (
       <AppShell session={session} onLogout={logout}>

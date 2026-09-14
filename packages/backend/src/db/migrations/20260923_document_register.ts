@@ -41,7 +41,7 @@ export async function up(knex: Knex): Promise<void> {
   for (const category of CONSTRUCTION_CATEGORIES) {
     await knex("document_categories")
       .insert({ id: category.id, name: category.name, tone: "brand", group: category.group })
-      .onConflict("id")
+      .onConflict()
       .ignore();
   }
   // "Drawings" already exists as the plan-side set; only the document set is seeded here.

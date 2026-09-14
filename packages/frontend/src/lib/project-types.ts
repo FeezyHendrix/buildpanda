@@ -1219,6 +1219,7 @@ export const REPORT_PERIOD_OPTIONS: { value: ReportPeriod; label: string }[] = [
 ];
 
 export interface Notification {
+  ctaUrl?: string | null;
   id: string;
   type: NotificationType;
   title: string;

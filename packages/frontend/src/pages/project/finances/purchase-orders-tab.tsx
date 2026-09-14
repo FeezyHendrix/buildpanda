@@ -1,8 +1,11 @@
+import { useUrlState } from "@/hooks/use-url-state";
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { KpiCard } from "@/components/molecules/kpi-card";
+import { QueryError } from "@/components/molecules/query-error";
+import { UnavailableRecord } from "@/components/molecules/unavailable-record";
 import { ReasonDialog } from "@/components/molecules/reason-dialog";
 import {
   useCancelPurchaseOrder,
@@ -35,6 +38,8 @@ import {
 } from "./purchase-orders/purchase-order-model";
 import { UpsertPurchaseOrderDialog } from "./purchase-orders/upsert-purchase-order-dialog";
 
+const EMPTY_PURCHASE_ORDERS: PurchaseOrder[] = [];
+
 type PoDialog =
   | { kind: "create" }
   | { kind: "edit"; purchaseOrder: PurchaseOrder }
@@ -49,9 +54,13 @@ export function PurchaseOrdersTab() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
-  const { data: purchaseOrders = [], isPending } = usePurchaseOrders(project.id);
+  const { data: purchaseOrders = EMPTY_PURCHASE_ORDERS, isPending, isSuccess, error, refetch } = usePurchaseOrders(project.id);
 
-  const [dialog, setDialog] = useState<PoDialog>(null);
+  const [selectedId, setSelectedId] = useUrlState<string | null>("po", null);
+  const [actionDialog, setDialog] = useState<PoDialog>(null);
+  const selected = purchaseOrders.find(po => po.id === selectedId);
+  const unavailable = Boolean(selectedId) && isSuccess && !selected;
+  const dialog: PoDialog = actionDialog ?? (selected ? { kind: "detail", purchaseOrder: selected } : null);
   const [busyAction, setBusyAction] = useState<PurchaseOrderAction | null>(null);
 
   const createPurchaseOrder = useCreatePurchaseOrder();
@@ -71,6 +80,7 @@ export function PurchaseOrdersTab() {
     .reduce((sum, po) => sum + po.total, 0);
 
   function close(): void {
+    setSelectedId(null);
     setDialog(null);
   }
 
@@ -145,7 +155,7 @@ export function PurchaseOrdersTab() {
         ) : null}
       </TabActions>
 
-      <section aria-label="Purchase order summary" className="grid gap-4 sm:grid-cols-3">
+      {isSuccess ? <section aria-label="Purchase order summary" className="grid gap-4 sm:grid-cols-3">
         <KpiCard
           label="Committed spend"
           value={formatCurrency(committed, currency)}
@@ -153,19 +163,21 @@ export function PurchaseOrdersTab() {
         />
         <KpiCard label="Open POs" value={formatCurrency(open, currency)} />
         <KpiCard label="Received value" value={formatCurrency(received, currency)} />
-      </section>
+      </section> : null}
 
-      <PurchaseOrdersTable
+      {error ? <QueryError error={error} retry={refetch} noun="purchase orders" /> : null}
+      {unavailable ? <UnavailableRecord name="Purchase order" returnLabel="Return to purchase orders" onReturn={close} /> : null}
+      {!error && !unavailable ? <PurchaseOrdersTable
         purchaseOrders={purchaseOrders}
         isPending={isPending}
         canManage={canManage}
         currency={currency}
         onCreate={() => setDialog({ kind: "create" })}
-        onOpen={(purchaseOrder) => setDialog({ kind: "detail", purchaseOrder })}
+        onOpen={(purchaseOrder) => setSelectedId(purchaseOrder.id)}
         onEdit={(purchaseOrder) => setDialog({ kind: "edit", purchaseOrder })}
         onDelete={(purchaseOrder) => setDialog({ kind: "delete", purchaseOrder })}
         onAction={runAction}
-      />
+      /> : null}
 
       <UpsertPurchaseOrderDialog
         projectId={project.id}

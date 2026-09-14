@@ -3,6 +3,7 @@ import type { AiUpdateCadence, Currency, Project } from "@/lib/project-types";
 
 export interface ProjectTemplateSummary {
   id: string;
+  projectType: "build" | "renovate";
   name: string;
   description: string;
   stageCount: number;
@@ -16,6 +17,7 @@ export interface CreateProjectInput {
   projectType: string;
   templateId?: string;
   location: {
+    country?: string;
     state: string;
     city: string;
     ownsLand: boolean;

@@ -3,6 +3,9 @@ import { Button } from "@/components/atoms/button";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { KpiCard } from "@/components/molecules/kpi-card";
+import { QueryError } from "@/components/molecules/query-error";
+import { UnavailableRecord } from "@/components/molecules/unavailable-record";
+import { useUrlState } from "@/hooks/use-url-state";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useInvoicePayments, useProjectInvoices, type Invoice } from "@/hooks/use-invoices";
 import { canResourceAction } from "@/lib/project-types";
@@ -15,6 +18,8 @@ import { AddPaymentDrawer } from "./payments/add-payment-drawer";
 import { defaultExpanded, filterPaymentRows, normalisePayments } from "./payments/invoice-payments-model";
 import { InvoicePaymentsTable } from "./payments/invoice-payments-table";
 
+const EMPTY_INVOICES: Invoice[] = [];
+
 /**
  * Payments — every payment recorded against an invoice, under its invoice,
  * then BuildPanda's own contractual records: payment requests and stage
@@ -26,19 +31,20 @@ export function PaymentsTab() {
   // Recording a payment is an approval-level act: the backend checks finances:approve.
   const canRecordPayment = canResourceAction(access, "finances", "approve");
   const currency = project.currency;
-  const { data: invoices = [], isPending: invoicesPending } = useProjectInvoices(project.id);
-  const { data: paymentsData, isPending: paymentsPending } = useInvoicePayments(project.id);
+  const invoiceQuery = useProjectInvoices(project.id);
+  const paymentQuery = useInvoicePayments(project.id);
+  const invoices = invoiceQuery.data ?? EMPTY_INVOICES;
   const pdf = useDownloadInvoicePdf(project.id);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState<string>("q", "");
   const [toggled, setToggled] = useState<Map<string, boolean>>(() => new Map());
   const [addOpen, setAddOpen] = useState(false);
-  const [viewId, setViewId] = useState<string | null>(null);
+  const [viewId, setViewId] = useUrlState<string | null>("invoice", null);
   const [pending, setPending] = useState<{ invoice: Invoice; action: InvoiceAction } | null>(null);
 
   const { invoices: rows, totals } = useMemo(
-    () => normalisePayments(paymentsData, invoices),
-    [paymentsData, invoices],
+    () => normalisePayments(paymentQuery.data, invoices),
+    [paymentQuery.data, invoices],
   );
   const isFiltered = search.trim().length > 0;
   const visible = useMemo(() => filterPaymentRows(rows, search), [rows, search]);
@@ -52,6 +58,7 @@ export function PaymentsTab() {
     return base;
   }, [visible, isFiltered, toggled]);
   const viewed = useMemo(() => invoices.find((invoice) => invoice.id === viewId) ?? null, [invoices, viewId]);
+  const unavailable = Boolean(viewId) && invoiceQuery.isSuccess && !viewed;
 
   function toggle(invoiceId: string): void {
     const isOpen = expanded.has(invoiceId);
@@ -71,28 +78,32 @@ export function PaymentsTab() {
             />
           </div>
           {canRecordPayment ? (
-            <Button variant="primary" size="md" onClick={() => setAddOpen(true)} disabled={invoices.length === 0}>
+            <Button variant="primary" size="md" onClick={() => setAddOpen(true)} disabled={!invoiceQuery.isSuccess || invoices.length === 0}>
               <PlusIcon className="size-4" />
               Add payment
             </Button>
           ) : null}
         </div>
 
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        {paymentQuery.error ? <QueryError error={paymentQuery.error} retry={paymentQuery.refetch} noun="invoice payments" /> : null}
+        {invoiceQuery.error ? <QueryError error={invoiceQuery.error} retry={invoiceQuery.refetch} noun="invoices" /> : null}
+        {unavailable ? <UnavailableRecord name="Invoice" returnLabel="Return to payments" onReturn={() => setViewId(null)} /> : null}
+
+        {paymentQuery.isSuccess ? <div aria-label="Payment totals" className="mb-6 grid gap-4 sm:grid-cols-3">
           <KpiCard label="Invoiced" value={formatCurrency(totals.invoiced, currency)} />
           <KpiCard label="Paid" value={formatCurrency(totals.paid, currency)} />
           <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding, currency)} />
-        </div>
+        </div> : null}
 
-        <InvoicePaymentsTable
+        {!paymentQuery.error && !unavailable ? <InvoicePaymentsTable
           rows={visible}
           currency={currency}
-          isLoading={paymentsPending && invoicesPending}
+          isLoading={paymentQuery.isPending}
           isFiltered={isFiltered}
           expanded={expanded}
           onToggle={toggle}
           onOpenInvoice={setViewId}
-        />
+        /> : null}
       </section>
 
       <section aria-labelledby="payment-requests-heading">

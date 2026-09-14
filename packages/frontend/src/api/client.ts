@@ -1,3 +1,4 @@
+import { signInPath } from "@/lib/return-path";
 import axios from "axios";
 import { toast } from "@/lib/toast";
 
@@ -20,7 +21,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      window.location.href = "/auth/sign-in";
+      window.location.href = signInPath(window.location.pathname + window.location.search + window.location.hash);
     } else if (error.response?.status === 403) {
       // Toast a forbidden action, but let forbidden reads fail quietly. A page
       // that fires several GETs a user cannot see would otherwise stack one

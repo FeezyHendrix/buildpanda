@@ -12,6 +12,7 @@ interface NotifyCall {
     title: string;
     body: string;
     projectId?: string | null;
+    ctaUrl?: string;
   };
 }
 
@@ -99,7 +100,7 @@ test("create notifies the requested reviewer", async () => {
   const recorder = notificationRecorder();
   const service = approvalsService(approvalRepository(), { notifications: recorder.notifications });
 
-  await service.create(
+  const approval = await service.create(
     "proj_1",
     { title: "Roof tile sample", requestedReviewerId: "reviewer_1" },
     "requester_1",
@@ -113,6 +114,7 @@ test("create notifies the requested reviewer", async () => {
         title: "An approval needs your decision",
         body: "Roof tile sample",
         projectId: "proj_1",
+        ctaUrl: `/project/proj_1/approvals?approval=${approval.id}`,
       },
     },
   ]);

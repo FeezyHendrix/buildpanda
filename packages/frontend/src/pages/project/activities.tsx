@@ -1,3 +1,6 @@
+import { useParams } from "react-router-dom";
+import { useUrlState } from "@/hooks/use-url-state";
+import { ActivityDestination } from "./activities/activity-destination";
 import { useState } from "react";
 import { ActivitiesTable } from "./activities/activities-table";
 import { DeleteActivityDialog } from "./activities/delete-activity-dialog";
@@ -30,6 +33,7 @@ import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateActivity,
   useProjectActivities,
+  useProjectActivity,
   useRaiseDelay,
   useUpdateActivity,
 } from "@/hooks/use-activities";
@@ -44,10 +48,13 @@ import { choiceLabel, participantChoices } from "@/lib/assignee-options";
 import { canResourceAction, type Activity } from "@/lib/project-types";
 
 export default function ProjectActivities() {
+  const { activityId } = useParams();
+  const [delayed, setDelayed] = useUrlState<string>("delayed", "");
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
   const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const { data: activities = [], isPending } = useProjectActivities(project.id, selectedBuildingId);
+  const focusedActivity = useProjectActivity(project.id, activityId);
   const { data: reasons = [] } = useDelayReasons();
   // A hold point has to show on the work it gates, not only on the inspections
   // page the person about to build the thing never opens.
@@ -66,8 +73,8 @@ export default function ProjectActivities() {
   const [delaysTarget, setDelaysTarget] = useState<Activity | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null);
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ActivityStatusFilter>("all");
+  const [search, setSearch] = useUrlState<string>("q", "");
+  const [statusFilter, setStatusFilter] = useUrlState<ActivityStatusFilter>("status", "all", ACTIVITY_STATUS_FILTERS.map(f => f.value));
 
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
@@ -89,7 +96,9 @@ export default function ProjectActivities() {
   const delayedCount = activities.filter((a) => a.isDelayed).length;
   const completedCount = activities.filter((a) => a.status === "Completed").length;
 
+  const focused = focusedActivity.data;
   const filtered = activities
+    .filter(activity => !delayed || activity.isDelayed)
     .filter((a) => statusFilter === "all" || a.status === statusFilter)
     .filter((a) => matchesActivitySearch(a, search));
 
@@ -113,6 +122,17 @@ export default function ProjectActivities() {
         }
       />
 
+      {activityId && !focusedActivity.isPending ? (
+        <ActivityDestination
+          projectId={project.id}
+          activity={focused}
+          onEdit={canManage && focused ? () => {
+            setEditingTarget(focused);
+            setCreateOpen(true);
+          } : undefined}
+        />
+      ) : null}
+      {delayed ? <Button variant="secondary" onClick={() => setDelayed("")}>Showing delayed activities · Clear</Button> : null}
       {activities.length > 0 ? (
         <section aria-label="Activity summary" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard label="Total activities" icon={icons.calendarSearch} value={activities.length} />

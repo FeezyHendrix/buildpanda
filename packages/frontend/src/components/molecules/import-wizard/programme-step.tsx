@@ -1,6 +1,9 @@
 import { useState, useRef, type DragEvent } from "react";
 import { useStartProgrammeImport, useProgrammeImportJob, useApplyProgramme } from "@/hooks/use-programme-import";
-import { useLinkSessionProject, useAttachSessionDocument } from "@/hooks/use-import-session";
+import { useCompleteImport } from "@/hooks/use-complete-import";
+import { useDraftState } from "@/hooks/use-draft-state";
+import { QueryError } from "@/components/molecules/query-error";
+import { CreatedProjectStep } from "./created-project-step";
 import { Button } from "@/components/atoms/button";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Spinner } from "@/components/atoms/spinner";
@@ -21,19 +24,19 @@ interface ProgrammeStepProps {
   onNext: () => void;
 }
 
-export function ProgrammeStep({ sessionId, onProjectCreated, onNext }: Omit<ProgrammeStepProps, "projectId">) {
-  const [jobId, setJobId] = useState<string | null>(null);
+export function ProgrammeStep({ sessionId, projectId, onProjectCreated, onNext }: ProgrammeStepProps) {
+  const [jobId, setJobId] = useDraftState<string | null>(`import:${sessionId}:programme:job`, null);
   const startMutation = useStartProgrammeImport();
-  const { data: job } = useProgrammeImportJob(jobId);
+  const { data: job, isPending: loadingJob, error: jobError, refetch } = useProgrammeImportJob(jobId);
   const applyMutation = useApplyProgramme();
-  const linkSession = useLinkSessionProject();
-  const attachDocument = useAttachSessionDocument();
+  const createdProjectId = projectId ?? job?.createdProjectId ?? null;
+  const completion = useCompleteImport({ sessionId, jobId, kind: "programme", fileName: job?.fileName, projectId: createdProjectId, onProjectCreated, onNext });
 
-  const [projectName, setProjectName] = useState("");
-  const [city, setCity] = useState("");
-  const [stateName, setStateName] = useState("");
-  const [budgetTotal, setBudgetTotal] = useState("");
-  const [currency, setCurrency] = useState("NGN");
+  const [projectName, setProjectName] = useDraftState(`import:${sessionId}:programme:name`, "");
+  const [city, setCity] = useDraftState(`import:${sessionId}:programme:city`, "");
+  const [stateName, setStateName] = useDraftState(`import:${sessionId}:programme:state`, "");
+  const [budgetTotal, setBudgetTotal] = useDraftState(`import:${sessionId}:programme:budget`, "");
+  const [currency, setCurrency] = useDraftState(`import:${sessionId}:programme:currency`, "NGN");
 
   const [errorMsg, setErrorMsg] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -61,37 +64,25 @@ export function ProgrammeStep({ sessionId, onProjectCreated, onNext }: Omit<Prog
   const handleApply = async () => {
     if (!jobId) return;
     setErrorMsg("");
-    try {
-      const budgetNum = parseFloat(budgetTotal);
-      if (isNaN(budgetNum) || budgetNum <= 0) {
-        setErrorMsg("Please enter a valid budget.");
-        return;
-      }
-      
-      const res = await applyMutation.mutateAsync({
-        jobId,
-        input: {
-          projectName,
-          city,
-          state: stateName,
-          budgetTotal: budgetNum,
-          currency,
-        }
-      });
-      
-      onProjectCreated(res.projectId);
-      await linkSession.mutateAsync({ sessionId, projectId: res.projectId });
-      await attachDocument.mutateAsync({
-        sessionId,
-        kind: "programme",
-        jobId,
-        status: "applied"
-      });
-      onNext();
-    } catch (err) {
-      setErrorMsg(getApiErrorMessage(err, "Failed to apply programme"));
+    const budgetNum = parseFloat(budgetTotal);
+    if (!createdProjectId && (!Number.isFinite(budgetNum) || budgetNum <= 0)) {
+      setErrorMsg("Please enter a valid budget.");
+      return;
     }
+    await completion.complete(async () => {
+      const latest = await refetch();
+      if (latest.error) throw latest.error;
+      if (latest.data?.createdProjectId) return { projectId: latest.data.createdProjectId };
+      return applyMutation.mutateAsync({
+        jobId,
+        input: { projectName, city, state: stateName, budgetTotal: budgetNum, currency },
+      });
+    });
   };
+
+  if (jobId && jobError) return <QueryError error={jobError} retry={refetch} noun="your uploaded schedule" />;
+  if (jobId && loadingJob) return <div className="flex justify-center p-12"><Spinner size="md" /></div>;
+  if (createdProjectId) return <CreatedProjectStep onContinue={handleApply} pending={completion.pending} error={completion.error} />;
 
   if (!jobId) {
     return (
@@ -206,11 +197,11 @@ export function ProgrammeStep({ sessionId, onProjectCreated, onNext }: Omit<Prog
             </div>
           </div>
 
-          {errorMsg && <p className="text-sm text-negative-500">{errorMsg}</p>}
+          {errorMsg || completion.error ? <p role="alert" className="text-sm text-negative-500">{errorMsg || completion.error}</p> : null}
 
           <Button 
             onClick={handleApply} 
-            loading={applyMutation.isPending}
+            loading={completion.pending}
             disabled={!projectName || !city || !stateName || !budgetTotal}
             className="w-full mt-4"
           >

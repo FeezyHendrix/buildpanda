@@ -52,8 +52,9 @@ export function LeadDetailDrawer({
     await update.mutateAsync({ id: lead.id, status });
   }
 
-  function createProposal() {
+  async function createProposal() {
     if (!lead) return;
+    if (notes !== lead.notes) await update.mutateAsync({ id: lead.id, notes });
     const params = new URLSearchParams({
       leadId: lead.id,
       clientName: lead.name,
@@ -76,6 +77,8 @@ export function LeadDetailDrawer({
       description={lead.email}
       submitLabel="Create proposal"
       onSubmit={createProposal}
+      submitting={update.isPending}
+      error={update.error?.message}
     >
       <div className="flex flex-col gap-1.5">
         <Label>Status</Label>

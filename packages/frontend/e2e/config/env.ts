@@ -19,6 +19,7 @@ export const env = {
   // sign-up since Better Auth gates sign-in on it (see fixtures/auth.ts).
   databaseUrl: optional("DATABASE_URL", ""),
   password: optional("E2E_PASSWORD", "E2ePlaywright!2026"),
+  authSecret: optional("BETTER_AUTH_SECRET", "dev-insecure-secret-change-me"),
   noWebServer: optionalBool("E2E_NO_WEBSERVER", false),
   isCi: optionalBool("CI", false),
 };

@@ -1,5 +1,7 @@
+import { signInPath } from "./return-path";
+import { UnavailableDestination } from "@/components/molecules/unavailable-destination";
 import type { ReactNode } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useLocation } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
 import type { FeatureFlagKey } from "@/lib/feature-flags";
@@ -49,8 +51,9 @@ function FullScreenLoader() {
 /** Any signed-in user (owners may be participants, staff may own builds). */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { isPending, signedIn } = useGuardSession();
+  const location = useLocation();
   if (isPending) return <FullScreenLoader />;
-  if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
+  if (!signedIn) return <Navigate to={signInPath(location.pathname + location.search + location.hash)} replace />;
   return (
     <>
       {children}
@@ -62,8 +65,9 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 /** Company-only routes (dashboard, project creation). Owners → their portal. */
 export function RequireCompany({ children }: { children: ReactNode }) {
   const { isPending, signedIn, accountType } = useGuardSession();
+  const location = useLocation();
   if (isPending) return <FullScreenLoader />;
-  if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
+  if (!signedIn) return <Navigate to={signInPath(location.pathname + location.search + location.hash)} replace />;
   if (accountType === "project_owner") {
     return <Navigate to="/my-build" replace />;
   }
@@ -74,7 +78,7 @@ export function RequireCompany({ children }: { children: ReactNode }) {
 export function ProjectFeatureFlagGate({ flag, children }: { flag: FeatureFlagKey; children: ReactNode }) {
   const { projectId } = useParams<{ projectId: string }>();
   const enabled = useFeatureFlag(flag);
-  if (!enabled) return <Navigate to={`/project/${projectId}/overview`} replace />;
+  if (!enabled) return <UnavailableDestination feature home={`/project/${projectId}/overview`} />;
   return <>{children}</>;
 }
 
@@ -93,7 +97,7 @@ export function ProjectPermissionGate({
   const { data: access, isPending } = useProjectAccess(projectId);
   if (isPending) return <FullScreenLoader />;
   if (!canViewResource(access, resource)) {
-    return <Navigate to={`/project/${projectId}/overview`} replace />;
+    return <UnavailableDestination home={`/project/${projectId}/overview`} />;
   }
   return <>{children}</>;
 }
@@ -112,22 +116,23 @@ export function OrgPermissionGate({
   const { data, isPending } = useOrgPermissions();
   if (isPending) return <FullScreenLoader />;
   const allowed = (data?.permissions?.[resource] ?? []).includes(action);
-  if (!allowed) return <Navigate to="/dashboard" replace />;
+  if (!allowed) return <UnavailableDestination home="/dashboard" />;
   return <>{children}</>;
 }
 
 /** Redirects to /sales if the given feature flag is disabled. */
 export function SalesFeatureFlagGate({ flag, children }: { flag: FeatureFlagKey; children: ReactNode }) {
   const enabled = useFeatureFlag(flag);
-  if (!enabled) return <Navigate to="/sales" replace />;
+  if (!enabled) return <UnavailableDestination feature home="/sales" />;
   return <>{children}</>;
 }
 
 /** Root landing: sends each account type to its home. */
 export function HomeRedirect() {
   const { isPending, signedIn, accountType } = useGuardSession();
+  const location = useLocation();
   if (isPending) return <FullScreenLoader />;
-  if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
+  if (!signedIn) return <Navigate to={signInPath(location.pathname + location.search + location.hash)} replace />;
   const pendingProjectInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
   if (pendingProjectInvite) {
     return <Navigate to={`/accept-project-invite/${pendingProjectInvite}`} replace />;

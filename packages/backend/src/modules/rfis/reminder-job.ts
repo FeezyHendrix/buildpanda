@@ -26,6 +26,7 @@ export async function runRfiReminderSweep(db: Knex, queue?: QueueManager): Promi
       title: overdue ? `RFI-${rfi.number} overdue` : `RFI-${rfi.number} due today`,
       body: rfi.subject,
       projectId: rfi.projectId,
+      ctaUrl: `/project/${rfi.projectId}/rfis?rfi=${rfi.id}`,
     });
     await service.markReminded(rfi.id, today);
   }

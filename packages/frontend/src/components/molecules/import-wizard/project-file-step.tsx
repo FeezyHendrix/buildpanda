@@ -4,10 +4,10 @@ import {
   useProjectFileImportJob,
   useApplyProjectFile,
 } from "@/hooks/use-project-file-import";
-import {
-  useLinkSessionProject,
-  useAttachSessionDocument,
-} from "@/hooks/use-import-session";
+import { useCompleteImport } from "@/hooks/use-complete-import";
+import { useDraftState } from "@/hooks/use-draft-state";
+import { QueryError } from "@/components/molecules/query-error";
+import { CreatedProjectStep } from "./created-project-step";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Badge } from "@/components/atoms/badge";
@@ -19,30 +19,32 @@ const ACCEPT = ".csv,.xls,.xlsx,.pdf,.docx,.txt,application/vnd.ms-excel,applica
 
 interface ProjectFileStepProps {
   sessionId: string;
+  projectId: string | null;
   onProjectCreated: (id: string) => void;
   onNext: () => void;
 }
 
 export function ProjectFileStep({
   sessionId,
+  projectId,
   onProjectCreated,
   onNext,
 }: ProjectFileStepProps) {
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobId, setJobId] = useDraftState<string | null>(`import:${sessionId}:file:job`, null);
   const startMutation = useStartProjectFileImport();
-  const { data: job } = useProjectFileImportJob(jobId);
+  const { data: job, isPending: loadingJob, error: jobError, refetch } = useProjectFileImportJob(jobId);
   const applyMutation = useApplyProjectFile();
-  const linkSession = useLinkSessionProject();
-  const attachDocument = useAttachSessionDocument();
+  const createdProjectId = projectId ?? (job?.status === "applied" ? job.projectId : null);
+  const completion = useCompleteImport({ sessionId, jobId, kind: "project_file", fileName: job?.fileName, projectId: createdProjectId, onProjectCreated, onNext });
 
   const [errorMsg, setErrorMsg] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [metadataOn, setMetadataOn] = useState(true);
-  const [timelineOn, setTimelineOn] = useState(true);
-  const [budgetOn, setBudgetOn] = useState(true);
-  const [materialsOn, setMaterialsOn] = useState(true);
+  const [metadataOn, setMetadataOn] = useDraftState(`import:${sessionId}:file:metadata`, true);
+  const [timelineOn, setTimelineOn] = useDraftState(`import:${sessionId}:file:timeline`, true);
+  const [budgetOn, setBudgetOn] = useDraftState(`import:${sessionId}:file:budget`, true);
+  const [materialsOn, setMaterialsOn] = useDraftState(`import:${sessionId}:file:materials`, true);
 
   const handleFile = async (file: File) => {
     setErrorMsg("");
@@ -69,8 +71,11 @@ export function ProjectFileStep({
   const handleApply = async () => {
     if (!jobId) return;
     setErrorMsg("");
-    try {
-      const res = await applyMutation.mutateAsync({
+    await completion.complete(async () => {
+      const latest = await refetch();
+      if (latest.error) throw latest.error;
+      if (latest.data?.status === "applied" && latest.data.projectId) return { projectId: latest.data.projectId };
+      return applyMutation.mutateAsync({
         jobId,
         selection: {
           metadata: metadataOn,
@@ -79,25 +84,14 @@ export function ProjectFileStep({
           materials: materialsOn,
         },
       });
-
-      onProjectCreated(res.projectId);
-      await linkSession.mutateAsync({ sessionId, projectId: res.projectId });
-      await attachDocument
-        .mutateAsync({
-          sessionId,
-          kind: "project_file",
-          jobId: jobId!,
-          status: "applied",
-        })
-        .catch(() => undefined);
-
-      onNext();
-    } catch (err) {
-      setErrorMsg(getApiErrorMessage(err, "Failed to apply project file"));
-    }
+    });
   };
 
   const isPending = job?.status === "pending" || job?.status === "processing";
+
+  if (jobId && jobError) return <QueryError error={jobError} retry={refetch} noun="your uploaded file" />;
+  if ((jobId && loadingJob) || startMutation.isPending) return <div className="flex justify-center p-12"><Spinner size="md" /></div>;
+  if (createdProjectId) return <CreatedProjectStep onContinue={handleApply} pending={completion.pending} error={completion.error} />;
 
   return (
     <div className="flex flex-col max-w-2xl mx-auto mt-4 gap-8 pb-12 w-full">
@@ -253,7 +247,7 @@ export function ProjectFileStep({
 
           <Button
             onClick={handleApply}
-            loading={applyMutation.isPending}
+            loading={completion.pending}
             className="w-full mt-4"
           >
             Create project from this file
@@ -292,9 +286,9 @@ export function ProjectFileStep({
         </div>
       )}
 
-      {errorMsg && (
-        <p className="text-sm text-negative-500 text-center">{errorMsg}</p>
-      )}
+      {errorMsg || completion.error ? (
+        <p role="alert" className="text-sm text-negative-500 text-center">{errorMsg || completion.error}</p>
+      ) : null}
     </div>
   );
 }

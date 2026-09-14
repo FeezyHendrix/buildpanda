@@ -1,3 +1,5 @@
+import { PersonalWork } from "@/components/molecules/personal-work";
+import { QueryError } from "@/components/molecules/query-error";
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -30,7 +32,7 @@ import { PendingInvitesBanner } from "@/components/molecules/pending-invites-ban
 export default function Dashboard() {
   const navigate = useNavigate();
   const { data: session } = useSession();
-  const { data: projects, isPending } = useProjects();
+  const { data: projects, isPending, error, refetch } = useProjects();
   const canCreateProject = useHasOrgPermission("project", "create");
   const [fabOpen, setFabOpen] = useState(false);
   const [fabClosing, setFabClosing] = useState(false);
@@ -47,6 +49,7 @@ export default function Dashboard() {
     return <LoadingSpinner />;
   }
 
+  if (error && !projects) return <QueryError error={error} retry={refetch} noun="projects" />;
   const list = projects ?? [];
 
   if (list.length === 0) {
@@ -74,6 +77,8 @@ export default function Dashboard() {
             <Greeting className='self-start !mb-2' name={session?.user.name ?? ""} />
             <p className="text-sm font-medium text-ink-muted">Here’s what’s happening with your projects today</p>
           </div>
+
+          <PersonalWork projects={list} />
 
           <div className="flex flex-col lg:flex-row w-full items-start lg:items-center justify-between !mb-0 lg:gap-0 gap-4">
             <div className="flex items-center gap-1">
@@ -385,4 +390,3 @@ function ImportProgrammeCard({ onNavigate }: { onNavigate?: () => void }) {
     </button>
   );
 }
-

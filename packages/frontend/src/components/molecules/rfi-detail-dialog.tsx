@@ -3,6 +3,9 @@ import { useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
+import { QueryError } from "@/components/molecules/query-error";
+import type { Rfi } from "@/lib/project-types";
 import { RichTextEditor, type UploadedAttachment } from "@/components/molecules/rich-text-editor";
 import {
   useProjectRfi,
@@ -37,11 +40,11 @@ interface Props {
   canManage: boolean;
   canRespond: boolean;
   /** Opens the edit drawer for this RFI; omit to hide the action. */
-  onEdit?: (rfiId: string) => void;
+  onEdit?: (rfi: Rfi) => void;
 }
 
 function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canRespond, onEdit }: Props) {
-  const { data: rfi, isLoading } = useProjectRfi(projectId, rfiId ?? undefined);
+  const { data: rfi, error, refetch } = useProjectRfi(projectId, rfiId ?? undefined);
   const respond = useRespondRfi();
   const transition = useTransitionRfi();
   const updateRfi = useUpdateRfi();
@@ -97,12 +100,12 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />
         <Dialog.Popup
           className={cn(
-            "fixed right-0 top-0 z-50 flex h-dvh w-[60vw] min-w-[420px] max-w-[1100px] flex-col",
+            "fixed right-0 top-0 z-50 flex h-dvh w-full sm:w-[60vw] sm:min-w-[420px] max-w-[1100px] flex-col",
             "overflow-hidden border-l border-line-hair bg-white shadow-lg outline-none",
           )}
         >
-          {isLoading || !rfi ? (
-            <div className="p-8 text-center text-sm text-gray-500">Loading…</div>
+          {error || !rfi ? (
+            <RfiLoadState error={error} retry={refetch} onClose={() => onOpenChange(false)} />
           ) : (
             <>
               <header className="border-b border-line-hair px-6 pt-6 pb-4">
@@ -276,7 +279,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
               {canManage && (
                 <footer className="flex flex-wrap items-center gap-2 border-t border-line-hair px-6 py-4">
                   {onEdit && !isClosed ? (
-                    <Button variant="secondary" size="sm" onClick={() => onEdit(rfi.id)}>
+                    <Button variant="secondary" size="sm" onClick={() => onEdit(rfi)}>
                       Edit RFI
                     </Button>
                   ) : null}
@@ -331,5 +334,13 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
 }
 
 RfiDetailDialog.displayName = "RfiDetailDialog";
+
+function RfiLoadState({ error, retry, onClose }: { error: unknown; retry: () => unknown; onClose: () => void }) {
+  return <div className="flex flex-col items-center gap-4 p-6">
+    <Dialog.Title className="sr-only">RFI details</Dialog.Title>
+    {error ? <QueryError error={error} retry={retry} noun="this RFI" /> : <Spinner size="md" />}
+    <Button variant="secondary" onClick={onClose}>Return to RFIs</Button>
+  </div>;
+}
 
 export { RfiDetailDialog };

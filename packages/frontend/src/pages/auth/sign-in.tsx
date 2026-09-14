@@ -1,7 +1,9 @@
+import { safeReturnPath } from "@/lib/return-path";
+import { authRecoveryPath, rememberAuthRecovery } from "@/lib/auth-recovery";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/atoms";
-import { FormField } from "@/components/molecules";
+import { Button } from "@/components/atoms/button";
+import { FormField } from "@/components/molecules/form-field";
 import { authClient } from "@/lib/auth-client";
 import { useSession } from "@/stores/auth";
 import { homePathFor } from "@/lib/route-guards";
@@ -14,7 +16,7 @@ export default function SignInForm() {
   const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get("redirect");
+  const redirectTo = safeReturnPath(searchParams.get("redirect"));
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export default function SignInForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
     setLoading(true);
 
@@ -37,6 +40,11 @@ export default function SignInForm() {
         },
         onError: (ctx) => {
           setLoading(false);
+          if (ctx.error.code === "EMAIL_NOT_VERIFIED") {
+            rememberAuthRecovery("verification", email, redirectTo);
+            navigate(authRecoveryPath("verify-email", redirectTo), { state: { email, redirectTo } });
+            return;
+          }
           setError(ctx.error.message ?? "Invalid email or password.");
         },
       },
@@ -86,7 +94,7 @@ export default function SignInForm() {
 
       <div className="flex items-center justify-end">
         <Link
-          to="/auth/forgot-password"
+          to={authRecoveryPath("forgot-password", redirectTo)}
           className="text-sm font-medium text-primary-500 hover:underline"
         >
           Forgot password?
@@ -94,8 +102,8 @@ export default function SignInForm() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button type="submit" className="w-full h-[48px]" disabled={loading}>
-          {loading ? "Signing in..." : "Sign In"}
+        <Button type="submit" className="w-full h-[48px]" loading={loading} disabled={loading}>
+          Sign In
         </Button>
 
       </div>

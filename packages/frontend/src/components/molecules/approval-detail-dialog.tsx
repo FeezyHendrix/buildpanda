@@ -1,3 +1,4 @@
+import { QueryError } from "./query-error";
 import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
@@ -46,7 +47,7 @@ interface Props {
 }
 
 function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDecide = false, currentUserId }: Props) {
-  const { data: approval, isLoading } = useApproval(projectId, approvalId ?? undefined);
+  const { data: approval, isLoading, error, refetch } = useApproval(projectId, approvalId ?? undefined);
   const updateApproval = useUpdateApproval();
   const addComment = useAddApprovalComment();
   const [response, setResponse] = useState("");
@@ -59,7 +60,11 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
   }, [approval?.response, approval?.responseHtml, approvalId]);
 
   function decide(status: ApprovalStatus): void {
-    if (!approvalId) return;
+    if (!approvalId || updateApproval.isPending) return;
+    if ((status === "Rejected" || status === "Resubmit") && !response.trim()) {
+      toast("Add a decision note so the requester knows what to change.");
+      return;
+    }
     updateApproval.mutate(
       { projectId, approvalId, status, response: response.trim() || null, responseHtml: responseHtml || null },
       {
@@ -77,7 +82,7 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
     addComment.mutate({ projectId, approvalId, body: comment.trim() }, { onSuccess: () => setComment("") });
   }
 
-  const decided = approval && approval.status !== "Pending";
+  const decided = approval && (approval.status === "Approved" || approval.status === "Rejected");
   // Mirror the backend gate: the user may decide only if they are an approver,
   // and when a specific reviewer was requested it must be them.
   const mayDecide =
@@ -94,7 +99,7 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
             "overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
           )}
         >
-          {isLoading || !approval ? (
+          {error ? <QueryError error={error} retry={refetch} noun="approval" /> : isLoading || !approval ? (
             <div className="p-8 text-center text-sm text-ink-muted">Loading…</div>
           ) : (
             <>
@@ -149,14 +154,14 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                       onChange={setResponseHtml}
                       onChangeText={setResponse}
                       projectId={projectId}
-                      placeholder="Add a note for your decision (optional)"
+                      placeholder="Explain any changes or rejection; a note is optional when approving."
                     />
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" variant="primary" size="md" loading={updateApproval.isPending} onClick={() => decide("Approved")}>
                         {approval.status === "Approved" ? "Approved" : "Approve"}
                       </Button>
                       <Button type="button" variant="secondary" size="md" loading={updateApproval.isPending} onClick={() => decide("Resubmit")}>
-                        Request resubmit
+                        Request changes
                       </Button>
                       <Button type="button" variant="secondary" size="md" className="text-negative-500" loading={updateApproval.isPending} onClick={() => decide("Rejected")}>
                         {approval.status === "Rejected" ? "Rejected" : "Reject"}
@@ -168,7 +173,7 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                   </div>
                 ) : (
                   <p className="mt-2 text-sm text-ink-muted">
-                    {!decided && approval.requestedReviewerName
+                    {approval.status === "Resubmit" ? "Changes requested. The requester should revise this submission before another review." : !decided && approval.requestedReviewerName
                       ? `Awaiting a decision from ${approval.requestedReviewerName}.`
                       : decided
                         ? "This decision has been recorded."

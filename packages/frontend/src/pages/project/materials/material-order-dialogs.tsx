@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { ReasonDialog } from "@/components/molecules/reason-dialog";
 import {
@@ -64,6 +65,7 @@ export function MaterialOrderDialogs({
   dialog,
   onClose,
 }: MaterialOrderDialogsProps) {
+  const navigate = useNavigate();
   const createOrder = useCreateMaterialOrder();
   const updateOrder = useUpdateMaterialOrder();
   const deleteOrder = useDeleteMaterialOrder();
@@ -221,7 +223,8 @@ export function MaterialOrderDialogs({
             {
               onSuccess: (purchaseOrder) => {
                 onClose();
-                toast(`${purchaseOrder.poNumber} raised as a draft.`, "success");
+                toast(`${purchaseOrder.poNumber} raised as a draft. Review it before issuing.`, "success");
+                navigate(`/project/${projectId}/finances/expenses?tab=purchase-orders&po=${purchaseOrder.id}`);
               },
               onError: (error) => toast(errorMessage(error)),
             },

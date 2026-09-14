@@ -282,8 +282,8 @@ function handleEvent(
   }
 
   if (payload.event === "notification.created") {
-    const data = payload.data as { title?: string; body?: string };
-    if (data.title) showDesktopNotification(data.title, data.body);
+    const data = payload.data as { title?: string; body?: string; ctaUrl?: string };
+    if (data.title) showDesktopNotification(data.title, data.body, data.ctaUrl);
     void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     return;
   }

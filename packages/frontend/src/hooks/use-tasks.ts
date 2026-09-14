@@ -1,3 +1,4 @@
+import { personalWorkKeys } from "./personal-work-keys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { taskKeys } from "./query-keys";
 import type { TaskBoard, TaskColumn } from "@/lib/project-types";
@@ -35,7 +36,10 @@ export function useCreateTask(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateTaskInput) => taskApi.create(projectId, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+    onSuccess: () => Promise.all([
+      qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 
@@ -44,7 +48,10 @@ export function useUpdateTask(projectId: string) {
   return useMutation({
     mutationFn: ({ taskId, input }: { taskId: string; input: UpdateTaskInput }) =>
       taskApi.update(projectId, taskId, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+    onSuccess: () => Promise.all([
+      qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 
@@ -85,7 +92,10 @@ export function useMoveTask(projectId: string) {
       }
       toast(getApiErrorMessage(err, "Couldn't move that task."));
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+    onSettled: () => Promise.all([
+      qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 
@@ -93,7 +103,10 @@ export function useDeleteTask(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (taskId: string) => taskApi.delete(projectId, taskId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+    onSuccess: () => Promise.all([
+      qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 
@@ -101,7 +114,10 @@ export function useAddColumn(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => taskApi.addColumn(projectId, name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+    onSuccess: () => Promise.all([
+      qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 
@@ -110,7 +126,10 @@ export function useRenameColumn(projectId: string) {
   return useMutation({
     mutationFn: ({ columnId, name }: { columnId: string; name: string }) =>
       taskApi.renameColumn(projectId, columnId, name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+    onSuccess: () => Promise.all([
+      qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 
@@ -118,7 +137,10 @@ export function useDeleteColumn(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (columnId: string) => taskApi.deleteColumn(projectId, columnId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+    onSuccess: () => Promise.all([
+      qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 
@@ -149,7 +171,10 @@ export function useReorderColumns(projectId: string) {
         qc.setQueryData(taskKeys.board(projectId, "all"), context.previous);
       }
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+    onSettled: () => Promise.all([
+      qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 

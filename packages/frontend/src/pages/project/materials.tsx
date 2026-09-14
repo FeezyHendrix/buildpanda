@@ -1,3 +1,4 @@
+import { useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
@@ -43,10 +44,10 @@ export default function ProjectMaterials() {
   // narrow it here so the KPI strip and the "x of y" count stay stable.
   const { data: orders = [], isLoading } = useMaterialOrders(project.id);
 
-  const [status, setStatus] = useState<MaterialOrderStatus | "all">("all");
-  const [search, setSearch] = useState("");
-  const [supplier, setSupplier] = useState<string>(ALL_SUPPLIERS);
-  const [lateFilter, setLateFilter] = useState<LateFilter>("all");
+  const [status, setStatus] = useUrlState<MaterialOrderStatus | "all">("status", "all");
+  const [search, setSearch] = useUrlState<string>("q", "");
+  const [supplier, setSupplier] = useUrlState<string>("supplier", ALL_SUPPLIERS);
+  const [lateFilter, setLateFilter] = useUrlState<LateFilter>("late", "all");
 
   const [importOpen, setImportOpen] = useState(false);
   const [dialog, setDialog] = useState<OrderDialog>(null);

@@ -11,6 +11,7 @@ export function notifyApprovalDecided(
   title: string,
   status: string,
   actorId: string,
+  approvalId?: string,
 ): void {
   if (!deps.notifications || !submitterId || submitterId === actorId) return;
   void deps.notifications
@@ -18,6 +19,7 @@ export function notifyApprovalDecided(
       title: status === "Approved" ? "Approval Request approved" : `Approval ${status.toLowerCase()}`,
       body: title,
       projectId,
+      ...(approvalId ? { ctaUrl: `/project/${projectId}/approvals?approval=${approvalId}` } : {}),
     })
     .catch(() => undefined);
 }
@@ -28,6 +30,7 @@ export function notifyApprovalReviewer(
   projectId: string,
   title: string,
   actorId: string,
+  approvalId?: string,
 ): void {
   if (!deps.notifications || !reviewerId || reviewerId === actorId) return;
   void deps.notifications
@@ -35,6 +38,7 @@ export function notifyApprovalReviewer(
       title: "An approval needs your decision",
       body: title,
       projectId,
+      ...(approvalId ? { ctaUrl: `/project/${projectId}/approvals?approval=${approvalId}` } : {}),
     })
     .catch(() => undefined);
 }

@@ -209,6 +209,7 @@ function notifyAssignees(
         title: "A task was assigned to you",
         body: row.title,
         projectId: row.project_id,
+        ctaUrl: `/project/${row.project_id}/tasks?task=${row.id}`,
       })
       .catch(() => undefined);
   }
@@ -228,6 +229,7 @@ function notifyHighPriority(
         title: "A high-priority task needs your attention",
         body: row.title,
         projectId: row.project_id,
+        ctaUrl: `/project/${row.project_id}/tasks?task=${row.id}`,
       })
       .catch(() => undefined);
   }

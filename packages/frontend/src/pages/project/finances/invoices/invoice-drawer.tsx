@@ -133,7 +133,7 @@ export function InvoiceDrawer({
         </p>
       ) : null}
       {tab === "details" ? (
-        <InvoiceDetailsPanel projectId={projectId} invoice={invoice} currency={invoiceCurrency} canManage={canManage} />
+        <InvoiceDetailsPanel projectId={projectId} invoice={invoice} currency={invoiceCurrency} canManage={canRecordPayment && !voided} />
       ) : null}
       {tab === "certificate" ? (
         <InvoiceCertificatePanel projectId={projectId} invoiceId={invoice.id} currency={invoiceCurrency} />

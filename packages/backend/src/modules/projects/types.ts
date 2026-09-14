@@ -130,13 +130,16 @@ export interface ProjectPhaseRow {
   sort_order: number;
 }
 
+export interface ProjectLocation {
+  country?: string;
+  state: string;
+  city: string;
+  ownsLand: boolean;
+}
+
 export interface ProjectSetup {
   projectType: string;
-  location: {
-    state: string;
-    city: string;
-    ownsLand: boolean;
-  };
+  location: ProjectLocation;
   buildingType: string;
   timeline: string;
   fundingMethod: string;
@@ -149,11 +152,7 @@ export interface CreateProjectInput {
   projectType: string;
   /** Optional project template that seeds stages and starter tasks. */
   templateId?: string;
-  location: {
-    state: string;
-    city: string;
-    ownsLand: boolean;
-  };
+  location: ProjectLocation;
   details: {
     buildingType: string;
     currency: Currency;

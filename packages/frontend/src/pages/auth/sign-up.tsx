@@ -1,3 +1,5 @@
+import { safeReturnPath } from "@/lib/return-path";
+import { authRecoveryPath, rememberAuthRecovery } from "@/lib/auth-recovery";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms";
@@ -47,17 +49,19 @@ export default function SignUpForm() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get("redirect");
+  const redirectTo = safeReturnPath(searchParams.get("redirect"));
+  const invitedViaProject = Boolean(redirectTo?.startsWith("/accept-project-invite/"));
   const invitedEmail = searchParams.get("email");
   const invitedViaOrg =
     (redirectTo?.startsWith("/accept-invitation/") ?? false) ||
     (typeof window !== "undefined" &&
       Boolean(window.localStorage.getItem(PENDING_ORG_INVITE_KEY)));
 
+  const invited = invitedViaProject || invitedViaOrg;
   const isProjectManager = accountType === "project_manager";
   const isConstructionCompany = accountType === "construction_company";
   const personaComplete =
-    invitedViaOrg ||
+    invited ||
     (accountType !== null && (!isProjectManager || profession !== null));
 
   function selectAccountType(value: AccountType) {
@@ -84,9 +88,10 @@ export default function SignUpForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
 
-    const effectiveAccountType = invitedViaOrg
+    const effectiveAccountType = invitedViaProject ? "project_owner" : invitedViaOrg
       ? "construction_company"
       : accountType;
 
@@ -95,7 +100,7 @@ export default function SignUpForm() {
       return;
     }
     if (
-      !invitedViaOrg &&
+      !invited &&
       effectiveAccountType === "project_manager" &&
       !profession
     ) {
@@ -109,15 +114,16 @@ export default function SignUpForm() {
       name,
       email,
       password,
+      callbackURL: redirectTo ?? "/",
       country: country?.code ?? "",
       phone,
       accountType: effectiveAccountType,
       profession:
-        !invitedViaOrg && effectiveAccountType === "project_manager"
+        !invited && effectiveAccountType === "project_manager"
           ? (profession ?? "")
           : "",
       companyName:
-        !invitedViaOrg && effectiveAccountType === "construction_company"
+        !invited && effectiveAccountType === "construction_company"
           ? companyName.trim()
           : "",
     });
@@ -129,7 +135,8 @@ export default function SignUpForm() {
       return;
     }
 
-    navigate("/auth/verify-email", { state: { email, redirectTo } });
+    rememberAuthRecovery("verification", email, redirectTo);
+    navigate(authRecoveryPath("verify-email", redirectTo), { state: { email, redirectTo } });
   }
 
   return (
@@ -139,7 +146,7 @@ export default function SignUpForm() {
           Create your account
         </h1>
         <p className="text-sm text-ink-muted text-pretty">
-          Join thousands of diaspora members building with confidence.
+          Join your team and keep your project moving.
         </p>
       </div>
 
@@ -150,7 +157,7 @@ export default function SignUpForm() {
       )}
 
       <div className="flex flex-col gap-4">
-        {!invitedViaOrg && (
+        {!invited && (
           <div className="flex flex-col gap-3">
             <Label>Who is creating this account?</Label>
             <div className="flex flex-col gap-3">

@@ -1,3 +1,5 @@
+import { PersonalWork } from "@/components/molecules/personal-work";
+import { QueryError } from "@/components/molecules/query-error";
 import { Link, useNavigate } from "react-router-dom";
 import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
@@ -11,7 +13,7 @@ function money(amount: number | null, currency: string): string {
 }
 
 export default function MyBuild() {
-  const { data: projects = [], isLoading } = useMyProjects();
+  const { data: projects = [], isLoading, error, refetch } = useMyProjects();
   const navigate = useNavigate();
 
   async function signOut() {
@@ -32,8 +34,9 @@ export default function MyBuild() {
         <h1 className="text-2xl font-medium text-gray-900">My Build</h1>
         <p className="mt-1 text-sm text-gray-500">Follow your project's progress, approve selections and ask questions.</p>
 
+      <PersonalWork projects={projects} />
         <div className="mt-8">
-          {isLoading ? (
+          {error ? <QueryError error={error} retry={refetch} noun="projects" /> : isLoading ? (
             <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
           ) : projects.length === 0 ? (
             <Card padding="lg" className="text-center">
