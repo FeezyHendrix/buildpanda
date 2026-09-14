@@ -87,10 +87,10 @@ export function ConsultationForm() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Phone / WhatsApp" htmlFor="phone">
-          <input id="phone" name="phone" required className={fieldClass} placeholder="+234 ..." />
+          <input id="phone" name="phone" type="tel" required className={fieldClass} placeholder="Include country code" />
         </Field>
         <Field label="Build location" htmlFor="location">
-          <input id="location" name="location" required className={fieldClass} placeholder="City / State in Nigeria" />
+          <input id="location" name="location" required className={fieldClass} placeholder="City, region and country" />
         </Field>
       </div>
 

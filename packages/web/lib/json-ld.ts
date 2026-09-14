@@ -10,14 +10,12 @@ const organization = {
   logo: `${site.url}/logo.png`,
   description: site.description,
   email: site.email,
-  areaServed: ["NG", "Worldwide"],
   contactPoint: [
     {
       "@type": "ContactPoint",
       contactType: "sales",
       email: site.email,
       telephone: site.phones[0],
-      areaServed: "NG",
       availableLanguage: ["English"],
     },
   ],
@@ -35,7 +33,7 @@ export const websiteJsonLd = {
   url: `${site.url}/`,
   description: site.description,
   publisher: { "@id": `${site.url}/#organization` },
-  inLanguage: "en-NG",
+  inLanguage: "en",
 };
 
 /**
@@ -65,8 +63,7 @@ export const softwareJsonLd = {
   ],
 };
 
-/** The homepage answers eight questions buyers actually ask; marking them up
- *  is the one rich result this site can honestly earn today. */
+/** Keep structured answers in sync with the visible homepage FAQ. */
 export const faqJsonLd = {
   "@context": "https://schema.org",
   "@type": "FAQPage",

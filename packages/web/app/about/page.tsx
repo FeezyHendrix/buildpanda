@@ -19,7 +19,7 @@ export const metadata: Metadata = pageMetadata({
   path: "about",
   title: "About us",
   description:
-    "BuildPanda builds construction software and runs construction projects in Nigeria. Why we started, what we believe a construction record should do, and how to reach us.",
+    "Meet BuildPanda, the team behind construction management software and managed building projects. Learn about our approach and get in touch.",
   socialTitle: "Why BuildPanda sells software and runs builds",
 });
 
@@ -32,7 +32,7 @@ const values = [
   {
     icon: <ChartIcon className="h-6 w-6" />,
     title: "Accountability with money",
-    text: "We record what was certified and what was paid, so every naira of the budget can be accounted for. The money moves through your own bank.",
+    text: "We record what was certified and what was paid, so you can account for the project budget. The money moves through your own bank.",
   },
   {
     icon: <GlobeIcon className="h-6 w-6" />,
@@ -54,12 +54,12 @@ export default function AboutPage() {
         <Container className="flex flex-col items-center gap-6 py-16 text-center sm:py-20 lg:py-24">
           <Badge>About BuildPanda</Badge>
           <h1 className="max-w-3xl text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-ink sm:text-5xl">
-            We are building trust into how homes get built in Nigeria.
+            We are building trust into how homes get built.
           </h1>
           <p className="max-w-2xl text-pretty text-lg leading-relaxed text-muted">
             BuildPanda is a construction and technology company on a mission to
-            make building a home in Nigeria transparent, accountable and
-            stress-free, especially for those doing it from far away.
+            make building a home transparent, accountable and stress-free,
+            whether you are on site or following the project from a distance.
           </p>
         </Container>
       </section>
@@ -76,15 +76,15 @@ export default function AboutPage() {
               </h2>
               <div className="flex flex-col gap-4 text-base leading-relaxed text-muted">
                 <p>
-                  Too many people who want to build a home in Nigeria face the
-                  same problem: they do not know who to trust. Money is sent,
+                  Too many people who want to build a home face the same
+                  problem: they do not know who to trust. Money is sent,
                   promises are made, and months later the project looks nothing
                   like the plan, or the budget.
                 </p>
                 <p>
-                  It is even harder for the diaspora. Working hard abroad to build
-                  back home should be a source of pride, not anxiety. Yet the
-                  distance turns every update into a leap of faith.
+                  It is even harder when you cannot be on site. Building a home
+                  should be a source of pride, but distance can turn every update
+                  into a leap of faith.
                 </p>
                 <p>
                   BuildPanda was created to change that. We sell software a

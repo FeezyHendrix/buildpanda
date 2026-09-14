@@ -1,7 +1,5 @@
 import { ButtonLink } from "@/components/ui";
-import { ArrowRightIcon } from "@/components/icons";
 import { DeviceCluster } from "@/components/home/devices";
-import { site } from "@/lib/site";
 
 /**
  * Full-bleed and full height, on a BuildPanda blue gradient. Headline and offer
@@ -11,25 +9,32 @@ import { site } from "@/lib/site";
  */
 export function Hero() {
   return (
-    <section className="relative flex min-h-svh flex-col justify-center overflow-hidden bg-[linear-gradient(157deg,#0A2FA6_0%,#004DE7_34%,#0036AE_62%,#001A56_100%)] text-white">
+    <section className="relative flex min-h-svh flex-col overflow-hidden bg-[linear-gradient(157deg,#0A2FA6_0%,#004DE7_34%,#0036AE_62%,#001A56_100%)] text-white">
       <HeroGlow />
 
-      <div className="site-container relative grid items-center gap-14 pb-20 pt-32 sm:pb-24 sm:pt-36 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.28fr)] lg:gap-16 lg:pb-28 lg:pt-40 2xl:gap-24">
+      <div className="site-container relative grid flex-1 items-center gap-14 pb-20 pt-32 sm:pb-24 sm:pt-36 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.28fr)] lg:gap-16 lg:pb-28 lg:pt-40 2xl:gap-24">
         <div className="flex flex-col items-start gap-7 2xl:gap-9">
           <h1 className="display max-w-xl text-[2.5rem] text-white sm:text-5xl lg:text-6xl 2xl:max-w-2xl 2xl:text-7xl">
             Run every project from estimate to handover
           </h1>
 
           <p className="max-w-md text-base leading-relaxed text-white/70 2xl:max-w-lg 2xl:text-lg">
-            Estimates, payments, milestones, inspections and collaboration, all
-            in one place. Or leave the site to us, and we will run the build and
-            report it as it happens.
+            Construction management software for estimates, schedules, site
+            inspections and payment records. Keep contractors, project managers
+            and owners working from one project record.
           </p>
 
-          <div className="flex items-start">
+          <div className="flex w-full flex-col gap-3 min-[400px]:w-auto min-[400px]:flex-row">
             <ButtonLink href="/talk-to-us/" variant="white" size="lg">
               Book a demo
-              <ArrowRightIcon className="h-5 w-5" />
+            </ButtonLink>
+            <ButtonLink
+              href="#product"
+              variant="ghost"
+              size="lg"
+              className="border border-white/30 text-white hover:bg-white/10 hover:text-white"
+            >
+              Explore the software
             </ButtonLink>
           </div>
         </div>
@@ -39,6 +44,17 @@ export function Hero() {
         </div>
       </div>
 
+      <div className="relative border-t border-white/15 bg-[#001A56]/20">
+        <div className="site-container flex flex-col gap-3 py-5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+          <p className="text-white/80">Need a team on the ground for your build?</p>
+          <a
+            href="/construction/"
+            className="inline-flex min-h-11 items-center self-start font-semibold text-white hover:underline sm:shrink-0"
+          >
+            Meet your construction team
+          </a>
+        </div>
+      </div>
       <div id="hero-end" aria-hidden="true" />
     </section>
   );

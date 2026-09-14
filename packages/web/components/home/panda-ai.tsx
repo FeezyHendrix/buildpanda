@@ -45,7 +45,7 @@ function SceneList() {
           {index === 0
             ? scene.answer.map((line) => (
                 <p key={line} className="text-sm leading-relaxed text-muted">
-                  &rarr; {line}
+                  {line}
                 </p>
               ))
             : null}
@@ -118,7 +118,7 @@ function Player() {
                   style={{ animationDelay: `${i * LINE_STAGGER_MS}ms` }}
                   className="animate-[answer-in_420ms_ease-out_both] text-sm leading-relaxed text-muted 2xl:text-base"
                 >
-                  &rarr; {line}
+                  {line}
                 </p>
               ))
             : null}

@@ -3,12 +3,8 @@ import { canonicalUrl } from "@/lib/seo";
 
 export const dynamic = "force-static";
 
-/**
- * Priority says which pages we would rather rank, not how good they are: the
- * two product pages sit just under the homepage, the legal pages at the floor.
- * /talk-to-us/ and /terms-of-service/ were missing entirely, so nothing linked
- * them for a crawler that entered on a deep page.
- */
+// Keep every public route in the sitemap. Omit lastModified until each page
+// has a reliable content update date; a build timestamp is not a page edit.
 const routes = [
   { path: "", priority: 1, changeFrequency: "weekly" as const },
   { path: "for-contractors", priority: 0.9, changeFrequency: "monthly" as const },
@@ -22,10 +18,8 @@ const routes = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date();
   return routes.map(({ path, priority, changeFrequency }) => ({
     url: canonicalUrl(path),
-    lastModified,
     changeFrequency,
     priority,
   }));
