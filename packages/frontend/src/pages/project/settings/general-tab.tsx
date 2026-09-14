@@ -76,7 +76,7 @@ function GeneralTab({ canManage, profile }: GeneralTabProps) {
             value={draft.address}
             disabled={!canManage}
             maxLength={300}
-            placeholder="e.g. Km 14 Ikorodu–Sagamu Road, Odogunyan, Ikorodu, Lagos"
+            placeholder="Site address, city or region, and country"
             onChange={(event) => update("address", event.target.value)}
             className={INPUT_CLASS}
           />
@@ -89,7 +89,7 @@ function GeneralTab({ canManage, profile }: GeneralTabProps) {
             value={draft.clientName ?? ""}
             disabled={!canManage}
             maxLength={200}
-            placeholder="e.g. Lagos State Ministry of Works"
+            placeholder="Client or employer name"
             onChange={(event) => update("clientName", event.target.value || null)}
             className={INPUT_CLASS}
           />
@@ -109,6 +109,7 @@ function GeneralTab({ canManage, profile }: GeneralTabProps) {
 
       {canManage ? (
         <SaveRow
+          draftNotice
           dirty={isDirty(FIELDS)}
           loading={save.isPending}
           error={save.error}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
@@ -32,17 +32,10 @@ function InspectionCategoryPicker({
   canAddCategory,
   id = "inspection-category",
 }: InspectionCategoryPickerProps) {
-  const { data: categories = [], isPending } = useInspectionCategories(projectId);
+  const { data: categories = [], isPending, error, refetch } = useInspectionCategories(projectId);
   const createCategory = useCreateInspectionCategory(projectId);
   const [adding, setAdding] = useState(false);
   const [draftName, setDraftName] = useState("");
-
-  // The first category is the sensible default, but only once the list has
-  // arrived — before that there is nothing truthful to preselect.
-  useEffect(() => {
-    const first = categories[0];
-    if (!value && first) onChange(first.name);
-  }, [value, categories, onChange]);
 
   // An archived category never comes back from the API, so a record still
   // holding one would otherwise silently change category on edit.
@@ -77,7 +70,8 @@ function InspectionCategoryPicker({
           onChange={(event) => onChange(event.target.value)}
           className={INPUT_CLASS}
         >
-          {missing ? <option value={value}>{value} (archived)</option> : null}
+          <option value="" disabled>Select category</option>
+          {missing ? <option value={value}>{value}{error ? "" : " (archived)"}</option> : null}
           {categories.map((category) => (
             <option key={category.id} value={category.name}>
               {category.name}
@@ -85,6 +79,10 @@ function InspectionCategoryPicker({
           ))}
         </select>
       )}
+
+      {error ? <div role="alert" className="text-xs text-negative-600">
+        Could not load inspection categories. <button type="button" className="underline" onClick={() => { void refetch(); }}>Try again</button>
+      </div> : null}
 
       {canAddCategory && !adding ? (
         <button

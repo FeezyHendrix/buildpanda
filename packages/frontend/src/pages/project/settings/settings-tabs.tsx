@@ -89,12 +89,14 @@ export function SaveRow({
   loading,
   error,
   onSave,
+  draftNotice = false,
 }: {
   dirty: boolean;
   disabled?: boolean;
   loading: boolean;
   error: unknown;
   onSave: () => void;
+  draftNotice?: boolean;
 }) {
   return (
     <>
@@ -103,12 +105,13 @@ export function SaveRow({
           {errorMessage(error)}
         </p>
       ) : null}
-      <div className="mt-5 flex justify-end">
+      <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+        {dirty && draftNotice ? <p role="status" className="mr-auto text-xs text-ink-muted">Your edits are kept in this browser tab. Save to update the project.</p> : null}
         <Button
           type="button"
           variant="primary"
           size="md"
-          disabled={!dirty || disabled}
+          disabled={!dirty || disabled || loading}
           loading={loading}
           onClick={onSave}
         >

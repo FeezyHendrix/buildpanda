@@ -84,6 +84,7 @@ function ProgrammeTab({ canManage, profile }: ProgrammeTabProps) {
 
       {canManage ? (
         <SaveRow
+          draftNotice
           dirty={isDirty(FIELDS)}
           disabled={datesInverted}
           loading={save.isPending}
