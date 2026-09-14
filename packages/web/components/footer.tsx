@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { nav, site } from "@/lib/site";
+import { site } from "@/lib/site";
 import { Container } from "@/components/ui";
 import { MailIcon, PhoneIcon } from "@/components/icons";
 import { ConsentReset } from "@/components/consent";
@@ -69,34 +69,13 @@ export function Footer() {
           </p>
         </div>
 
+        {/* Legal only: every nav link in here also sits in the columns
+            above, and repeating them made the base of the page a wall. */}
         <div className="mt-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <p className="text-sm text-white/70">
             &copy; {new Date().getFullYear()} {site.name}. All rights reserved.
           </p>
           <ul className="flex flex-wrap items-center gap-5">
-            {nav.flatMap((item) =>
-              item.children
-                ? item.children.map((child) => (
-                    <li key={child.href}>
-                      <Link
-                        href={child.href}
-                        className="text-sm text-white/70 hover:text-white"
-                      >
-                        {child.label}
-                      </Link>
-                    </li>
-                  ))
-                : [
-                    <li key={item.href}>
-                      <Link
-                        href={item.href ?? "/"}
-                        className="text-sm text-white/70 hover:text-white"
-                      >
-                        {item.label}
-                      </Link>
-                    </li>,
-                  ],
-            )}
             <li>
               <Link
                 href="/terms-of-service/"
