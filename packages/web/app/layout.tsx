@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import Script from "next/script";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { site } from "@/lib/site";
 import { canonicalUrl } from "@/lib/seo";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/json-ld";
 import { JsonLd } from "@/components/json-ld";
+import { Analytics, ConsentBanner } from "@/components/consent";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-LTCX5C0F7N";
@@ -73,19 +73,9 @@ export default function RootLayout({
         <Navbar />
         <main>{children}</main>
         <Footer />
-        {/* Google Analytics (gtag.js) */}
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-          strategy="afterInteractive"
-        />
-        <Script id="gtag-init" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${GA_MEASUREMENT_ID}');
-          `}
-        </Script>
+        {/* Analytics load only after consent; see components/consent.tsx. */}
+        <Analytics measurementId={GA_MEASUREMENT_ID} />
+        <ConsentBanner />
       </body>
     </html>
   );
