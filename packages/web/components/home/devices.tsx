@@ -2,7 +2,7 @@ import Image from "next/image";
 
 /**
  * Two screens, not three: a laptop with a drawing open on it and a tablet
- * carrying the project overview. Both frames are CSS, so only the screens ship
+ * carrying field tools, which is what the site actually holds. Both frames are CSS, so only the screens ship
  * as bitmaps and the bezels stay sharp at any width. The screenshots are the
  * real app rendered at each viewport, not one image squeezed into two shapes.
  */
@@ -46,8 +46,8 @@ export function DeviceCluster({ tone = "light" }: { tone?: "light" | "dark" }) {
         >
           <div className="overflow-hidden rounded-sm bg-white sm:rounded-md">
             <Image
-              src="/product/tablet-app.jpg"
-              alt="The same project's overview on a tablet: progress, schedule, budget used, cost variance and cash, with what needs attention beside them"
+              src="/product/tablet-field.jpg"
+              alt="Field tools on a tablet: the permits and compliance register for the same road job, with an expired environmental approval flagged and two active permits and their expiry dates"
               width={2008}
               height={1506}
               sizes="(max-width: 1024px) 46vw, 500px"
