@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import type {
   CategoryType,
   CustomCategoryRow,
+  StageExpenseSumRow,
   TransactionListFilters,
   TransactionRow,
   TransactionRowWithUser,
@@ -19,6 +20,9 @@ export interface NewTransactionRecord {
   vendor: string | null;
   reference: string | null;
   receipt_file_id: string | null;
+  stage_id: string | null;
+  credit: boolean;
+  recoverable: boolean;
   created_by_id: string | null;
 }
 
@@ -32,6 +36,9 @@ export interface TransactionUpdatePatch {
   vendor?: string | null;
   reference?: string | null;
   receipt_file_id?: string | null;
+  stage_id?: string | null;
+  credit?: boolean;
+  recoverable?: boolean;
   updated_at?: Date | string;
 }
 
@@ -50,6 +57,9 @@ function applyFilters(
   if (!filters) return builder;
   if (filters.category) {
     builder.where("project_transactions.category", filters.category);
+  }
+  if (filters.stageId) {
+    builder.where("project_transactions.stage_id", filters.stageId);
   }
   if (filters.from) {
     builder.where("project_transactions.transacted_at", ">=", filters.from);
@@ -79,8 +89,10 @@ export function transactionsRepository(db: Knex) {
         .select(
           "project_transactions.*",
           db.raw("\"user\".name as created_by_name"),
+          "project_phases.name as stage_name",
         )
         .leftJoin("user", "user.id", "project_transactions.created_by_id")
+        .leftJoin("project_phases", "project_phases.id", "project_transactions.stage_id")
         .where("project_transactions.project_id", projectId)
         .orderBy("project_transactions.transacted_at", "desc")
         .orderBy("project_transactions.created_at", "desc");
@@ -94,8 +106,10 @@ export function transactionsRepository(db: Knex) {
         .select(
           "project_transactions.*",
           db.raw("\"user\".name as created_by_name"),
+          "project_phases.name as stage_name",
         )
         .leftJoin("user", "user.id", "project_transactions.created_by_id")
+        .leftJoin("project_phases", "project_phases.id", "project_transactions.stage_id")
         .where("project_transactions.id", id)
         .first();
       return row as TransactionRowWithUser | undefined;
@@ -156,6 +170,46 @@ export function transactionsRepository(db: Knex) {
       return query as unknown as Promise<
         Array<{ month: string; total: string }>
       >;
+    },
+
+    /**
+     * Actual cost by calendar month, for the cash-flow curve. Same rules as
+     * `sumByStage`: every surviving row counts and a credit subtracts, so the
+     * curve reconciles to the stage figures rather than telling a second story.
+     */
+    async sumByMonth(projectId: string): Promise<Array<{ month: string; total: string }>> {
+      return db<TransactionRow>("project_transactions")
+        .select(db.raw("to_char(transacted_at, 'YYYY-MM') as month"))
+        .sum({ total: db.raw("CASE WHEN credit THEN -amount ELSE amount END") })
+        .where("project_transactions.project_id", projectId)
+        .groupByRaw("to_char(transacted_at, 'YYYY-MM')")
+        .orderByRaw("to_char(transacted_at, 'YYYY-MM') asc") as unknown as Promise<
+        Array<{ month: string; total: string }>
+      >;
+    },
+
+    // Actual cost attributed to each stage. Expenses have no void state: a
+    // wrong entry is deleted, so every row still present counts. A credit is a
+    // refund against the stage, so it subtracts rather than adds.
+    async sumByStage(projectId: string): Promise<StageExpenseSumRow[]> {
+      return db<TransactionRow>("project_transactions")
+        .select("stage_id")
+        .sum({ total: db.raw("CASE WHEN credit THEN -amount ELSE amount END") })
+        .where("project_transactions.project_id", projectId)
+        .whereNotNull("stage_id")
+        .groupBy("stage_id") as unknown as Promise<StageExpenseSumRow[]>;
+    },
+
+    /** Site possession date, so a pre-contract expense can be flagged as one. */
+    async projectStartDate(projectId: string): Promise<string | null> {
+      if (!(await db.schema.hasColumn("projects", "start_date"))) return null;
+      const row = await db("projects")
+        .where({ id: projectId })
+        .select("start_date")
+        .first<{ start_date: string | Date | null }>();
+      const value = row?.start_date ?? null;
+      if (value === null) return null;
+      return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
     },
 
     async totals(

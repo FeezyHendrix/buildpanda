@@ -31,14 +31,16 @@ export const statement = {
   bim: ["view", "upload", "manage"],
   approvals: ["view", "decide", "manage"],
   selections: ["view", "decide", "manage"],
-  queries: ["view", "raise", "manage"],
   "change-requests": ["view", "manage"],
-  "action-items": ["view", "manage"],
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -65,9 +67,7 @@ const constructionFull = {
   bim: ["view", "upload", "manage"],
   approvals: ["view", "decide", "manage"],
   selections: ["view", "decide", "manage"],
-  queries: ["view", "raise", "manage"],
   "change-requests": ["view", "manage"],
-  "action-items": ["view", "manage"],
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
@@ -95,9 +95,7 @@ const constructionContributor = {
   bim: ["view", "upload", "manage"],
   approvals: ["view", "decide", "manage"],
   selections: ["view", "decide", "manage"],
-  queries: ["view", "raise", "manage"],
   "change-requests": ["view", "manage"],
-  "action-items": ["view", "manage"],
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
@@ -125,9 +123,7 @@ const constructionReadOnly = {
   bim: ["view"],
   approvals: ["view"],
   selections: ["view"],
-  queries: ["view"],
   "change-requests": ["view"],
-  "action-items": ["view"],
   "key-dates": ["view"],
   permits: ["view"],
   risks: ["view"],
@@ -157,18 +153,19 @@ export const viewer = ac.newRole({
   ...constructionReadOnly,
 });
 
-// Mirror of the backend `employee` floor: minimal, project-scoped, no
+// Mirror of the backend `employee` floor: org-project-visible, minimal, no
 // team-management. Real capabilities are admin-assigned via custom roles.
 const constructionEmployeeBase = {
   project: ["view"],
   tasks: ["view"],
   schedule: ["view"],
   documents: ["view"],
-  updates: ["view"],
+  updates: ["view", "post"],
   messages: ["view"],
   comments: ["view"],
-  dailyLog: ["view"],
-  materials: ["view"],
+  participants: ["view"],
+  dailyLog: ["view", "create"],
+  materials: ["view", "request"],
 } as const;
 
 export const employee = ac.newRole({
@@ -184,10 +181,10 @@ export const roles = { owner, admin, member, viewer, employee };
 
 export type AppRoleName = keyof typeof roles;
 
-// Presentation mirror of the backend rule: an employee is scoped to assigned
-// projects and cannot manage the team. Backend enforces this; the UI hides
-// team-management for these members. Role may be comma-joined with a custom
-// role (e.g. "employee,foreman"), so match by token.
+// Presentation mirror of the backend rule: an employee can see org projects but
+// cannot manage the team. Backend enforces this; the UI hides team-management
+// for these members. Role may be comma-joined with a custom role (e.g.
+// "employee,foreman"), so match by token.
 export function isEmployeeRole(role: string | null | undefined): boolean {
   return (role ?? "")
     .split(",")
@@ -233,12 +230,10 @@ export const PROJECT_RESOURCES = [
   "bim",
   "approvals",
   "selections",
-  "queries",
   "change-requests",
-  "action-items",
   "key-dates",
   "permits",
   "risks",
 ] as const;
 
-export const SALES_RESOURCES = ["proposals", "leads"] as const;
+export const SALES_RESOURCES = ["proposals", "leads", "takeoffs", "estimates", "rateCards", "complianceDocs"] as const;

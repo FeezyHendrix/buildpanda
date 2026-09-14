@@ -3,22 +3,21 @@ import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { cn } from "@/lib/utils";
 import { useProjectActivities } from "@/hooks/use-activities";
-import { LOOK_AHEAD_STATUSES } from "@/lib/project-types";
-import type { LookAhead, LookAheadStatus } from "@/lib/project-types";
+import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
+import type { LookAhead } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import {
+  delayedActivityIds,
+  LOOK_AHEAD_STATUS_META,
+  overlapsWindow,
+} from "@/pages/project/look-aheads/look-ahead-helpers";
 
-const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
-
-const STATUS_LABEL: Record<LookAheadStatus, string> = {
-  Draft: "Draft",
-  UnderReview: "Under Review",
-  Approved: "Approved",
-};
+const FIELD = INPUT_CLASS;
 
 export interface LookAheadFormValues {
   name: string;
   description: string | null;
-  status: LookAheadStatus;
   startDate: string;
   endDate: string;
   totalWorkers: number | null;
@@ -55,7 +54,6 @@ function UpsertLookAheadDialog({
   const { data: activities = [] } = useProjectActivities(projectId);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<LookAheadStatus>("Draft");
   const [startDate, setStartDate] = useState(today());
   const [endDate, setEndDate] = useState(nextWeek());
   const [totalWorkers, setTotalWorkers] = useState("");
@@ -66,7 +64,6 @@ function UpsertLookAheadDialog({
     if (!open) return;
     setName(initial?.name ?? "");
     setDescription(initial?.description ?? "");
-    setStatus(initial?.status ?? "Draft");
     setStartDate(initial?.startDate ?? today());
     setEndDate(initial?.endDate ?? nextWeek());
     setTotalWorkers(initial?.totalWorkers != null ? String(initial.totalWorkers) : "");
@@ -79,6 +76,23 @@ function UpsertLookAheadDialog({
     if (!term) return activities;
     return activities.filter((a) => a.name.toLowerCase().includes(term));
   }, [activities, activityFilter]);
+
+  // The window already knows which activities fall inside it — offer them
+  // instead of making the PM tick 32 boxes by hand (finding F28).
+  const inRange = useMemo(
+    () => activities.filter((activity) => overlapsWindow(activity, startDate, endDate)),
+    [activities, startDate, endDate],
+  );
+  const delayed = useMemo(() => delayedActivityIds(activities), [activities]);
+  const unselectedInRange = inRange.filter((activity) => !selectedActivityIds.has(activity.id)).length;
+
+  function selectAllInRange(): void {
+    setSelectedActivityIds((prev) => {
+      const next = new Set(prev);
+      for (const activity of inRange) next.add(activity.id);
+      return next;
+    });
+  }
 
   const isValid = name.trim().length > 0 && startDate.length > 0 && endDate.length > 0 && endDate >= startDate;
 
@@ -96,7 +110,6 @@ function UpsertLookAheadDialog({
     onSubmit({
       name: name.trim(),
       description: description.trim() || null,
-      status,
       startDate,
       endDate,
       totalWorkers: totalWorkers.trim() ? Number(totalWorkers) : null,
@@ -134,7 +147,7 @@ function UpsertLookAheadDialog({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
         />
       </div>
 
@@ -163,19 +176,19 @@ function UpsertLookAheadDialog({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="la-status">Status</Label>
-          <select
-            id="la-status"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as LookAheadStatus)}
-            className={FIELD}
-          >
-            {LOOK_AHEAD_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </option>
-            ))}
-          </select>
+          <Label>Status</Label>
+          {/* Approval is a sign-off with a name and a time against it, so it is
+              its own action — never a value this form can set (finding F29). */}
+          <div className="flex h-11 items-center gap-2 rounded-lg border border-line-hair bg-surface-alt px-3">
+            <Badge tone={LOOK_AHEAD_STATUS_META[initial?.status ?? "Draft"].tone} size="sm">
+              {LOOK_AHEAD_STATUS_META[initial?.status ?? "Draft"].label}
+            </Badge>
+          </div>
+          <p className="text-xs text-ink-muted">
+            {initial?.approvedByName
+              ? `Approved by ${initial.approvedByName}. Revoke it from the look-ahead to edit the sign-off.`
+              : "Approve from the look-ahead itself — it records who approved it and when."}
+          </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="la-workers">Total workers planned</Label>
@@ -192,8 +205,19 @@ function UpsertLookAheadDialog({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Label>Activities ({selectedActivityIds.size} selected)</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={unselectedInRange === 0}
+            onClick={selectAllInRange}
+          >
+            {inRange.length === 0
+              ? "Nothing planned in this window"
+              : `Select all in range (${inRange.length})`}
+          </Button>
         </div>
         <input
           value={activityFilter}
@@ -201,7 +225,7 @@ function UpsertLookAheadDialog({
           placeholder="Search activities…"
           className={FIELD}
         />
-        <div className="max-h-56 overflow-y-auto rounded-lg border border-[#EDEDED]">
+        <div className="max-h-56 overflow-y-auto rounded-lg border border-line-hair">
           {filteredActivities.length === 0 ? (
             <p className="px-3 py-4 text-center text-xs text-gray-400">
               No activities on the project chart yet.
@@ -213,8 +237,8 @@ function UpsertLookAheadDialog({
                 <label
                   key={activity.id}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2.5 border-b border-[#F0F0F0] px-3 py-2 text-sm transition-colors last:border-b-0",
-                    selected ? "bg-primary-50" : "hover:bg-[#FAFAFA]",
+                    "flex cursor-pointer items-center gap-2.5 border-b border-line-hair px-3 py-2 text-sm transition-colors last:border-b-0",
+                    selected ? "bg-primary-50" : "hover:bg-surface-alt",
                   )}
                 >
                   <input
@@ -249,6 +273,9 @@ function UpsertLookAheadDialog({
                   >
                     {activity.name}
                   </span>
+                  {delayed.has(activity.id) ? (
+                    <Badge tone="danger" size="sm">⚠ Delayed</Badge>
+                  ) : null}
                   <span
                     className={cn(
                       "shrink-0 text-xs",

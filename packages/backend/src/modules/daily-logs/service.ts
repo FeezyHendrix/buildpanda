@@ -74,6 +74,7 @@ function toDay(log: DailyLog, entries: DailyLogEntry[]): DailyLogDay {
     totalHours: log.totalHours,
     activities: log.activities,
     entries,
+    voidedAt: log.voidedAt,
   };
 }
 
@@ -223,8 +224,14 @@ export function dailyLogsService(
       if (!activity) throw new BadRequestError("activityId does not belong to this project");
       const buildingId = activity.building_id;
 
+      // The day is created on demand, as addEntry does: a crew member logging
+      // hours from the field should not have to save the day header first, and
+      // the activity's own building decides which day the hours belong to.
       const existing = await repository.findOne({ projectId, buildingId, logDate });
-      if (!existing) throw new NotFoundError("Daily log");
+      if (!existing) {
+        if (!actor) throw new NotFoundError("Daily log");
+        await repository.upsert({ projectId, buildingId, logDate }, {}, actor.id);
+      }
 
       const link = await repository.upsertActivityLink(
         { projectId, buildingId, logDate },
@@ -235,7 +242,9 @@ export function dailyLogsService(
       if (hooks.markActivityInProgress) {
         await hooks.markActivityInProgress(projectId, input.activityId).catch(() => undefined);
       }
-      if (hooks.createUpdate && actor) {
+      // Linking hours is a diary entry, not a stakeholder update: the client
+      // feed only hears about it when the person logging says so.
+      if (hooks.createUpdate && actor && input.postUpdate === true) {
         const activityName = activity.name ?? "an activity";
         await hooks
           .createUpdate(
@@ -309,6 +318,7 @@ export function dailyLogsService(
           totalHours: 0,
           activities: [],
           entries,
+          voidedAt: null,
         };
       }
       const [log] = await attachActivities([row]);
@@ -322,12 +332,13 @@ export function dailyLogsService(
       bodyHtml: string,
       bodyText: string | null,
       author: { id: string; name: string; role: string },
+      explicitBuildingId: string | null = null,
     ): Promise<DailyLogEntry> {
       assertDate(logDate, "logDate");
       if (stripHtml(bodyHtml).trim() === "") {
         throw new BadRequestError("Your daily log entry cannot be empty");
       }
-      const buildingId = await resolveBuildingId(projectId);
+      const buildingId = await resolveBuildingId(projectId, explicitBuildingId);
       const existing = await repository.findOne({ projectId, buildingId, logDate });
       if (!existing) {
         await repository.upsert({ projectId, buildingId, logDate }, {}, author.id);

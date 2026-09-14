@@ -1,4 +1,3 @@
-import { generateId } from "../../lib/ids.ts";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import { toIso } from "../../lib/dates.ts";
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
@@ -8,47 +7,36 @@ import {
   assertCanModifyProject,
   type AccessContext,
 } from "../../lib/authorization.ts";
-import type {
-  NewPhaseRecord,
-  NewProjectBuildingRecord,
-  NewProjectRecord,
-  ProjectsRepository,
-  TaskSeed,
-} from "./repository.ts";
-import { findTemplate, stageDateRanges, type ProjectTemplate } from "./templates.ts";
+import { toCalendar } from "../../lib/working-days.ts";
+import type { ProjectsRepository, ProjectUpdatePatch } from "./repository.ts";
+import { buildCreate } from "./create.ts";
 import type {
   CreateProjectInput,
   Project,
   ProjectPhase,
   ProjectPhaseRow,
+  ProjectProfile,
   ProjectRow,
+  ProjectSettings,
   UpdateProjectBudgetInput,
+  UpdateProjectProfileInput,
 } from "./types.ts";
 
-const DEFAULT_PHASES: ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">> = [
-  { name: "Site Survey & Soil Testing", date_range: "Weeks 1 – 2" },
-  { name: "Permitting & Approvals", date_range: "Weeks 3 – 8" },
-  { name: "Foundation & Substructure", date_range: "Weeks 9 – 16" },
-  { name: "Superstructure & MEP", date_range: "Weeks 17 – 32" },
-  { name: "Finishing", date_range: "Weeks 33 – 42" },
-  { name: "External Works", date_range: "Weeks 43 – 46" },
-  { name: "Testing & Handover", date_range: "Weeks 47 – 48" },
-];
-
-const RENOVATION_PHASES: ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">> = [
-  { name: "Existing Condition Survey", date_range: "Weeks 1 – 2" },
-  { name: "Scope Confirmation & Approvals", date_range: "Weeks 3 – 4" },
-  { name: "Demolition & Strip-out", date_range: "Weeks 5 – 6" },
-  { name: "Structural & MEP Adjustments", date_range: "Weeks 7 – 12" },
-  { name: "Interior Build-out", date_range: "Weeks 13 – 20" },
-  { name: "Finishes, Fixtures & Joinery", date_range: "Weeks 21 – 26" },
-  { name: "Snagging, Testing & Handover", date_range: "Weeks 27 – 28" },
-];
-
-function phasesForProjectType(
-  projectType: string,
-): ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">> {
-  return projectType === "renovate" ? RENOVATION_PHASES : DEFAULT_PHASES;
+function toProfile(row: ProjectRow): ProjectProfile {
+  const calendar = toCalendar(row.working_days, row.holidays);
+  return {
+    name: row.name,
+    address: row.address,
+    startDate: row.start_date,
+    completionDate: row.completion_date,
+    revisedCompletionDate: row.revised_completion_date,
+    clientName: row.client_name,
+    contractorEntity: row.contractor_entity,
+    projectType: row.project_type,
+    workingDays: [...calendar.workingDays],
+    holidays: [...calendar.holidays],
+    aiUpdateCadence: row.ai_update_cadence,
+  };
 }
 
 function toPhase(row: ProjectPhaseRow): ProjectPhase {
@@ -85,172 +73,6 @@ function toProject(row: ProjectRow, phases: ProjectPhaseRow[]): Project {
     createdAt: toIso(row.created_at),
     timeline: phases.map(toPhase),
   };
-}
-
-/**
- * Template stages → project phases with relative "Weeks X – Y" range labels.
- * Projects carry no start date at creation, so concrete start/end dates stay
- * null for the PM to set on the schedule page.
- */
-function templatePhases(projectId: string, template: ProjectTemplate): NewPhaseRecord[] {
-  const ranges = stageDateRanges(template.stages);
-  return template.stages.map((stage, idx) => ({
-    id: generateId("phase"),
-    project_id: projectId,
-    building_id: "",
-    name: stage.name,
-    status: "Pending",
-    date_range: ranges[idx]!,
-    sort_order: idx,
-  }));
-}
-
-const TEMPLATE_BOARD_COLUMNS = [
-  { name: "To Do", status: "Todo" },
-  { name: "Doing", status: "Doing" },
-  { name: "Done", status: "Done" },
-] as const;
-
-/**
- * Default board (same shape as the tasks module's lazily-created one) with
- * the template's starter tasks in the "To Do" column, in stage order.
- */
-function templateTaskSeed(
-  projectId: string,
-  buildingId: string,
-  template: ProjectTemplate,
-  ownerId: string | null,
-): TaskSeed {
-  const boardId = generateId("board");
-  const columns = TEMPLATE_BOARD_COLUMNS.map((col, idx) => ({
-    id: generateId("tcol"),
-    board_id: boardId,
-    name: col.name,
-    status: col.status,
-    position: idx,
-  }));
-  const todoColumnId = columns[0]!.id;
-  const tasks = template.stages.flatMap((stage) =>
-    stage.tasks.map((title) => ({ title, stageName: stage.name })),
-  );
-  return {
-    board: {
-      id: boardId,
-      project_id: projectId,
-      building_id: buildingId,
-      name: "Tasks",
-      is_default: true,
-      created_by_id: ownerId,
-    },
-    columns,
-    tasks: tasks.map((task, idx) => ({
-      id: generateId("task"),
-      project_id: projectId,
-      building_id: buildingId,
-      board_id: boardId,
-      column_id: todoColumnId,
-      title: task.title,
-      description: `Stage: ${task.stageName}`,
-      description_html: null,
-      assignee_id: null,
-      assignee_team_member_id: null,
-      due_date: null,
-      priority: "Medium",
-      labels: JSON.stringify([]),
-      position: idx,
-      source_type: "template",
-      source_id: template.id,
-      created_by_id: ownerId,
-    })),
-  };
-}
-
-function buildCreate(
-  input: CreateProjectInput,
-  ownerId: string | null,
-  organizationId: string | null,
-): {
-  project: NewProjectRecord;
-  buildings: NewProjectBuildingRecord[];
-  phases: NewPhaseRecord[];
-  financesCurrency: CurrencyCode;
-  taskSeed?: TaskSeed;
-} {
-  const projectId = generateId("prj");
-  const realBuildingId = generateId("bld");
-  const address = `${input.location.city}, ${input.location.state}`;
-
-  const project: NewProjectRecord = {
-    id: projectId,
-    owner_id: ownerId,
-    organization_id: organizationId,
-    name: input.title,
-    address,
-    status: "On Track",
-    health_score: 0,
-    risk: "Low",
-    progress_percent: 0,
-    budget_total: input.details.budgetMax,
-    budget_used: 0,
-    currency: input.details.currency,
-    pending_approvals: 0,
-    folder_tone: "orange",
-    budget_min: input.details.budgetMin,
-    budget_max: input.details.budgetMax,
-    setup: {
-      projectType: input.projectType,
-      location: input.location,
-      buildingType: input.details.buildingType,
-      timeline: input.details.timeline,
-      fundingMethod: input.details.fundingMethod,
-      involvementLevel: input.management.involvementLevel,
-      riskOptions: input.management.riskOptions,
-    },
-  };
-
-  const buildings: NewProjectBuildingRecord[] = [
-    {
-      id: realBuildingId,
-      project_id: projectId,
-      name: input.title,
-      kind: "real",
-      status: "active",
-      sort_order: 0,
-      progress_percent: 0,
-    },
-    {
-      id: `bld_shared_${projectId}`,
-      project_id: projectId,
-      name: "Shared",
-      kind: "shared",
-      status: "active",
-      sort_order: -1,
-      progress_percent: 0,
-    },
-  ];
-
-  const template = input.templateId ? findTemplate(input.templateId) : undefined;
-  if (input.templateId && !template) {
-    throw new BadRequestError("Unknown project template.");
-  }
-
-  const phases: NewPhaseRecord[] = template
-    ? templatePhases(projectId, template)
-    : phasesForProjectType(input.projectType).map((phase, idx) => ({
-        id: generateId("phase"),
-        project_id: projectId,
-        building_id: realBuildingId,
-        name: phase.name,
-        status: "Pending",
-        date_range: phase.date_range,
-        sort_order: idx,
-      }));
-
-  for (const phase of phases) phase.building_id = realBuildingId;
-
-  const taskSeed = template ? templateTaskSeed(projectId, realBuildingId, template, ownerId) : undefined;
-
-  return { project, buildings, phases, financesCurrency: input.details.currency, taskSeed };
 }
 
 export function projectsService(repository: ProjectsRepository) {
@@ -337,8 +159,53 @@ export function projectsService(repository: ProjectsRepository) {
       return this.getById(id);
     },
 
-    async updateSettings(id: string, settings: { aiUpdatesEnabled: boolean }): Promise<void> {
-      await repository.update(id, { ai_updates_enabled: settings.aiUpdatesEnabled });
+    async updateSettings(id: string, settings: ProjectSettings): Promise<void> {
+      await repository.update(id, { ai_update_cadence: settings.aiUpdateCadence });
+    },
+
+    async getProfile(id: string): Promise<ProjectProfile> {
+      const row = await repository.findById(id);
+      if (!row) throw new NotFoundError("Project");
+      return toProfile(row);
+    },
+
+    /**
+     * The project record a PM actually manages against: contract dates, the
+     * parties, and the working calendar every "days missed" and duration figure
+     * on the app is counted on.
+     */
+    async updateProfile(id: string, input: UpdateProjectProfileInput): Promise<ProjectProfile> {
+      const row = await repository.findById(id);
+      if (!row) throw new NotFoundError("Project");
+      const start = input.startDate !== undefined ? input.startDate : row.start_date;
+      const completion =
+        input.completionDate !== undefined ? input.completionDate : row.completion_date;
+      if (start && completion && start > completion) {
+        throw new BadRequestError("Completion date must be on or after the start date");
+      }
+
+      const patch: ProjectUpdatePatch = {};
+      if (input.name !== undefined) patch.name = input.name;
+      if (input.address !== undefined) patch.address = input.address;
+      if (input.startDate !== undefined) patch.start_date = input.startDate;
+      if (input.completionDate !== undefined) patch.completion_date = input.completionDate;
+      if (input.revisedCompletionDate !== undefined) {
+        patch.revised_completion_date = input.revisedCompletionDate;
+      }
+      if (input.clientName !== undefined) patch.client_name = input.clientName;
+      if (input.contractorEntity !== undefined) patch.contractor_entity = input.contractorEntity;
+      if (input.projectType !== undefined) patch.project_type = input.projectType;
+      if (input.workingDays !== undefined) {
+        if (input.workingDays.length === 0) {
+          throw new BadRequestError("A project needs at least one working day a week");
+        }
+        patch.working_days = JSON.stringify([...new Set(input.workingDays)].sort());
+      }
+      if (input.holidays !== undefined) patch.holidays = JSON.stringify(input.holidays);
+      if (input.aiUpdateCadence !== undefined) patch.ai_update_cadence = input.aiUpdateCadence;
+
+      if (Object.keys(patch).length > 0) await repository.update(id, patch);
+      return this.getProfile(id);
     },
 
     async updateCurrencyForUser(

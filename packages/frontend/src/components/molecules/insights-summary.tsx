@@ -15,22 +15,21 @@ function InsightsSummary({ projectId }: Props) {
   const { data, isLoading } = useProjectInsights(projectId);
   if (isLoading || !data) return null;
 
-  const openTotal = data.openItems.actionItems + data.openItems.queries + data.openItems.awaitingApproval;
-  const riskTotal =
-    data.scheduleRisk.permitsAtRisk + data.scheduleRisk.missedKeyDates + data.scheduleRisk.blockedItems;
+  const openTotal = data.openItems.awaitingApproval;
+  const riskTotal = data.scheduleRisk.permitsAtRisk + data.scheduleRisk.missedKeyDates;
 
   const tiles = [
     {
       label: "Stage progress",
       value: `${data.progress.overallPercent}%`,
       hint: `${data.progress.stagesComplete}/${data.progress.stagesTotal} stages complete`,
-      to: `/project/${projectId}/stages`,
+      to: `/project/${projectId}/schedules/stages`,
     },
     {
       label: "Open items",
       value: String(openTotal),
-      hint: `${data.openItems.actionItems} actions · ${data.openItems.queries} queries · ${data.openItems.awaitingApproval} approvals`,
-      to: `/project/${projectId}/action-items`,
+      hint: `${data.openItems.awaitingApproval} approvals awaiting a decision`,
+      to: `/project/${projectId}/approvals`,
     },
     {
       label: "Budget remaining",
@@ -44,8 +43,8 @@ function InsightsSummary({ projectId }: Props) {
     {
       label: "Schedule risk",
       value: String(riskTotal),
-      hint: `${data.scheduleRisk.permitsAtRisk} permits · ${data.scheduleRisk.missedKeyDates} missed dates · ${data.scheduleRisk.blockedItems} blocked`,
-      to: `/project/${projectId}/whats-next`,
+      hint: `${data.scheduleRisk.permitsAtRisk} permits · ${data.scheduleRisk.missedKeyDates} missed dates`,
+      to: `/project/${projectId}/schedules/key-dates`,
     },
   ];
 
@@ -54,9 +53,9 @@ function InsightsSummary({ projectId }: Props) {
       {tiles.map((t) => (
         <Link key={t.label} to={t.to}>
           <Card padding="md" interactive className="flex h-full flex-col gap-1">
-            <span className="text-xs font-medium text-gray-500">{t.label}</span>
-            <span className="text-xl font-bold text-gray-900">{t.value}</span>
-            <span className="text-[11px] leading-tight text-gray-400">{t.hint}</span>
+            <span className="text-xs font-medium text-ink-muted">{t.label}</span>
+            <span className="text-xl font-medium text-ink">{t.value}</span>
+            <span className="text-xs leading-tight text-ink-muted">{t.hint}</span>
           </Card>
         </Link>
       ))}

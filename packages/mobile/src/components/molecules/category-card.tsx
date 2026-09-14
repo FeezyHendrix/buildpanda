@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { memo } from "react";
 import { Pressable, View } from "react-native";
 import { Text } from "@/components/atoms";
+import { ICON_BRAND } from "@/constants/colors";
 import { cn } from "@/lib/utils";
 
 export interface CategoryCardData {
@@ -14,11 +15,11 @@ export interface CategoryCardData {
 /** Per-category colour, mirroring the web's CategoryMetricsCard palette. */
 const TONE_BG: Record<string, string> = {
   "Land Documents": "bg-primary-50",
-  "Architectural Plans": "bg-[#E0FFFC]",
-  "Contracts & Agreements": "bg-[#FFF3DE]",
-  "Invoices & Receipts": "bg-[#EDE2FF]",
-  "Government Approvals": "bg-[#FFE6F0]",
-  "Inspection Certs": "bg-[#DEEAFF]",
+  "Architectural Plans": "bg-tint-teal",
+  "Contracts & Agreements": "bg-tint-amber",
+  "Invoices & Receipts": "bg-tint-violet",
+  "Government Approvals": "bg-tint-pink",
+  "Inspection Certs": "bg-tint-blue",
 };
 
 const TONE_ICON: Record<string, React.ComponentProps<typeof Ionicons>["name"]> = {
@@ -58,7 +59,7 @@ export const CategoryCard = memo(function CategoryCard({
         <Ionicons
           name={TONE_ICON[category.name] ?? "folder-outline"}
           size={18}
-          color="#004DE7"
+          color={ICON_BRAND}
         />
       </View>
       <View className="pt-3">

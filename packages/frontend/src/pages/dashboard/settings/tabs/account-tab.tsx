@@ -2,6 +2,7 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { toast } from "@/lib/toast";
 
 export function AccountTab() {
@@ -50,12 +51,12 @@ export function AccountTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="text-base font-semibold text-gray-900">
+      <div className="rounded-lg border border-line-hair bg-white shadow-card">
+        <div className="border-b border-line-hair px-6 py-4">
+          <h3 className="text-base font-semibold text-ink">
             Your profile
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-ink-muted">
             Your personal information and email address.
           </p>
         </div>
@@ -67,7 +68,7 @@ export function AccountTab() {
                 id="user-name"
                 value={user?.name ?? ""}
                 disabled
-                className="h-10 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-500 cursor-not-allowed"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -76,7 +77,7 @@ export function AccountTab() {
                 id="user-email"
                 value={user?.email ?? ""}
                 disabled
-                className="h-10 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-500 cursor-not-allowed"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -85,22 +86,22 @@ export function AccountTab() {
                 id="user-phone"
                 value={user?.phone ?? ""}
                 disabled
-                className="h-10 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-500 cursor-not-allowed"
+                className={INPUT_CLASS}
               />
             </div>
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-muted">
             To update your profile information or email address, please contact support.
           </p>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="text-base font-semibold text-gray-900">
+      <div className="rounded-lg border border-line-hair bg-white shadow-card">
+        <div className="border-b border-line-hair px-6 py-4">
+          <h3 className="text-base font-semibold text-ink">
             Change password
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-ink-muted">
             Ensure your account is using a long, random password to stay secure.
           </p>
         </div>
@@ -114,7 +115,7 @@ export function AccountTab() {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5 sm:w-1/2">
@@ -125,7 +126,7 @@ export function AccountTab() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5 sm:w-1/2">
@@ -136,14 +137,14 @@ export function AccountTab() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             {passwordError && (
-              <p className="text-sm text-red-600">{passwordError}</p>
+              <p className="text-sm text-negative-600">{passwordError}</p>
             )}
           </div>
-          <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex justify-end rounded-b-xl">
+          <div className="border-t border-line-hair bg-surface-alt px-6 py-4 flex justify-end rounded-b-lg">
             <Button
               type="submit"
               loading={isSubmitting}

@@ -2,8 +2,10 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMemo, useState, type ReactNode } from "react";
 import { Pressable, SectionList, TextInput, View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_FAINT, ICON_MUTED, ICON_SUBTLE } from "@/constants/colors";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Page } from "./page";
+import { StaleBanner } from "./stale-banner";
 import { cn } from "@/lib/utils";
 
 export interface PickerItem {
@@ -23,6 +25,8 @@ interface PickerScreenProps {
   emptyTitle: string;
   emptyDescription: string;
   errorMessage?: string;
+  /** The list is the last synced copy: shown as a notice, not an error. */
+  isStale?: boolean;
   searchPlaceholder?: string;
   /** Label for the group holding everything that isn't the current selection. */
   otherLabel?: string;
@@ -42,12 +46,12 @@ function SearchField({
 }) {
   return (
     <View className="mb-4 h-11 flex-row items-center gap-2 rounded-xl bg-surface-alt px-3">
-      <Ionicons name="search" size={18} color="#888888" />
+      <Ionicons name="search" size={18} color={ICON_MUTED} />
       <TextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor="#ADADAD"
+        placeholderTextColor={ICON_SUBTLE}
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
@@ -58,9 +62,9 @@ function SearchField({
           onPress={() => onChange("")}
           accessibilityRole="button"
           accessibilityLabel="Clear search"
-          hitSlop={8}
+          className="-mr-2 h-11 w-11 items-center justify-center rounded-full active:bg-hairline"
         >
-          <Ionicons name="close-circle" size={18} color="#ADADAD" />
+          <Ionicons name="close-circle" size={18} color={ICON_SUBTLE} />
         </Pressable>
       ) : null}
     </View>
@@ -119,9 +123,9 @@ function PickerRow({
       {isBusy ? (
         <Spinner size="sm" />
       ) : isActive ? (
-        <Ionicons name="checkmark" size={20} color="#004DE7" />
+        <Ionicons name="checkmark" size={20} color={ICON_BRAND} />
       ) : (
-        <Ionicons name="chevron-forward" size={18} color="#C8C8C8" />
+        <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
       )}
     </Pressable>
   );
@@ -137,6 +141,7 @@ export function PickerScreen({
   emptyTitle,
   emptyDescription,
   errorMessage,
+  isStale = false,
   searchPlaceholder = "Search",
   otherLabel = "OTHER PROJECTS",
   onBack,
@@ -170,6 +175,8 @@ export function PickerScreen({
 
   return (
     <Page variant="left" title={title} description={description} onBack={onBack} scroll={false} footer={footer}>
+      {isStale ? <StaleBanner what="projects" /> : null}
+
       {errorMessage ? (
         <View className="mb-4 rounded-xl bg-error-50 px-4 py-3">
           <Text tone="danger" className="text-sm">

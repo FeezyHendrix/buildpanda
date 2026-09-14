@@ -1,628 +1,300 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { Badge } from "@/components/atoms/badge";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { IconBox } from "@/components/atoms/icon-box";
-import { Label } from "@/components/atoms/label";
-import {
-  CalendarIcon,
-  ChevronRightIcon,
-  MaterialsIcon,
-  PlusIcon,
-} from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
-import { EmptyState } from "@/components/molecules/empty-state";
-import { FormDrawer } from "@/components/molecules/form-drawer";
+import { ChevronRightIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { SearchInput } from "@/components/atoms/search-input";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
+import { ReasonDialog } from "@/components/molecules/reason-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateEquipmentRequest,
   useDeleteEquipmentRequest,
   useEquipmentRequests,
+  useExtendHire,
   useUpdateEquipmentRequest,
   type EquipmentRequestInput,
 } from "@/hooks/use-materials-equipment";
-import { formatCurrency, formatShortDate } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
-import type {
-  EquipmentBucket,
-  EquipmentRequest,
-  EquipmentRequestStatus,
-  RequestPriority,
-} from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
+import { formatCurrency } from "@/lib/formatters";
+import { toast } from "@/lib/toast";
+import type { EquipmentBucket, EquipmentRequest, EquipmentRequestStatus } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
+import { EquipmentRequestDialog } from "./equipment-requests/equipment-request-dialog";
+import { EquipmentRequestsTable } from "./equipment-requests/equipment-requests-table";
+import { ExtendHireDialog } from "./equipment-requests/extend-hire-dialog";
+import { ReturnHireDialog } from "./equipment-requests/return-hire-dialog";
+import {
+  DEFAULT_EQUIPMENT_BUCKET,
+  EQUIPMENT_BUCKETS,
+  EQUIPMENT_BUCKET_TABS,
+  matchesEquipmentSearch,
+} from "./equipment-requests/equipment-helpers";
 
-const BUCKETS: Array<{
-  bucket: EquipmentBucket;
-  label: string;
-  helper: string;
-}> = [
-  { bucket: "requests", label: "Requests", helper: "New rental needs" },
-  { bucket: "approvals", label: "Approvals", helper: "Awaiting go-ahead" },
-  { bucket: "schedule", label: "Schedule", helper: "Approved to book" },
-  { bucket: "on-hire", label: "On hire", helper: "Mobilized to site" },
-  { bucket: "returns", label: "Returns", helper: "Closed or cancelled" },
-];
+type HireDialog =
+  | { kind: "create" }
+  | { kind: "edit"; request: EquipmentRequest }
+  | { kind: "delete"; request: EquipmentRequest }
+  | { kind: "cancel"; request: EquipmentRequest }
+  | { kind: "extend"; request: EquipmentRequest }
+  | { kind: "return"; request: EquipmentRequest }
+  | null;
 
-const DEFAULT_BUCKET_META = BUCKETS[0]!;
-
-const STATUS_META: Record<
-  EquipmentRequestStatus,
-  { label: string; tone: "neutral" | "info" | "success" | "warning" | "danger" }
-> = {
-  Draft: { label: "Draft", tone: "neutral" },
-  Requested: { label: "Requested", tone: "info" },
-  Approved: { label: "Approved", tone: "success" },
-  Scheduled: { label: "Scheduled", tone: "warning" },
-  OnHire: { label: "On hire", tone: "warning" },
-  Returned: { label: "Returned", tone: "success" },
-  Cancelled: { label: "Cancelled", tone: "danger" },
-};
-
-const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
-
-function nextStatus(
-  status: EquipmentRequestStatus,
-): EquipmentRequestStatus | null {
-  switch (status) {
-    case "Draft":
-      return "Requested";
-    case "Requested":
-      return "Approved";
-    case "Approved":
-      return "Scheduled";
-    case "Scheduled":
-      return "OnHire";
-    case "OnHire":
-      return "Returned";
-    case "Returned":
-    case "Cancelled":
-      return null;
-  }
-}
-
-function formatDate(value: string | null): string {
-  return formatShortDate(value) || "Not set";
-}
-
-function defaultFrom(): string {
-  return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-}
-
-function defaultUntil(): string {
-  return new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-}
-
+/**
+ * Plant hire register. The stage tabs are the server-side bucket the list has
+ * always been fetched by (they live in the route), so switching one refetches;
+ * the search runs over the loaded page in the client.
+ */
 export default function ProjectEquipmentRequests() {
   const { project, access } = useProjectContext();
   const canRequest = canResourceAction(access, "materials", "request");
   const canApprove = canResourceAction(access, "materials", "approve");
   const params = useParams<{ bucket?: EquipmentBucket }>();
-  const activeBucket = BUCKETS.some((item) => item.bucket === params.bucket)
-    ? params.bucket
+  const navigate = useNavigate();
+  const activeBucket: EquipmentBucket = EQUIPMENT_BUCKETS.some(
+    (item) => item.bucket === params.bucket,
+  )
+    ? (params.bucket as EquipmentBucket)
     : "requests";
   const activeMeta =
-    BUCKETS.find((item) => item.bucket === activeBucket) ?? DEFAULT_BUCKET_META;
-  const { data: requests = [], isLoading } = useEquipmentRequests(
-    project.id,
-    activeBucket,
-  );
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<EquipmentRequest | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<EquipmentRequest | null>(
-    null,
-  );
+    EQUIPMENT_BUCKETS.find((item) => item.bucket === activeBucket) ?? DEFAULT_EQUIPMENT_BUCKET;
+
+  const { data: requests = [], isLoading } = useEquipmentRequests(project.id, activeBucket);
+
+  const [search, setSearch] = useState("");
+  const [dialog, setDialog] = useState<HireDialog>(null);
+
   const createRequest = useCreateEquipmentRequest();
   const updateRequest = useUpdateEquipmentRequest();
   const deleteRequest = useDeleteEquipmentRequest();
+  const extendHire = useExtendHire();
+
+  const visible = requests.filter((request) => matchesEquipmentSearch(request, search));
+  const bookedCost = requests
+    .filter((request) => request.status !== "Cancelled")
+    .reduce((sum, request) => sum + request.estimatedCost, 0);
+  const lateCount = requests.filter((request) => request.late).length;
+
+  function close(): void {
+    setDialog(null);
+  }
 
   function upsert(values: EquipmentRequestInput): void {
-    if (editTarget) {
+    if (dialog?.kind === "edit") {
       updateRequest.mutate(
-        { projectId: project.id, requestId: editTarget.id, ...values },
-        { onSuccess: () => setEditTarget(null) },
+        { projectId: project.id, requestId: dialog.request.id, ...values },
+        { onSuccess: close },
       );
       return;
     }
-    createRequest.mutate(
-      { projectId: project.id, ...values },
-      { onSuccess: () => setCreateOpen(false) },
+    createRequest.mutate({ projectId: project.id, ...values }, { onSuccess: close });
+  }
+
+  function advance(request: EquipmentRequest, status: EquipmentRequestStatus): void {
+    updateRequest.mutate(
+      { projectId: project.id, requestId: request.id, status },
+      { onError: (error) => toast(errorMessage(error)) },
     );
   }
 
-  const bookedCost = requests.reduce(
-    (sum, request) => sum + request.estimatedCost,
-    0,
-  );
+  const isUpsert = dialog?.kind === "create" || dialog?.kind === "edit";
+  const upsertError = dialog?.kind === "edit" ? updateRequest.error : createRequest.error;
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Materials", to: `/project/${project.id}/materials` },
-          { label: "Equipment Requests" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
-        title="Rental / equipment requests"
-        description="Manage equipment from field request through approval, booking, site use, and return so machinery never sits outside the build plan."
-        badges={<Badge tone="info">{activeMeta.label}</Badge>}
+        title="Equipment requests"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link
-              to={`/project/${project.id}/materials`}
-              className="inline-flex h-[32px] items-center justify-center gap-2.5 rounded-lg bg-[#F6F6F6] px-5 py-3 text-[13px] font-semibold text-gray-900 hover:bg-gray-200"
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => navigate(`/project/${project.id}/materials`)}
             >
               Materials
               <ChevronRightIcon className="size-4" />
-            </Link>
-            {canRequest && (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => setCreateOpen(true)}
-              >
+            </Button>
+            {canRequest ? (
+              <Button variant="primary" size="md" onClick={() => setDialog({ kind: "create" })}>
                 <PlusIcon className="size-4" />
                 New equipment request
               </Button>
-            )}
+            ) : null}
           </div>
         }
       />
 
-      <nav
-        className="mt-8 grid gap-3 md:grid-cols-5"
-        aria-label="Equipment request routes"
-      >
-        {BUCKETS.map((item) => (
-          <Link
-            key={item.bucket}
-            to={`/project/${project.id}/equipment-requests/${item.bucket}`}
-            className={cn(
-              "rounded-2xl border p-4 transition-colors",
-              activeBucket === item.bucket
-                ? "border-[#004DE7] bg-[#E6EFFE]"
-                : "border-[#EDEDED] bg-white hover:bg-gray-50",
-            )}
-          >
-            <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-            <p className="mt-1 text-xs text-gray-500">{item.helper}</p>
-          </Link>
-        ))}
-      </nav>
-
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
-        <Metric
+      <section aria-label="Hire summary" className="mt-6 grid gap-4 sm:grid-cols-3">
+        <KpiCard
           label="Visible requests"
           value={requests.length.toString()}
           helper={activeMeta.helper}
         />
-        <Metric
+        <KpiCard
           label="Booked cost"
-          value={formatCurrency(bookedCost, project.currency, {
-            compact: true,
-          })}
-          helper="Estimated hire spend"
+          value={formatCurrency(bookedCost, project.currency, { compact: true })}
+          helper="Recorded hire spend, cancelled hires excluded"
         />
-        <Metric
-          label="Lifecycle stage"
-          value={activeMeta.label}
-          helper="Derived from status"
+        <KpiCard
+          label="Late"
+          value={lateCount.toString()}
+          tone={lateCount > 0 ? "danger" : "default"}
+          helper="Wanted on site before today, not yet on hire"
         />
       </section>
 
-      <Card padding="lg" className="mt-6">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">
-              {activeMeta.label}
-            </h2>
-            <p className="mt-0.5 text-xs text-gray-500">
-              Equipment requests stay linked to phases, activities, supplier
-              docs, and site dates.
-            </p>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <p className="py-10 text-center text-sm text-gray-500">
-            Loading equipment requests…
-          </p>
-        ) : requests.length === 0 ? (
-          <EmptyState
-            icon={<MaterialsIcon className="size-8 text-gray-300" />}
-            title="No equipment requests here"
-            description="Create a rental request or move existing equipment through the lifecycle."
-            action={
-              canRequest ? (
-                <Button onClick={() => setCreateOpen(true)}>
-                  Create request
-                </Button>
-              ) : undefined
-            }
-            className="py-10"
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="w-full max-w-xs rounded-lg border border-line-hair bg-white">
+          <SearchInput
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by equipment, plant ref or supplier"
+            aria-label="Search equipment requests"
           />
-        ) : (
-          <div className="flex flex-col divide-y divide-[#F0F0F0]">
-            {requests.map((request) => (
-              <EquipmentRow
-                key={request.id}
-                request={request}
-                canRequest={canRequest}
-                canApprove={canApprove}
-                onEdit={() => setEditTarget(request)}
-                onDelete={() => setDeleteTarget(request)}
-                onAdvance={(status) =>
-                  updateRequest.mutate({
-                    projectId: project.id,
-                    requestId: request.id,
-                    status,
-                  })
-                }
-              />
-            ))}
-          </div>
-        )}
-      </Card>
+        </div>
+        <FilterTabs
+          items={EQUIPMENT_BUCKET_TABS}
+          value={activeBucket}
+          onChange={(bucket) => navigate(`/project/${project.id}/equipment-requests/${bucket}`)}
+          ariaLabel="Equipment request stages"
+        />
+        <p className="ml-auto text-sm text-ink-muted">
+          {visible.length} of {requests.length} request{requests.length === 1 ? "" : "s"}
+        </p>
+      </div>
+
+      <EquipmentRequestsTable
+        requests={visible}
+        isPending={isLoading}
+        isFiltered={search.trim().length > 0}
+        canRequest={canRequest}
+        canApprove={canApprove}
+        onAdd={() => setDialog({ kind: "create" })}
+        onClearFilters={() => setSearch("")}
+        onEdit={(request) => setDialog({ kind: "edit", request })}
+        onDelete={(request) => setDialog({ kind: "delete", request })}
+        onCancel={(request) => setDialog({ kind: "cancel", request })}
+        onExtend={(request) => setDialog({ kind: "extend", request })}
+        onReturn={(request) => setDialog({ kind: "return", request })}
+        onAdvance={advance}
+      />
 
       <EquipmentRequestDialog
-        open={createOpen || editTarget !== null}
+        open={isUpsert}
         onOpenChange={(open) => {
-          if (!open) {
-            setCreateOpen(false);
-            setEditTarget(null);
-          }
+          if (!open) close();
         }}
-        initial={editTarget}
+        projectId={project.id}
+        initial={dialog?.kind === "edit" ? dialog.request : null}
         onSubmit={upsert}
         isSubmitting={createRequest.isPending || updateRequest.isPending}
-        error={
-          ((createRequest.error ?? updateRequest.error) as Error | null)
-            ?.message ?? null
-        }
+        error={upsertError ? errorMessage(upsertError) : null}
+        currency={project.currency}
       />
-      <ConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-        title="Delete equipment request?"
-        description="This removes the rental request from the equipment lifecycle board."
-        confirmLabel="Delete"
-        onConfirm={() => {
-          if (deleteTarget) {
-            deleteRequest.mutate(
-              { projectId: project.id, requestId: deleteTarget.id },
-              { onSuccess: () => setDeleteTarget(null) },
-            );
+
+      {dialog?.kind === "extend" ? (
+        <ExtendHireDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) close();
+          }}
+          request={dialog.request}
+          isSubmitting={extendHire.isPending}
+          error={extendHire.error ? errorMessage(extendHire.error) : null}
+          onSubmit={({ offHireAt, reason }) =>
+            extendHire.mutate(
+              { projectId: project.id, requestId: dialog.request.id, offHireAt, reason },
+              {
+                onSuccess: () => {
+                  close();
+                  toast("Hire extended — the original period is kept.", "success");
+                },
+              },
+            )
           }
+        />
+      ) : null}
+
+      {dialog?.kind === "return" ? (
+        <ReturnHireDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) close();
+          }}
+          request={dialog.request}
+          isSubmitting={updateRequest.isPending}
+          error={updateRequest.error ? errorMessage(updateRequest.error) : null}
+          onSubmit={({ offHireAt, notes }) =>
+            updateRequest.mutate(
+              {
+                projectId: project.id,
+                requestId: dialog.request.id,
+                status: "Returned",
+                offHireAt,
+                ...(notes ? { notes } : {}),
+              },
+              {
+                onSuccess: () => {
+                  close();
+                  toast("Plant returned — hire closed at that date.", "success");
+                },
+              },
+            )
+          }
+        />
+      ) : null}
+
+      {dialog?.kind === "cancel" ? (
+        <ReasonDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) close();
+          }}
+          title="Cancel this hire?"
+          description="The hire order stays on file as cancelled with your reason, and the reason shows on the row."
+          label="Why is it being cancelled?"
+          placeholder="Plant no longer needed, supplier could not mobilise, duplicate booking…"
+          submitLabel="Cancel hire"
+          isSubmitting={updateRequest.isPending}
+          error={updateRequest.error ? errorMessage(updateRequest.error) : null}
+          onSubmit={(reason) =>
+            updateRequest.mutate(
+              {
+                projectId: project.id,
+                requestId: dialog.request.id,
+                status: "Cancelled",
+                reason,
+              },
+              {
+                onSuccess: () => {
+                  close();
+                  toast("Hire cancelled", "success");
+                },
+              },
+            )
+          }
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={dialog?.kind === "delete"}
+        onOpenChange={(open) => {
+          if (!open) close();
         }}
-      />
-    </div>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  return (
-    <Card padding="md" className="bg-[#F8F8F8] rounded-[1px] border-none p-5">
-      <p className="text-[12px] font-medium text-black-300">{label}</p>
-      <p className="mt-2 text-[20px] font-semibold tabular-nums text-black-500">
-        {value}
-      </p>
-      <p className="mt-1 text-[13px] font-medium text-black-300">{helper}</p>
-    </Card>
-  );
-}
-
-function EquipmentRow({
-  request,
-  onEdit,
-  onDelete,
-  onAdvance,
-  canRequest,
-  canApprove,
-}: {
-  request: EquipmentRequest;
-  onEdit: () => void;
-  onDelete: () => void;
-  onAdvance: (status: EquipmentRequestStatus) => void;
-  canRequest: boolean;
-  canApprove: boolean;
-}) {
-  const next = nextStatus(request.status);
-  // Approval-tier transitions mirror the backend guard.
-  const APPROVAL = ["Approved", "Scheduled", "OnHire", "Returned"];
-  const canAdvance = next !== null && (APPROVAL.includes(next) ? canApprove : canRequest);
-  return (
-    <article className="flex flex-col gap-4 py-4 xl:flex-row xl:items-center">
-      <div className="flex min-w-0 flex-1 items-start gap-3">
-        <IconBox
-          tone={request.priority === "Critical" ? "red" : "brand"}
-          size="sm"
-          icon={<CalendarIcon className="size-4" />}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-gray-900">
-              {request.title}
-            </h3>
-            <Badge tone={STATUS_META[request.status].tone}>
-              {STATUS_META[request.status].label}
-            </Badge>
-            <Badge
-              tone={request.operatorRequired ? "warning" : "neutral"}
-              variant="outline"
-            >
-              {request.operatorRequired
-                ? "Operator required"
-                : request.equipmentType}
-            </Badge>
-          </div>
-          <p className="mt-1 text-sm text-gray-600 text-pretty">
-            {request.quantity} × {request.equipmentName}
-            {request.supplier ? ` from ${request.supplier}` : ""}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-            <span>
-              {formatDate(request.neededFrom)} →{" "}
-              {formatDate(request.neededUntil)}
-            </span>
-            <span>Phase: {request.phaseName ?? "Unlinked"}</span>
-            <span>Activity: {request.activityName ?? "Unlinked"}</span>
-            <span>Doc: {request.documentName ?? "No supplier doc"}</span>
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-        <p className="mr-2 text-sm font-semibold tabular-nums text-gray-900">
-          {formatCurrency(request.estimatedCost, request.currency)}
-        </p>
-        {next && canAdvance ? (
-          <Button size="sm" variant="secondary" onClick={() => onAdvance(next)}>
-            Move to {STATUS_META[next].label}
-          </Button>
-        ) : null}
-        {canRequest ? (
-          <Button size="sm" variant="ghost" onClick={onEdit}>
-            Edit
-          </Button>
-        ) : null}
-        {canApprove ? (
-          <Button size="sm" variant="ghost" onClick={onDelete}>
-            Delete
-          </Button>
-        ) : null}
-      </div>
-    </article>
-  );
-}
-
-interface EquipmentDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  initial: EquipmentRequest | null;
-  onSubmit: (values: EquipmentRequestInput) => void;
-  isSubmitting: boolean;
-  error: string | null;
-}
-
-function EquipmentRequestDialog({
-  open,
-  onOpenChange,
-  initial,
-  onSubmit,
-  isSubmitting,
-  error,
-}: EquipmentDialogProps) {
-  const [title, setTitle] = useState("");
-  const [equipmentName, setEquipmentName] = useState("");
-  const [equipmentType, setEquipmentType] = useState("Plant");
-  const [quantity, setQuantity] = useState("1");
-  const [supplier, setSupplier] = useState("");
-  const [priority, setPriority] = useState<RequestPriority>("Normal");
-  const [neededFrom, setNeededFrom] = useState(defaultFrom());
-  const [neededUntil, setNeededUntil] = useState(defaultUntil());
-  const [estimatedCost, setEstimatedCost] = useState("0");
-  const [deliveryLocation, setDeliveryLocation] = useState("");
-  const [operatorRequired, setOperatorRequired] = useState(false);
-  const [notes, setNotes] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setTitle(initial?.title ?? "");
-    setEquipmentName(initial?.equipmentName ?? "");
-    setEquipmentType(initial?.equipmentType ?? "Plant");
-    setQuantity(String(initial?.quantity ?? 1));
-    setSupplier(initial?.supplier ?? "");
-    setPriority(initial?.priority ?? "Normal");
-    setNeededFrom(initial?.neededFrom.slice(0, 10) ?? defaultFrom());
-    setNeededUntil(initial?.neededUntil.slice(0, 10) ?? defaultUntil());
-    setEstimatedCost(String(initial?.estimatedCost ?? 0));
-    setDeliveryLocation(initial?.deliveryLocation ?? "");
-    setOperatorRequired(initial?.operatorRequired ?? false);
-    setNotes(initial?.notes ?? "");
-  }, [initial, open]);
-
-  const valid =
-    title.trim() &&
-    equipmentName.trim() &&
-    equipmentType.trim() &&
-    Number(quantity) > 0 &&
-    neededFrom &&
-    neededUntil;
-  return (
-    <FormDrawer
-      open={open}
-      onOpenChange={onOpenChange}
-      title={initial ? "Edit equipment request" : "New equipment request"}
-      description="Tie equipment rentals to schedule dates, site activities, supplier paperwork, and return control."
-      submitLabel={initial ? "Save changes" : "Create request"}
-      submitDisabled={!valid}
-      submitting={isSubmitting}
-      error={error}
-      onSubmit={() => {
-        onSubmit({
-          title: title.trim(),
-          equipmentName: equipmentName.trim(),
-          equipmentType: equipmentType.trim(),
-          quantity: Number(quantity),
-          supplier: supplier.trim() || null,
-          priority,
-          neededFrom,
-          neededUntil,
-          estimatedCost: Number(estimatedCost || 0),
-          currency: "NGN",
-          deliveryLocation: deliveryLocation.trim() || null,
-          operatorRequired,
-          notes: notes.trim() || null,
-        });
-      }}
-    >
-      <Field
-        label="Title"
-        id="eq-title"
-        value={title}
-        onChange={setTitle}
-        placeholder="e.g. Crane for roof truss lift"
-      />
-      <Field
-        label="Equipment"
-        id="eq-name"
-        value={equipmentName}
-        onChange={setEquipmentName}
-        placeholder="Mobile crane"
-      />
-      <div className="grid grid-cols-2 gap-3">
-        <Field
-          label="Type"
-          id="eq-type"
-          value={equipmentType}
-          onChange={setEquipmentType}
-        />
-        <Field
-          label="Quantity"
-          id="eq-quantity"
-          value={quantity}
-          onChange={setQuantity}
-          type="number"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="eq-priority">Priority</Label>
-          <select
-            id="eq-priority"
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as RequestPriority)}
-            className={FIELD}
-          >
-            {(["Low", "Normal", "High", "Critical"] as RequestPriority[]).map(
-              (item) => (
-                <option key={item}>{item}</option>
-              ),
-            )}
-          </select>
-        </div>
-        <Field
-          label="Estimated cost"
-          id="eq-cost"
-          value={estimatedCost}
-          onChange={setEstimatedCost}
-          type="number"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field
-          label="Needed from"
-          id="eq-from"
-          value={neededFrom}
-          onChange={setNeededFrom}
-          type="date"
-        />
-        <Field
-          label="Needed until"
-          id="eq-until"
-          value={neededUntil}
-          onChange={setNeededUntil}
-          type="date"
-        />
-      </div>
-      <Field
-        label="Supplier"
-        id="eq-supplier"
-        value={supplier}
-        onChange={setSupplier}
-        placeholder="Optional"
-      />
-      <Field
-        label="Delivery location"
-        id="eq-location"
-        value={deliveryLocation}
-        onChange={setDeliveryLocation}
-        placeholder="Site gate, crane pad…"
-      />
-      <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input
-          type="checkbox"
-          checked={operatorRequired}
-          onChange={(e) => setOperatorRequired(e.target.checked)}
-        />
-        Operator required
-      </label>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="eq-notes">Lifecycle notes</Label>
-        <textarea
-          id="eq-notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="min-h-24 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        />
-      </div>
-    </FormDrawer>
-  );
-}
-
-function Field({
-  label,
-  id,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  id: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <input
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        type={type}
-        className={FIELD}
+        title="Delete this draft?"
+        description="Only a draft can be deleted. Anything further along is cancelled with a reason so the hire order survives."
+        variant="danger"
+        confirmLabel="Delete"
+        loading={deleteRequest.isPending}
+        onConfirm={() => {
+          if (dialog?.kind !== "delete") return;
+          deleteRequest.mutate(
+            { projectId: project.id, requestId: dialog.request.id },
+            { onSuccess: close, onError: (error) => toast(errorMessage(error)) },
+          );
+        }}
       />
     </div>
   );

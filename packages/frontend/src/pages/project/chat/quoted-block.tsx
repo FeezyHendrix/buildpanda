@@ -17,18 +17,18 @@ export function QuotedBlock({
       onClick={onClick}
       disabled={!onClick}
       className={cn(
-        "flex w-full max-w-md flex-col items-start gap-0.5 rounded-md border-l-2 border-primary-300 bg-gray-50 px-3 py-1.5 text-left",
-        onClick && "transition-colors hover:bg-gray-100",
+        "flex w-full max-w-md flex-col items-start gap-0.5 rounded-md border-l-2 border-primary-300 bg-surface-alt px-3 py-1.5 text-left",
+        onClick && "transition-colors hover:bg-black/5",
         className,
       )}
     >
-      <span className="text-[11px] font-semibold text-primary-500">
+      <span className="text-xs font-semibold text-primary-500">
         {quoted.authorName ?? "Unknown"}
       </span>
       <span
         className={cn(
-          "line-clamp-2 text-xs text-gray-600",
-          quoted.deleted && "italic text-gray-400",
+          "line-clamp-2 text-xs text-ink",
+          quoted.deleted && "italic text-ink-muted",
         )}
       >
         {body}

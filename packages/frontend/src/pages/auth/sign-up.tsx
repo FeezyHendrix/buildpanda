@@ -1,3 +1,5 @@
+import { safeReturnPath } from "@/lib/return-path";
+import { authRecoveryPath, rememberAuthRecovery } from "@/lib/auth-recovery";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms";
@@ -47,17 +49,19 @@ export default function SignUpForm() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get("redirect");
+  const redirectTo = safeReturnPath(searchParams.get("redirect"));
+  const invitedViaProject = Boolean(redirectTo?.startsWith("/accept-project-invite/"));
   const invitedEmail = searchParams.get("email");
   const invitedViaOrg =
     (redirectTo?.startsWith("/accept-invitation/") ?? false) ||
     (typeof window !== "undefined" &&
       Boolean(window.localStorage.getItem(PENDING_ORG_INVITE_KEY)));
 
+  const invited = invitedViaProject || invitedViaOrg;
   const isProjectManager = accountType === "project_manager";
   const isConstructionCompany = accountType === "construction_company";
   const personaComplete =
-    invitedViaOrg ||
+    invited ||
     (accountType !== null && (!isProjectManager || profession !== null));
 
   function selectAccountType(value: AccountType) {
@@ -84,9 +88,10 @@ export default function SignUpForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
 
-    const effectiveAccountType = invitedViaOrg
+    const effectiveAccountType = invitedViaProject ? "project_owner" : invitedViaOrg
       ? "construction_company"
       : accountType;
 
@@ -95,7 +100,7 @@ export default function SignUpForm() {
       return;
     }
     if (
-      !invitedViaOrg &&
+      !invited &&
       effectiveAccountType === "project_manager" &&
       !profession
     ) {
@@ -109,15 +114,16 @@ export default function SignUpForm() {
       name,
       email,
       password,
+      callbackURL: redirectTo ?? "/",
       country: country?.code ?? "",
       phone,
       accountType: effectiveAccountType,
       profession:
-        !invitedViaOrg && effectiveAccountType === "project_manager"
+        !invited && effectiveAccountType === "project_manager"
           ? (profession ?? "")
           : "",
       companyName:
-        !invitedViaOrg && effectiveAccountType === "construction_company"
+        !invited && effectiveAccountType === "construction_company"
           ? companyName.trim()
           : "",
     });
@@ -129,28 +135,29 @@ export default function SignUpForm() {
       return;
     }
 
-    navigate("/auth/verify-email", { state: { email, redirectTo } });
+    rememberAuthRecovery("verification", email, redirectTo);
+    navigate(authRecoveryPath("verify-email", redirectTo), { state: { email, redirectTo } });
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-1 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 text-balance">
+        <h1 className="text-2xl font-medium text-ink text-balance">
           Create your account
         </h1>
-        <p className="text-sm text-gray-500 text-pretty">
-          Join thousands of diaspora members building with confidence.
+        <p className="text-sm text-ink-muted text-pretty">
+          Join your team and keep your project moving.
         </p>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="rounded-lg bg-negative-50 px-4 py-3 text-sm text-negative-600">
           {error}
         </p>
       )}
 
       <div className="flex flex-col gap-4">
-        {!invitedViaOrg && (
+        {!invited && (
           <div className="flex flex-col gap-3">
             <Label>Who is creating this account?</Label>
             <div className="flex flex-col gap-3">
@@ -241,7 +248,7 @@ export default function SignUpForm() {
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-1 text-center text-xs text-gray-400 text-pretty">
+      <div className="flex flex-col items-center gap-1 text-center text-xs text-ink-muted text-pretty">
         <p className="inline-flex items-center gap-1">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -260,11 +267,11 @@ export default function SignUpForm() {
         </p>
         <p>
           By creating an account, you agree to our{" "}
-          <Link to="/terms" className="text-[#004DE7] underline hover:text-[#0041c4]">
+          <Link to="/terms" className="text-primary-500 underline hover:text-primary-600">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link to="/privacy" className="text-[#004DE7] underline hover:text-[#0041c4]">
+          <Link to="/privacy" className="text-primary-500 underline hover:text-primary-600">
             Privacy Policy
           </Link>
           .

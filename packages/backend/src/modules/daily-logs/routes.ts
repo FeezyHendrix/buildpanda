@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { canProjectPermission } from "../../lib/authorization.ts";
 import { dailyLogsRepository } from "./repository.ts";
 import { dailyLogsService } from "./service.ts";
+import { dailyLogCoverage, dailyLogCoverageDeps } from "./coverage.ts";
 import { dailyReportService } from "./report.ts";
 import { periodReportService } from "./period-report.ts";
 import { REPORT_PERIODS, type ReportPeriod } from "../../lib/report-period.ts";
@@ -46,6 +47,9 @@ const upsertBody = {
   type: "object",
   additionalProperties: false,
   properties: {
+    // Which block the day belongs to. Required by the service on a
+    // multi-building project; the field app always sends it.
+    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     weatherCondition: {
       type: ["string", "null"],
       enum: ["Sunny", "Cloudy", "Rain", "Storm", "Fog", "ExtremeHeat", null],
@@ -68,6 +72,26 @@ const linkActivityBody = {
   properties: {
     activityId: { type: "string", minLength: 1, maxLength: 100 },
     hoursLogged: { type: "number", minimum: 0, maximum: 5000 },
+    postUpdate: { type: "boolean" },
+  },
+} as const;
+
+const coverageSchema = {
+  type: "object",
+  properties: {
+    from: { type: ["string", "null"] },
+    to: { type: ["string", "null"] },
+    workingDays: { type: "integer" },
+    daysLogged: { type: "integer" },
+    daysMissed: { type: "integer" },
+    missedDates: { type: "array", items: { type: "string" } },
+    calendar: {
+      type: "object",
+      properties: {
+        workingDays: { type: "array", items: { type: "integer" } },
+        holidays: { type: "array", items: { type: "string" } },
+      },
+    },
   },
 } as const;
 
@@ -109,6 +133,7 @@ const entryBody = {
   properties: {
     bodyHtml: { type: "string", minLength: 1, maxLength: 200000 },
     bodyText: { type: ["string", "null"], maxLength: 20000 },
+    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
   },
 } as const;
 
@@ -150,12 +175,32 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
 
   const periodReports = periodReportService(fastify.db, { logs: service });
 
+  const coverageDeps = dailyLogCoverageDeps(fastify.db, dailyLogsRepository(fastify.db));
+
   fastify.get<{ Params: { id: string }; Querystring: { from?: string; to?: string; buildingId?: string } }>(
     "/projects/:id/daily-logs",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
       return service.listDays(project.id, request.query.from, request.query.to, request.query.buildingId);
+    },
+  );
+
+  // The calendar-aware coverage figure the Overview and the missed-days chip
+  // read: working days on the project's own calendar, from the works start, to
+  // yesterday, with no live log.
+  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
+    "/projects/:id/daily-logs/coverage",
+    {
+      schema: {
+        params: projectIdParams,
+        querystring: { type: "object", additionalProperties: false, properties: { buildingId: { type: "string", minLength: 1, maxLength: 100 } } } as const,
+        response: { 200: coverageSchema },
+      },
+    },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
+      return dailyLogCoverage(coverageDeps, project.id, request.query.buildingId);
     },
   );
 
@@ -168,11 +213,14 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string; date: string }; Body: { bodyHtml: string; bodyText?: string | null } }>(
+  fastify.post<{
+    Params: { id: string; date: string };
+    Body: { bodyHtml: string; bodyText?: string | null; buildingId?: string | null };
+  }>(
     "/projects/:id/daily-logs/:date/entries",
     { schema: { params: dateParams, body: entryBody } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "create");
       const user = request.requireAuth();
       const role =
         request.projectRoles.get(project.id) ??
@@ -184,6 +232,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
         request.body.bodyHtml,
         request.body.bodyText ?? null,
         { id: user.id, name: user.name, role },
+        request.body.buildingId ?? null,
       );
       return reply.status(201).send(entry);
     },
@@ -193,7 +242,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs/:date/entries/:entryId/void",
     { schema: { params: entryParams, body: voidBody } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "create");
       const user = request.requireAuth();
       const canManage = canProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
@@ -315,14 +364,19 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
         "dailyLog",
         "report",
       );
+      const user = request.requireAuth();
       const referenceDate = request.query.date ?? todayIso();
-      const report = await periodReports.build(project.id, request.query.period, referenceDate);
+      const report = await periodReports.build(project.id, request.query.period, referenceDate, {
+        id: user.id,
+        name: user.name ?? null,
+      });
       return reply
         .header(
           "content-type",
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
         .header("content-disposition", `attachment; filename="${report.fileName}"`)
+        .header("x-report-generated-at", report.generatedAt)
         .send(report.docx);
     },
   );

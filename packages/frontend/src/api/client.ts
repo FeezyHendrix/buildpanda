@@ -1,3 +1,4 @@
+import { signInPath } from "@/lib/return-path";
 import axios from "axios";
 import { toast } from "@/lib/toast";
 
@@ -20,12 +21,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      window.location.href = "/auth/sign-in";
+      window.location.href = signInPath(window.location.pathname + window.location.search + window.location.hash);
     } else if (error.response?.status === 403) {
-      const message =
-        (error.response.data as { error?: string } | undefined)?.error ??
-        "You do not have permission to perform this action.";
-      toast(message, "error");
+      // Toast a forbidden action, but let forbidden reads fail quietly. A page
+      // that fires several GETs a user cannot see would otherwise stack one
+      // toast per denied query on load — the UI already shows its empty state,
+      // so the pile of notifications was pure noise.
+      const method = error.config?.method?.toUpperCase();
+      if (method && method !== "GET") {
+        const message =
+          (error.response.data as { error?: string } | undefined)?.error ??
+          "You do not have permission to perform this action.";
+        toast(message, "error");
+      }
     }
     return Promise.reject(error);
   }

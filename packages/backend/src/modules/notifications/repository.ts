@@ -13,6 +13,7 @@ export interface NewNotificationRecord {
   title: string;
   body: string;
   project_id: string | null;
+  cta_url?: string | null;
 }
 
 export interface NewNotificationPreferenceRecord {

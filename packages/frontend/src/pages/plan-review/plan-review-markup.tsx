@@ -159,10 +159,15 @@ function MeasureShape({
   );
 }
 
+/** Resolved markup and markup raised on a superseded revision fade to this, as the field app does. */
+const DIMMED_OPACITY = 0.45;
+const NO_DIMMED: ReadonlySet<string> = new Set();
+
 export function MarkupLayer({
   markups,
   draft,
   selectedId,
+  dimmedIds = NO_DIMMED,
   scale,
   aspect,
   customFtPerPct,
@@ -171,6 +176,8 @@ export function MarkupLayer({
   markups: Markup[];
   draft: Markup | null;
   selectedId: string | null;
+  /** Markup ids to fade: closed, or anchored to a revision that is no longer current. */
+  dimmedIds?: ReadonlySet<string>;
   scale: string | null;
   aspect: number;
   customFtPerPct?: number;
@@ -186,13 +193,19 @@ export function MarkupLayer({
     >
       {all.map((markup) => {
         const selected = markup.id === selectedId;
+        const opacity = dimmedIds.has(markup.id) ? DIMMED_OPACITY : undefined;
         if (markup.tool === MARKUP_KIND.MEASURE) {
-          return <MeasureShape key={markup.id} markup={markup} scale={scale} aspect={aspect} selected={selected} customFtPerPct={customFtPerPct} />;
+          return (
+            <g key={markup.id} opacity={opacity}>
+              <MeasureShape markup={markup} scale={scale} aspect={aspect} selected={selected} customFtPerPct={customFtPerPct} />
+            </g>
+          );
         }
         if (markup.tool === MARKUP_KIND.CLOUD) {
           return (
             <path
               key={markup.id}
+              opacity={opacity}
               d={cloudPath(markup.rect)}
               fill="none"
               stroke={markup.color}
@@ -205,6 +218,7 @@ export function MarkupLayer({
         return (
           <polyline
             key={markup.id}
+            opacity={opacity}
             points={markup.points.map((p) => `${p.x},${p.y}`).join(" ")}
             fill="none"
             stroke={markup.color}

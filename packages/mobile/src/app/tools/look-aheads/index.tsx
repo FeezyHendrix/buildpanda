@@ -1,20 +1,15 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { useState } from "react";
-import { View } from "react-native";
-import { Card, Spinner, Text } from "@/components/atoms";
+import { Pressable, View } from "react-native";
+import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_FAINT } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useLocalLookAheads } from "@/hooks/use-local-look-aheads";
+import { formatDateRange } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
-
-function plusDays(iso: string, days: number): string {
-  const date = new Date(`${iso}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-}
 
 function List({ db, projectId }: { db: Db; projectId: string }) {
   const { data, isPending } = useLocalLookAheads(db, projectId);
@@ -31,10 +26,10 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
     return (
       <View className="items-center py-12">
         <Text weight="semibold" className="text-center text-base">
-          No look-aheads
+          No look aheads yet
         </Text>
         <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-          Plan the next window of work with the crew.
+          Create one to plan the next window of work with the crew.
         </Text>
       </View>
     );
@@ -43,23 +38,24 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
   return (
     <Card>
       {data.map((row) => (
-        <View
+        <Pressable
           key={row.id}
-          className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3"
+          onPress={() => router.push(`/tools/look-aheads/${row.id}`)}
+          accessibilityRole="button"
+          className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt"
         >
           <View className="min-w-0 flex-1">
             <Text weight="semibold" className="text-[15px]" numberOfLines={1}>
               {row.name}
             </Text>
             <Text tone="secondary" className="pt-0.5 text-xs" numberOfLines={1}>
-              {row.status} · {row.startDate} → {row.endDate}
+              {row.status} · {formatDateRange(row.startDate, row.endDate)}
               {row.totalWorkers ? ` · ${row.totalWorkers} crew` : ""}
             </Text>
           </View>
-          {row.isPendingSync ? (
-            <Ionicons name="cloud-upload-outline" size={16} color="#717171" />
-          ) : null}
-        </View>
+          {row.isPendingSync ? <PendingBadge /> : null}
+          <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
+        </Pressable>
       ))}
     </Card>
   );
@@ -71,10 +67,10 @@ export default function LookAheads() {
 
   return (
     <Page
-      title="Look Aheads"
+      title="Look aheads"
       onBack={() => router.back()}
       rightButtons={
-        <HeaderIconButton icon="add" label="New look-ahead" onPress={() => router.push("/tools/look-aheads/new")} />
+        <HeaderIconButton icon="add" label="New look ahead" onPress={() => router.push("/tools/look-aheads/new")} />
       }
     >
       {ready && db && projectId ? (
@@ -84,7 +80,6 @@ export default function LookAheads() {
           <Spinner size="md" />
         </View>
       )}
-
     </Page>
   );
 }

@@ -1,4 +1,5 @@
 import { ActivityIndicator } from "react-native";
+import { ICON_BRAND, ICON_INVERSE } from "@/constants/colors";
 
 type SpinnerSize = "xs" | "sm" | "md" | "lg";
 type SpinnerTone = "brand" | "current";
@@ -16,8 +17,8 @@ const nativeSize: Record<SpinnerSize, "small" | "large"> = {
 };
 
 const toneColor: Record<SpinnerTone, string> = {
-  brand: "#004DE7",
-  current: "#FFFFFF",
+  brand: ICON_BRAND,
+  current: ICON_INVERSE,
 };
 
 export function Spinner({ size = "md", tone = "brand" }: SpinnerProps) {

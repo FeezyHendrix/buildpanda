@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { currencySymbol as symbolFor } from "@/lib/formatters";
 import type { CashFlowCategory, Currency } from "@/lib/project-types";
@@ -11,8 +13,7 @@ const CATEGORY_OPTIONS: { value: CashFlowCategory; label: string }[] = [
   { value: "claims_payment", label: "Claims payment" },
 ];
 
-const inputClass =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const inputClass = INPUT_CLASS;
 
 export interface AddCashFlowDialogInput {
   category: CashFlowCategory;
@@ -129,12 +130,12 @@ function AddCashFlowDialog({
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-gray-700">
+        <label className="flex items-center gap-2 text-sm text-ink">
           <input
             type="checkbox"
             checked={isCredit}
             onChange={(e) => setIsCredit(e.target.checked)}
-            className="size-4 rounded border-gray-300 accent-[#004DE7]"
+            className="size-4 rounded border-gray-300 accent-primary-500"
           />
           This is a credit / refund (reduces the running total)
         </label>
@@ -148,9 +149,9 @@ function AddCashFlowDialog({
             rows={3}
             maxLength={500}
             placeholder="e.g. Interim valuation certificate #4 for foundation works"
-            className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={cn(INPUT_CLASS, "min-h-24 resize-none py-3")}
           />
-          <p className="text-[11px] text-gray-400">
+          <p className="text-xs text-ink-muted">
             {description.trim().length}/500
           </p>
         </div>

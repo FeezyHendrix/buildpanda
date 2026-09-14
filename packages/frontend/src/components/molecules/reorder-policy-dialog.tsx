@@ -4,9 +4,9 @@ import { Label } from "@/components/atoms/label";
 import { ToggleSwitch } from "@/components/atoms/toggle-switch";
 import { useSuppliers } from "@/hooks/use-suppliers";
 import type { MaterialCatalogItem, ReorderPolicyInput } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
-const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const FIELD = INPUT_CLASS;
 
 interface ReorderPolicyDialogProps {
   open: boolean;
@@ -127,7 +127,7 @@ function ReorderPolicyDialog({
         </select>
       </div>
 
-      <div className="flex items-center justify-between rounded-lg bg-[#F6F6F6] px-3 py-3">
+      <div className="flex items-center justify-between rounded-lg bg-surface-alt px-3 py-3">
         <div className="flex flex-col">
           <span className="text-sm font-medium text-gray-900">Auto-create reorder requests</span>
           <span className="text-xs text-gray-500">

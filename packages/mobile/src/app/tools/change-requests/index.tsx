@@ -1,8 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { useState } from "react";
-import { View } from "react-native";
-import { Card, Spinner, Text } from "@/components/atoms";
+import { Pressable, View } from "react-native";
+import { CHANGE_STATUS_LABELS } from "@/api/change-requests";
+import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_FAINT } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
@@ -25,7 +26,7 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
     return (
       <View className="items-center py-12">
         <Text weight="semibold" className="text-center text-base">
-          No change requests
+          No change requests yet
         </Text>
         <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
           Raise one when scope changes on site.
@@ -37,24 +38,25 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
   return (
     <Card>
       {data.map((row) => (
-        <View
+        <Pressable
           key={row.id}
-          className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3"
+          onPress={() => router.push(`/tools/change-requests/${row.id}`)}
+          accessibilityRole="button"
+          className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt"
         >
           <View className="min-w-0 flex-1">
             <Text weight="semibold" className="text-[15px]" numberOfLines={1}>
               {row.title}
             </Text>
             <Text tone="secondary" className="pt-0.5 text-xs" numberOfLines={1}>
-              {row.status}
+              {CHANGE_STATUS_LABELS[row.status]}
               {row.costImpact ? ` · ${row.currency} ${row.costImpact}` : ""}
               {row.timeImpactDays ? ` · ${row.timeImpactDays}d` : ""}
             </Text>
           </View>
-          {row.isPendingSync ? (
-            <Ionicons name="cloud-upload-outline" size={16} color="#717171" />
-          ) : null}
-        </View>
+          {row.isPendingSync ? <PendingBadge /> : null}
+          <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
+        </Pressable>
       ))}
     </Card>
   );
@@ -66,7 +68,7 @@ export default function ChangeRequests() {
 
   return (
     <Page
-      title="Change Requests"
+      title="Change requests"
       onBack={() => router.back()}
       rightButtons={
         <HeaderIconButton icon="add" label="New change request" onPress={() => router.push("/tools/change-requests/new")} />
@@ -79,7 +81,6 @@ export default function ChangeRequests() {
           <Spinner size="md" />
         </View>
       )}
-
     </Page>
   );
 }

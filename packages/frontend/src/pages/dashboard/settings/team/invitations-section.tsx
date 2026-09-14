@@ -23,10 +23,10 @@ export function InvitationsSection({
       {invitations.map((invitation) => (
         <div key={invitation.id} className="flex items-center gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-gray-900">
+            <p className="truncate text-sm font-medium text-ink">
               {invitation.email}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-ink-muted">
               Invited as {formatRoleLabel(invitation.role ?? "member")}
             </p>
           </div>
@@ -38,7 +38,6 @@ export function InvitationsSection({
             size="sm"
             onClick={() => onCancel(invitation.id)}
             disabled={isCancelling}
-            className="text-red-600 hover:bg-red-50"
           >
             Cancel
           </Button>

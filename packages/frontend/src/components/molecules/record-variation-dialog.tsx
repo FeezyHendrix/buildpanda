@@ -8,6 +8,7 @@ import { currencySymbol as symbolFor, formatCurrency } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 import type { Currency } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 type Sign = "addition" | "omission";
 
@@ -57,10 +58,10 @@ function SignToggle({
           opt.tone === "positive"
             ? selected
               ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-              : "border-gray-200 text-gray-700 hover:border-gray-300"
+              : "border-line text-gray-700 hover:border-line-hover"
             : selected
               ? "border-rose-500 bg-rose-50 text-rose-700"
-              : "border-gray-200 text-gray-700 hover:border-gray-300";
+              : "border-line text-gray-700 hover:border-line-hover";
         return (
           <button
             key={opt.key}
@@ -162,7 +163,7 @@ export function RecordVariationDialog({
             currencySymbol={symbolFor(currency)}
             autoFocus
           />
-          <p className="text-[11px] text-gray-400">
+          <p className="text-xs text-gray-400">
             Enter a positive number — the direction toggle above controls the
             sign. Adjusted contract will move to{" "}
             <span className="tabular-nums font-medium text-gray-600">
@@ -191,9 +192,9 @@ export function RecordVariationDialog({
             rows={4}
             maxLength={500}
             placeholder="e.g. Additional structural steel to accommodate revised roof design (RFI-042)"
-            className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 resize-none")}
           />
-          <p className="text-[11px] text-gray-400">
+          <p className="text-xs text-gray-400">
             {trimmedDescription.length}/500 · required for the audit trail
           </p>
         </div>

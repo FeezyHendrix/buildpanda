@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { FormDrawer } from "./form-drawer";
 import type { KnownParticipantRole, ParticipantRole } from "@/lib/project-types";
 
@@ -24,8 +25,7 @@ const ROLES: { value: KnownParticipantRole; label: string }[] = [
   { value: "guest", label: "Guest (view only)" },
 ];
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
 function InviteHomeownerDialog({ open, onOpenChange, onSubmit, isSubmitting = false, error }: Props) {
   const [email, setEmail] = useState("");
@@ -77,7 +77,7 @@ function InviteHomeownerDialog({ open, onOpenChange, onSubmit, isSubmitting = fa
           <button
             type="button"
             onClick={() => setCustomRoleOpen((current) => !current)}
-            className="inline-flex size-6 items-center justify-center rounded-full bg-[#004DE7] text-sm font-semibold leading-none text-white hover:bg-[#0041c4]"
+            className="rounded-md p-1.5 text-sm font-semibold leading-none text-ink-muted hover:bg-black/5 hover:text-ink"
             aria-label={customRoleOpen ? "Use preset roles" : "Add custom role"}
             title={customRoleOpen ? "Use preset roles" : "Add custom role"}
           >

@@ -23,6 +23,46 @@ export const ESTIMATE_STATUSES = [
 
 export type EstimateStatus = (typeof ESTIMATE_STATUSES)[number];
 
+export const RETENTION_MODES = ["none", "cash", "bond"] as const;
+export type RetentionMode = (typeof RETENTION_MODES)[number];
+
+export const CLIENT_VISIBLE_DETAIL = ["groups", "lines"] as const;
+export type ClientVisibleDetail = (typeof CLIENT_VISIBLE_DETAIL)[number];
+
+export const SCHEDULE_KINDS = ["advance", "stage"] as const;
+export type ScheduleKind = (typeof SCHEDULE_KINDS)[number];
+
+// Nigerian withholding tax on construction: none (individual client), 2 % resident, 5 % non-resident.
+export const WHT_RATES = [0, 2, 5] as const;
+
+export const PACK_SECTION_KINDS = [
+  "scope",
+  "exclusions",
+  "assumptions",
+  "provisional_sums",
+  "warranties",
+  "terms",
+  "site_survey",
+] as const;
+export type PackSectionKind = (typeof PACK_SECTION_KINDS)[number];
+
+export const PACK_ORIGINS = ["ai", "manual", "prompt", "template"] as const;
+export type PackOrigin = (typeof PACK_ORIGINS)[number];
+
+export const CLIENT_RESPONSES = ["accept", "decline", "change_requested"] as const;
+export type ClientResponse = (typeof CLIENT_RESPONSES)[number];
+
+// Who supplies what. Decides the take-off scopes offered, whether material
+// lines are priced, what the client receives, and who owns material orders.
+export const JOB_PROFILES = ["full_contract", "labour_only", "supply_only"] as const;
+export type JobProfile = (typeof JOB_PROFILES)[number];
+
+export const PLAN_DISCIPLINES = ["architectural", "structural", "mep", "civil", "survey", "other"] as const;
+export type PlanDiscipline = (typeof PLAN_DISCIPLINES)[number];
+
+export const PLAN_REVISION_STATUSES = ["current", "superseded"] as const;
+export type PlanRevisionStatus = (typeof PLAN_REVISION_STATUSES)[number];
+
 export interface ProposalRow {
   id: string;
   org_id: string;
@@ -38,6 +78,7 @@ export interface ProposalRow {
   status: ProposalStatus;
   currency: string;
   valid_until: string | null;
+  job_profile: JobProfile;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -59,6 +100,7 @@ export interface Proposal {
   status: ProposalStatus;
   currency: string;
   validUntil: string | null;
+  jobProfile: JobProfile;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -81,11 +123,41 @@ export interface EstimateRow {
   sent_at: string | null;
   accepted_at: string | null;
   accepted_by_name: string | null;
+  retention_pct: number | string | null;
+  retention_mode: RetentionMode | null;
+  advance_pct: number | string | null;
+  wht_pct: number | string | null;
+  payment_terms_days: number | null;
+  defects_liability_days: number | null;
+  client_visible_detail: ClientVisibleDetail;
+  accepted_ip: string | null;
+  accepted_user_agent: string | null;
+  accepted_pdf_hash: string | null;
+  snapshot_file_id: string | null;
+  response_message: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface Estimate {
+export interface EstimateTerms {
+  retentionPct: number | null;
+  retentionMode: RetentionMode | null;
+  advancePct: number | null;
+  whtPct: number | null;
+  paymentTermsDays: number | null;
+  defectsLiabilityDays: number | null;
+  clientVisibleDetail: ClientVisibleDetail;
+}
+
+export interface AcceptanceEvidence {
+  acceptedIp: string | null;
+  acceptedUserAgent: string | null;
+  acceptedPdfHash: string | null;
+  snapshotFileId: string | null;
+  responseMessage: string | null;
+}
+
+export interface Estimate extends EstimateTerms, AcceptanceEvidence {
   id: string;
   proposalId: string;
   revisionNo: number;
@@ -117,6 +189,7 @@ export interface EstimateItemRow {
   unit_rate: number | string;
   total: number | string;
   boq_item_id: string | null;
+  takeoff_session_id: string | null;
   sort: number;
 }
 
@@ -130,7 +203,9 @@ export interface EstimateItem {
   unit: string;
   unitRate: number;
   total: number;
+  // boqItemId is the take-off line (precon_boq_rows.id) this item's quantity came from
   boqItemId: string | null;
+  takeoffSessionId: string | null;
   sort: number;
 }
 
@@ -142,6 +217,8 @@ export interface PaymentScheduleRow {
   description: string | null;
   description_html: string | null;
   sort: number;
+  kind: ScheduleKind;
+  programme_task_id: string | null;
 }
 
 export interface PaymentScheduleItem {
@@ -152,6 +229,8 @@ export interface PaymentScheduleItem {
   description: string | null;
   descriptionHtml: string | null;
   sort: number;
+  kind: ScheduleKind;
+  programmeTaskId: string | null;
 }
 
 export interface ProposalEventRow {
@@ -182,6 +261,7 @@ export interface CreateProposalInput {
   currency?: string;
   validUntil?: string;
   leadId?: string;
+  jobProfile?: JobProfile;
 }
 
 export interface CreateEstimateItemInput {
@@ -191,7 +271,8 @@ export interface CreateEstimateItemInput {
   qty: number;
   unit: string;
   unitRate: number;
-  boqItemId?: string;
+  boqItemId?: string | null;
+  takeoffSessionId?: string | null;
   sort?: number;
 }
 
@@ -201,6 +282,62 @@ export interface CreatePaymentScheduleInput {
   description?: string;
   descriptionHtml?: string | null;
   sort?: number;
+  kind?: ScheduleKind;
+  programmeTaskId?: string | null;
+}
+
+export interface UpdateEstimateTermsInput {
+  retentionPct?: number | null;
+  retentionMode?: RetentionMode | null;
+  advancePct?: number | null;
+  whtPct?: number | null;
+  paymentTermsDays?: number | null;
+  defectsLiabilityDays?: number | null;
+  clientVisibleDetail?: ClientVisibleDetail;
+  validUntil?: string | null;
+}
+
+export interface PackSectionRow {
+  id: string;
+  proposal_id: string;
+  estimate_id: string | null;
+  kind: PackSectionKind;
+  body_html: string;
+  sort: number;
+  origin: PackOrigin;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface PackSection {
+  id: string;
+  proposalId: string;
+  estimateId: string | null;
+  kind: PackSectionKind;
+  bodyHtml: string;
+  sort: number;
+  origin: PackOrigin;
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
+export interface UpsertPackSectionInput {
+  kind: PackSectionKind;
+  bodyHtml: string;
+  origin?: PackOrigin;
+}
+
+export interface PublicRespondInput {
+  action: ClientResponse;
+  name?: string;
+  message?: string;
+}
+
+export interface ResponseEvidence {
+  ip: string | null;
+  userAgent: string | null;
+  at: string;
 }
 
 export interface ProposalPlanRow {
@@ -208,6 +345,11 @@ export interface ProposalPlanRow {
   proposal_id: string;
   file_id: string;
   label: string | null;
+  sheet_code: string | null;
+  discipline: PlanDiscipline | null;
+  revision: string | null;
+  revision_status: PlanRevisionStatus;
+  supersedes_plan_id: string | null;
   uploaded_by: string | null;
   uploaded_at: string;
   sort: number;
@@ -221,6 +363,11 @@ export interface ProposalPlan {
   sizeBytes: number;
   mimeType: string;
   label: string | null;
+  sheetCode: string | null;
+  discipline: PlanDiscipline | null;
+  revision: string | null;
+  revisionStatus: PlanRevisionStatus;
+  supersedesPlanId: string | null;
   uploadedBy: string | null;
   uploadedAt: string;
   sort: number;
@@ -229,6 +376,16 @@ export interface ProposalPlan {
 export interface CreateProposalPlanInput {
   fileId: string;
   label?: string;
+  sheetCode?: string;
+  discipline?: PlanDiscipline;
+  revision?: string;
+}
+
+export interface UpdateProposalPlanInput {
+  label?: string | null;
+  sheetCode?: string | null;
+  discipline?: PlanDiscipline | null;
+  revision?: string | null;
 }
 
 export interface ProposalBoqItemRow {
@@ -260,4 +417,189 @@ export interface CreateBoqItemInput {
   qty: number;
   unit: string;
   sort?: number;
+}
+
+// ---------- proposal → project handoff ----------
+
+export const CONVERT_SECTIONS = [
+  "programme",
+  "milestones",
+  "budget",
+  "materials",
+  "drawings",
+  "documents",
+  "permits",
+  "selections",
+  "safety",
+  "client",
+] as const;
+export type ConvertSection = (typeof CONVERT_SECTIONS)[number];
+export type ConvertInclude = Partial<Record<ConvertSection, boolean>>;
+
+export interface ConvertBody {
+  include?: ConvertInclude;
+}
+
+export interface ConvertPreviewSection {
+  key: ConvertSection;
+  label: string;
+  count: number;
+  detail: string;
+  available: boolean;
+}
+
+export interface ConvertPreview {
+  proposalId: string;
+  alreadyConverted: boolean;
+  projectId: string | null;
+  sections: ConvertPreviewSection[];
+  setup: { projectType: string; buildingType: string; timeline: string; source: string };
+  contractSum: number;
+  currency: string;
+  warnings: string[];
+}
+
+export interface ConvertProgrammeSeed {
+  phases: Array<{
+    id: string;
+    project_id: string;
+    building_id: string;
+    name: string;
+    status: string;
+    date_range: string;
+    start_date: string;
+    end_date: string;
+    sort_order: number;
+    programme_task_id: string;
+  }>;
+  activities: Array<{
+    id: string;
+    project_id: string;
+    building_id: string;
+    phase_id: string | null;
+    name: string;
+    activity_type: string;
+    location: null;
+    status: string;
+    planned_start_at: string;
+    planned_end_at: string;
+    worker_count_planned: number;
+    notes: string | null;
+    wbs_code: string | null;
+    outline_level: number;
+    parent_activity_id: string | null;
+    predecessors: string;
+    percent_complete: number;
+    duration_days: number;
+    baseline_start_at: string;
+    baseline_end_at: string;
+    is_milestone: boolean;
+    source: string;
+    created_by_id: string;
+    programme_task_id: string;
+  }>;
+  keyDates: Array<{
+    id: string;
+    project_id: string;
+    building_id: string;
+    label: string;
+    target_date: string;
+    actual_date: null;
+    status: string;
+    notes: null;
+    sort_order: number;
+    programme_task_id: string | null;
+  }>;
+  phaseIdByTaskId: Map<string, string>;
+  activityIdByTaskId: Map<string, string>;
+}
+
+export interface ConvertMaterialSeed {
+  orders: Array<Record<string, unknown>>;
+  longLeadCount: number;
+}
+
+export interface ConvertPlanSeed {
+  documents: Array<Record<string, unknown>>;
+  versions: Array<Record<string, unknown>>;
+}
+
+// ---------- proposal templates ----------
+
+export const TEMPLATE_PACK_KINDS = [
+  "scope",
+  "exclusions",
+  "assumptions",
+  "provisional_sums",
+  "warranties",
+  "terms",
+  "site_survey",
+] as const;
+export type TemplatePackKind = (typeof TEMPLATE_PACK_KINDS)[number];
+
+export interface TemplatePackSection {
+  kind: TemplatePackKind;
+  bodyHtml: string;
+  sort: number;
+}
+
+export interface TemplateScheduleItem {
+  label: string;
+  percent: number;
+  description: string | null;
+  kind: "advance" | "stage";
+  sort: number;
+}
+
+// Mirrors the estimate terms columns WS-4 adds; every field is optional so a
+// template saved before those columns exist still applies cleanly.
+export interface TemplateTerms {
+  retentionPct?: number | null;
+  retentionMode?: "none" | "cash" | "bond" | null;
+  advancePct?: number | null;
+  whtPct?: number | null;
+  paymentTermsDays?: number | null;
+  defectsLiabilityDays?: number | null;
+  clientVisibleDetail?: "groups" | "lines" | null;
+  validDays?: number | null;
+}
+
+export interface ProposalTemplateRow {
+  id: string;
+  org_id: string;
+  name: string;
+  job_profile: JobProfile;
+  pack_sections: TemplatePackSection[];
+  payment_schedule: TemplateScheduleItem[];
+  terms: TemplateTerms;
+  contingency_pct: number | string;
+  tax_label: string | null;
+  tax_pct: number | string;
+  created_by: string | null;
+  created_at: Date | string;
+  updated_at: Date | string;
+}
+
+export interface ProposalTemplate {
+  id: string;
+  name: string;
+  jobProfile: JobProfile;
+  packSections: TemplatePackSection[];
+  paymentSchedule: TemplateScheduleItem[];
+  terms: TemplateTerms;
+  contingencyPct: number;
+  taxLabel: string | null;
+  taxPct: number;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveTemplateInput {
+  proposalId: string;
+  name: string;
+}
+
+export interface CreateFromTemplateInput extends CreateProposalInput {
+  templateId: string;
 }

@@ -28,7 +28,7 @@ export interface ImportSession {
 
 export const importSessionApi = {
   create: () =>
-    api.post<ImportSession>("/import-sessions").then((r) => r.data),
+    api.post<Omit<ImportSession, "documents">>("/import-sessions").then((r) => r.data),
 
   get: (sessionId: string) =>
     api.get<ImportSession>(`/import-sessions/${sessionId}`).then((r) => r.data),

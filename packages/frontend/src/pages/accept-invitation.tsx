@@ -37,7 +37,7 @@ export default function AcceptInvitation() {
     const redirectTo = encodeURIComponent(`/accept-invitation/${invitationId}`);
     return (
       <InvitationShell title="Accept your invitation">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-muted">
           Sign in or create your account to accept this invitation.
         </p>
         <div className="mt-6 flex flex-col gap-2">
@@ -63,7 +63,7 @@ export default function AcceptInvitation() {
   if (invitationQuery.isError || !invitationQuery.data) {
     return (
       <InvitationShell title="Invitation not found">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-muted">
           This invitation is no longer valid. It may have been cancelled or
           already used.
         </p>
@@ -82,7 +82,7 @@ export default function AcceptInvitation() {
   if (isResolved) {
     return (
       <InvitationShell title="Invitation already handled">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-muted">
           This invitation has already been {invitation.status}.
         </p>
         <Link to="/" className="mt-6 inline-block">
@@ -106,7 +106,7 @@ export default function AcceptInvitation() {
   if (emailMismatch) {
     return (
       <InvitationShell title="Wrong account">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-muted">
           This invitation was sent to <strong>{invitation.email}</strong>, but
           you are signed in as <strong>{session.user.email}</strong>. Sign in
           with the invited email to accept.
@@ -146,14 +146,14 @@ export default function AcceptInvitation() {
 
   return (
     <InvitationShell title={`Join ${invitation.organizationName}`}>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-ink-muted">
         You have been invited to join{" "}
         <strong>{invitation.organizationName}</strong> as{" "}
         <strong>{invitation.role}</strong>.
       </p>
 
       {actionError && (
-        <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="mt-4 rounded-lg bg-negative-50 px-4 py-3 text-sm text-negative-600">
           {actionError.message}
         </p>
       )}
@@ -188,10 +188,10 @@ interface InvitationShellProps {
 
 function InvitationShell({ title, children }: InvitationShellProps) {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[#FAFAFA] px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
+    <div className="flex min-h-dvh items-center justify-center bg-surface-alt px-4">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-sm">
         {title && (
-          <h1 className="text-xl font-bold text-gray-900 text-balance">
+          <h1 className="text-xl font-medium text-ink text-balance">
             {title}
           </h1>
         )}

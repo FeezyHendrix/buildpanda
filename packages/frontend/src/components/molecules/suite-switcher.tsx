@@ -49,7 +49,7 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
   // Horizontal pill tabs — used in the dashboard navbar.
   if (variant === "tabs") {
     return (
-      <div className={cn("flex items-center gap-1 rounded-full bg-[#F6F6F6] p-1", className)}>
+      <div className={cn("flex items-center gap-1 rounded-full bg-surface-alt p-1", className)}>
         {SUITES.map((suite) => {
           const isActive = suite.id === active.id;
           return (
@@ -59,8 +59,8 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
               onClick={() => localStorage.setItem(LAST_SUITE_KEY, suite.id)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors",
-                "outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30",
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                "outline-none focus-visible:shadow-focus",
                 isActive
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-500 hover:text-gray-700",
@@ -79,7 +79,7 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
   // for a two-way switch. Used in the full-height sidebar.
   if (variant === "segmented") {
     return (
-      <div className={cn("flex flex-col gap-0.5 rounded-xl bg-[#ECECEC] p-1", className)}>
+      <div className={cn("flex flex-col gap-0.5 rounded-lg bg-surface-alt p-1", className)}>
         {SUITES.map((suite) => {
           const isActive = suite.id === active.id;
           return (
@@ -90,7 +90,7 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
               aria-current={isActive ? "true" : undefined}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-                "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                "outline-none focus-visible:shadow-focus",
                 isActive
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-500 hover:text-gray-800",
@@ -110,7 +110,7 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-lg px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className="flex w-full items-center gap-2 rounded-lg px-1 py-1 outline-none focus-visible:shadow-focus"
         aria-haspopup="true"
         aria-expanded={open}
       >
@@ -122,7 +122,7 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 items-center gap-2 rounded-full bg-white px-3 text-sm font-medium text-gray-700 outline-none ring-1 ring-gray-200 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+        className="flex h-9 items-center gap-2 rounded-full bg-white px-3 text-sm font-medium text-gray-700 outline-none border border-line hover:bg-gray-50 focus-visible:shadow-focus"
         aria-haspopup="true"
         aria-expanded={open}
       >
@@ -139,7 +139,7 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
       {open && (
         <div
           className={cn(
-            "absolute z-50 mt-1 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg",
+            "absolute z-50 mt-1 w-52 overflow-hidden rounded-lg border border-line bg-white py-1 shadow-lg",
             variant === "sidebar" ? "left-3 top-full" : "right-0 top-full",
           )}
           role="menu"
@@ -155,7 +155,7 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
               return (
                 <div
                   key={suite.id}
-                  className={cn(baseClass, "bg-blue-50 text-[#004DE7]")}
+                  className={cn(baseClass, "bg-blue-50 text-primary-500")}
                   aria-current="true"
                 >
                   <span className="text-base">{suite.icon}</span>

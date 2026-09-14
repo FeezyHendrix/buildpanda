@@ -14,14 +14,14 @@ export function RolePill({
       type="button"
       onClick={onSelect}
       className={cn(
-        "flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition-all duration-150",
-        selected ? "border-brand bg-brand/5" : "border-[#EBEBEB] hover:border-gray-300",
+        "flex w-full items-start gap-3 rounded-lg border p-3.5 text-left transition-all duration-150",
+        selected ? "border-primary-500 bg-primary-50" : "border-line-hair hover:border-line-hover",
       )}
     >
       <div
         className={cn(
           "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-          selected ? "border-brand bg-brand" : "border-gray-300",
+          selected ? "border-primary-500 bg-primary-500" : "border-line",
         )}
       >
         {selected && (
@@ -37,10 +37,10 @@ export function RolePill({
         )}
       </div>
       <div className="flex flex-col">
-        <span className={cn("text-sm font-semibold", selected ? "text-brand" : "text-gray-900")}>
+        <span className={cn("text-sm font-semibold", selected ? "text-primary-600" : "text-ink")}>
           {meta.label}
         </span>
-        <span className="mt-0.5 text-xs leading-relaxed text-gray-500">{meta.description}</span>
+        <span className="mt-0.5 text-xs leading-relaxed text-ink-muted">{meta.description}</span>
       </div>
     </button>
   );

@@ -28,22 +28,16 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   milestone_released: { eyebrow: "Payment released", accent: "success", ctaLabel: "View Payment" },
   milestone_disputed: { eyebrow: "Payment disputed", accent: "danger", ctaLabel: "View Dispute" },
   document_uploaded: { eyebrow: "New document", accent: "brand", ctaLabel: "View Document" },
-  action_item_due: { eyebrow: "Action item due", accent: "warning", ctaLabel: "View Action Item" },
-  action_item_assigned: { eyebrow: "Action item assigned", accent: "brand", ctaLabel: "View Action Item" },
   task_assigned: { eyebrow: "Task assigned", accent: "brand", ctaLabel: "View Task" },
   task_high_priority: { eyebrow: "High priority", accent: "danger", ctaLabel: "View Task" },
   rfi_assigned: { eyebrow: "RFI — ball in your court", accent: "brand", ctaLabel: "View RFI" },
   rfi_answered: { eyebrow: "RFI answered", accent: "success", ctaLabel: "View RFI" },
   rfi_due: { eyebrow: "RFI due", accent: "warning", ctaLabel: "View RFI" },
-  query_assigned: { eyebrow: "Query assigned", accent: "brand", ctaLabel: "View Query" },
   change_request_assigned: { eyebrow: "Change request assigned", accent: "brand", ctaLabel: "View Change Request" },
   activity_assigned: { eyebrow: "Site activity assigned", accent: "brand", ctaLabel: "View Activity" },
   bim_issue_assigned: { eyebrow: "Coordination issue assigned", accent: "brand", ctaLabel: "View Issue" },
   chat_mention: { eyebrow: "You were mentioned", accent: "brand", ctaLabel: "Open Chat" },
   chat_dm: { eyebrow: "New message", accent: "brand", ctaLabel: "Open Chat" },
-  action_item_blocked: { eyebrow: "Action item blocked", accent: "danger", ctaLabel: "View Action Item" },
-  action_item_resolved: { eyebrow: "Action item resolved", accent: "success", ctaLabel: "View Action Item" },
-  query_answered: { eyebrow: "Query answered", accent: "success", ctaLabel: "View Query" },
   change_request_decided: { eyebrow: "Change request decided", accent: "brand", ctaLabel: "View Change Request" },
   approval_requested: { eyebrow: "Approval needed", accent: "warning", ctaLabel: "Review & Approve" },
   approval_decided: { eyebrow: "Approval decided", accent: "brand", ctaLabel: "View Approval" },
@@ -56,6 +50,8 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   invoice_overdue: { eyebrow: "Invoice overdue", accent: "danger", ctaLabel: "View Invoice" },
   permit_expiring: { eyebrow: "Permit expiring soon", accent: "warning", ctaLabel: "View Permit" },
   permit_expired: { eyebrow: "Permit expired", accent: "danger", ctaLabel: "View Permit" },
+  compliance_doc_expiring: { eyebrow: "Compliance document expiring", accent: "warning", ctaLabel: "View Documents" },
+  compliance_doc_expired: { eyebrow: "Compliance document expired", accent: "danger", ctaLabel: "View Documents" },
   key_date_approaching: { eyebrow: "Key date approaching", accent: "warning", ctaLabel: "View Key Date" },
   key_date_missed: { eyebrow: "Key date missed", accent: "danger", ctaLabel: "View Key Date" },
   risk_high_added: { eyebrow: "High-severity risk", accent: "danger", ctaLabel: "View Risk" },
@@ -65,6 +61,15 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   material_negative_stock: { eyebrow: "Negative stock", accent: "warning", ctaLabel: "View Materials" },
   material_low_stock: { eyebrow: "Low stock", accent: "warning", ctaLabel: "View Materials" },
   material_reorder_created: { eyebrow: "Reorder created", accent: "brand", ctaLabel: "View Materials" },
+  invoice_sent: { eyebrow: "Certificate issued", accent: "brand", ctaLabel: "View Certificate" },
+  invoice_queried: { eyebrow: "Invoice queried", accent: "warning", ctaLabel: "View Query" },
+  invoice_approved: { eyebrow: "Invoice certified", accent: "success", ctaLabel: "View Certificate" },
+  invoice_paid: { eyebrow: "Payment recorded", accent: "success", ctaLabel: "View Payment" },
+  invoice_paid_late: { eyebrow: "Paid after the due date", accent: "warning", ctaLabel: "View Payment" },
+  invoice_voided: { eyebrow: "Certificate voided", accent: "danger", ctaLabel: "View Certificate" },
+  change_request_submitted: { eyebrow: "Change submitted", accent: "brand", ctaLabel: "View Change" },
+  change_request_approved: { eyebrow: "Change approved", accent: "success", ctaLabel: "View Change" },
+  change_request_rejected: { eyebrow: "Change rejected", accent: "danger", ctaLabel: "View Change" },
 };
 
 const GENERIC: TypePresentation = {
@@ -72,6 +77,10 @@ const GENERIC: TypePresentation = {
   accent: "brand",
   ctaLabel: "Open BuildPanda",
 };
+
+function notificationUrl(path: string | null, projectId: string | null): string {
+  return path ? new URL(path, config.mail.appUrl).href : fallbackUrl(projectId);
+}
 
 function fallbackUrl(projectId: string | null): string {
   const base = config.mail.appUrl.replace(/\/+$/, "");
@@ -90,7 +99,7 @@ export function buildNotificationEmail(
     accent: preset.accent,
     cta: {
       label: preset.ctaLabel,
-      url: input.ctaUrl ?? fallbackUrl(input.projectId),
+      url: notificationUrl(input.ctaUrl, input.projectId),
     },
   });
 }
@@ -115,6 +124,6 @@ export function buildNotificationPush(input: {
   return {
     title: input.title,
     body: input.body,
-    url: input.ctaUrl ?? fallbackUrl(input.projectId),
+    url: notificationUrl(input.ctaUrl, input.projectId),
   };
 }

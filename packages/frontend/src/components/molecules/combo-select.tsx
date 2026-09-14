@@ -16,6 +16,7 @@ export function ComboSelect({
   searchPlaceholder = "Search…",
   emptyText = "No matches",
   className,
+  id,
 }: {
   items: ComboItem[];
   value: string | null;
@@ -24,6 +25,8 @@ export function ComboSelect({
   searchPlaceholder?: string;
   emptyText?: string;
   className?: string;
+  /** Put on the trigger so a `<Label htmlFor>` points at something real. */
+  id?: string;
 }) {
   const ids = useMemo(() => items.map((i) => i.id), [items]);
   const labelOf = useMemo(() => {
@@ -39,6 +42,7 @@ export function ComboSelect({
       itemToStringLabel={(id) => labelOf(id)}
     >
       <Combobox.Trigger
+        id={id}
         className={cn(
           "flex h-11 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900",
           "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",

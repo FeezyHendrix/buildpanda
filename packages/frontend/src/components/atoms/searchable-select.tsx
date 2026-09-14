@@ -1,5 +1,6 @@
 import { Combobox } from "@base-ui/react/combobox";
 import { useId } from "react";
+import { FILTER_TRIGGER_CLASS } from "@/components/atoms/filter-trigger";
 import { cn } from "@/lib/utils";
 
 interface SearchableSelectProps {
@@ -12,6 +13,8 @@ interface SearchableSelectProps {
   className?: string;
   disabled?: boolean;
   id?: string;
+  /** `filter` renders the compact neutral trigger every filter row uses; `form` is the grey field. */
+  variant?: "form" | "filter";
 }
 
 function ChevronIcon(props: React.ComponentProps<"svg">) {
@@ -48,6 +51,7 @@ function SearchableSelect({
   emptyText = "No results found.",
   className,
   disabled,
+  variant = "form",
   id,
 }: SearchableSelectProps) {
   const fallbackId = useId();
@@ -64,9 +68,9 @@ function SearchableSelect({
       <Combobox.Trigger
         id={inputId}
         className={cn(
-          "flex h-11 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
-          "border-0 outline-none ring-0",
-          "focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          variant === "filter"
+            ? cn(FILTER_TRIGGER_CLASS, "justify-between")
+            : "flex h-11 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900 border-0 outline-none ring-0 focus-visible:ring-2 focus-visible:ring-gray-900/10",
           "cursor-default select-none",
           className,
         )}

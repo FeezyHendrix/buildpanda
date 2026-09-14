@@ -23,8 +23,9 @@ export interface ApprovalUpdatePatch {
   description?: string | null;
   description_html?: string | null;
   status?: ApprovalStatus;
-  response?: string | null;
-  due_date?: string | null;
+    response?: string | null;
+    response_html?: string | null;
+    due_date?: string | null;
   requested_reviewer_id?: string | null;
   reviewed_by_id?: string | null;
   reviewed_at?: string | null;
@@ -37,13 +38,15 @@ export interface ApprovalUpdatePatch {
 const SELECT = [
   "a.id",
   "a.project_id",
+  "a.kind",
   "a.title",
   "a.category",
   "a.description",
   "a.description_html",
   "a.status",
-  "a.response",
-  "a.due_date",
+    "a.response",
+    "a.response_html",
+    "a.due_date",
   "a.submitted_by_id",
   "a.requested_reviewer_id",
   "rr.name as requested_reviewer_name",
@@ -55,8 +58,13 @@ const SELECT = [
 ] as const;
 
 export function approvalsRepository(db: Knex) {
+  // Scoped to client approvals throughout. Material approval requests share the
+  // table (see 20260807_material_approvals) and are served by
+  // materialApprovalsRepository — this repository must never read or write one,
+  // including on findById, which guards update/delete/comment as well as reads.
   function base() {
     return db("approvals as a")
+      .where("a.kind", "client")
       .leftJoin("user as u", "u.id", "a.reviewed_by_id")
       .leftJoin("user as rr", "rr.id", "a.requested_reviewer_id");
   }
@@ -83,19 +91,19 @@ export function approvalsRepository(db: Knex) {
     },
 
     async create(record: NewApprovalRecord): Promise<ApprovalRow> {
-      await db("approvals").insert(record);
+      await db("approvals").insert({ ...record, kind: "client" });
       const row = await this.findById(record.id);
       if (!row) throw new Error("Failed to insert approval");
       return row;
     },
 
     async update(id: string, patch: ApprovalUpdatePatch): Promise<ApprovalRow | undefined> {
-      await db("approvals").where({ id }).update(patch);
+      await db("approvals").where({ id, kind: "client" }).update(patch);
       return this.findById(id);
     },
 
     async remove(id: string): Promise<void> {
-      await db("approvals").where({ id }).del();
+      await db("approvals").where({ id, kind: "client" }).del();
     },
 
     listComments(approvalId: string): Promise<ApprovalCommentRow[]> {

@@ -30,9 +30,9 @@ export function ChartCard({
     <Card padding="md" className={cn("flex flex-col gap-4", className)}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-base font-semibold text-ink">{title}</h3>
           {subtitle && (
-            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+            <p className="text-sm text-ink-muted mt-1">{subtitle}</p>
           )}
         </div>
         {action && <div>{action}</div>}
@@ -45,7 +45,7 @@ export function ChartCard({
           </div>
         ) : isEmpty ? (
           <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-sm text-gray-500 text-center">{emptyLabel}</p>
+            <p className="text-sm text-ink-muted text-center">{emptyLabel}</p>
           </div>
         ) : (
           children

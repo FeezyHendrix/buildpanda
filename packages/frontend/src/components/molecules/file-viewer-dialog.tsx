@@ -43,23 +43,23 @@ function FileViewerDialog({
         <Dialog.Popup
           className={cn(
             "fixed left-1/2 top-1/2 z-[60] flex h-[min(92vh,1100px)] w-[min(1200px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-            "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
+            "overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
           )}
         >
-          <header className="flex items-center justify-between gap-4 border-b border-[#F0F0F0] px-5 py-3.5">
+          <header className="flex items-center justify-between gap-4 border-b border-line-hair px-5 py-3.5">
             <div className="min-w-0">
-              <Dialog.Title className="truncate text-sm font-semibold text-gray-900">
+              <Dialog.Title className="truncate text-sm font-semibold text-ink">
                 {title}
               </Dialog.Title>
-              <p className="truncate text-xs text-gray-500">{fileName}</p>
+              <p className="truncate text-xs text-ink-muted">{fileName}</p>
             </div>
             <div className="flex items-center gap-2">
               {canZoom && (
-                <div className="flex items-center rounded-lg bg-[#F6F6F6] p-0.5">
+                <div className="flex items-center rounded-lg bg-surface-track p-0.5">
                   <button
                     type="button"
                     onClick={() => setZoom((value) => Math.max(0.5, Number((value - 0.25).toFixed(2))))}
-                    className="rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-gray-900"
+                    className="rounded-md px-2 py-1 text-xs font-medium text-ink-muted hover:bg-white hover:text-ink"
                     aria-label="Zoom out"
                   >
                     −
@@ -67,7 +67,7 @@ function FileViewerDialog({
                   <button
                     type="button"
                     onClick={() => setZoom(1)}
-                    className="min-w-12 rounded-md px-2 py-1 text-xs font-medium tabular-nums text-gray-600 hover:bg-white hover:text-gray-900"
+                    className="min-w-12 rounded-md px-2 py-1 text-xs font-medium tabular-nums text-ink-muted hover:bg-white hover:text-ink"
                     aria-label="Reset zoom"
                   >
                     {Math.round(zoom * 100)}%
@@ -75,7 +75,7 @@ function FileViewerDialog({
                   <button
                     type="button"
                     onClick={() => setZoom((value) => Math.min(3, Number((value + 0.25).toFixed(2))))}
-                    className="rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-gray-900"
+                    className="rounded-md px-2 py-1 text-xs font-medium text-ink-muted hover:bg-white hover:text-ink"
                     aria-label="Zoom in"
                   >
                     +
@@ -86,17 +86,17 @@ function FileViewerDialog({
                 href={url}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg bg-[#F6F6F6] px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                className="inline-flex h-8 items-center rounded-lg border border-line bg-white px-3 text-xs font-semibold text-ink transition-colors hover:border-primary-500 hover:bg-primary-50 hover:text-primary-600"
               >
                 Open in new tab
               </a>
-              <Dialog.Close className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-[#F6F6F6] hover:text-gray-900">
+              <Dialog.Close className="inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold text-primary-500 transition-colors hover:bg-black/5">
                 Close
               </Dialog.Close>
             </div>
           </header>
 
-          <div className="flex-1 overflow-auto bg-[#FAFAFA]">
+          <div className="flex-1 overflow-auto bg-surface-alt">
             {isImage(fileName) ? (
               <div className="flex min-h-full items-center justify-center p-4">
                 <img
@@ -115,14 +115,14 @@ function FileViewerDialog({
               </div>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-ink-muted">
                   Preview isn&apos;t available for this file type.
                 </p>
                 <a
                   href={url}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-lg bg-[#004DE7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0041c4]"
+                  className="inline-flex h-[38px] items-center rounded-lg bg-primary-500 px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
                 >
                   Open file
                 </a>

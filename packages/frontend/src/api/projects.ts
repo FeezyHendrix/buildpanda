@@ -1,8 +1,9 @@
 import api from "./client";
-import type { Currency, Project } from "@/lib/project-types";
+import type { AiUpdateCadence, Currency, Project } from "@/lib/project-types";
 
 export interface ProjectTemplateSummary {
   id: string;
+  projectType: "build" | "renovate";
   name: string;
   description: string;
   stageCount: number;
@@ -16,6 +17,7 @@ export interface CreateProjectInput {
   projectType: string;
   templateId?: string;
   location: {
+    country?: string;
     state: string;
     city: string;
     ownsLand: boolean;
@@ -57,9 +59,40 @@ export const projectsApi = {
 
   settings: (id: string) => api.get<ProjectSettings>(`/projects/${id}/settings`).then((r) => r.data),
 
+  profile: (id: string) => api.get<ProjectProfile>(`/projects/${id}/settings`).then((r) => r.data),
+
+  updateProfile: (id: string, input: UpdateProjectProfileInput) =>
+    api.patch<ProjectProfile>(`/projects/${id}/settings`, input).then((r) => r.data),
+
   updateSettings: (id: string, input: ProjectSettings) => api.put<ProjectSettings>(`/projects/${id}/settings`, input).then((r) => r.data),
 };
 
 export interface ProjectSettings {
-  aiUpdatesEnabled: boolean;
+  aiUpdateCadence: AiUpdateCadence;
 }
+
+export const PROJECT_TYPE_CODES = ["building", "renovation", "civil", "other"] as const;
+export type ProjectTypeCode = (typeof PROJECT_TYPE_CODES)[number];
+
+/**
+ * The contract frame and the working calendar. Every "working days missed",
+ * duration and EOT figure on the dashboards measures against these, and before
+ * this there was no way to state any of them (findings #14, #33).
+ */
+export interface ProjectProfile {
+  name: string;
+  address: string;
+  startDate: string | null;
+  completionDate: string | null;
+  revisedCompletionDate: string | null;
+  clientName: string | null;
+  contractorEntity: string | null;
+  projectType: ProjectTypeCode | null;
+  /** Day-of-week numbers the site works (0 = Sunday … 6 = Saturday). */
+  workingDays: number[];
+  /** `yyyy-mm-dd` dates the site is closed. */
+  holidays: string[];
+  aiUpdateCadence: AiUpdateCadence;
+}
+
+export type UpdateProjectProfileInput = Partial<Omit<ProjectProfile, "aiUpdateCadence">>;

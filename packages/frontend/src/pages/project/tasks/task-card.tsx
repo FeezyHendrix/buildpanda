@@ -6,23 +6,31 @@ import { FileViewerDialog } from "@/components/molecules/file-viewer-dialog";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import { resolveFileUrl } from "@/hooks/use-files";
-import type { Task } from "@/lib/project-types";
-import { ENTITY_META, LinkGlyph, PriorityBadge, firstImageFileId, htmlToText } from "./task-ui";
+import type { Task, TaskColumn } from "@/lib/project-types";
+import { ENTITY_META, LinkGlyph, PriorityBadge, firstImageFileId, htmlToText, isTaskOverdue } from "./task-ui";
+import { TaskMoveMenu } from "./task-move-menu";
 
 export function TaskCard({
   task,
   canManage,
+  columns,
   onOpen,
+  onMove,
 }: {
   task: Task;
   canManage: boolean;
+  columns: readonly TaskColumn[];
   onOpen: () => void;
+  onMove: (columnId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
     disabled: !canManage,
   });
   const due = formatDayMonth(task.dueDate) || null;
+  // A past due date was a neutral grey chip with nothing to distinguish it
+  // (finding #28); overdue now reads as overdue, with a word as well as a colour.
+  const overdue = isTaskOverdue(task);
   const coverFileId = firstImageFileId(task.descriptionHtml);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -47,7 +55,7 @@ export function TaskCard({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
-        "touch-manipulation overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow",
+        "touch-manipulation overflow-hidden rounded-lg border border-line bg-white shadow-sm transition-shadow",
         isDragging ? "opacity-50 shadow-md" : "hover:shadow-md",
         canManage && "cursor-grab active:cursor-grabbing",
       )}
@@ -79,12 +87,20 @@ export function TaskCard({
       <div className="p-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <PriorityBadge priority={task.priority} />
+          {canManage ? (
+            <TaskMoveMenu
+              taskTitle={task.title}
+              columns={columns}
+              currentColumnId={task.columnId}
+              onMove={onMove}
+            />
+          ) : null}
           {task.entityLinkTypes.length > 0 && (
             <div className="flex flex-wrap items-center justify-end gap-1">
               {task.entityLinkTypes.map((type) => (
                 <span
                   key={type}
-                  className="inline-flex items-center gap-1 rounded bg-[#EEF2FF] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#004DE7]"
+                  className="inline-flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-500"
                   title={`Linked to ${ENTITY_META[type].label.toLowerCase()}`}
                 >
                   <LinkGlyph />
@@ -105,13 +121,13 @@ export function TaskCard({
             {task.labels.slice(0, 3).map((label) => (
               <span
                 key={label}
-                className="inline-flex max-w-[140px] items-center truncate rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-600"
+                className="inline-flex max-w-[140px] items-center truncate rounded-full bg-surface-alt px-2 py-0.5 text-xs font-medium text-gray-600"
               >
                 {label}
               </span>
             ))}
             {task.labels.length > 3 && (
-              <span className="inline-flex items-center rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-400">
+              <span className="inline-flex items-center rounded-full bg-surface-alt px-2 py-0.5 text-xs font-medium text-gray-400">
                 +{task.labels.length - 3}
               </span>
             )}
@@ -142,7 +158,7 @@ export function TaskCard({
             )}
             <div className="flex shrink-0 items-center gap-1.5">
               {task.subtaskTotal > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                <span className="inline-flex items-center gap-1 rounded-full bg-surface-alt px-2 py-0.5 text-xs font-medium text-gray-500">
                   <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 11l3 3L22 4" />
                     <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
@@ -151,8 +167,13 @@ export function TaskCard({
                 </span>
               )}
               {due && (
-                <span className="whitespace-nowrap rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
-                  {due}
+                <span
+                  className={cn(
+                    "whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+                    overdue ? "bg-error-50 text-error-600" : "bg-surface-alt text-gray-500",
+                  )}
+                >
+                  {overdue ? `⚠ Overdue · ${due}` : due}
                 </span>
               )}
             </div>

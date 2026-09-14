@@ -205,33 +205,33 @@ export function ScheduleOfValuesDrawer({
         </div>
       ) : (
         <>
-          <section className="sticky top-0 z-10 -mx-6 -mt-5 border-b border-grey-50 bg-white px-6 pb-4 pt-5">
+          <section className="sticky top-0 z-10 -mx-6 -mt-5 border-b border-line-hair bg-white px-6 pb-4 pt-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-black-200">
+                <p className="text-xs font-medium uppercase text-ink-muted">
                   Scheduled
                 </p>
                 <p
                   className={cn(
-                    "mt-1 text-2xl font-bold tabular-nums",
-                    isOverBooked ? "text-error-600" : "text-black-500",
+                    "mt-1 text-2xl font-medium tabular-nums",
+                    isOverBooked ? "text-error-600" : "text-ink",
                   )}
                 >
                   {formatPercent(totalPercent)}%
                 </p>
-                <p className="mt-0.5 text-xs tabular-nums text-black-300">
+                <p className="mt-0.5 text-xs tabular-nums text-ink-muted">
                   {formatCurrency(scheduledAmount.round().toNumber(), currency)} of{" "}
                   {formatCurrency(stageValue, currency)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-black-200">
+                <p className="text-xs font-medium uppercase text-ink-muted">
                   Billed to date
                 </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-primary-500">
+                <p className="mt-1 text-2xl font-medium tabular-nums text-primary-500">
                   {formatCurrency(billedAmount.round().toNumber(), currency)}
                 </p>
-                <p className="mt-0.5 text-xs tabular-nums text-black-300">
+                <p className="mt-0.5 text-xs tabular-nums text-ink-muted">
                   {billedLines} of {draft.length}{" "}
                   {draft.length === 1 ? "line" : "lines"} billed
                 </p>
@@ -250,7 +250,7 @@ export function ScheduleOfValuesDrawer({
                 "mt-3 rounded-lg px-3 py-2 text-xs",
                 isOverBooked
                   ? "bg-error-50 font-medium text-error-600"
-                  : "bg-[#F8F8F8] text-black-300",
+                  : "bg-surface-alt text-ink-muted",
               )}
             >
               {isOverBooked
@@ -262,29 +262,18 @@ export function ScheduleOfValuesDrawer({
           </section>
 
           <div className="flex items-center justify-between">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-black-200">
+            <h3 className="text-xs font-medium uppercase text-ink-muted">
               Billing months
             </h3>
-            <span className="text-[11px] text-black-200">% of stage value</span>
+            <span className="text-xs text-ink-muted">% of stage value</span>
           </div>
 
           {draft.length === 0 ? (
             <EmptyState
+              variant="inline"
               title="No billing months yet"
               description="Add the months this stage gets billed in and give each one its share of the stage value."
-              className="py-2"
-              action={
-                canManage ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={addLine}
-                  >
-                    Add month
-                  </Button>
-                ) : undefined
-              }
+              action={canManage ? { label: "Add month", onClick: addLine } : undefined}
             />
           ) : (
             <ul className="flex flex-col gap-2">
@@ -315,7 +304,7 @@ export function ScheduleOfValuesDrawer({
             </Button>
           ) : null}
 
-          <p className="mt-auto pt-2 text-[11px] text-black-200">
+          <p className="mt-auto pt-2 text-xs text-ink-muted">
             These lines record billing that happened off-platform. BuildPanda
             never charges or moves money.
           </p>

@@ -55,17 +55,17 @@ function ImportProgrammeDialog({ open, onOpenChange, projectId }: ImportProgramm
         />
         <Dialog.Popup
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
+            "fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
             "transition-all duration-300 ease-out",
             "data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
           )}
         >
-          <header className="flex items-start justify-between border-b border-[#F0F0F0] px-6 py-5">
+          <header className="flex items-start justify-between border-b border-line-hair px-6 py-5">
             <div>
-              <Dialog.Title className="text-lg font-semibold text-gray-900">
+              <Dialog.Title className="text-lg font-semibold text-ink">
                 Import programme
               </Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-gray-500">
+              <Dialog.Description className="mt-1 text-sm text-ink-muted">
                 Upload a Microsoft Project (.xml) or Excel schedule to auto-generate your project.
               </Dialog.Description>
             </div>
@@ -74,7 +74,7 @@ function ImportProgrammeDialog({ open, onOpenChange, projectId }: ImportProgramm
                 <button
                   type="button"
                   aria-label="Close"
-                  className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  className="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-black/5 hover:text-ink"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <path
@@ -102,11 +102,11 @@ function ImportProgrammeDialog({ open, onOpenChange, projectId }: ImportProgramm
 
             {(status === "pending" || status === "processing") && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Spinner size="lg" className="mb-6 text-[#004DE7]" />
-                <h3 className="mb-2 text-xl font-semibold text-gray-900">
+                <Spinner size="lg" className="mb-6 text-primary-500" />
+                <h3 className="mb-2 text-xl font-semibold text-ink">
                   Panda AI is reading your programme...
                 </h3>
-                <p className="text-sm text-gray-500">{job?.fileName ?? "Analyzing file"}</p>
+                <p className="text-sm text-ink-muted">{job?.fileName ?? "Analyzing file"}</p>
               </div>
             )}
 
@@ -138,11 +138,11 @@ function ImportProgrammeDialog({ open, onOpenChange, projectId }: ImportProgramm
 
             {status === "failed" && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="mb-4 inline-flex size-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <div className="mb-4 inline-flex size-12 items-center justify-center rounded-full bg-negative-50 text-negative-500">
                   <ReactSVG src={icons.warningCircle} />
                 </div>
-                <h3 className="mb-2 text-xl font-semibold text-gray-900">Import failed</h3>
-                <p className="mb-8 max-w-md text-sm text-gray-500">
+                <h3 className="mb-2 text-xl font-semibold text-ink">Import failed</h3>
+                <p className="mb-8 max-w-md text-sm text-ink-muted">
                   {job?.error ??
                     "We couldn't parse this file. In Microsoft Project use File → Save As → XML (*.xml) and upload that, or upload an Excel (.xls, .xlsx) schedule."}
                 </p>

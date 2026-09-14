@@ -1,9 +1,10 @@
 import { Minus, Plus, Ruler, Trash2 } from "lucide-react";
-import { MARKUP_KIND } from "@/api/drawing-markup";
+import { MARKUP_KIND, type DrawingMarkup } from "@/api/drawing-markup";
 import { cn } from "@/lib/utils";
 import { clamp, type Sheet } from "./plan-review-data";
 import { MarkupLayer } from "./plan-review-markup";
-import { CommentPin } from "./plan-review-pin";
+import { CommentPin } from "@/components/molecules/comment-pin";
+import { anchorBelow } from "@/components/molecules/markup-thread/pin-popover";
 import { SheetImage } from "./plan-review-sheet-image";
 import { BLEND_MODE, REC_STATUS, SELECTION_KIND, TOOL, TOOL_CURSORS } from "./plan-review-types";
 import { IconBtn, Kbd } from "./plan-review-ui";
@@ -11,10 +12,18 @@ import type { MarkupToolsController } from "./use-markup-tools";
 import type { RecordingController } from "./use-plan-recording";
 import type { SheetNavigationController } from "./use-sheet-navigation";
 import type { SheetScaleController } from "./use-sheet-scale";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 const ZOOM_MIN = 50;
 const ZOOM_MAX = 300;
 const ZOOM_STEP = 25;
+
+function pinLabel(record: DrawingMarkup | undefined, index: number): string {
+  if (!record) return `Comment ${index + 1} (unsaved)`;
+  const n = record.comments.length;
+  return `${n} comment${n === 1 ? "" : "s"}${record.resolvedAt ? " · resolved" : ""}`;
+}
 
 interface PlanReviewStageProps {
   sheet: Sheet;
@@ -46,7 +55,7 @@ export function PlanReviewStage({
   const compareSheet = blend.compareSheet;
   const selection = markup.selection;
   return (
-    <div ref={markup.canvasRef} className="relative min-h-0 flex-1 overflow-auto bg-[#F0F0F0] p-4 sm:p-8">
+    <div ref={markup.canvasRef} className="relative min-h-0 flex-1 overflow-auto bg-gray-100 p-4 sm:p-8">
       <div className="mx-auto" style={{ width: `${nav.zoom}%`, minWidth: "min(560px, 100%)" }}>
         <div
           ref={drawingRef}
@@ -55,7 +64,7 @@ export function PlanReviewStage({
           onPointerMove={markup.handlePointerMove}
           onPointerUp={markup.handlePointerUp}
           className={cn(
-            "relative w-full touch-none rounded-lg border border-[#E2E2E2] bg-white shadow-lg",
+            "relative w-full touch-none rounded-lg border border-line bg-white shadow-lg",
             markup.isPanning ? "cursor-grabbing" : TOOL_CURSORS[markup.activeTool],
           )}
         >
@@ -89,10 +98,10 @@ export function PlanReviewStage({
                   style={{ mixBlendMode: "multiply", opacity: (nav.blendAmount / 100) * 0.35 }}
                 />
               )}
-              <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-red-700 shadow-sm ring-1 ring-black/10">
+              <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-xs font-medium text-red-700 shadow-sm ring-1 ring-black/10">
                 <span className="size-2 rounded-full bg-red-500" /> {sheet.code} · {blend.currentRevision} (current)
               </span>
-              <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-sky-700 shadow-sm ring-1 ring-black/10">
+              <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-xs font-medium text-sky-700 shadow-sm ring-1 ring-black/10">
                 <span className="size-2 rounded-full bg-sky-500" /> {compareSheet.code} · {compareSheet.revision} (compare)
               </span>
             </>
@@ -103,6 +112,7 @@ export function PlanReviewStage({
               markups={markup.sheetMarkups}
               draft={markup.draft ?? markup.measureDraft}
               selectedId={selection?.kind === SELECTION_KIND.MARKUP ? selection.id : null}
+              dimmedIds={markup.dimmedIds}
               scale={sheet.scale}
               aspect={scale.imgAspect}
               customFtPerPct={scale.scaleFor(sheet.id)}
@@ -110,20 +120,33 @@ export function PlanReviewStage({
           )}
 
           {markup.markupVisible &&
-            markup.sheetPins.map((pin, index) => (
-              <CommentPin
-                key={pin.id}
-                color={pin.color}
-                label={`Comment ${index + 1}`}
-                selected={selection?.kind === SELECTION_KIND.PIN && selection.id === pin.id}
-                draggable={markup.activeTool === TOOL.SELECT}
-                onPointerDown={(e) => markup.handlePinPointerDown(e, pin.id)}
-                onClick={(e) => {
-                  if (markup.activeTool === TOOL.SELECT) e.stopPropagation();
-                }}
-                style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-              />
-            ))}
+            markup.sheetPins.map((pin, index) => {
+              const record = markup.serverMarkups.get(pin.id);
+              const selecting = markup.activeTool === TOOL.SELECT;
+              return (
+                <CommentPin
+                  key={pin.id}
+                  color={pin.color}
+                  label={pinLabel(record, index)}
+                  selected={selection?.kind === SELECTION_KIND.PIN && selection.id === pin.id}
+                  draggable={selecting && !record}
+                  dimmed={markup.dimmedIds.has(pin.id)}
+                  onPointerDown={(e) => {
+                    if (record) {
+                      if (selecting) e.stopPropagation();
+                    } else {
+                      markup.handlePinPointerDown(e, pin.id);
+                    }
+                  }}
+                  onClick={(e) => {
+                    if (!selecting) return;
+                    e.stopPropagation();
+                    if (record) markup.openThread(pin.id, anchorBelow(e.currentTarget));
+                  }}
+                  style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                />
+              );
+            })}
 
           {(recording.status === REC_STATUS.RECORDING ||
             (recording.status === REC_STATUS.SAVED && recording.trace.length > 1)) && (
@@ -160,7 +183,7 @@ export function PlanReviewStage({
         >
           <Minus size={13} />
         </IconBtn>
-        <span className="w-11 text-center font-mono text-[11px] text-gray-600">{nav.zoom}%</span>
+        <span className="w-11 text-center font-mono text-xs text-gray-600">{nav.zoom}%</span>
         <IconBtn
           label="Zoom in"
           disabled={nav.zoom >= ZOOM_MAX}
@@ -173,23 +196,23 @@ export function PlanReviewStage({
 
       {selection && (
         <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/95 py-1 pl-3 pr-1 shadow-lg ring-1 ring-black/5">
-          <span className="text-[11px] font-medium text-gray-600">
-            {selection.kind === SELECTION_KIND.PIN ? "Pin selected — drag to move" : "Markup selected"}
+          <span className="text-xs font-medium text-gray-600">
+            {selection.kind === SELECTION_KIND.PIN
+              ? markup.serverMarkups.has(selection.id)
+                ? "Comment selected"
+                : "Pin selected — drag to move"
+              : "Markup selected"}
           </span>
           {selection.kind === SELECTION_KIND.MARKUP &&
             markup.markups.find((m) => m.id === selection.id)?.tool === MARKUP_KIND.MEASURE && (
               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => scale.setCalibrateOpen(!scale.calibrateOpen)}
-                  className="flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700 hover:bg-primary-100"
-                >
+                <Button variant="ghost" size="sm" onClick={() => scale.setCalibrateOpen(!scale.calibrateOpen)}>
                   <Ruler size={11} /> Calibrate
-                </button>
+                </Button>
                 {scale.calibrateOpen && (
-                  <div data-popover-root className="absolute left-1/2 top-full mt-2 w-56 -translate-x-1/2 rounded-xl bg-white p-3 shadow-lg ring-1 ring-black/5">
+                  <div data-popover-root className="absolute left-1/2 top-full mt-2 w-56 -translate-x-1/2 rounded-lg bg-white p-3 shadow-lg ring-1 ring-black/5">
                     <p className="text-xs font-semibold text-gray-900">Calibrate scale</p>
-                    <p className="mt-0.5 text-[11px] text-gray-500">Enter the actual distance for this measurement.</p>
+                    <p className="mt-0.5 text-xs text-gray-500">Enter the actual distance for this measurement.</p>
                     <div className="mt-2.5 flex items-center gap-2">
                       <input
                         type="number"
@@ -197,27 +220,19 @@ export function PlanReviewStage({
                         value={scale.calibrateInput}
                         onChange={(e) => scale.setCalibrateInput(e.target.value)}
                         placeholder="Feet (e.g. 10.5)"
-                        className="h-8 w-full rounded-md bg-[#F6F6F6] px-2.5 text-xs text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-primary-600/20"
+                        className={INPUT_SM_CLASS}
                       />
-                      <button
-                        type="button"
-                        onClick={onCalibrate}
-                        className="h-8 shrink-0 rounded-md bg-primary-600 px-3 text-xs font-semibold text-white hover:bg-primary-700"
-                      >
+                      <Button size="sm" onClick={onCalibrate}>
                         Save
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
               </div>
             )}
-          <button
-            type="button"
-            onClick={markup.deleteSelection}
-            className="flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-100"
-          >
+          <Button variant="danger" size="sm" onClick={markup.deleteSelection}>
             <Trash2 size={11} /> Delete
-          </button>
+          </Button>
           <Kbd>Del</Kbd>
         </div>
       )}

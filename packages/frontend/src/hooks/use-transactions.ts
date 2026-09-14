@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { transactionsApi } from "@/api/transactions";
-import { transactionKeys } from "./query-keys";
+import { financeKeys, transactionKeys } from "./query-keys";
 import type {
   CreateTransactionInput,
   UpdateTransactionInput,
@@ -38,6 +38,7 @@ export function useCreateTransaction(projectId: string) {
     mutationFn: (body: CreateTransactionInput) => transactionsApi.create(projectId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: transactionKeys.all(projectId) });
+      qc.invalidateQueries({ queryKey: financeKeys.stageCosts(projectId) });
     },
   });
 }
@@ -49,6 +50,7 @@ export function useUpdateTransaction(projectId: string) {
       transactionsApi.update(projectId, transactionId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: transactionKeys.all(projectId) });
+      qc.invalidateQueries({ queryKey: financeKeys.stageCosts(projectId) });
     },
   });
 }
@@ -59,6 +61,7 @@ export function useDeleteTransaction(projectId: string) {
     mutationFn: (transactionId: string) => transactionsApi.delete(projectId, transactionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: transactionKeys.all(projectId) });
+      qc.invalidateQueries({ queryKey: financeKeys.stageCosts(projectId) });
     },
   });
 }

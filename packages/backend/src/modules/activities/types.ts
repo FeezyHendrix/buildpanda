@@ -10,6 +10,14 @@ export interface ActivityDependency {
   lagDays: number;
 }
 
+/**
+ * Who carries the time risk. It is the single fact that decides whether lost
+ * days can be claimed back as an extension of time, so it is attributed on the
+ * record rather than inferred from the reason at read time.
+ */
+export const CULPABILITIES = ["contractor", "client", "neutral"] as const;
+export type Culpability = (typeof CULPABILITIES)[number];
+
 export interface ActivityDelay {
   id: string;
   activityId: string;
@@ -19,7 +27,17 @@ export interface ActivityDelay {
   description: string | null;
   descriptionHtml: string | null;
   startedAt: string;
+  endedAt: string | null;
+  daysLost: number;
+  culpability: Culpability;
+  eotClaimable: boolean;
+  linkedRfiId: string | null;
+  linkedChangeRequestId: string | null;
+  linkedMaterialOrderId: string | null;
+  /** Working days this delay has already pushed the programme by; the cascade's ledger. */
+  appliedShiftDays: number;
   resolvedAt: string | null;
+  resolvedById: string | null;
   costImpact: number;
   currency: Currency;
   preventionNotes: string | null;
@@ -56,6 +74,8 @@ export interface Activity {
   baselineEndAt: string | null;
   isMilestone: boolean;
   source: string;
+  /** Planned duration counted on the project's working calendar, both ends inclusive. */
+  durationWorkingDays: number;
   delays: ActivityDelay[];
   createdAt: string;
   updatedAt: string;
@@ -100,11 +120,22 @@ export interface ActivityDelayRow {
   description: string | null;
   description_html: string | null;
   started_at: Date | string;
+  ended_at: Date | string | null;
+  days_lost: number;
+  culpability: Culpability;
+  eot_claimable: boolean;
+  linked_rfi_id: string | null;
+  linked_change_request_id: string | null;
+  linked_material_order_id: string | null;
+  applied_shift_days: number;
   resolved_at: Date | string | null;
+  resolved_by_id: string | null;
   cost_impact: string;
   currency: Currency;
   prevention_notes: string | null;
   recorded_by_id: string | null;
+  /** Joined from the user table so a delay record says who logged it. */
+  recorded_by_name?: string | null;
   created_at: Date | string;
 }
 
@@ -112,6 +143,21 @@ export interface DelayReasonRow {
   code: string;
   category: string;
   name: string;
+  default_culpability?: Culpability;
+  default_eot_claimable?: boolean;
+}
+
+/** One line of the programme's audit trail: who moved what, by how many days, why. */
+export interface ActivityEventRow {
+  id: string;
+  project_id: string;
+  activity_id: string;
+  kind: string;
+  summary: string;
+  days_delta: number;
+  delay_id: string | null;
+  actor_id: string | null;
+  created_at: Date | string;
 }
 
 export interface CreateActivityInput {
@@ -161,12 +207,34 @@ export interface RaiseDelayInput {
   description?: string;
   descriptionHtml?: string | null;
   startedAt: string;
+  endedAt?: string | null;
+  daysLost?: number;
+  culpability?: Culpability;
+  eotClaimable?: boolean;
+  linkedRfiId?: string | null;
+  linkedChangeRequestId?: string | null;
+  linkedMaterialOrderId?: string | null;
   costImpact?: number;
   currency?: Currency;
   preventionNotes?: string;
 }
 
 export interface ResolveDelayInput {
-  resolvedAt: string;
+  resolvedAt?: string;
+  endedAt?: string | null;
+  daysLost?: number;
+  culpability?: Culpability;
+  eotClaimable?: boolean;
+  linkedRfiId?: string | null;
+  linkedChangeRequestId?: string | null;
+  linkedMaterialOrderId?: string | null;
   preventionNotes?: string;
+}
+
+/** One activity the cascade moved, and by how many working days. */
+export interface ShiftedActivity {
+  id: string;
+  name: string;
+  days: number;
+  plannedEndAt: string;
 }

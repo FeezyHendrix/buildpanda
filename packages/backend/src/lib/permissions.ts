@@ -11,10 +11,14 @@ export const statement = {
   // Construction suite
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
-  // Governs the WHOLE finance surface, expenses/receipts included — they had a
-  // separate `transactions` resource until the model was unified. Reading an
-  // expense is finances:view; writing or exporting one is finances:manage.
-  finances: ["view", "manage", "approve", "dispute"],
+  // Two reads, not one. `view` is the CLIENT-FACING contract position — contract
+  // sum, certificates/receivable invoices, retention, the payments on them.
+  // `viewCosts` is the CONTRACTOR'S internal position — expenses, purchase
+  // orders, budget vs actual, cost variance, payable invoices. On a works
+  // contract the employer's Resident Engineer must see what was certified to
+  // them and must never see the contractor's costs or margin, so a single flat
+  // finances:view was a disclosure bug, not a convenience.
+  finances: ["view", "viewCosts", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   stages: ["view", "manage"],
   buildings: ["view", "manage"],
@@ -33,15 +37,22 @@ export const statement = {
   bim: ["view", "upload", "manage"],
   approvals: ["view", "decide", "manage"],
   selections: ["view", "decide", "manage"],
-  queries: ["view", "raise", "manage"],
-  "change-requests": ["view", "manage"],
-  "action-items": ["view", "manage"],
+  // `approve` is separate from `manage` on purpose: the contractor proposes a
+  // variation, the engineer or employer decides it. Holding manage lets you
+  // raise and price a change; holding approve lets you decide one you raised.
+  "change-requests": ["view", "manage", "approve"],
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
   // Pre-construction suite
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
+  // verify/apply are separate grants so a quantity surveyor's sign-off is a
+  // role, not a side effect of being allowed to edit a proposal.
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -51,7 +62,7 @@ type PresetShape = Partial<Record<keyof typeof statement, readonly string[]>>;
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage", "approve", "dispute"],
+  finances: ["view", "viewCosts", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete", "markup"],
   inspections: ["view", "request", "manage"],
@@ -68,9 +79,7 @@ const constructionFull = {
   bim: ["view", "upload", "manage"],
   approvals: ["view", "decide", "manage"],
   selections: ["view", "decide", "manage"],
-  queries: ["view", "raise", "manage"],
-  "change-requests": ["view", "manage"],
-  "action-items": ["view", "manage"],
+  "change-requests": ["view", "manage", "approve"],
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
@@ -81,7 +90,7 @@ const constructionFull = {
 const constructionContributor = {
   project: ["view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage", "dispute"],
+  finances: ["view", "viewCosts", "manage", "dispute"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "markup"],
   inspections: ["view", "request", "manage"],
@@ -98,9 +107,7 @@ const constructionContributor = {
   bim: ["view", "upload", "manage"],
   approvals: ["view", "decide", "manage"],
   selections: ["view", "decide", "manage"],
-  queries: ["view", "raise", "manage"],
-  "change-requests": ["view", "manage"],
-  "action-items": ["view", "manage"],
+  "change-requests": ["view", "manage", "approve"],
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
@@ -111,7 +118,8 @@ const constructionContributor = {
 const constructionReadOnly = {
   project: ["view"],
   tasks: ["view"],
-  finances: ["view"],
+  // An org viewer is internal staff: they read the cost position too.
+  finances: ["view", "viewCosts"],
   schedule: ["view"],
   documents: ["view"],
   inspections: ["view"],
@@ -128,9 +136,7 @@ const constructionReadOnly = {
   bim: ["view"],
   approvals: ["view"],
   selections: ["view"],
-  queries: ["view"],
   "change-requests": ["view"],
-  "action-items": ["view"],
   "key-dates": ["view"],
   permits: ["view"],
   risks: ["view"],
@@ -138,25 +144,49 @@ const constructionReadOnly = {
   buildings: ["view"],
 } as const satisfies PresetShape;
 
+const preconFull = {
+  proposals: ["view", "create", "update", "delete", "send", "convert"],
+  leads: ["view", "create", "update", "delete"],
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
+} as const satisfies PresetShape;
+
+const preconContributor = {
+  proposals: ["view", "create", "update", "send"],
+  leads: ["view", "create", "update"],
+  takeoffs: ["view", "measure", "edit"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view"],
+  complianceDocs: ["view"],
+} as const satisfies PresetShape;
+
+const preconReadOnly = {
+  proposals: ["view"],
+  leads: ["view"],
+  takeoffs: ["view"],
+  estimates: ["view"],
+  rateCards: ["view"],
+  complianceDocs: ["view"],
+} as const satisfies PresetShape;
+
 export const owner = ac.newRole({
   ...ownerAc.statements,
   ...constructionFull,
-  proposals: ["view", "create", "update", "delete", "send", "convert"],
-  leads: ["view", "create", "update", "delete"],
+  ...preconFull,
 });
 
 export const admin = ac.newRole({
   ...adminAc.statements,
   ...constructionFull,
-  proposals: ["view", "create", "update", "delete", "send", "convert"],
-  leads: ["view", "create", "update", "delete"],
+  ...preconFull,
 });
 
 export const member = ac.newRole({
   ...memberAc.statements,
   ...constructionContributor,
-  proposals: ["view", "create", "update", "send"],
-  leads: ["view", "create", "update"],
+  ...preconContributor,
 });
 
 export const viewer = ac.newRole({
@@ -166,12 +196,11 @@ export const viewer = ac.newRole({
   team: [],
   ac: [],
   ...constructionReadOnly,
-  proposals: ["view"],
-  leads: ["view"],
+  ...preconReadOnly,
 });
 
 // The `employee` role is the DEFAULT floor for an invited employee (see
-// isEmployeeRole): project-scoped, read-only, no org-management. It grants
+// isEmployeeRole): org-project-visible, read-only, no org-management. It grants
 // almost nothing on purpose — an org admin adds capabilities (project:create,
 // invitation:create, etc.) by unioning a custom role onto the member (RBAC),
 // so this preset must stay minimal, never a rich set.
@@ -180,11 +209,12 @@ const constructionEmployeeBase = {
   tasks: ["view"],
   schedule: ["view"],
   documents: ["view"],
-  updates: ["view"],
+  updates: ["view", "post"],
   messages: ["view"],
   comments: ["view"],
-  dailyLog: ["view"],
-  materials: ["view"],
+  participants: ["view"],
+  dailyLog: ["view", "create"],
+  materials: ["view", "request"],
 } as const satisfies PresetShape;
 
 export const employee = ac.newRole({
@@ -211,11 +241,10 @@ export type PermissionMap = ReadonlyMap<string, ReadonlySet<string>>;
 /** The four built-in org roles. Used to skip the custom-role DB query on the common path. */
 export const BUILTIN_ROLES: ReadonlySet<string> = new Set(Object.keys(roles));
 
-// An "employee" is an org member scoped to their assigned projects (see
-// authorization.ts / listForUser). Their capabilities are pure RBAC — the
-// minimal `employee` role grants almost nothing, and an org admin grants more
-// via custom roles unioned onto the role field (e.g. "employee,foreman"), so
-// match by token, not string equality.
+// An "employee" is an org member with read visibility across the org's projects.
+// Their capabilities are pure RBAC — the minimal `employee` role grants almost
+// nothing, and an org admin grants more via custom roles unioned onto the role
+// field (e.g. "employee,foreman"), so match by token, not string equality.
 export function isEmployeeRole(role: string | null | undefined): boolean {
   return (role ?? "")
     .split(",")

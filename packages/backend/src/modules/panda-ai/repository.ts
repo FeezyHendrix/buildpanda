@@ -20,8 +20,6 @@ const CREATED_AT_INPUT_TABLES = [
   "project_budget_periods",
   "change_requests",
   "risk_factors",
-  "action_items",
-  "queries",
   "approvals",
   "daily_logs",
   "inspections",
@@ -32,8 +30,6 @@ const CREATED_AT_INPUT_TABLES = [
 
 const UPDATED_AT_INPUT_TABLES = [
   "change_requests",
-  "action_items",
-  "queries",
   "approvals",
   "daily_logs",
   "key_dates",

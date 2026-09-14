@@ -44,6 +44,7 @@ import { MarkupToolbar } from "./plan-review/plan-review-toolbar";
 import { WorkspaceHeader } from "./plan-review/plan-review-header";
 import { PlanReviewStatusBar } from "./plan-review/plan-review-status-bar";
 import { PlanReviewViewer } from "./plan-review/plan-review-viewer";
+import { useMarkupThread } from "./plan-review/use-markup-thread";
 import { useMarkupTools, type CommentAnchor } from "./plan-review/use-markup-tools";
 import { usePinComments } from "./plan-review/use-pin-comments";
 import { usePlanRecording } from "./plan-review/use-plan-recording";
@@ -103,6 +104,8 @@ export default function DrawingReviewWorkspace() {
   const createRfi = useCreateRfi();
   const createApproval = useCreateApproval();
 
+  const thread = useMarkupThread({ projectId, assignees, addComment: addMarkupComment, remove: deleteMarkup });
+
   const scale = useSheetScale(nav.setPdfPageCount);
 
   const pointFromEvent = useCallback((e: { clientX: number; clientY: number }): Pt | null => {
@@ -155,6 +158,7 @@ export default function DrawingReviewWorkspace() {
     pendingPinId,
     setPendingPinId,
     setCommentAnchor,
+    setThreadTarget: thread.setTarget,
   });
 
   const comments = usePinComments({
@@ -334,6 +338,7 @@ export default function DrawingReviewWorkspace() {
             onCancel: () => setCommentAnchor(null),
             onSubmit: (capture) => void comments.submitPinComment(capture),
           }}
+          thread={thread}
         />
 
         <ReviewNotesPanel
@@ -369,7 +374,11 @@ export default function DrawingReviewWorkspace() {
         recording={recording}
         save={{
           canPersist: Boolean(projectId && sheet.documentVersionId),
-          isSaving: createMarkup.isPending || addMarkupComment.isPending || deleteMarkup.isPending,
+          isSaving:
+            createMarkup.isPending ||
+            addMarkupComment.isPending ||
+            deleteMarkup.isPending ||
+            thread.actions.resolve.isPending,
           hasError: Boolean(createMarkup.error ?? addMarkupComment.error ?? deleteMarkup.error),
           markupLoading: markupQuery.isPending,
         }}

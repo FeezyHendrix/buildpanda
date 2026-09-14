@@ -6,6 +6,7 @@ import { Page } from "@/components/molecules/page";
 import { useLocalDb } from "@/db/provider";
 import { useCreateMaterialOrder } from "@/hooks/use-local-materials";
 import { useFieldSession } from "@/lib/field-session";
+import { isIsoDate } from "@/lib/dates";
 import { useSyncState } from "@/lib/sync-provider";
 
 export default function NewMaterialOrder() {
@@ -19,11 +20,22 @@ export default function NewMaterialOrder() {
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [neededBy, setNeededBy] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The API rejects an order with no quantity or no needed-by date, so the
+  // form refuses them too instead of queuing a write that can never land.
+  const quantityValue = Number.parseFloat(quantity);
+  const isQuantityValid = Number.isFinite(quantityValue) && quantityValue > 0;
+  const isNeededByValid = isIsoDate(neededBy.trim());
   const canSubmit =
-    title.trim().length > 0 && materialName.trim().length > 0 && unit.trim().length > 0 && !saving;
+    title.trim().length > 0 &&
+    materialName.trim().length > 0 &&
+    unit.trim().length > 0 &&
+    isQuantityValid &&
+    isNeededByValid &&
+    !saving;
 
   async function submit() {
     if (!canSubmit) return;
@@ -33,8 +45,9 @@ export default function NewMaterialOrder() {
       await create({
         title: title.trim(),
         materialName: materialName.trim(),
-        quantity: Number.parseFloat(quantity) || 0,
+        quantity: quantityValue,
         unit: unit.trim(),
+        neededBy: neededBy.trim(),
         supplier: supplier.trim() || null,
       });
       router.back();
@@ -78,6 +91,14 @@ export default function NewMaterialOrder() {
           <Field label="Unit" value={unit} onChangeText={setUnit} placeholder="bags" className="flex-1" />
         </View>
         <Field label="Supplier" value={supplier} onChangeText={setSupplier} placeholder="Optional" />
+        <Field
+          label="Needed by"
+          value={neededBy}
+          onChangeText={setNeededBy}
+          placeholder="YYYY-MM-DD"
+          autoCapitalize="none"
+          error={neededBy.length > 0 && !isNeededByValid ? "Enter a date as YYYY-MM-DD." : undefined}
+        />
       </View>
     </Page>
   );

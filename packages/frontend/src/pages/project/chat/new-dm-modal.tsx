@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Avatar } from "@/components/atoms/avatar";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 import type { ChannelMemberLite } from "@/lib/project-types";
 
 export function NewDmModal({
@@ -20,11 +22,11 @@ export function NewDmModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-          <h3 className="font-semibold text-gray-900">New Direct Message</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+      <div className="w-full max-w-md rounded-lg border border-line-hair bg-white shadow-lg">
+        <div className="flex items-center justify-between border-b border-line-hair px-4 py-3">
+          <h3 className="font-semibold text-ink">New Direct Message</h3>
+          <button type="button" onClick={onClose} className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink" aria-label="Close">✕</button>
         </div>
         <div className="p-4">
           <input
@@ -33,24 +35,24 @@ export function NewDmModal({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search members..."
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 mb-4"
+            className={cn(INPUT_CLASS, "mb-4")}
           />
           <div className="max-h-64 overflow-y-auto space-y-1">
             {filtered.map(m => (
               <button
                 key={m.id}
                 onClick={() => onSelect(m.id)}
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-gray-50"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-surface-alt"
               >
                 <Avatar name={m.name ?? "?"} size="sm" />
                 <div className="flex-1 min-w-0">
-                  <div className="truncate font-medium text-gray-900">{m.name}</div>
-                  <div className="truncate text-xs text-gray-500">{m.email}</div>
+                  <div className="truncate font-medium text-ink">{m.name}</div>
+                  <div className="truncate text-xs text-ink-muted">{m.email}</div>
                 </div>
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="py-4 text-center text-sm text-gray-500">No members found</div>
+              <div className="py-4 text-center text-sm text-ink-muted">No members found</div>
             )}
           </div>
         </div>

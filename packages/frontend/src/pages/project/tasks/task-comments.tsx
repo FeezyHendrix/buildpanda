@@ -5,6 +5,8 @@ import { formatTimeAgo, formatShortDate } from "@/lib/formatters";
 import { useTaskDetail, useAddTaskComment } from "@/hooks/use-tasks";
 import { useProjectContext } from "@/layouts/project-layout";
 import { toast } from "@/lib/toast";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 function formatWhen(value: string): string {
   return formatTimeAgo(value) || formatShortDate(value) || value;
@@ -27,7 +29,7 @@ export function TaskComments({ projectId, taskId }: { projectId: string; taskId:
   }
 
   return (
-    <div className="flex flex-col border-t border-[#F0F0F0] pt-6">
+    <div className="flex flex-col border-t border-line-hair pt-6">
       <h3 className="text-sm font-semibold text-gray-900">
         Comments{detail && detail.comments.length > 0 ? ` (${detail.comments.length})` : ""}
       </h3>
@@ -37,7 +39,7 @@ export function TaskComments({ projectId, taskId }: { projectId: string; taskId:
       ) : (
         <ul className="mt-4 flex max-h-64 flex-col gap-4 overflow-y-auto pr-2">
           {detail.comments.map((c) => (
-            <li key={c.id} className="flex gap-3 rounded-xl bg-[#FAFAFA] p-3">
+            <li key={c.id} className="flex gap-3 rounded-lg bg-surface-alt p-3">
               <Avatar name={c.authorName} size="sm" />
               <div className="flex flex-1 flex-col">
                 <div className="flex items-center justify-between">
@@ -64,7 +66,7 @@ export function TaskComments({ projectId, taskId }: { projectId: string; taskId:
             }}
             rows={2}
             placeholder="Add a comment…"
-            className="w-full resize-none rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 resize-none")}
           />
           <div className="flex items-center justify-end">
             <Button

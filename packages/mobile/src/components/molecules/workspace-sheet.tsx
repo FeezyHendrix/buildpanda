@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Spinner, Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_MUTED } from "@/constants/colors";
 import { cn } from "@/lib/utils";
 
 export interface WorkspaceOption {
@@ -11,6 +12,8 @@ export interface WorkspaceOption {
 
 interface WorkspaceSheetProps {
   visible: boolean;
+  /** What this sheet is choosing. It is reused to pick a building, not only a workspace. */
+  title?: string;
   workspaces: readonly WorkspaceOption[];
   activeId: string | undefined;
   busyId?: string;
@@ -25,6 +28,7 @@ interface WorkspaceSheetProps {
  */
 export function WorkspaceSheet({
   visible,
+  title = "Switch workspace",
   workspaces,
   activeId,
   busyId,
@@ -52,16 +56,16 @@ export function WorkspaceSheet({
 
           <View className="flex-row items-center px-5 pb-2 pt-4">
             <Text weight="bold" className="flex-1 text-lg">
-              Switch workspace
+              {title}
             </Text>
             <Pressable
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Close"
               hitSlop={8}
-              className="h-9 w-9 items-center justify-center rounded-full active:bg-surface-alt"
+              className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
             >
-              <Ionicons name="close" size={20} color="#717171" />
+              <Ionicons name="close" size={20} color={ICON_MUTED} />
             </Pressable>
           </View>
 
@@ -98,7 +102,7 @@ export function WorkspaceSheet({
                     {busyId === workspace.id ? (
                       <Spinner size="sm" />
                     ) : isActive ? (
-                      <Ionicons name="checkmark" size={20} color="#004DE7" />
+                      <Ionicons name="checkmark" size={20} color={ICON_BRAND} />
                     ) : null}
                   </Pressable>
                 );

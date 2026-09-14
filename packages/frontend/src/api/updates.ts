@@ -48,6 +48,13 @@ export const updatesApi = {
   generateAiDraft: (projectId: string) =>
     api.post<ProjectUpdate>(`/projects/${projectId}/updates/ai-draft`).then((r) => r.data),
 
+  generateDailyDigest: (projectId: string, date?: string) =>
+    api
+      .post<ProjectUpdate>(`/projects/${projectId}/updates/daily-digest`, undefined, {
+        params: date ? { date } : undefined,
+      })
+      .then((r) => r.data),
+
   publish: (projectId: string, updateId: string) =>
     api.post<ProjectUpdate>(`/projects/${projectId}/updates/${updateId}/publish`).then((r) => r.data),
 

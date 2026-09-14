@@ -1,8 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
-import type { Rfi, RfiPriority } from "@/api/rfis";
-import { Card, Spinner, Text } from "@/components/atoms";
+import { RFI_STATUS_LABELS, type RfiPriority } from "@/api/rfis";
+import type { LocalRfi } from "@/db/rfis-repository";
+import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_FAINT } from "@/constants/colors";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
@@ -16,7 +19,7 @@ const PRIORITY_TONE: Record<RfiPriority, string> = {
   Low: "bg-surface-alt",
 };
 
-function RfiRow({ rfi }: { rfi: Rfi & { isPendingSync: boolean } }) {
+function RfiRow({ rfi }: { rfi: LocalRfi }) {
   return (
     <Pressable
       onPress={() => router.push(`/tools/rfis/${rfi.id}`)}
@@ -29,17 +32,13 @@ function RfiRow({ rfi }: { rfi: Rfi & { isPendingSync: boolean } }) {
           {rfi.subject}
         </Text>
         <Text tone="secondary" className="pt-0.5 text-xs" numberOfLines={1}>
-          {rfi.ballInCourtName ? `Ball in court: ${rfi.ballInCourtName}` : rfi.status}
+          {RFI_STATUS_LABELS[rfi.status]}
+          {rfi.ballInCourtName ? ` · Ball in court: ${rfi.ballInCourtName}` : ""}
         </Text>
       </View>
 
       {rfi.isPendingSync ? (
-        <View className="flex-row items-center gap-1 rounded-full bg-surface-alt px-2 py-1">
-          <Ionicons name="cloud-upload-outline" size={12} color="#717171" />
-          <Text weight="semibold" tone="secondary" className="text-[10px] uppercase">
-            Pending
-          </Text>
-        </View>
+        <PendingBadge />
       ) : (
         <View className={cn("rounded-full px-2 py-1", PRIORITY_TONE[rfi.priority])}>
           <Text
@@ -51,7 +50,7 @@ function RfiRow({ rfi }: { rfi: Rfi & { isPendingSync: boolean } }) {
           </Text>
         </View>
       )}
-      <Ionicons name="chevron-forward" size={18} color="#C8C8C8" />
+      <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
     </Pressable>
   );
 }
@@ -99,14 +98,7 @@ export default function Rfis() {
       title="RFIs"
       onBack={() => router.back()}
       rightButtons={
-        <Pressable
-          onPress={() => router.push("/tools/rfis/new")}
-          accessibilityRole="button"
-          accessibilityLabel="New RFI"
-          className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-        >
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-        </Pressable>
+        <HeaderIconButton icon="add" label="New RFI" onPress={() => router.push("/tools/rfis/new")} />
       }
     >
       {ready && db && projectId ? (

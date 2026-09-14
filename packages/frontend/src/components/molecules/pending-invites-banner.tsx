@@ -15,7 +15,7 @@ export function PendingInvitesBanner() {
       {invitations.map((invitation) => (
         <div
           key={invitation.id}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary-100 bg-primary-50/60 px-4 py-3"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary-100 bg-primary-50/60 px-4 py-3"
         >
           <p className="text-sm text-gray-700">
             You&apos;ve been invited to join{" "}

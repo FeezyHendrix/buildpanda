@@ -2,18 +2,41 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { currencySymbol } from "@/lib/formatters";
+import { RichTextField } from "@/components/molecules/rich-text-field";
+import { htmlFromPlainText } from "@/lib/rich-text";
+import { ClaimableDelayPicker } from "./claimable-delay-picker";
 import { FormDrawer } from "./form-drawer";
-import type { ChangeStatus } from "@/lib/project-types";
+import { useProjectActivities } from "@/hooks/use-activities";
+import { useProjectRfis } from "@/hooks/use-rfis";
+import { useStages } from "@/hooks/use-stages";
+import { claimableDelays } from "@/lib/delay-meta";
+import { CHANGE_TYPES, type ChangeType } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
+/**
+ * A change request is a contractual proposal, not a status someone types. The
+ * form captures what is being changed, what kind of change it is and what it
+ * hangs off — the stage whose dates move, the RFI it came out of, and for a
+ * time claim the delays it is argued from. The ladder itself (submit → approve
+ * / reject → resubmit → execute) is walked from the detail dialog's actions.
+ *
+ * A time claim asks for days and no money, so choosing that type drops the cost
+ * field entirely rather than leaving a zero a reader has to interpret.
+ */
 export interface UpsertChangeValues {
   title: string;
   description: string | null;
   reason: string | null;
-  status: ChangeStatus;
+  reasonHtml: string | null;
   costImpact: number;
   timeImpactDays: number;
   currency: "NGN" | "USD";
   assigneeId: string | null;
+  type: ChangeType;
+  stageId: string | null;
+  rfiId: string | null;
+  delayIds: string[];
 }
 
 export interface AssigneeOption {
@@ -24,6 +47,7 @@ export interface AssigneeOption {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   mode: "create" | "edit";
   initial?: Partial<UpsertChangeValues>;
   assigneeOptions?: AssigneeOption[];
@@ -32,40 +56,66 @@ interface Props {
   error?: string | null;
 }
 
-const STATUS: { value: ChangeStatus; label: string }[] = [
-  { value: "Draft", label: "Draft" },
-  { value: "Submitted", label: "Submitted" },
-  { value: "Approved", label: "Approved" },
-  { value: "Rejected", label: "Rejected" },
-];
+export const CHANGE_TYPE_LABELS: Record<ChangeType, { label: string; hint: string }> = {
+  variation: { label: "Variation", hint: "Additional work instructed against the contract." },
+  omission: { label: "Omission", hint: "Work removed from the contract; the cost impact is negative." },
+  eot_only: { label: "Extension of time only", hint: "A claim for time with no money attached." },
+  provisional_sum: {
+    label: "Provisional sum adjustment",
+    hint: "Converts a sum already in the contract into measured work.",
+  },
+};
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
-function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assigneeOptions = [], onSubmit, isSubmitting = false, error }: Props) {
+function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initial, assigneeOptions = [], onSubmit, isSubmitting = false, error }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [reason, setReason] = useState("");
-  const [status, setStatus] = useState<ChangeStatus>("Draft");
+  const [reasonHtml, setReasonHtml] = useState("");
   const [cost, setCost] = useState("0");
   const [days, setDays] = useState("0");
   const [currency, setCurrency] = useState<"NGN" | "USD">("NGN");
   const [assigneeId, setAssigneeId] = useState("");
+  const [type, setType] = useState<ChangeType>("variation");
+  const [stageId, setStageId] = useState("");
+  const [rfiId, setRfiId] = useState("");
+  const [delayIds, setDelayIds] = useState<Set<string>>(new Set());
 
+  const isTimeClaim = type === "eot_only";
   const symbol = currencySymbol(currency);
+  const { data: stages = [] } = useStages(open ? projectId : undefined);
+  const { data: rfis = [] } = useProjectRfis(open ? projectId : undefined);
+  const { data: activities = [] } = useProjectActivities(
+    open && isTimeClaim ? projectId : undefined,
+  );
+  const delays = claimableDelays(activities);
 
   useEffect(() => {
     if (open) {
       setTitle(initial?.title ?? "");
       setDescription(initial?.description ?? "");
       setReason(initial?.reason ?? "");
-      setStatus(initial?.status ?? "Draft");
+      setReasonHtml(initial?.reasonHtml ?? htmlFromPlainText(initial?.reason ?? ""));
       setCost(String(initial?.costImpact ?? 0));
       setDays(String(initial?.timeImpactDays ?? 0));
       setCurrency(initial?.currency ?? "NGN");
       setAssigneeId(initial?.assigneeId ?? "");
+      setType(initial?.type ?? "variation");
+      setStageId(initial?.stageId ?? "");
+      setRfiId(initial?.rfiId ?? "");
+      setDelayIds(new Set(initial?.delayIds ?? []));
     }
   }, [open, initial]);
+
+  function toggleDelay(delayId: string): void {
+    setDelayIds((curr) => {
+      const next = new Set(curr);
+      if (next.has(delayId)) next.delete(delayId);
+      else next.add(delayId);
+      return next;
+    });
+  }
 
   function handleSubmit(): void {
     if (!title.trim()) return;
@@ -73,11 +123,17 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assignee
       title: title.trim(),
       description: description.trim() || null,
       reason: reason.trim() || null,
-      status,
-      costImpact: Number(cost) || 0,
+      reasonHtml: reasonHtml || null,
+      // A time claim asks for days and no money — never a stale cost figure
+      // left behind by switching the type.
+      costImpact: isTimeClaim ? 0 : Number(cost) || 0,
       timeImpactDays: Math.round(Number(days) || 0),
       currency,
       assigneeId: assigneeId || null,
+      type,
+      stageId: stageId || null,
+      rfiId: rfiId || null,
+      delayIds: isTimeClaim ? [...delayIds] : [],
     });
   }
 
@@ -95,45 +151,91 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assignee
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-title">Title</Label>
-        <input id="cr-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Upgrade to imported floor tiles" className={field} />
+        <input id="cr-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Additional 120 m lined drain at ch. 2+400" className={field} />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-desc">Details</Label>
-        <textarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-base lg:text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
+        <textarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} />
       </div>
+      <RichTextField
+        label="Reason"
+        value={reasonHtml}
+        onChange={setReasonHtml}
+        onChangeText={setReason}
+        projectId={projectId}
+        placeholder="Why is it needed?"
+      />
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="cr-reason">Reason</Label>
-        <input id="cr-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why is it needed?" className={field} />
+        <Label htmlFor="cr-type">Type</Label>
+        <select id="cr-type" value={type} onChange={(e) => setType(e.target.value as ChangeType)} className={field}>
+          {CHANGE_TYPES.map((value) => (
+            <option key={value} value={value}>
+              {CHANGE_TYPE_LABELS[value].label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-ink-muted">{CHANGE_TYPE_LABELS[type].hint}</p>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+
+      {isTimeClaim ? (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-currency">Currency</Label>
-          <select id="cr-currency" value={currency} onChange={(e) => setCurrency(e.target.value as "NGN" | "USD")} className={field}>
-            <option value="NGN">NGN</option>
-            <option value="USD">USD</option>
-          </select>
+          <Label htmlFor="cr-days">Days claimed (calendar days)</Label>
+          <input id="cr-days" type="number" min={0} step={1} value={days} onChange={(e) => setDays(e.target.value)} className={field} />
+          <p className="text-xs text-ink-muted">
+            An award moves the revised completion date and every contractual key date by that many
+            calendar days. The decision may grant fewer.
+          </p>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-cost">Cost impact</Label>
-          <MoneyInput id="cr-cost" value={cost} onChange={setCost} currencySymbol={symbol} placeholder="0.00" />
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="cr-currency">Currency</Label>
+            <select id="cr-currency" value={currency} onChange={(e) => setCurrency(e.target.value as "NGN" | "USD")} className={field}>
+              <option value="NGN">NGN</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="cr-cost">Cost impact</Label>
+            <MoneyInput id="cr-cost" value={cost} onChange={setCost} currencySymbol={symbol} placeholder="0.00" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="cr-days">Time (days)</Label>
+            <input id="cr-days" type="number" value={days} onChange={(e) => setDays(e.target.value)} className={field} />
+          </div>
         </div>
+      )}
+
+      {isTimeClaim ? (
+        <ClaimableDelayPicker delays={delays} selected={delayIds} onToggle={toggleDelay} />
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-days">Time (days)</Label>
-          <input id="cr-days" type="number" value={days} onChange={(e) => setDays(e.target.value)} className={field} />
-        </div>
-      </div>
-      {mode === "edit" && (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-status">Status</Label>
-          <select id="cr-status" value={status} onChange={(e) => setStatus(e.target.value as ChangeStatus)} className={field}>
-            {STATUS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
+          <Label htmlFor="cr-stage">Stage affected</Label>
+          <select id="cr-stage" value={stageId} onChange={(e) => setStageId(e.target.value)} className={field}>
+            <option value="">No stage</option>
+            {stages.map((stage) => (
+              <option key={stage.id} value={stage.id}>
+                {stage.name}
               </option>
             ))}
           </select>
+          <p className="text-xs text-ink-muted">Its end date shifts by the time impact when the change is executed.</p>
         </div>
-      )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="cr-rfi">Originating RFI</Label>
+          <select id="cr-rfi" value={rfiId} onChange={(e) => setRfiId(e.target.value)} className={field}>
+            <option value="">Not from an RFI</option>
+            {rfis.map((rfi) => (
+              <option key={rfi.id} value={rfi.id}>
+                RFI-{rfi.number} · {rfi.subject}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-muted">Links the change back to the query that caused it.</p>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-assignee">Assignee</Label>

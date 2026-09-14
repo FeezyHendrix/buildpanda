@@ -55,6 +55,7 @@ export function RichTextField({
           onReady={onReady}
           placeholder={placeholder}
           disabled={disabled}
+          ariaLabel={label}
         />
       </div>
     </div>

@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { Spinner } from "@/components/atoms/spinner";
-import { MaterialsIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
-import { EmptyState } from "@/components/molecules/empty-state";
+import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { SearchInput } from "@/components/atoms/search-input";
 import { PageHeader } from "@/components/molecules/page-header";
+import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
 import { UpsertSupplierDialog } from "@/components/molecules/upsert-supplier-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -18,20 +16,61 @@ import {
 } from "@/hooks/use-suppliers";
 import { canResourceAction } from "@/lib/project-types";
 import type { Supplier } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
+import { DuplicateSupplierNotice } from "./suppliers/duplicate-supplier-notice";
+import { SuppliersTable } from "./suppliers/suppliers-table";
+import {
+  EMPTY_SUPPLIER_FILTERS,
+  filterSuppliers,
+  isFiltering,
+  readDuplicate,
+  supplierTrades,
+  SUPPLIER_APPROVAL_OPTIONS,
+  SUPPLIER_SCOPE_OPTIONS,
+  type DuplicateSupplier,
+  type SupplierApprovalFilter,
+  type SupplierFilters,
+  type SupplierScopeFilter,
+} from "./suppliers/supplier-helpers";
 
+/**
+ * The supplier register. The list holds both the company-wide accounts and the
+ * ones raised on this job, so the scope filter is how a PM tells them apart.
+ */
 export default function ProjectSuppliers() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "materials", "manage");
   const { data: suppliers = [], isLoading } = useSuppliers(project.id);
 
+  const [filters, setFilters] = useState<SupplierFilters>(EMPTY_SUPPLIER_FILTERS);
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Supplier | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null);
 
+  const [duplicate, setDuplicate] = useState<DuplicateSupplier | null>(null);
+
   const createSupplier = useCreateSupplier();
   const updateSupplier = useUpdateSupplier();
   const deleteSupplier = useDeleteSupplier();
+
+  const tradeOptions = [
+    { value: "all", label: "All trades" },
+    ...supplierTrades(suppliers).map((trade) => ({ value: trade, label: trade })),
+  ];
+  const visible = filterSuppliers(suppliers, filters);
+
+  function openCreate(): void {
+    setEditTarget(null);
+    setDuplicate(null);
+    setFormOpen(true);
+  }
+
+  function openEdit(supplier: Supplier): void {
+    setEditTarget(supplier);
+    setDuplicate(null);
+    setFormOpen(true);
+  }
 
   function handleSubmit(values: SupplierInput): void {
     if (editTarget) {
@@ -43,138 +82,126 @@ export default function ProjectSuppliers() {
             setEditTarget(null);
             toast("Supplier updated", "success");
           },
-          onError: () => toast("Could not update supplier"),
         },
       );
-    } else {
-      createSupplier.mutate(
-        { projectId: project.id, ...values },
-        {
-          onSuccess: () => {
-            setFormOpen(false);
-            toast("Supplier added", "success");
-          },
-          onError: () => toast("Could not add supplier"),
-        },
-      );
+      return;
     }
+    createSupplier.mutate(
+      { projectId: project.id, ...values },
+      {
+        onSuccess: () => {
+          setFormOpen(false);
+          setDuplicate(null);
+          toast("Supplier added", "success");
+        },
+        // The server answers a same-email/phone match with the row it matched;
+        // naming it beats a bare 409 and lets the user open it instead.
+        onError: (error) => setDuplicate(readDuplicate(error)),
+      },
+    );
+  }
+
+  /** Jump to the supplier the server says already covers this account. */
+  function openDuplicate(): void {
+    const existing = suppliers.find((supplier) => supplier.id === duplicate?.existingId);
+    if (!existing) return;
+    setDuplicate(null);
+    openEdit(existing);
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Materials", to: `/project/${project.id}/materials` },
-          { label: "Suppliers" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Suppliers"
-        description="Your directory of material and equipment suppliers for this project."
         actions={
-          canManage && (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                setEditTarget(null);
-                setFormOpen(true);
-              }}
-            >
+          canManage ? (
+            <Button variant="primary" size="md" onClick={openCreate}>
               <PlusIcon className="size-4" />
               Add supplier
             </Button>
-          )
+          ) : undefined
         }
       />
 
-      <section className="mt-8 flex flex-col gap-3">
-        {isLoading ? (
-          <div className="flex justify-center py-16">
-            <Spinner size="md" />
-          </div>
-        ) : suppliers.length === 0 ? (
-          <EmptyState
-            icon={<MaterialsIcon className="size-8 text-gray-300" />}
-            title="No suppliers yet"
-            description="Add the suppliers you work with to keep contact details and reorder policies in one place."
-            action={
-              canManage && (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => {
-                    setEditTarget(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <PlusIcon className="size-4" />
-                  Add supplier
-                </Button>
-              )
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="w-full max-w-xs rounded-lg border border-line-hair bg-white">
+          <SearchInput
+            value={filters.search}
+            onChange={(event) =>
+              setFilters((current) => ({ ...current, search: event.target.value }))
             }
+            placeholder="Search by name, trade or contact"
+            aria-label="Search suppliers"
           />
-        ) : (
-          suppliers.map((supplier) => (
-            <Card
-              key={supplier.id}
-              padding="lg"
-              className="flex flex-col gap-2 rounded-[16px] border-none bg-[#F8F8F8] sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex flex-col gap-1">
-                <p className="text-[15px] font-semibold text-black-500">{supplier.name}</p>
-                <p className="text-[13px] text-black-300">
-                  {[supplier.contactName, supplier.email, supplier.phone].filter(Boolean).join(" · ") ||
-                    "No contact details"}
-                </p>
-                {supplier.address && (
-                  <p className="text-[12px] text-black-300">{supplier.address}</p>
-                )}
-              </div>
-              {canManage && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditTarget(supplier);
-                      setFormOpen(true);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700"
-                    onClick={() => setDeleteTarget(supplier)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              )}
-            </Card>
-          ))
-        )}
-      </section>
+        </div>
+        <SimpleDropdown
+          options={tradeOptions}
+          value={filters.trade}
+          onChange={(trade) => setFilters((current) => ({ ...current, trade }))}
+          ariaLabel="Filter by trade"
+        />
+        <SimpleDropdown
+          options={SUPPLIER_SCOPE_OPTIONS}
+          value={filters.scope}
+          onChange={(scope: SupplierScopeFilter) =>
+            setFilters((current) => ({ ...current, scope }))
+          }
+          ariaLabel="Filter by scope"
+        />
+        <SimpleDropdown
+          options={SUPPLIER_APPROVAL_OPTIONS}
+          value={filters.approval}
+          onChange={(approval: SupplierApprovalFilter) =>
+            setFilters((current) => ({ ...current, approval }))
+          }
+          ariaLabel="Filter by approval"
+        />
+        <p className="ml-auto text-sm text-ink-muted">
+          {visible.length} of {suppliers.length} supplier{suppliers.length === 1 ? "" : "s"}
+        </p>
+      </div>
+
+      <SuppliersTable
+        suppliers={visible}
+        isPending={isLoading}
+        isFiltered={isFiltering(filters)}
+        canManage={canManage}
+        onAdd={openCreate}
+        onClearFilters={() => setFilters(EMPTY_SUPPLIER_FILTERS)}
+        onEdit={openEdit}
+        onDelete={setDeleteTarget}
+      />
 
       <UpsertSupplierDialog
         open={formOpen}
         onOpenChange={(next) => {
           setFormOpen(next);
-          if (!next) setEditTarget(null);
+          if (!next) {
+            setEditTarget(null);
+            setDuplicate(null);
+          }
         }}
         initial={editTarget}
         isSubmitting={createSupplier.isPending || updateSupplier.isPending}
         error={
-          createSupplier.error
-            ? (createSupplier.error as Error).message
-            : updateSupplier.error
-              ? (updateSupplier.error as Error).message
-              : null
+          duplicate
+            ? null
+            : createSupplier.error
+              ? errorMessage(createSupplier.error)
+              : updateSupplier.error
+                ? errorMessage(updateSupplier.error)
+                : null
+        }
+        force={duplicate !== null}
+        banner={
+          duplicate ? (
+            <DuplicateSupplierNotice
+              message={duplicate.message}
+              canOpen={suppliers.some((supplier) => supplier.id === duplicate.existingId)}
+              onOpen={openDuplicate}
+              onDismiss={() => setDuplicate(null)}
+            />
+          ) : null
         }
         onSubmit={handleSubmit}
       />
@@ -198,7 +225,7 @@ export default function ProjectSuppliers() {
                 setDeleteTarget(null);
                 toast("Supplier deleted", "success");
               },
-              onError: () => toast("Could not delete supplier"),
+              onError: (error) => toast(errorMessage(error)),
             },
           );
         }}

@@ -5,6 +5,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import {
   SelectionCard,
 } from "@/components/molecules/selection-card";
@@ -21,10 +22,10 @@ import {
   useSelections,
   useUpdateSelection,
 } from "@/hooks/use-selections";
-import { cn } from "@/lib/utils";
 import { formatWholeCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import type { Selection, SelectionOption, SelectionStatus } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
 
 const FILTERS: { value: SelectionStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -107,10 +108,9 @@ export default function ProjectSelections() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Selections"
-        description="Finishes and fixtures for the homeowner to choose, each with an allowance and a deadline."
         actions={
           canManage ? (
             <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
@@ -121,27 +121,9 @@ export default function ProjectSelections() {
         }
       />
 
-      <div className="mt-6 flex flex-col lg:flex-row flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 overflow-x-auto max-w-full">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFilter(f.value)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                filter === f.value
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-gray-500 self-end lg:self-auto">
-          {openCount} awaiting a decision
-        </p>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter selections" />
+        <span className="text-sm text-gray-500">{openCount} awaiting a decision</span>
       </div>
 
       <div className="mt-5 flex flex-col gap-3">
@@ -151,21 +133,13 @@ export default function ProjectSelections() {
           </div>
         ) : selections.length === 0 ? (
           <EmptyState
-            className="py-16"
             title="No selections yet"
             description={
               canManage
                 ? "Create a selection to ask the homeowner to choose a finish or fixture within an allowance."
                 : "Selections your builder asks you to make will appear here."
             }
-            action={
-              canManage ? (
-                <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                  <PlusIcon className="size-4" />
-                  New selection
-                </Button>
-              ) : undefined
-            }
+            action={canManage ? { label: "New selection", onClick: () => setCreateOpen(true), icon: <PlusIcon /> } : undefined}
           />
         ) : (
           selections.map((selection) => (
@@ -198,7 +172,7 @@ export default function ProjectSelections() {
         currency={project.currency}
         onSubmit={handleCreate}
         isSubmitting={createSelection.isPending}
-        error={(createSelection.error as Error | undefined)?.message ?? null}
+        error={createSelection.error ? errorMessage(createSelection.error) : null}
       />
 
       <UpsertSelectionDialog
@@ -224,7 +198,7 @@ export default function ProjectSelections() {
         }
         onSubmit={handleEdit}
         isSubmitting={updateSelection.isPending}
-        error={(updateSelection.error as Error | undefined)?.message ?? null}
+        error={updateSelection.error ? errorMessage(updateSelection.error) : null}
       />
 
       <ConfirmDialog

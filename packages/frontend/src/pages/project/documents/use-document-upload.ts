@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { UploadDocumentInput } from "@/components/molecules/upload-document-dialog";
 import { useCreateDocument } from "@/hooks/use-documents";
 import { useUploadFile } from "@/hooks/use-files";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
@@ -7,7 +8,7 @@ import { toast } from "@/lib/toast";
 export interface DocumentUploader {
   open: boolean;
   handleOpenChange: (next: boolean) => void;
-  upload: (input: { categoryId: string; file: File }) => void;
+  upload: (input: UploadDocumentInput) => void;
   isUploading: boolean;
   progress: number | null;
   error: string | null;
@@ -47,14 +48,23 @@ export function useDocumentUpload(
     setOpen(next);
   }
 
-  function upload(input: { categoryId: string; file: File }): void {
+  function upload(input: UploadDocumentInput): void {
     setProgress(0);
     uploadFile.mutate(
       { file: input.file, onProgress: setProgress },
       {
         onSuccess: (uploaded) => {
           createDocument.mutate(
-            { projectId, categoryId: input.categoryId, fileId: uploaded.id },
+            {
+              projectId,
+              categoryId: input.categoryId,
+              fileId: uploaded.id,
+              title: input.title,
+              revision: input.revision,
+              supersedesId: input.supersedesId,
+              visibility: input.visibility,
+              documentDate: input.documentDate,
+            },
             {
               onSuccess: () => {
                 setOpen(false);

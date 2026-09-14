@@ -6,7 +6,7 @@ export type {
   PaymentClaim,
   PaymentClaimInput,
 } from "@/api/payment-claims";
-import { paymentClaimKeys } from "./query-keys";
+import { financeKeys, paymentClaimKeys } from "./query-keys";
 
 export function usePaymentClaims(projectId: string | undefined) {
   return useQuery({
@@ -61,6 +61,26 @@ export function useDeletePaymentClaim() {
     mutationFn: ({ projectId, claimId }: DeletePaymentClaimVariables) => paymentClaimsApi.delete(projectId, claimId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: paymentClaimKeys.list(projectId) });
+    },
+  });
+}
+
+interface RecordInvoiceVariables {
+  projectId: string;
+  claimId: string;
+  invoiceNumber: string;
+}
+
+export function useRecordInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, claimId, invoiceNumber }: RecordInvoiceVariables) =>
+      paymentClaimsApi.recordInvoice(projectId, claimId, invoiceNumber),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: paymentClaimKeys.list(projectId) });
+      // certifying moves the milestone and the project's certified figures
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
 }

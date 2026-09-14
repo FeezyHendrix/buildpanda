@@ -25,6 +25,7 @@ interface Props {
   onReady?: (handle: RichTextEditorHandle) => void;
   placeholder?: string;
   disabled?: boolean;
+  ariaLabel?: string;
 }
 
 // Persist only the stable file id on the image node, never the src. The src is
@@ -55,6 +56,16 @@ const FileImage = Image.extend({
   },
 });
 
+/** An empty tiptap doc serializes as "<p></p>", which is not "" — treat both as blank. */
+function isBlank(html: string): boolean {
+  return html.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/g, "").trim().length === 0;
+}
+
+function isSameDoc(a: string, b: string): boolean {
+  if (a === b) return true;
+  return isBlank(a) && isBlank(b);
+}
+
 function ToolbarButton({
   active,
   onClick,
@@ -77,7 +88,7 @@ function ToolbarButton({
       }}
       className={cn(
         "flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-sm",
-        active ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100",
+        active ? "bg-primary-50 text-primary-700" : "text-ink-muted hover:bg-black/5 hover:text-ink",
       )}
     >
       {children}
@@ -85,7 +96,7 @@ function ToolbarButton({
   );
 }
 
-export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, placeholder, disabled }: Props) {
+export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, placeholder, disabled, ariaLabel }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const editor = useEditor({
@@ -96,6 +107,11 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
     ],
     content: value,
     editable: !disabled,
+    // A label's htmlFor cannot name a contenteditable, so without this the
+    // editor has no accessible name for screen readers or getByLabel.
+    // never undefined: tiptap reads editorProps.dispatchTransaction without a
+    // guard, so passing undefined here throws before the view is created
+    editorProps: ariaLabel ? { attributes: { "aria-label": ariaLabel } } : {},
     onUpdate: ({ editor: e }) => onChange(e.getHTML(), e.getText()),
   });
 
@@ -134,6 +150,17 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
     if (editor) onReady?.({ insertImageFile: (file) => void insertImage(file) });
   }, [editor, onReady, insertImage]);
 
+  // tiptap only reads `content` when the view is created, so a dialog that
+  // stays mounted between creates kept the previous body (RFI-3 was saved with
+  // RFI-2's question) and an edit form opened empty over saved text. Mirror an
+  // *external* change of `value` into the editor; typing is ignored because
+  // onUpdate has already pushed the same HTML upwards.
+  useEffect(() => {
+    if (!editor) return;
+    if (isSameDoc(editor.getHTML(), value)) return;
+    editor.commands.setContent(value || "", { emitUpdate: false });
+  }, [editor, value]);
+
   // Refresh each embedded image's src from its stable data-file-id. Presigned
   // S3 URLs expire, so the stored HTML keeps only the id and we fetch a live
   // URL on load. The src is set on the DOM node directly (not via an editor
@@ -162,8 +189,8 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
   if (!editor) return null;
 
   return (
-    <div className="rounded-lg border border-[#EDEDED] bg-white">
-      <div className="flex flex-wrap items-center gap-1 border-b border-[#F0F0F0] px-2 py-1.5">
+    <div className="rounded-lg border border-line-hair bg-white">
+      <div className="flex flex-wrap items-center gap-1 border-b border-line-hair px-2 py-1.5">
         <ToolbarButton label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
           <span className="font-bold">B</span>
         </ToolbarButton>
@@ -176,7 +203,7 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
         <ToolbarButton label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
           1.
         </ToolbarButton>
-        <span className="mx-1 h-5 w-px bg-[#F0F0F0]" />
+        <span className="mx-1 h-5 w-px bg-gray-100" />
         <ToolbarButton label="Attach image" onClick={() => fileInputRef.current?.click()}>
           🖼
         </ToolbarButton>

@@ -17,7 +17,9 @@ function mediaUrl(seed: number, offset: number): string {
 
 export async function seed(knex: Knex): Promise<void> {
   await knex("projects").where({ id: PROJECT_ID }).del();
-  await knex("document_categories").del();
+  // only this seed's own categories go: the migrated ones (plan, proposal,
+  // general, media) are what conversions and uploads depend on
+  await knex("document_categories").where("id", "like", "cat-%").del();
 
   // Attach the Sample Project to the first real org so members see it in
   // /me/projects and get a company-level /access. Null on a fresh DB with no

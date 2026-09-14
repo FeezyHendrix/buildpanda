@@ -1,6 +1,7 @@
-import { createBrowserRouter, Navigate, RouterProvider, useRouteError } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider, useLocation, useParams, useRouteError } from "react-router-dom";
 import { lazy as reactLazy, type ComponentType, type ReactElement } from "react";
 import type { FeatureFlagKey } from "@/lib/feature-flags";
+import { LEGACY_FINANCE_PATHS, resolveLegacyFinancePath } from "@/lib/finance-routes";
 import {
   HomeRedirect,
   RequireAuth,
@@ -67,6 +68,9 @@ const SalesProposals = lazy(() => import("@/pages/sales/proposals"));
 const SalesPreconSession = lazy(() => import("@/pages/sales/precon-session"));
 const SalesProposalWorkspace = lazy(() => import("@/pages/sales/proposal-workspace"));
 const SalesSettings = lazy(() => import("@/pages/sales/settings"));
+const SalesRateLibrary = lazy(() => import("@/pages/sales/settings/rate-library"));
+const SalesComplianceDocs = lazy(() => import("@/pages/sales/settings/compliance-docs"));
+const SalesProposalTemplates = lazy(() => import("@/pages/sales/settings/templates"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const SettingsPage = lazy(() => import("@/pages/dashboard/settings"));
@@ -83,26 +87,13 @@ const ProjectChat = lazy(() => import("@/pages/project/chat"));
 const ProjectOverview = lazy(() => import("@/pages/project/overview"));
 const ProjectUpdates = lazy(() => import("@/pages/project/updates"));
 const ProjectFinances = lazy(() => import("@/pages/project/finances"));
-const ProjectBudgetAllocation = lazy(
-  () => import("@/pages/project/budget-allocation"),
-);
-const ProjectMilestonePayments = lazy(
-  () => import("@/pages/project/milestone-payments"),
-);
-const ProjectPayments = lazy(() => import("@/pages/project/payments"));
-const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
-const ProjectPaymentClaims = lazy(() => import("@/pages/project/payment-claims"));
-const ProjectPurchaseOrders = lazy(() => import("@/pages/project/purchase-orders"));
-const ProjectBudget = lazy(() => import("@/pages/project/budget"));
-const ProjectTransactions = lazy(() => import("@/pages/project/transactions"));
-const ProjectFinalAccount = lazy(() => import("@/pages/project/final-account"));
-const ProjectContract = lazy(() => import("@/pages/project/contract"));
-const ProjectContractStages = lazy(
-  () => import("@/pages/project/finances/contract-stages"),
-);
+const ProjectContractsPhasesPage = lazy(() => import("@/pages/project/finances/contracts-phases-page"));
+const ProjectExpensesPage = lazy(() => import("@/pages/project/finances/expenses-page"));
+const ProjectBudgetInvoicesPage = lazy(() => import("@/pages/project/finances/budget-invoices-page"));
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
+const ProjectMaterialApprovals = lazy(() => import("@/pages/project/material-approvals"));
 const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-requests"));
 const ProjectSuppliers = lazy(() => import("@/pages/project/suppliers"));
 const ProjectLookAheads = lazy(() => import("@/pages/project/look-aheads"));
@@ -118,9 +109,7 @@ const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
 const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 const ProjectStages = lazy(() => import("@/pages/project/stages"));
 const ProjectBuildings = lazy(() => import("@/pages/project/buildings"));
-const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
 const ProjectTasks = lazy(() => import("@/pages/project/tasks"));
-const ProjectQueries = lazy(() => import("@/pages/project/queries"));
 const ProjectRfis = lazy(() => import("@/pages/project/rfis"));
 const ProjectBim = lazy(() => import("@/pages/project/bim"));
 const ProjectApprovals = lazy(() => import("@/pages/project/approvals"));
@@ -128,8 +117,8 @@ const ProjectSelections = lazy(() => import("@/pages/project/selections"));
 const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests"));
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
 const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
-const ProjectWhatsNext = lazy(() => import("@/pages/project/whats-next"));
-const ProjectPeople = lazy(() => import("@/pages/project/people"));
+const ProjectRisks = lazy(() => import("@/pages/project/risks"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 const MyBuild = lazy(() => import("@/pages/my-build"));
 const AcceptProjectInvite = lazy(() => import("@/pages/accept-project-invite"));
 const PublicProposalPage = lazy(() => import("@/pages/public/proposal-page"));
@@ -142,6 +131,35 @@ function pf(flag: FeatureFlagKey, el: ReactElement) {
   return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
 }
 /** Feature flag + resource permission (RBAC) gate for project routes. */
+/**
+ * Every retired finance path (`finances/contract?tab=terms`, `finances/billing`,
+ * `finances/invoices/new`, …) hops to its new home; `?tab=` picks the page and
+ * the other params (`compose=1&period=`) survive. The map lives in
+ * `lib/finance-routes.ts`.
+ */
+function LegacyFinanceRedirect({ tail }: { tail: string }) {
+  const { search } = useLocation();
+  const { projectId } = useParams();
+  return <Navigate to={`/project/${projectId}/${resolveLegacyFinancePath(tail, search)}`} replace />;
+}
+
+/**
+ * The flat `/project/:id/stages`-style paths predate the `schedules/` section the
+ * sidebar links to. They redirect instead of mounting the page a second time, so
+ * one page has one URL. `:activityId` and any query/hash ride along.
+ */
+function LegacySchedulesRedirect({ tail }: { tail: string }) {
+  const { projectId, activityId } = useParams();
+  const { search, hash } = useLocation();
+  const resolved = tail.replace(":activityId", activityId ?? "");
+  return <Navigate to={`/project/${projectId}/schedules/${resolved}${search}${hash}`} replace />;
+}
+
+const legacyFinanceRoutes = LEGACY_FINANCE_PATHS.map((tail) => ({
+  path: tail,
+  element: <LegacyFinanceRedirect tail={tail} />,
+}));
+
 function pfr(flag: FeatureFlagKey, resource: string, el: ReactElement) {
   return (
     <ProjectFeatureFlagGate flag={flag}>
@@ -152,6 +170,8 @@ function pfr(flag: FeatureFlagKey, resource: string, el: ReactElement) {
 function sf(flag: FeatureFlagKey, el: ReactElement) {
   return <SalesFeatureFlagGate flag={flag}>{el}</SalesFeatureFlagGate>;
 }
+
+const Messages = lazy(() => import("@/pages/messages"));
 
 export const router = createBrowserRouter([
   {
@@ -216,6 +236,9 @@ export const router = createBrowserRouter([
         ),
       },
       { path: "settings", element: <SalesSettings /> },
+      { path: "settings/rate-library", element: <SalesRateLibrary /> },
+      { path: "settings/compliance-docs", element: <SalesComplianceDocs /> },
+      { path: "settings/templates", element: sf("sales.proposals", <SalesProposalTemplates />) },
     ],
   },
   {
@@ -249,6 +272,10 @@ export const router = createBrowserRouter([
   {
     path: "/accept-project-invite/:token",
     element: <AcceptProjectInvite />,
+  },
+  {
+    path: "/messages",
+    element: <RequireAuth><Messages /></RequireAuth>,
   },
   {
     path: "/my-build",
@@ -309,44 +336,40 @@ export const router = createBrowserRouter([
       { path: "chat", element: pf("collaboration.messaging", <ProjectChat />) },
       { path: "messages", element: pf("collaboration.messaging", <ProjectChat />) },
       { path: "panda-ai", element: pf("ai.insights", <ProjectPandaAi />) },
-      { path: "people", element: pf("collaboration.participants", <ProjectPeople />) },
+      // One People page. /people and /team listed the same participants with
+      // different actions and neither was canonical (finding #17); Team is the
+      // page with access, roles and contacts, so /people now lands there.
+      { path: "people", element: pf("project.team", <ProjectTeam />) },
 
       { path: "documents", element: pf("projects.documents", <ProjectDocuments />) },
       { path: "plans", element: pf("projects.documents", <ProjectPlans />) },
       { path: "media-library", element: pf("projects.documents", <ProjectMediaLibrary />) },
       { path: "team", element: pf("project.team", <ProjectTeam />) },
       { path: "inspections", element: pf("quality.inspections", <ProjectInspections />) },
-      { path: "daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+      { path: "daily-log", element: <LegacySchedulesRedirect tail="daily-log" /> },
       { path: "look-aheads", element: pf("projects.schedule", <ProjectLookAheads />) },
       { path: "bim", element: pf("projects.bim", <ProjectBim />) },
 
-      { path: "action-items", element: pf("workflow.actionItems", <ProjectActionItems />) },
       { path: "tasks", element: pf("projects.schedule", <ProjectTasks />) },
-      { path: "queries", element: pf("workflow.queries", <ProjectQueries />) },
       { path: "rfis", element: pf("workflow.rfis", <ProjectRfis />) },
       { path: "approvals", element: pf("workflow.approvals", <ProjectApprovals />) },
       { path: "selections", element: pf("projects.selections", <ProjectSelections />) },
       { path: "change-requests", element: pf("workflow.changeRequests", <ProjectChangeRequests />) },
       { path: "permits", element: pf("compliance.permits", <ProjectPermits />) },
-      { path: "key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
-      { path: "whats-next", element: <ProjectWhatsNext /> },
+      { path: "risks", element: <ProjectRisks /> },
+      { path: "key-dates", element: <LegacySchedulesRedirect tail="key-dates" /> },
 
+      // Finance: an overview plus three tabbed pages (Contract, Billing, Costs). Every
+      // retired path below redirects to the tab that now owns it.
       { path: "finances", element: pfr("commercial.finances", "finances", <ProjectFinances />) },
-      { path: "finances/budget-allocation", element: pfr("commercial.budget", "finances", <ProjectBudgetAllocation />) },
-      { path: "finances/payments", element: pfr("commercial.finances", "finances", <ProjectPayments />) },
-      { path: "finances/milestone-payments", element: <Navigate to="../payments" replace relative="path" /> },
-      { path: "finances/invoices", element: pfr("commercial.invoices", "finances", <ProjectInvoices />) },
-      { path: "finances/invoices/new", element: <Navigate to="../invoices?compose=1" replace relative="path" /> },
-      { path: "finances/payment-claims", element: pfr("commercial.paymentClaims", "finances", <ProjectPaymentClaims />) },
-      { path: "finances/purchase-orders", element: pfr("commercial.purchaseOrders", "finances", <ProjectPurchaseOrders />) },
-      { path: "finances/budget", element: pfr("commercial.budget", "finances", <ProjectBudget />) },
-      { path: "finances/transactions", element: pfr("commercial.transactions", "finances", <ProjectTransactions />) },
-      { path: "finances/final-account", element: pfr("commercial.finances", "finances", <ProjectFinalAccount />) },
-      { path: "finances/contract", element: pfr("commercial.finances", "finances", <ProjectContract />) },
-      { path: "finances/contract-stages", element: pfr("commercial.finances", "finances", <ProjectContractStages />) },
+      { path: "finances/contracts-phases", element: pfr("commercial.finances", "finances", <ProjectContractsPhasesPage />) },
+      { path: "finances/expenses", element: pfr("commercial.finances", "finances", <ProjectExpensesPage />) },
+      { path: "finances/budget-invoices", element: pfr("commercial.finances", "finances", <ProjectBudgetInvoicesPage />) },
+      ...legacyFinanceRoutes,
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },
+      { path: "material-approvals", element: pfr("commercial.materialsEquipment", "materials", <ProjectMaterialApprovals />) },
       { path: "materials/orders", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "materials/requests", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "equipment-requests", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
@@ -356,25 +379,28 @@ export const router = createBrowserRouter([
       { path: "schedules", element: <Navigate to="stages" replace /> },
       { path: "schedules/activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "schedules/milestones", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
       { path: "schedules/project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "schedules/stages", element: pf("projects.schedule", <ProjectStages />) },
       { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
-      { path: "schedules/whats-next", element: <ProjectWhatsNext /> },
       { path: "schedules/daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
 
       { path: "buildings", element: pfr("projects.multiBuilding", "buildings", <ProjectBuildings />) },
       { path: "buildings/:buildingId/stages", element: pf("projects.multiBuilding", <ProjectStages />) },
 
-      // legacy flat routes kept for deep-link compatibility
-      { path: "activities", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "milestones", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
-      { path: "project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
-      { path: "schedule", element: pf("projects.schedule", <ProjectSchedule />) },
-      { path: "stages", element: pf("projects.schedule", <ProjectStages />) },
+      // Legacy flat paths kept for deep links: they redirect to the `schedules/`
+      // route the sidebar uses, rather than mounting a second copy of the page.
+      { path: "activities", element: <LegacySchedulesRedirect tail="activities" /> },
+      { path: "activities/:activityId", element: <LegacySchedulesRedirect tail="activities/:activityId" /> },
+      { path: "project-chart", element: <LegacySchedulesRedirect tail="project-chart" /> },
+      { path: "schedule", element: <LegacySchedulesRedirect tail="project-chart" /> },
+      { path: "stages", element: <LegacySchedulesRedirect tail="stages" /> },
+
+      // A mistyped project URL is a 404 inside the project shell, never the
+      // crash boundary (finding F19).
+      { path: "*", element: <NotFound /> },
     ],
   },
+  { path: "*", element: <NotFound /> },
   ], // children of root error-boundary route
   }, // root error-boundary route
 ]);

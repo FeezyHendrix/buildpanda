@@ -5,6 +5,7 @@ import type {
   DocumentRow,
   DocumentStatus,
   DocumentVersionRow,
+  DocumentVisibility,
 } from "./types.ts";
 
 export interface NewDocumentRecord {
@@ -17,6 +18,11 @@ export interface NewDocumentRecord {
   size_bytes: number | null;
   status: DocumentStatus;
   uploaded_at: string;
+  title: string | null;
+  revision: string | null;
+  supersedes_id: string | null;
+  visibility: DocumentVisibility;
+  document_date: string | null;
 }
 
 export interface DocumentUpdatePatch {
@@ -28,6 +34,11 @@ export interface DocumentUpdatePatch {
   size_bytes?: number | null;
   uploaded_at?: string;
   current_version_id?: string | null;
+  title?: string | null;
+  revision?: string | null;
+  supersedes_id?: string | null;
+  visibility?: DocumentVisibility;
+  document_date?: string | null;
 }
 
 export interface NewVersionRecord {
@@ -86,7 +97,8 @@ export function documentsRepository(db: Knex) {
           "c.tone",
           "c.group",
           db.raw("COUNT(d.id)::text as file_count"),
-          db.raw("STRING_AGG(d.size, ', ' ORDER BY d.created_at DESC) as total_size"),
+          // the folder's real total, not the newest file's size
+          db.raw("COALESCE(SUM(d.size_bytes), 0)::text as total_bytes"),
         )
         .groupBy("c.id", "c.name", "c.tone", "c.group")
         .orderBy("c.name", "asc");
@@ -94,6 +106,13 @@ export function documentsRepository(db: Knex) {
 
     findCategoryById(id: string): Promise<CategoryRow | undefined> {
       return db<CategoryRow>("document_categories").where({ id }).first();
+    },
+
+    /** Display names for a set of documents in one query (for cross-module DTOs). */
+    async fileNamesByIds(ids: string[]): Promise<Map<string, string>> {
+      if (ids.length === 0) return new Map();
+      const rows = await db<DocumentRow>("project_documents").whereIn("id", ids).select("id", "file_name");
+      return new Map(rows.map((row) => [row.id, row.file_name]));
     },
 
     findDocumentById(id: string): Promise<DocumentRow | undefined> {

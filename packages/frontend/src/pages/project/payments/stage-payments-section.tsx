@@ -4,15 +4,14 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
-import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog";
 import { UpsertMilestoneDialog } from "@/components/molecules/upsert-milestone-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectFinances,
   useDeleteMilestone,
-  useRaiseDispute,
-  useReleaseMilestone,
   useUpsertMilestone,
 } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
@@ -23,12 +22,12 @@ import type {
   ProjectFinances,
 } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
-import { ReactSVG } from "react-svg";
-import { icons } from "@/assets/icons/icons";
+import { TabActions } from "../finances/finance-tabs";
+import { StagePaymentDialogs } from "./stage-payment-dialogs";
+import { errorMessage } from "@/lib/api-error";
 
 /**
  * Stage payments: the milestone cost gates plus the payment record.
- * Shared by the merged Payments workspace and the schedule-scoped milestone view.
  * Wording is "record payment", never "release funds" — BuildPanda logs money
  * movements made off-platform, it does not move money.
  */
@@ -45,45 +44,36 @@ export function StagePaymentsSection() {
   const [disputeTarget, setDisputeTarget] = useState<MilestonePayment | null>(null);
   const upsertMilestone = useUpsertMilestone();
   const deleteMilestone = useDeleteMilestone();
-  const releaseMilestone = useReleaseMilestone();
-  const raiseDispute = useRaiseDispute();
 
   if (!finances) return null;
 
+  const newButton = canManage ? (
+    <Button
+      variant="primary"
+      size="md"
+      onClick={() => {
+        setEditingTarget(null);
+        setUpsertOpen(true);
+      }}
+    >
+      <PlusIcon className="size-4" />
+      New stage payment
+    </Button>
+  ) : undefined;
+
   return (
     <section aria-label="Stage payments">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold text-gray-900">Stage payments</h3>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Milestone gates and the payments recorded against them.
-          </p>
-        </div>
-        {canManage && (
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              setEditingTarget(null);
-              setUpsertOpen(true);
-            }}
-          >
-            <PlusIcon className="size-4" />
-            New stage payment
-          </Button>
-        )}
-      </div>
+      <TabActions>{newButton}</TabActions>
 
-      <ContractSummary finances={finances} />
-
-      <Card className="mt-6 rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0">
-        <div className="flex items-center justify-between py-3 px-5">
-          <div className="flex gap-2 items-center">
-            <ReactSVG src={icons.money} />
-            <h4 className="text-[13px] font-semibold text-black-300">Stage payments</h4>
-          </div>
-        </div>
-        <div className="bg-white rounded-[12px] h-full m-1 p-6">
+      <section>
+        <h2 className="mb-4 text-base font-semibold text-gray-900">Stages</h2>
+        {finances.milestones.length === 0 ? (
+          <EmptyState
+            variant="inline"
+            title="No stage payments yet"
+            description="Add a stage payment to gate contractor payments on completed work."
+          />
+        ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {finances.milestones.map((milestone, idx) => (
               <MilestoneCard
@@ -101,20 +91,15 @@ export function StagePaymentsSection() {
               />
             ))}
           </div>
-        </div>
-      </Card>
+        )}
+      </section>
 
-      <Card className="mt-6 rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0">
-        <div className="flex items-center justify-between py-3 px-5">
-          <div className="flex gap-2 items-center">
-            <ReactSVG src={icons.bill} />
-            <h4 className="text-[13px] font-semibold text-black-300">Payment record</h4>
-          </div>
-        </div>
-        <div className="bg-white rounded-[12px] h-full m-1 lg:p-6 p-2">
+      <section className="mt-10">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">Payment record</h2>
+        <Card padding="none" className="overflow-hidden">
           <PaymentRecord entries={finances.ledger} currency={finances.currency} />
-        </div>
-      </Card>
+        </Card>
+      </section>
 
       <ConfirmDialog
         open={deleteTarget !== null}
@@ -125,6 +110,7 @@ export function StagePaymentsSection() {
         description="This removes the milestone cost gate. Site activities remain assigned to their project phase."
         confirmLabel="Delete"
         variant="danger"
+        loading={deleteMilestone.isPending}
         onConfirm={() => {
           if (!deleteTarget) return;
           deleteMilestone.mutate(
@@ -134,41 +120,13 @@ export function StagePaymentsSection() {
         }}
       />
 
-      <ConfirmDialog
-        open={releaseTarget !== null}
-        onOpenChange={(next) => {
-          if (!next) setReleaseTarget(null);
-        }}
-        title={`Record payment for ${releaseTarget?.name ?? "this stage"}?`}
-        description={`Logs ${
-          releaseTarget ? formatCurrency(releaseTarget.amount, finances.currency) : ""
-        } as paid to the contractor. This records a payment made off-platform — BuildPanda does not move money.`}
-        confirmLabel="Record payment"
-        cancelLabel="Cancel"
-        onConfirm={() => {
-          if (!releaseTarget) return;
-          releaseMilestone.mutate(
-            { projectId: project.id, milestoneId: releaseTarget.id },
-            { onSettled: () => setReleaseTarget(null) },
-          );
-        }}
-      />
-
-      <RaiseDisputeDialog
-        open={disputeTarget !== null}
-        onOpenChange={(next) => {
-          if (!next) setDisputeTarget(null);
-        }}
-        milestoneName={disputeTarget?.name ?? ""}
-        isSubmitting={raiseDispute.isPending}
-        error={raiseDispute.error ? (raiseDispute.error as Error).message : null}
-        onSubmit={({ reason }) => {
-          if (!disputeTarget) return;
-          raiseDispute.mutate(
-            { projectId: project.id, milestoneId: disputeTarget.id, reason },
-            { onSuccess: () => setDisputeTarget(null) },
-          );
-        }}
+      <StagePaymentDialogs
+        projectId={project.id}
+        currency={finances.currency}
+        releaseTarget={releaseTarget}
+        disputeTarget={disputeTarget}
+        onReleaseClose={() => setReleaseTarget(null)}
+        onDisputeClose={() => setDisputeTarget(null)}
       />
 
       <UpsertMilestoneDialog
@@ -180,7 +138,7 @@ export function StagePaymentsSection() {
         phases={project.timeline}
         initial={editingTarget}
         isSubmitting={upsertMilestone.isPending}
-        error={upsertMilestone.error ? (upsertMilestone.error as Error).message : null}
+        error={upsertMilestone.error ? errorMessage(upsertMilestone.error) : null}
         onSubmit={(values) => {
           upsertMilestone.mutate(
             { projectId: project.id, milestoneId: editingTarget?.id, ...values },
@@ -199,37 +157,6 @@ export function StagePaymentsSection() {
 
 StagePaymentsSection.displayName = "StagePaymentsSection";
 
-function ContractSummary({ finances }: { finances: ProjectFinances }) {
-  return (
-    <Card padding="lg" className="mt-6 border-primary border-[4px]">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2">
-          <p className="text-[13px] font-semibold text-black-300">Contract summary</p>
-          <p className="text-[25px] font-bold text-black-500">{formatCurrency(finances.adjustedContract, finances.currency)}</p>
-          <Badge size="md" className="bg-success-50 text-success-700">
-            <ReactSVG src={icons.verified} className="[&svg]:[&>path]:fill-success-500" />
-            Revised contract
-          </Badge>
-        </div>
-        <div className="flex gap-6">
-          <div>
-            <p className="text-[13px] font-semibold text-black-300">Contract amount</p>
-            <p className="text-black-500">{formatCurrency(finances.contractSum, finances.currency)}</p>
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold text-black-300">Changes</p>
-            <p className="text-black-500">{formatCurrency(finances.variationsTotal, finances.currency)}</p>
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold text-black-300">Paid</p>
-            <p className="text-black-500">{formatCurrency(finances.amountPaidToDate, finances.currency)}</p>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 function PaymentRecord({
   entries,
   currency,
@@ -237,61 +164,51 @@ function PaymentRecord({
   entries: PaymentLedgerEntry[];
   currency: ProjectFinances["currency"];
 }) {
+  if (entries.length === 0) {
+    return (
+      <EmptyState
+        variant="inline"
+        title="No payments recorded yet"
+        description="Deposits and releases logged against a stage will appear here."
+      />
+    );
+  }
   return (
-    <section>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] text-left text-sm">
-          <thead className="border-b border-[#EDEDED] bg-[#F6F6F6] text-xs uppercase tracking-wider text-gray-500">
-            <tr>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Date</th>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Stage</th>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Amount</th>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Status</th>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry, idx) => (
-              <LedgerRow
-                key={entry.id}
-                entry={entry}
-                currency={currency}
-                isLast={idx === entries.length - 1}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <Table className="min-w-[480px]">
+      <TableHead>
+        <tr>
+          <TableHeaderCell>Date</TableHeaderCell>
+          <TableHeaderCell>Stage</TableHeaderCell>
+          <TableHeaderCell>Amount</TableHeaderCell>
+          <TableHeaderCell>Type</TableHeaderCell>
+        </tr>
+      </TableHead>
+      <TableBody>
+        {entries.map((entry) => (
+          <LedgerRow key={entry.id} entry={entry} currency={currency} />
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
 function LedgerRow({
   entry,
   currency,
-  isLast,
 }: {
   entry: PaymentLedgerEntry;
   currency: ProjectFinances["currency"];
-  isLast: boolean;
 }) {
   return (
-    <tr className={isLast ? undefined : "border-b border-[#F0F0F0]"}>
-      <td className="px-6 py-3 text-[13px] tabular-nums text-[#131B2E]">{entry.date}</td>
-      <td className="px-6 py-3 text-[13px] text-[#131B2E]">{entry.description}</td>
-      <td className="px-6 py-3 text-[13px] tabular-nums text-[#131B2E]">
-        {formatCurrency(entry.amount, currency)}
-      </td>
-      <td className="px-6 py-3 text-[13px]">
+    <TableRow>
+      <TableCell className="tabular-nums">{entry.date}</TableCell>
+      <TableCell>{entry.description}</TableCell>
+      <TableCell className="tabular-nums">{formatCurrency(entry.amount, currency)}</TableCell>
+      <TableCell>
         <Badge tone={LEDGER_TYPE_TONE[entry.type]} size="md">
           {entry.type}
         </Badge>
-      </td>
-      <td className="px-6 py-3 text-[13px]">
-        <button className="h-[32px] cursor-pointer text-primary text-[13px] font-semibold">
-          View Receipt
-        </button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

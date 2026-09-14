@@ -82,7 +82,6 @@ const ENTITY_SOURCES: Record<
   TaskEntityType,
   { table: string; labelColumn: string; statusColumn: string }
 > = {
-  action_item: { table: "action_items", labelColumn: "title", statusColumn: "status" },
   rfi: { table: "rfis", labelColumn: "subject", statusColumn: "status" },
   change_request: { table: "change_requests", labelColumn: "title", statusColumn: "status" },
   material: { table: "material_orders", labelColumn: "material_name", statusColumn: "status" },
@@ -374,6 +373,7 @@ export function tasksRepository(db: Knex) {
 
     entityExists(entityType: TaskEntityType, entityId: string, projectId: string): Promise<boolean> {
       const source = ENTITY_SOURCES[entityType];
+      if (!source) return Promise.resolve(false);
       return db(source.table)
         .where({ id: entityId, project_id: projectId })
         .first()
@@ -393,7 +393,10 @@ export function tasksRepository(db: Knex) {
       const resolved = new Map<string, { label: string; status: string | null }>();
       await Promise.all(
         [...idsByType.entries()].map(async ([type, ids]) => {
+          // A link whose entity type has been retired (action items) can still
+          // sit in the table; it resolves to nothing rather than crashing.
           const source = ENTITY_SOURCES[type];
+          if (!source) return;
           const rows = await db(source.table)
             .whereIn("id", ids)
             .select(

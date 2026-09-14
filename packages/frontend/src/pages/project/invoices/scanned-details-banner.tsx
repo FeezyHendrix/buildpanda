@@ -11,15 +11,15 @@ export function ScannedDetailsBanner({ draft, currency }: { draft: ExtractedInvo
   const isWarning = draft.documentKind !== "invoice" || draft.confidence === "low";
 
   return (
-    <div className={cn("rounded-xl border p-4", isWarning ? "border-amber-200 bg-amber-50" : "border-[#E4E9F5] bg-[#F5F8FF]")}>
+    <div className={cn("rounded-lg border p-4", isWarning ? "border-amber-200 bg-amber-50" : "border-primary-100 bg-primary-50")}>
       <div className="flex gap-3">
         {isWarning ? (
           <AlertIcon className="mt-0.5 size-5 shrink-0 text-amber-600" />
         ) : (
-          <CheckIcon className="mt-0.5 size-5 shrink-0 text-[#004DE7]" />
+          <CheckIcon className="mt-0.5 size-5 shrink-0 text-primary-500" />
         )}
         <div>
-          <h3 className={cn("text-sm font-semibold", isWarning ? "text-amber-900" : "text-[#004DE7]")}>
+          <h3 className={cn("text-sm font-semibold", isWarning ? "text-amber-900" : "text-primary-500")}>
             {isWarning
               ? "This document may not be a clean invoice"
               : "We pre-filled the form from your scan — check it before sending."}
@@ -31,7 +31,7 @@ export function ScannedDetailsBanner({ draft, currency }: { draft: ExtractedInvo
           )}
 
           <div className="mt-4 rounded-lg border border-white/40 bg-white/60 p-4 shadow-sm">
-            <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <div className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase text-ink-muted">
               <DocumentsIcon className="size-4" />
               Document says
             </div>
@@ -56,7 +56,7 @@ ScannedDetailsBanner.displayName = "ScannedDetailsBanner";
 
 function Chip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="inline-flex items-baseline gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-sm shadow-sm ring-1 ring-gray-900/5">
+    <div className="inline-flex items-baseline gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-sm shadow-sm border border-line-hair">
       <span className="text-gray-500">{label}:</span>
       <span className="font-medium text-gray-900">{value}</span>
     </div>

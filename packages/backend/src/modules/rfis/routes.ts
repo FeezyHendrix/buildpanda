@@ -54,6 +54,7 @@ const createBody = {
   properties: {
     subject: { type: "string", minLength: 1, maxLength: 200 },
     question: { type: "string", minLength: 1, maxLength: 8000 },
+    questionHtml: { type: ["string", "null"], maxLength: 200000 },
     priority: { type: "string", enum: RFI_PRIORITIES },
     ballInCourtId: { type: ["string", "null"], maxLength: 100 },
     ballInCourtName: { type: ["string", "null"], maxLength: 200 },
@@ -75,6 +76,7 @@ const updateBody = {
   properties: {
     subject: { type: "string", minLength: 1, maxLength: 200 },
     question: { type: "string", minLength: 1, maxLength: 8000 },
+    questionHtml: { type: ["string", "null"], maxLength: 200000 },
     priority: { type: "string", enum: RFI_PRIORITIES },
     ballInCourtId: { type: ["string", "null"], maxLength: 100 },
     ballInCourtName: { type: ["string", "null"], maxLength: 200 },
@@ -130,6 +132,32 @@ const transitionBody = {
   required: ["status"],
   additionalProperties: false,
   properties: { status: { type: "string", enum: TRANSITION_TARGETS } },
+} as const;
+
+const convertBody = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    changeRequestId: { type: ["string", "null"], maxLength: 100 },
+  },
+} as const;
+
+const eventsResponse = {
+  200: {
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        rfiId: { type: "string" },
+        type: { type: "string" },
+        actorId: { type: ["string", "null"] },
+        actorLabel: { type: ["string", "null"] },
+        detail: {},
+        createdAt: { type: "string" },
+      },
+    },
+  },
 } as const;
 
 const commentBody = {
@@ -305,6 +333,15 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   fastify.get<{ Params: { id: string; rfiId: string } }>(
+    "/projects/:id/rfis/:rfiId/events",
+    { schema: { params: rfiParams, response: eventsResponse } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "rfis", "view");
+      return service.listEvents(project.id, request.params.rfiId);
+    },
+  );
+
+  fastify.get<{ Params: { id: string; rfiId: string } }>(
     "/projects/:id/rfis/:rfiId/distribution",
     { schema: { params: rfiParams } },
     async (request) => {
@@ -347,16 +384,18 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string; rfiId: string } }>(
+  fastify.post<{ Params: { id: string; rfiId: string }; Body: { changeRequestId?: string | null } }>(
     "/projects/:id/rfis/:rfiId/convert-to-change",
-    { schema: { params: rfiParams } },
+    { schema: { params: rfiParams, body: convertBody } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "rfis", "manage");
       const user = request.requireAuth();
-      const updated = await service.convertToChange(project.id, request.params.rfiId, {
-        id: user.id,
-        name: user.name,
-      });
+      const updated = await service.convertToChange(
+        project.id,
+        request.params.rfiId,
+        { id: user.id, name: user.name },
+        request.body?.changeRequestId ?? null,
+      );
       return reply.status(201).send(updated);
     },
   );

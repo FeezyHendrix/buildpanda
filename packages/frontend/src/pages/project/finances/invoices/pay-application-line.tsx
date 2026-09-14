@@ -51,7 +51,7 @@ export interface LineTotals {
 }
 
 const FIELD_LABEL =
-  "text-[10px] font-semibold uppercase tracking-wider text-black-200";
+  "text-xs font-medium uppercase text-ink-muted";
 
 /** Client-side row identity: a stage can be swapped out mid-edit. */
 let payLineSeq = 0;
@@ -152,8 +152,9 @@ function AmountField({
         value={value}
         disabled={!editable}
         aria-label={`${rowLabel} ${label.toLowerCase()}`}
+        aria-invalid={invalid || undefined}
         onChange={onChange}
-        className={cn("h-10 px-3", invalid && "ring-2 ring-error-300")}
+        className="h-[38px] px-3"
       />
     </label>
   );
@@ -178,7 +179,7 @@ function ReadOut({ label, value, tone = "default" }: ReadOutProps) {
             ? "text-primary-500"
             : tone === "error"
               ? "text-error-600"
-              : "text-black-500",
+              : "text-ink",
         )}
       >
         {value}
@@ -214,20 +215,20 @@ export function PayApplicationLineRow({
   return (
     <li
       className={cn(
-        "rounded-xl border bg-white p-3",
-        totals.overBilled ? "border-error-300" : "border-grey-50",
+        "rounded-lg border bg-white p-3",
+        totals.overBilled ? "border-error-300" : "border-line-hair",
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-50 text-[11px] font-semibold text-primary-700">
+          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-semibold text-primary-700">
             {position}
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-black-500">
+            <p className="truncate text-sm font-semibold text-ink">
               {line.stageName || "Untitled stage"}
             </p>
-            <p className="mt-0.5 text-[11px] tabular-nums text-black-300">
+            <p className="mt-0.5 text-xs tabular-nums text-ink-muted">
               {formatCurrency(line.scheduledValue, currency)} scheduled ·{" "}
               {line.pendingPrior
                 ? "previous applications confirmed on save"
@@ -240,7 +241,7 @@ export function PayApplicationLineRow({
             type="button"
             aria-label={`Remove ${line.stageName || "stage"} from this application`}
             onClick={() => onRemove(line.key)}
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-black-200 outline-none transition-colors hover:bg-error-50 hover:text-error-600 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md p-1.5 text-ink-muted outline-none transition-colors hover:bg-black/5 hover:text-ink focus-visible:shadow-focus"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
               <path
@@ -281,7 +282,7 @@ export function PayApplicationLineRow({
         />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 border-t border-grey-50 pt-2.5">
+      <div className="mt-3 grid grid-cols-3 gap-2 border-t border-line-hair pt-2.5">
         <ReadOut
           label="Completed & stored"
           value={formatCurrency(totals.totalCompleted.toNumber(), currency)}

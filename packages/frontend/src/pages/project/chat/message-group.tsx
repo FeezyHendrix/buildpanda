@@ -41,7 +41,7 @@ export function MessageItem({
 
   if (message.deletedAt) {
     return (
-      <div className="py-1 text-sm italic text-gray-400">
+      <div className="py-1 text-sm italic text-ink-muted">
         This message was deleted
       </div>
     );
@@ -64,15 +64,15 @@ export function MessageItem({
 
       <div
         className={cn(
-          "inline-block max-w-full whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
+          "inline-block max-w-full whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm leading-relaxed",
           isOwn
-            ? "rounded-tr-sm bg-[#004DE7] text-white"
-            : "rounded-tl-sm bg-[#F1F3F5] text-black-500",
+            ? "rounded-tr-sm bg-primary-500 text-white"
+            : "rounded-tl-sm bg-gray-100 text-ink",
         )}
       >
         <LinkText text={message.body} />
         {message.editedAt && (
-          <span className={cn("ml-2 text-[10px]", isOwn ? "text-white/70" : "text-black-300")}>(edited)</span>
+          <span className={cn("ml-2 text-[10px]", isOwn ? "text-white/70" : "text-ink-muted")}>(edited)</span>
         )}
       </div>
 
@@ -108,7 +108,7 @@ export function MessageItem({
               onClick={() => onReaction(message, r.emoji)}
               className={cn(
                 "flex items-center gap-1 rounded-full border px-2 py-0.5 text-sm transition-colors",
-                r.mine ? "border-primary-200 bg-primary-50 text-primary-500" : "border-gray-200 bg-gray-50 text-gray-600 hover:border-primary-200"
+                r.mine ? "border-primary-200 bg-primary-50 text-primary-500" : "border-line-hair bg-surface-alt text-ink hover:border-primary-200"
               )}
             >
               <span>{r.emoji}</span>
@@ -122,7 +122,7 @@ export function MessageItem({
         <div className="mt-1">
           <button 
             onClick={() => onReply(message)} 
-            className="inline-flex items-center gap-1.5 rounded-lg border-l-4 border-primary-500 bg-gray-50 px-3 py-2 text-left text-xs font-medium text-primary-500 transition-colors hover:bg-gray-100"
+            className="inline-flex items-center gap-1.5 rounded-lg border-l-4 border-primary-500 bg-surface-alt px-3 py-2 text-left text-xs font-medium text-primary-500 transition-colors hover:bg-black/5"
           >
             <ReplyIcon className="size-4" />
             {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
@@ -132,7 +132,7 @@ export function MessageItem({
 
       <div
         className={cn(
-          "absolute -top-2 hidden items-center gap-1 rounded-md border border-gray-200 bg-white p-1 shadow-sm group-hover:flex z-10",
+          "absolute -top-2 hidden items-center gap-1 rounded-md border border-line bg-white p-1 shadow-card group-hover:flex z-10",
           isOwn ? "left-4" : "right-4",
         )}
       >
@@ -140,19 +140,19 @@ export function MessageItem({
           <button
             type="button"
             onClick={() => setShowEmoji(!showEmoji)}
-            className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            className="rounded px-2 py-1 text-xs font-medium text-ink hover:bg-black/5"
             title="React"
           >
             😀
           </button>
           {showEmoji && (
-            <div className="absolute right-0 bottom-full mb-1 flex gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-md">
+            <div className="absolute right-0 bottom-full mb-1 flex gap-1 rounded-full border border-line bg-white p-1 shadow-card">
               {["👍", "❤️", "😄", "🎉", "👀", "✅"].map((emoji) => (
                 <button
                   key={emoji}
                   type="button"
                   onClick={() => { onReaction(message, emoji); setShowEmoji(false); }}
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-sm hover:bg-gray-100"
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-sm hover:bg-black/5"
                 >
                   {emoji}
                 </button>
@@ -164,7 +164,7 @@ export function MessageItem({
         <button
           type="button"
           onClick={() => onReply(message)}
-          className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+          className="rounded px-2 py-1 text-xs font-medium text-ink hover:bg-black/5"
         >
           Reply
         </button>
@@ -173,7 +173,7 @@ export function MessageItem({
           <button
             type="button"
             onClick={() => onQuote(message)}
-            className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            className="rounded px-2 py-1 text-xs font-medium text-ink hover:bg-black/5"
           >
             Quote
           </button>
@@ -182,7 +182,7 @@ export function MessageItem({
         <button
           type="button"
           onClick={() => onForward?.(message)}
-          className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+          className="rounded px-2 py-1 text-xs font-medium text-ink hover:bg-black/5"
         >
           → Task
         </button>
@@ -191,7 +191,7 @@ export function MessageItem({
           <button
             type="button"
             onClick={() => onUnpin(message)}
-            className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            className="rounded px-2 py-1 text-xs font-medium text-ink hover:bg-black/5"
           >
             Unpin
           </button>
@@ -199,7 +199,7 @@ export function MessageItem({
           <button
             type="button"
             onClick={() => onPin(message)}
-            className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            className="rounded px-2 py-1 text-xs font-medium text-ink hover:bg-black/5"
           >
             Pin
           </button>
@@ -210,14 +210,14 @@ export function MessageItem({
             <button
               type="button"
               onClick={() => onEdit(message)}
-              className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+              className="rounded px-2 py-1 text-xs font-medium text-ink hover:bg-black/5"
             >
               Edit
             </button>
             <button
               type="button"
               onClick={() => onDelete(message)}
-              className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+              className="rounded px-2 py-1 text-xs font-medium text-negative-500 hover:bg-negative-50"
             >
               Delete
             </button>
@@ -267,10 +267,10 @@ export function MessageGroup({
       </div>
       <div className={cn("flex min-w-0 flex-1 flex-col", isOwnGroup && "items-end")}>
         <div className="flex items-baseline gap-2">
-          <span className="text-[13px] font-medium text-black-500">
+          <span className="text-sm font-medium text-ink">
             {first.authorName ?? "Unknown User"}
           </span>
-          <span className="text-[11px] text-black-300">
+          <span className="text-xs text-ink-muted">
             {formatTimeAgo(first.createdAt)}
           </span>
         </div>

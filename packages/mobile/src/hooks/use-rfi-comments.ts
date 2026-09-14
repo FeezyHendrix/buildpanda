@@ -6,6 +6,8 @@ import { flushOutbox } from "@/db/outbox";
 import { rfiCommentsRepository, toComment } from "@/db/rfi-comments-repository";
 import { rfisRepository } from "@/db/rfis-repository";
 
+export type LocalRfiComment = ReturnType<typeof toComment>;
+
 /**
  * Comments from SQLite, refreshed from the RFI detail in the background.
  *
@@ -37,10 +39,20 @@ export function useRfiComments(db: Db, projectId: string, rfiId: string) {
   return { data, isPending: live.data === undefined };
 }
 
+/**
+ * Queues a reply. With `official` the reply is pushed through the respond
+ * endpoint as the RFI's official answer instead of as a plain comment.
+ */
 export function useAddRfiComment(db: Db | null, projectId: string | undefined) {
-  return async (rfiId: string, body: string, authorName: string, contentHtml?: string | null) => {
+  return async (
+    rfiId: string,
+    body: string,
+    authorName: string,
+    contentHtml?: string | null,
+    official = false,
+  ) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
-    await rfiCommentsRepository.createLocal(db, projectId, rfiId, body, authorName, contentHtml);
+    await rfiCommentsRepository.createLocal(db, projectId, rfiId, body, authorName, contentHtml, official);
     // The row is already durable, so a failed push just leaves it queued.
     void flushOutbox(db).catch(() => undefined);
   };

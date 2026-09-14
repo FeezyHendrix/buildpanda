@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Badge } from "@/components/atoms/badge";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import {
   useStages,
   useCreateStage,
@@ -23,8 +24,7 @@ interface PhaseRow {
   endDate: string;
 }
 
-const fieldClass =
-  "rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#004DE7]";
+const fieldClass = INPUT_CLASS;
 
 function addDays(base: Date, days: number): string {
   const d = new Date(base);
@@ -123,10 +123,10 @@ export function TimelineStep({ projectId, onNext }: TimelineStepProps) {
   if (!hydrated) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-16 text-center">
-        <Spinner className="h-8 w-8 text-[#004DE7]" />
+        <Spinner className="h-8 w-8 text-primary-500" />
         <div>
-          <p className="text-sm font-medium text-gray-900">Panda AI is building your timeline</p>
-          <p className="text-xs text-gray-500">Reading your documents to suggest the build phases…</p>
+          <p className="text-sm font-medium text-ink">Panda AI is building your timeline</p>
+          <p className="text-xs text-ink-muted">Reading your documents to suggest the build phases…</p>
         </div>
       </div>
     );
@@ -136,12 +136,12 @@ export function TimelineStep({ projectId, onNext }: TimelineStepProps) {
     <div className="flex flex-col max-w-2xl mx-auto mt-4 gap-8 pb-12">
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-2xl font-semibold text-gray-900">Project timeline</h2>
+          <h2 className="text-2xl font-semibold text-ink">Project timeline</h2>
           {usedAi && (
-            <Badge className="bg-[#EFF4FF] text-[#004DE7] border-none">Suggested by Panda AI</Badge>
+            <Badge tone="info">Suggested by Panda AI</Badge>
           )}
         </div>
-        <p className="text-gray-500">
+        <p className="text-ink-muted">
           {usedAi
             ? "Panda AI suggested these phases from your documents. Adjust the names and dates, remove what you don't need, or add your own. You can change this anytime later."
             : "We've added a starting set of phases. Rename them, set dates, remove what you don't need, or add your own. You can change this anytime later."}
@@ -149,7 +149,7 @@ export function TimelineStep({ projectId, onNext }: TimelineStepProps) {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="hidden md:grid grid-cols-[1fr_150px_150px_40px] gap-3 px-1 text-xs font-medium text-gray-400">
+        <div className="hidden md:grid grid-cols-[1fr_150px_150px_40px] gap-3 px-1 text-xs font-medium text-ink-muted">
           <span>Phase</span>
           <span>Start</span>
           <span>Target end</span>
@@ -184,7 +184,7 @@ export function TimelineStep({ projectId, onNext }: TimelineStepProps) {
               type="button"
               onClick={() => removeRow(index)}
               aria-label="Remove phase"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+              className="flex size-9 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-black/5 hover:text-negative-500"
             >
               &times;
             </button>
@@ -194,13 +194,13 @@ export function TimelineStep({ projectId, onNext }: TimelineStepProps) {
         <button
           type="button"
           onClick={addRow}
-          className="mt-1 flex items-center justify-center gap-2 rounded-lg border border-dashed border-[#004DE7] py-2.5 text-sm font-medium text-[#004DE7] transition-colors hover:bg-[#004DE7]/5"
+          className="mt-1 flex items-center justify-center gap-2 rounded-lg border border-dashed border-primary-500 py-2.5 text-sm font-medium text-primary-500 transition-colors hover:bg-primary-500/5"
         >
           + Add phase
         </button>
       </div>
 
-      {errorMsg && <p className="text-sm text-red-500">{errorMsg}</p>}
+      {errorMsg && <p className="text-sm text-negative-500">{errorMsg}</p>}
 
       <Button variant="primary" size="md" onClick={handleSave} disabled={saving}>
         {saving ? "Saving timeline…" : "Save timeline"}

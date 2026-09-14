@@ -25,6 +25,15 @@ pnpm-debug.log*
 # Coverage
 coverage/
 
+# Tests and generated benchmark artifacts
+*.test.*
+*.spec.*
+**/__tests__/
+**/tests/
+/packages/frontend/e2e/
+/packages/backend/benchmark/
+/packages/backend/src/modules/panda-ai/benchmark/
+
 # Docker
 postgres_data/
 
@@ -41,6 +50,7 @@ postgres_data/
 
 # Design source archives
 screenshots/
+/docs/
 
 # Stray QA assets at repo root (legit assets live in packages/*/src)
 /*.png

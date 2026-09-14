@@ -6,8 +6,8 @@ import {
   type AiSuggestion,
 } from "@/hooks/use-panda-ai";
 import { PageHeader } from "@/components/molecules/page-header";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -22,10 +22,10 @@ function HealthScoreCard({ score }: { score: number | null }) {
     score === null
       ? "text-gray-900"
       : score >= 80
-        ? "text-[#16A34A]"
+        ? "text-success-500"
         : score >= 50
-          ? "text-[#D97706]"
-          : "text-[#DC2626]";
+          ? "text-warning-500"
+          : "text-negative-500";
 
   return (
     <Card
@@ -33,7 +33,7 @@ function HealthScoreCard({ score }: { score: number | null }) {
       padding="lg"
     >
       <h2 className="text-sm font-medium text-gray-500">Health Score</h2>
-      <div className={cn("mt-2 text-6xl font-bold", healthColor)}>
+      <div className={cn("mt-2 text-6xl font-medium", healthColor)}>
         {score !== null ? score : "--"}
       </div>
       <p className="mt-2 text-xs text-gray-400">
@@ -74,7 +74,7 @@ function SuggestionsList({ suggestions }: { suggestions: AiSuggestion[] }) {
             <div className="flex items-center space-x-3">
               <span
                 className={cn(
-                  "rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wider",
+                  "rounded px-2 py-0.5 text-xs font-medium uppercase",
                   badgeClass,
                 )}
               >
@@ -84,7 +84,7 @@ function SuggestionsList({ suggestions }: { suggestions: AiSuggestion[] }) {
                 {sugg.category}
               </span>
             </div>
-            <h3 className="font-bold text-gray-900">{sugg.title}</h3>
+            <h3 className="font-medium text-gray-900">{sugg.title}</h3>
             <p className="text-sm text-gray-600">{sugg.detail}</p>
           </Card>
         );
@@ -104,65 +104,28 @@ function MetricsOverview({
   if (!metrics) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-      <KpiCard label="Progress">
-        <div className="text-2xl font-semibold text-gray-900">
-          {metrics.progressPercent}%
-        </div>
-      </KpiCard>
-      <KpiCard label="Budget Variance">
-        <div
-          className={cn(
-            "text-2xl font-semibold",
-            metrics.budgetVariance > 0 ? "text-red-600" : "text-gray-900",
-          )}
-        >
-          {formatCurrency(metrics.budgetVariance, currency)}
-        </div>
-      </KpiCard>
-      <KpiCard label="Outstanding Invoiced">
-        <div className="text-2xl font-semibold text-gray-900">
-          {formatCurrency(metrics.outstandingInvoiced, currency)}
-        </div>
-      </KpiCard>
-      <KpiCard label="Overdue Invoices">
-        <div
-          className={cn(
-            "text-2xl font-semibold",
-            metrics.overdueInvoiceCount > 0 ? "text-red-600" : "text-gray-900",
-          )}
-        >
-          {metrics.overdueInvoiceCount}
-        </div>
-      </KpiCard>
-      <KpiCard label="High Risks">
-        <div
-          className={cn(
-            "text-2xl font-semibold",
-            metrics.highRiskCount > 0 ? "text-red-600" : "text-gray-900",
-          )}
-        >
-          {metrics.highRiskCount}{" "}
-          <span className="text-sm font-normal text-gray-500">
-            / {metrics.openRiskCount} open
-          </span>
-        </div>
-      </KpiCard>
-      <KpiCard label="Pending Inspections">
-        <div className="text-2xl font-semibold text-gray-900">
-          {metrics.pendingInspectionCount}
-        </div>
-      </KpiCard>
-      <KpiCard label="Pending Phases">
-        <div className="text-2xl font-semibold text-gray-900">
-          {metrics.pendingPhaseCount}
-        </div>
-      </KpiCard>
-      <KpiCard label="Days Since Update">
-        <div className="text-2xl font-semibold text-gray-900">
-          {metrics.daysSinceLastUpdate ?? "--"}
-        </div>
-      </KpiCard>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <KpiCard label="Progress" progress={metrics.progressPercent} />
+      <KpiCard
+        label="Budget variance"
+        value={formatCurrency(metrics.budgetVariance, currency)}
+        tone={metrics.budgetVariance > 0 ? "danger" : undefined}
+      />
+      <KpiCard label="Outstanding invoiced" value={formatCurrency(metrics.outstandingInvoiced, currency)} />
+      <KpiCard
+        label="Overdue invoices"
+        value={metrics.overdueInvoiceCount}
+        tone={metrics.overdueInvoiceCount > 0 ? "danger" : undefined}
+      />
+      <KpiCard
+        label="High risks"
+        value={metrics.highRiskCount}
+        helper={`of ${metrics.openRiskCount} open`}
+        tone={metrics.highRiskCount > 0 ? "danger" : undefined}
+      />
+      <KpiCard label="Pending inspections" value={metrics.pendingInspectionCount} />
+      <KpiCard label="Pending phases" value={metrics.pendingPhaseCount} />
+      <KpiCard label="Days since update" value={metrics.daysSinceLastUpdate ?? "--"} />
     </div>
   );
 }
@@ -185,10 +148,8 @@ export default function ProjectPandaAi() {
 
   return (
     <div className="w-full px-6 pb-24">
-      <Breadcrumbs items={[{ label: "Panda AI" }]} className="mb-4" />
       <PageHeader
         title="Panda AI"
-        description="AI monitoring of project health with prioritized suggestions."
         actions={
           <Button
             variant="primary"
@@ -203,32 +164,24 @@ export default function ProjectPandaAi() {
 
       {isAnalyzing ? (
         <div className="flex h-64 flex-col items-center justify-center space-y-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#004DE7] border-t-transparent" />
+          <Spinner size="md" />
           <p className="text-sm text-gray-500">
             Panda AI is analyzing project data...
           </p>
         </div>
       ) : !insight ? (
         <EmptyState
-          title="No Analysis Yet"
+          title="No analysis yet"
           description="Run your first Panda AI analysis to get prioritized suggestions and health metrics."
-          action={
-            <Button variant="primary" size="md" onClick={handleAnalyze}>
-              Run first analysis
-            </Button>
-          }
+          action={{ label: "Run first analysis", onClick: handleAnalyze }}
         />
       ) : insight.status === "failed" ? (
         <EmptyState
-          title="Analysis Failed"
+          title="Analysis failed"
           description={
             insight.error || "An error occurred while generating the analysis."
           }
-          action={
-            <Button variant="primary" size="md" onClick={handleAnalyze}>
-              Try again
-            </Button>
-          }
+          action={{ label: "Try again", onClick: handleAnalyze }}
         />
       ) : (
         <div className="mt-8 grid gap-6">

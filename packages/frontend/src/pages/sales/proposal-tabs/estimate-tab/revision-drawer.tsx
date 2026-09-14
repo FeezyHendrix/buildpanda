@@ -3,6 +3,7 @@ import { FormDrawer } from "@/components/molecules/form-drawer";
 import { Label } from "@/components/atoms/label";
 import { useCreateEstimate } from "@/hooks/use-proposals";
 import { cn } from "@/lib/utils";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 interface Props {
   proposalId: string;
@@ -41,11 +42,7 @@ export function EstimateRevisionDrawer({ proposalId, open, onOpenChange }: Props
           value={changeNote}
           onChange={(e) => setChangeNote(e.target.value)}
           placeholder="Describe what changed in this revision…"
-          className={cn(
-            "w-full rounded-lg bg-[#F6F6F6] px-4 py-3 text-sm text-gray-900",
-            "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            "resize-none placeholder:text-gray-400",
-          )}
+          className={cn(INPUT_CLASS, "h-auto min-h-24 resize-none py-3")}
         />
       </div>
     </FormDrawer>

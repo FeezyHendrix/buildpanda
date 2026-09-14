@@ -47,7 +47,7 @@ export async function runWeeklyUpdateDraftSweep(
   // projects are skipped entirely so nobody is spammed with empty updates.
   // Projects that turned the preference off never get an automatic draft.
   const projects = await db<CandidateProjectRow>("projects as p")
-    .where("p.ai_updates_enabled", true)
+    .whereIn("p.ai_update_cadence", ["weekly", "both"])
     .where((builder) =>
       builder
         .whereExists(

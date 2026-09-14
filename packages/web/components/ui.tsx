@@ -14,17 +14,23 @@ export function Container({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8", className)}>
+    <div
+      className={cn(
+        "site-container",
+        className,
+      )}
+    >
       {children}
     </div>
   );
 }
 
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-md font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-50";
 
 const buttonVariants = {
   primary: "bg-brand text-white hover:bg-brand-hover active:bg-brand-active",
+  ink: "bg-ink text-white hover:bg-ink/90",
   secondary:
     "bg-surface-muted text-ink hover:bg-[#ececec] active:bg-[#e2e2e2] border border-line",
   outline:
@@ -65,38 +71,48 @@ export function Badge({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Large and light, left by default, with the label above it — the reference's
+ * hierarchy. Bold-and-small was making every section shout at the same volume.
+ */
 export function SectionHeading({
   eyebrow,
   title,
   description,
-  align = "center",
+  align = "left",
+  action,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   align?: "center" | "left";
+  action?: ReactNode;
 }) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-4",
+        "flex flex-col gap-6",
         align === "center" ? "items-center text-center" : "items-start text-left",
       )}
     >
       {eyebrow ? (
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
           {eyebrow}
         </span>
       ) : null}
-      <h2 className="max-w-2xl text-balance text-3xl font-bold leading-tight text-ink sm:text-4xl">
-        {title}
-      </h2>
+      <div
+        className={cn(
+          "flex w-full flex-col gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-12",
+          align === "center" && "sm:flex-col sm:items-center",
+        )}
+      >
+        <h2 className="display max-w-2xl text-4xl text-ink sm:text-5xl lg:text-6xl 2xl:max-w-3xl 2xl:text-7xl">
+          {title}
+        </h2>
+        {action ? <div className="flex-shrink-0">{action}</div> : null}
+      </div>
       {description ? (
-        <p
-          className={cn(
-            "max-w-2xl text-pretty text-base leading-relaxed text-muted sm:text-lg",
-          )}
-        >
+        <p className="max-w-xl text-pretty text-base leading-relaxed text-muted 2xl:text-lg">
           {description}
         </p>
       ) : null}

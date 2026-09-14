@@ -1,7 +1,7 @@
 import type { Activity, KeyDate, Stage } from "@/lib/project-types";
 import type { ILink } from "@svar-ui/react-gantt";
 import { computeCriticalActivityIds } from "./schedule-critical-path";
-import { DAY_MS, delayEnd, delaySummary, parseDate } from "./schedule-utils";
+import { DAY_MS, delayBarEnd, delaySummary, parseDate } from "./schedule-utils";
 
 export interface GanttTask {
   id: string | number;
@@ -129,17 +129,19 @@ function activityRows(activities: Activity[], usedPhaseIds: ReadonlySet<string>,
     for (const delay of activity.delays) {
       const delayStart = parseDate(delay.startedAt);
       if (!delayStart) continue;
-      const extendedEnd = delayEnd(delay, end ?? start);
+      // A stoppage is drawn at its own length — the days it cost — not stretched
+      // to the activity's planned end, which made every delay look project-sized.
+      const delayFinish = delayBarEnd(delay) ?? delayStart;
       rows.push({
         id: `${activity.id}-${delay.id}`,
-        text: `Delay: ${delay.reasonName}`,
+        text: `Delay: ${delay.reasonName} (${delay.daysLost} d)`,
         type: "task",
         parent,
         start: delayStart,
-        end: extendedEnd,
+        end: delayFinish,
         progress: delay.resolvedAt ? 100 : 10,
       });
-      addRange(range, delayStart, extendedEnd);
+      addRange(range, delayStart, delayFinish);
     }
   }
 

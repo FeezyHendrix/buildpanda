@@ -1,0 +1,157 @@
+import { useState } from "react";
+import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { Input } from "@/components/atoms/input";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
+import type { Rate, RateCard } from "@/api/rate-library";
+import { useAddRate, useDeleteRate, useDeleteRateCard, useUpdateRateCard } from "@/hooks/use-rate-library";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { formatWholeCurrency } from "@/lib/formatters";
+import { toast } from "@/lib/toast";
+
+interface Props {
+  card: RateCard;
+  canManage: boolean;
+  onBuildUp: (rate: Rate) => void;
+}
+
+function RateRow({ card, rate, canManage, onBuildUp }: { card: RateCard; rate: Rate; canManage: boolean; onBuildUp: (rate: Rate) => void }) {
+  const remove = useDeleteRate();
+  return (
+    <TableRow>
+      <TableCell>
+        {rate.label ?? rate.descriptionPattern ?? "Unlabelled rate"}
+        {rate.codePrefix ? <span className="ml-2 font-mono text-xs text-gray-400">{rate.codePrefix}</span> : null}
+      </TableCell>
+      <TableCell className="text-xs text-gray-500">{rate.unit}</TableCell>
+      <TableCell align="right" className="tabular-nums">{formatWholeCurrency(rate.rate, card.currency)}</TableCell>
+      <TableCell className="text-xs text-gray-500">
+        {rate.buildups.length > 0 ? `${rate.buildups.length}-line build-up` : "Bare figure"}
+        {rate.quoteCount > 0 ? ` · ${rate.quoteCount} quote${rate.quoteCount === 1 ? "" : "s"}` : ""}
+      </TableCell>
+      <TableCell align="right">
+        {canManage ? (
+          <span className="inline-flex gap-1">
+            <Button size="sm" variant="ghost" onClick={() => onBuildUp(rate)}>Build up</Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-500 hover:bg-red-50"
+              loading={remove.isPending}
+              onClick={() =>
+                remove.mutate({ cardId: card.id, rateId: rate.id }, {
+                  onError: (e) => toast(getApiErrorMessage(e, "Could not remove the rate."), "error"),
+                })
+              }
+            >
+              Remove
+            </Button>
+          </span>
+        ) : null}
+      </TableCell>
+    </TableRow>
+  );
+}
+RateRow.displayName = "RateRow";
+
+function AddRateForm({ cardId }: { cardId: string }) {
+  const add = useAddRate();
+  const [label, setLabel] = useState("");
+  const [codePrefix, setCodePrefix] = useState("");
+  const [unit, setUnit] = useState("m2");
+  const [rate, setRate] = useState("");
+  const valid = label.trim().length > 0 && unit.trim().length > 0 && parseFloat(rate) >= 0;
+  return (
+    <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] items-end gap-2 border-t border-line-hair px-3 py-3">
+      <Input inputSize="sm" placeholder="Rate label, e.g. 225mm blockwork" value={label} onChange={(e) => setLabel(e.target.value)} />
+      <Input inputSize="sm" placeholder="Code prefix (F10)" value={codePrefix} onChange={(e) => setCodePrefix(e.target.value)} />
+      <Input inputSize="sm" placeholder="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} />
+      <Input inputSize="sm" type="number" min="0" step="any" inputMode="decimal" placeholder="Rate" value={rate} onChange={(e) => setRate(e.target.value)} />
+      <Button
+        size="sm"
+        disabled={!valid}
+        loading={add.isPending}
+        onClick={() =>
+          add.mutate(
+            { cardId, body: { label: label.trim(), descriptionPattern: label.trim(), codePrefix: codePrefix.trim() || null, unit: unit.trim(), rate: parseFloat(rate) || 0 } },
+            {
+              onSuccess: () => { setLabel(""); setCodePrefix(""); setRate(""); },
+              onError: (e) => toast(getApiErrorMessage(e, "Could not add the rate."), "error"),
+            },
+          )
+        }
+      >
+        Add rate
+      </Button>
+    </div>
+  );
+}
+AddRateForm.displayName = "AddRateForm";
+
+export function RateCardPanel({ card, canManage, onBuildUp }: Props) {
+  const update = useUpdateRateCard();
+  const remove = useDeleteRateCard();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  return (
+    <section className="overflow-hidden rounded-lg border border-line bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-hair bg-gray-50 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-gray-900">{card.name}</h2>
+          {card.region ? <span className="text-xs text-gray-500">{card.region}</span> : null}
+          {card.isDefault ? <Badge tone="info">Default card</Badge> : null}
+          <span className="text-xs text-gray-400">{card.rates.length} rates · {card.currency}</span>
+        </div>
+        {canManage ? (
+          <div className="flex gap-1">
+            {card.isDefault ? null : (
+              <Button size="sm" variant="ghost" loading={update.isPending} onClick={() => update.mutate({ cardId: card.id, body: { isDefault: true } })}>
+                Make default
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => setConfirmOpen(true)}>
+              Delete card
+            </Button>
+          </div>
+        ) : null}
+      </div>
+      {card.rates.length === 0 ? (
+        <p className="px-4 py-6 text-sm text-gray-500">No rates yet. Add one below; the take-off and estimate match lines against it by unit and description.</p>
+      ) : (
+        <Table>
+          <TableHead>
+            <tr>
+              <TableHeaderCell>Rate</TableHeaderCell>
+              <TableHeaderCell>Unit</TableHeaderCell>
+              <TableHeaderCell align="right">Figure</TableHeaderCell>
+              <TableHeaderCell>Basis</TableHeaderCell>
+              <TableHeaderCell />
+            </tr>
+          </TableHead>
+          <TableBody>
+            {card.rates.map((rate) => (
+              <RateRow key={rate.id} card={card} rate={rate} canManage={canManage} onBuildUp={onBuildUp} />
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      {canManage ? <AddRateForm cardId={card.id} /> : null}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        variant="danger"
+        title="Delete this rate card?"
+        description={`${card.name} and its ${card.rates.length} rates will be removed. Estimates already priced keep their figures.`}
+        confirmLabel="Delete card"
+        loading={remove.isPending}
+        onConfirm={() =>
+          remove.mutate(card.id, {
+            onSuccess: () => setConfirmOpen(false),
+            onError: (e) => { setConfirmOpen(false); toast(getApiErrorMessage(e, "Could not delete the card."), "error"); },
+          })
+        }
+      />
+    </section>
+  );
+}
+RateCardPanel.displayName = "RateCardPanel";

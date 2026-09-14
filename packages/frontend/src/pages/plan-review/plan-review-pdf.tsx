@@ -1,13 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-// ?worker makes Vite emit the worker as a .js chunk and hand back a Worker
-// constructor — static hosts that serve .mjs as octet-stream (staging nginx)
-// break both workerSrc and the fake-worker fallback, so never fetch .mjs.
-import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
+import { loadPdfjs, pageText } from "@/lib/pdfjs";
 import { Spinner } from "@/components/atoms/spinner";
 import { cn } from "@/lib/utils";
 import { parseSheetScale, type DetectedScale } from "./plan-review-data";
-
-let sharedWorker: Worker | null = null;
 
 type PdfDocumentProxy = import("pdfjs-dist").PDFDocumentProxy;
 
@@ -18,6 +13,11 @@ export interface PdfRenderState {
   pageNumber: number;
   aspect: number;
   detectedScale: DetectedScale | null;
+}
+
+/** pdf.js signals a cancelled render with this name rather than a typed error. */
+function isRenderCancelled(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { name?: string }).name === "RenderingCancelledException";
 }
 
 /**
@@ -40,6 +40,12 @@ export function PdfSheetCanvas({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const docRef = useRef<{ url: string; doc: PdfDocumentProxy } | null>(null);
+  // pdf.js refuses to render two pages onto one canvas at the same time, and a
+  // plain "cancelled" flag does not stop the render already running. Flipping
+  // pages quickly therefore threw "Cannot use the same canvas during multiple
+  // render() operations" and left the sheet blank until reload. The task is
+  // held so it can actually be cancelled and waited on.
+  const renderTaskRef = useRef<{ cancel: () => void; promise: Promise<unknown> } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,9 +55,7 @@ export function PdfSheetCanvas({
     setError(null);
 
     (async () => {
-      const pdfjs = await import("pdfjs-dist");
-      if (!sharedWorker) sharedWorker = new PdfWorker();
-      pdfjs.GlobalWorkerOptions.workerPort = sharedWorker;
+      const pdfjs = await loadPdfjs();
 
       const cached = docRef.current;
       const doc =
@@ -72,16 +76,22 @@ export function PdfSheetCanvas({
       canvas.height = viewport.height;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+
+      const previous = renderTaskRef.current;
+      if (previous) {
+        previous.cancel();
+        await previous.promise.catch(() => {});
+      }
       if (cancelled) return;
 
-      const textContent = await page.getTextContent().catch(() => null);
+      const task = page.render({ canvasContext: ctx, viewport, canvas });
+      renderTaskRef.current = task;
+      await task.promise;
+      renderTaskRef.current = null;
       if (cancelled) return;
-      const sheetText = textContent
-        ? textContent.items
-            .map((item) => ("str" in item ? item.str : ""))
-            .join(" ")
-        : "";
+
+      const sheetText = await pageText(page);
+      if (cancelled) return;
       const unscaledWidthPt = viewport.width / BASE_SCALE;
 
       setLoading(false);
@@ -92,13 +102,16 @@ export function PdfSheetCanvas({
         detectedScale: parseSheetScale(sheetText, unscaledWidthPt),
       });
     })().catch((err: unknown) => {
-      if (cancelled) return;
+      // Cancelling the previous page is the normal path when someone pages
+      // through a drawing, not a failure to show them.
+      if (cancelled || isRenderCancelled(err)) return;
       setLoading(false);
       setError(err instanceof Error ? err.message : "Could not render this PDF");
     });
 
     return () => {
       cancelled = true;
+      renderTaskRef.current?.cancel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, pageNumber]);

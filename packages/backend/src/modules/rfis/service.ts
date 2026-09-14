@@ -28,6 +28,7 @@ export function hashReplyToken(raw: string): string {
 export interface CreateRfiInput {
   subject: string;
   question: string;
+  questionHtml?: string | null;
   priority?: RfiPriority;
   ballInCourtId?: string | null;
   ballInCourtName?: string | null;
@@ -44,6 +45,7 @@ export interface CreateRfiInput {
 export interface UpdateRfiInput {
   subject?: string;
   question?: string;
+  questionHtml?: string | null;
   priority?: RfiPriority;
   ballInCourtId?: string | null;
   ballInCourtName?: string | null;
@@ -73,8 +75,9 @@ function toRfi(row: RfiRow, commentCount: number): Rfi {
     projectId: row.project_id,
     number: row.number,
     subject: row.subject,
-    question: row.question,
-    status: row.status,
+      question: row.question,
+      questionHtml: row.question_html,
+      status: row.status,
     priority: row.priority,
     visibility: row.visibility,
     ballInCourtId: row.ball_in_court_id,
@@ -82,7 +85,8 @@ function toRfi(row: RfiRow, commentCount: number): Rfi {
     ballInCourtEmail: row.ball_in_court_email,
     assigneeRole: row.assignee_role,
     dueDate: row.due_date,
-    officialResponse: row.official_response,
+      officialResponse: row.official_response,
+      officialResponseHtml: row.official_response_html,
     officialRespondedById: row.official_responded_by_id,
     officialRespondedByName: row.official_responded_by_name,
     officialRespondedAt: row.official_responded_at,
@@ -171,6 +175,8 @@ export interface ChangeRequestCreator {
     input: { title: string; description?: string | null; costImpact?: number; timeImpactDays?: number },
     userId: string,
   ): Promise<{ id: string }>;
+  /** Linking an RFI to a change the commercial team already raised. */
+  get(projectId: string, changeRequestId: string): Promise<{ id: string }>;
 }
 
 const REOPENABLE: ReadonlySet<RfiStatus> = new Set(["Answered", "Closed"]);
@@ -184,6 +190,7 @@ export function rfisService(
     projectId: string,
     subject: string,
     actorId: string,
+    rfiId: string,
   ): void {
     if (!deps.notifications || !assigneeId || assigneeId === actorId) return;
     void deps.notifications
@@ -191,6 +198,7 @@ export function rfisService(
         title: "An RFI was assigned to you",
         body: subject,
         projectId,
+        ctaUrl: `/project/${projectId}/rfis?rfi=${rfiId}`,
       })
       .catch(() => undefined);
   }
@@ -227,6 +235,12 @@ export function rfisService(
       return rows.map((r) => toRfi(r, counts.get(r.id) ?? 0));
     },
 
+    async listEvents(projectId: string, rfiId: string): Promise<RfiEvent[]> {
+      await loadRow(projectId, rfiId);
+      const events = await repository.listEvents(rfiId);
+      return events.map(toEvent);
+    },
+
     async get(projectId: string, rfiId: string, sharedOnly = false): Promise<RfiDetail> {
       const row = await loadRow(projectId, rfiId);
       if (sharedOnly && row.visibility !== "shared") throw new NotFoundError("RFI");
@@ -253,8 +267,9 @@ export function rfisService(
         id: generateId("rfi"),
         project_id: projectId,
         subject: input.subject,
-        question: input.question,
-        status: hasAssignee ? "Open" : "Draft",
+          question: input.question,
+          question_html: input.questionHtml ?? null,
+          status: hasAssignee ? "Open" : "Draft",
         priority: input.priority ?? "Normal",
         visibility,
         ball_in_court_id: input.ballInCourtId ?? null,
@@ -275,7 +290,7 @@ export function rfisService(
           ballInCourtId: input.ballInCourtId ?? null,
           ballInCourtEmail: input.ballInCourtEmail ?? null,
         });
-        notifyRfiAssignee(input.ballInCourtId, projectId, row.subject, actor.id);
+        notifyRfiAssignee(input.ballInCourtId, projectId, row.subject, actor.id, row.id);
       }
       return toRfi(row, 0);
     },
@@ -289,7 +304,8 @@ export function rfisService(
       const current = await loadRow(projectId, rfiId);
       const patch: RfiUpdatePatch = { updated_at: new Date().toISOString() };
       if (input.subject !== undefined) patch.subject = input.subject;
-      if (input.question !== undefined) patch.question = input.question;
+        if (input.question !== undefined) patch.question = input.question;
+        if (input.questionHtml !== undefined) patch.question_html = input.questionHtml;
       if (input.priority !== undefined) patch.priority = input.priority;
       if (input.assigneeRole !== undefined) patch.assignee_role = input.assigneeRole;
       if (input.dueDate !== undefined) patch.due_date = input.dueDate;
@@ -326,7 +342,7 @@ export function rfisService(
           ballInCourtId: nextBallInCourtId,
           ballInCourtEmail: nextBallInCourtEmail,
         });
-        notifyRfiAssignee(nextBallInCourtId, projectId, row.subject, actor.id);
+        notifyRfiAssignee(nextBallInCourtId, projectId, row.subject, actor.id, row.id);
       }
       const counts = await repository.commentCounts([rfiId]);
       return toRfi(row, counts.get(rfiId) ?? 0);
@@ -366,6 +382,7 @@ export function rfisService(
         await repository.update(rfiId, {
           status: "Answered",
           official_response: input.body,
+          official_response_html: input.contentHtml ?? null,
           official_responded_by_id: actor.id,
           official_responded_at: now,
           ball_in_court_id: current.created_by_id,
@@ -380,6 +397,7 @@ export function rfisService(
               title: "Your RFI was answered",
               body: current.subject,
               projectId,
+              ctaUrl: `/project/${projectId}/rfis?rfi=${rfiId}`,
             })
             .catch(() => undefined);
         }
@@ -513,7 +531,12 @@ export function rfisService(
       return { ok: true, rfiSubject: rfi.subject, rfiNumber: rfi.number };
     },
 
-    async convertToChange(projectId: string, rfiId: string, actor: Actor): Promise<Rfi> {
+    async convertToChange(
+      projectId: string,
+      rfiId: string,
+      actor: Actor,
+      changeRequestId?: string | null,
+    ): Promise<Rfi> {
       const current = await loadRow(projectId, rfiId);
       if (!deps.changeRequests) {
         throw new ForbiddenError("Change request conversion is unavailable");
@@ -522,20 +545,27 @@ export function rfisService(
         const counts = await repository.commentCounts([rfiId]);
         return toRfi(current, counts.get(rfiId) ?? 0);
       }
-      const change = await deps.changeRequests.create(
-        projectId,
-        {
-          title: `RFI-${current.number}: ${current.subject}`,
-          description: current.official_response ?? current.question,
-        },
-        actor.id,
-      );
+      // One site event is one change event. When the commercial team has already
+      // raised the variation, link it instead of minting a duplicate £0 draft.
+      const change = changeRequestId
+        ? await deps.changeRequests.get(projectId, changeRequestId)
+        : await deps.changeRequests.create(
+            projectId,
+            {
+              title: `RFI-${current.number}: ${current.subject}`,
+              description: current.official_response ?? current.question,
+            },
+            actor.id,
+          );
       const row = await repository.update(rfiId, {
         change_request_id: change.id,
         updated_at: new Date().toISOString(),
       });
       if (!row) throw new NotFoundError("RFI");
-      await logEvent(rfiId, "converted_to_change", actor, { changeRequestId: change.id });
+      await logEvent(rfiId, "converted_to_change", actor, {
+        changeRequestId: change.id,
+        linked: Boolean(changeRequestId),
+      });
       const counts = await repository.commentCounts([rfiId]);
       return toRfi(row, counts.get(rfiId) ?? 0);
     },

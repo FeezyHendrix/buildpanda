@@ -41,8 +41,17 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
 
   await fastify.register(websocket);
 
+  // Presence on a precon channel follows the socket: joining the channel
+  // announces the user, leaving it (or the socket closing) removes them.
+  const isPreconChannel = (channelId: string): boolean => channelId.startsWith("precon:");
+  const leavePresence = (channelId: string, userId: string): void => {
+    const users = hub.presence.leave(channelId, userId);
+    if (users) hub.publishPresence(channelId, users);
+  };
+
   fastify.get("/ws", { websocket: true }, (socket, request) => {
     let userId: string | null = null;
+    let userName = "";
     let conn: ReturnType<typeof hub.register> | null = null;
     const pending: string[] = [];
     let closed = false;
@@ -60,23 +69,36 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
       }
       if (msg.action === "subscribe" && msg.channelId) {
         const channelId = msg.channelId;
-        const authorize = channelId.startsWith("precon:")
+        const joiningUserId = userId;
+        const authorize = isPreconChannel(channelId)
           ? canJoinPreconChannel(channelId.slice("precon:".length), userId)
           : repo.isMember(channelId, userId);
         void authorize
           .then((member) => {
-            if (member && conn) hub.subscribeChannel(conn, channelId);
+            if (!member || !conn || closed) return;
+            const alreadyOn = conn.channels.has(channelId);
+            hub.subscribeChannel(conn, channelId);
+            if (isPreconChannel(channelId) && !alreadyOn) {
+              const users = hub.presence.join(channelId, { id: joiningUserId, name: userName });
+              if (users) hub.publishPresence(channelId, users);
+            }
           })
           .catch((err) => fastify.log.error({ err }, "ws subscribe authorization failed"));
       } else if (msg.action === "unsubscribe" && msg.channelId && conn) {
+        const wasOn = conn.channels.has(msg.channelId);
         hub.unsubscribeChannel(conn, msg.channelId);
+        if (wasOn && isPreconChannel(msg.channelId)) leavePresence(msg.channelId, userId);
       }
     };
 
     socket.on("message", (raw: Buffer) => process(raw.toString()));
     socket.on("close", () => {
       closed = true;
-      if (conn) hub.unregister(conn);
+      if (!conn) return;
+      for (const channelId of conn.channels) {
+        if (isPreconChannel(channelId) && userId) leavePresence(channelId, userId);
+      }
+      hub.unregister(conn);
     });
 
     void auth.api
@@ -89,6 +111,7 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
         }
         if (closed) return;
         userId = session.user.id;
+        userName = session.user.name ?? session.user.email ?? "";
         conn = hub.register(userId, socket);
         const queued = pending.splice(0);
         for (const text of queued) process(text);

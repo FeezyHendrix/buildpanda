@@ -23,10 +23,10 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+          "rounded-lg px-4 py-2.5 text-sm shadow-sm",
           message.role === "user"
-            ? "bg-[#004DE7] text-white"
-            : "border border-[#EDEDED] bg-white text-gray-900",
+            ? "bg-primary-500 text-white"
+            : "border border-line-hair bg-white text-gray-900",
         )}
       >
         {message.role === "assistant" ? (

@@ -1,4 +1,4 @@
-import { useNetworkState } from "expo-network";
+import NetInfo, { useNetInfo } from "@react-native-community/netinfo";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import {
   createContext,
@@ -13,9 +13,24 @@ import { AppState } from "react-native";
 import type { SyncState } from "@/components/atoms/sync-indicator";
 import type { Db } from "@/db/client";
 import { flushOutbox, outboxQuery } from "@/db/outbox";
+import { API_BASE_URL } from "@/lib/auth-client";
 import { useLocalDb } from "@/db/provider";
 
 const FOREGROUND_INTERVAL_MS = 60_000;
+
+// Reachability is probed against our own API, not a generic captive-portal URL:
+// on site the phone is often attached to a router with no working uplink, where
+// the OS still reports a connected network. What matters is whether the backend
+// answers, so /healthz is the probe.
+NetInfo.configure({
+  reachabilityUrl: `${API_BASE_URL.replace(/\/+$/, "")}/healthz`,
+  reachabilityTest: async (response) => response.status === 200,
+  reachabilityLongTimeout: 60_000,
+  reachabilityShortTimeout: 5_000,
+  reachabilityRequestTimeout: 10_000,
+  reachabilityShouldRun: () => true,
+  useNativeReachability: false,
+});
 
 interface SyncStatus {
   state: SyncState;
@@ -92,11 +107,14 @@ function QueueWatcher({
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { db, ready } = useLocalDb();
-  const network = useNetworkState();
+  const network = useNetInfo();
 
-  // `undefined` while the first probe resolves — treat as online so a cold
-  // start doesn't flash an offline badge.
-  const isOnline = network.isInternetReachable !== false;
+  // Three states, not two. null means the first probe has not resolved, and is
+  // treated as online so a cold start does not flash an offline badge; once
+  // either signal says false the device is offline. The previous check read
+  // `isInternetReachable !== false`, so an unresolved probe pinned the app
+  // online for good.
+  const isOnline = network.isConnected !== false && network.isInternetReachable !== false;
 
   const [counts, setCounts] = useState<QueueCounts>({ pendingCount: 0, failedCount: 0 });
 

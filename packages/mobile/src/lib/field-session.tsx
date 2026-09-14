@@ -26,16 +26,23 @@ interface PersistedScope {
   userId: string;
   organizationId: string;
   projectId: string;
+  // Optional so a scope persisted before buildings existed still validates —
+  // making it required would fail isPersistedScope and silently drop the
+  // crew member's project on upgrade.
+  buildingId?: string;
 }
 
 interface FieldSession {
   userId: string | undefined;
   organizationId: string | undefined;
   projectId: string | undefined;
+  /** The block being worked on. Undefined until chosen on a multi-building project. */
+  buildingId: string | undefined;
   /** Owner of any locally cached rows. Offline storage partitions on this alone. */
   storageOwnerId: string | undefined;
   isReady: boolean;
   selectProject: (projectId: string) => void;
+  selectBuilding: (buildingId: string) => void;
   clearProject: () => void;
 }
 
@@ -43,9 +50,11 @@ const FieldSessionContext = createContext<FieldSession>({
   userId: undefined,
   organizationId: undefined,
   projectId: undefined,
+  buildingId: undefined,
   storageOwnerId: undefined,
   isReady: false,
   selectProject: () => undefined,
+  selectBuilding: () => undefined,
   clearProject: () => undefined,
 });
 
@@ -55,7 +64,8 @@ function isPersistedScope(value: unknown): value is PersistedScope {
   return (
     typeof scope.userId === "string" &&
     typeof scope.organizationId === "string" &&
-    typeof scope.projectId === "string"
+    typeof scope.projectId === "string" &&
+    (scope.buildingId === undefined || typeof scope.buildingId === "string")
   );
 }
 
@@ -100,6 +110,7 @@ export function FieldSessionProvider({ children }: { children: ReactNode }) {
       (liveOrganizationId !== undefined && scope.organizationId !== liveOrganizationId));
 
   const projectId = scope !== null && !isStale ? scope.projectId : undefined;
+  const buildingId = scope !== null && !isStale ? scope.buildingId : undefined;
 
   useEffect(() => {
     if (isStale) {
@@ -122,6 +133,17 @@ export function FieldSessionProvider({ children }: { children: ReactNode }) {
     [user, organizationId],
   );
 
+  // Buildings belong to a project, so this only ever extends the current scope;
+  // selectProject drops it by omission when the project changes.
+  const selectBuilding = useCallback((nextBuildingId: string) => {
+    setScope((current) => {
+      if (!current) return current;
+      const next: PersistedScope = { ...current, buildingId: nextBuildingId };
+      writeScope(next);
+      return next;
+    });
+  }, []);
+
   const clearProject = useCallback(() => {
     setScope(null);
     writeScope(null);
@@ -132,12 +154,14 @@ export function FieldSessionProvider({ children }: { children: ReactNode }) {
       userId: user?.id,
       organizationId,
       projectId,
+      buildingId,
       storageOwnerId: user?.id,
       isReady: !isResolving,
       selectProject,
+      selectBuilding,
       clearProject,
     }),
-    [user, organizationId, projectId, isResolving, selectProject, clearProject],
+    [user, organizationId, projectId, buildingId, isResolving, selectProject, selectBuilding, clearProject],
   );
 
   return <FieldSessionContext.Provider value={value}>{children}</FieldSessionContext.Provider>;

@@ -38,6 +38,20 @@ export function useProjectDailyLogs(
   });
 }
 
+/**
+ * The one missed-days figure. The daily-log page and the overview both read it
+ * so the project cannot give two answers to "how many days were missed".
+ */
+export function useDailyLogCoverage(projectId: string | undefined, buildingId?: string) {
+  return useQuery({
+    queryKey: projectId
+      ? dailyLogKeys.coverage(projectId, buildingId)
+      : dailyLogKeys.coverage("__none__"),
+    queryFn: () => dailyLogsApi.coverage(projectId!, buildingId),
+    enabled: Boolean(projectId),
+  });
+}
+
 export function useAddDailyLogEntry() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -102,10 +116,12 @@ export function useLinkDailyLogActivity() {
       logDate,
       activityId,
       hoursLogged,
-    }: LinkDailyLogActivityInput) => 
+      postUpdate,
+    }: LinkDailyLogActivityInput) =>
       dailyLogsApi.linkActivity(projectId, logDate, {
         activityId,
         hoursLogged,
+        postUpdate: postUpdate ?? false,
       }),
     onSuccess: (_data, { projectId, logDate }) => {
       queryClient.invalidateQueries({

@@ -1,20 +1,54 @@
 import api from "./client";
 import type {
+  ChangeAction,
   ChangeComment,
   ChangeRequest,
   ChangeRequestDetail,
   ChangeStatus,
+  ChangeType,
 } from "@/lib/project-types";
 
+/**
+ * Editing the content of a change. Status never appears here — the ladder is
+ * walked by the actions below, each of which is a decision with an actor, a
+ * timestamp and (for a rejection) a reason.
+ */
 export interface ChangeRequestInput {
   title: string;
   description?: string | null;
   reason?: string | null;
-  status?: ChangeStatus;
+  reasonHtml?: string | null;
   costImpact?: number;
   timeImpactDays?: number;
   currency?: "NGN" | "USD";
   assigneeId?: string | null;
+  type?: ChangeType;
+  stageId?: string | null;
+  rfiId?: string | null;
+  /** The delays a time claim is argued from; every one must be EOT-claimable. */
+  delayIds?: string[];
+}
+
+/**
+ * Rejecting and resubmitting both carry a reason; executing needs none.
+ * Approving a time claim carries `daysAwarded` — the decision that buys time,
+ * and usually fewer days than were claimed.
+ */
+export interface ChangeActionInput {
+  reason?: string;
+  costImpact?: number;
+  timeImpactDays?: number;
+  daysAwarded?: number;
+}
+
+/** Status counts for the cards on the Change orders page; `grossProfit` is null until costs are recorded. */
+export interface ChangeRequestSummary {
+  draft: number;
+  submitted: number;
+  approved: number;
+  executed: number;
+  rejected: number;
+  grossProfit: number | null;
 }
 
 export interface ChangeRequestBudgetLink {
@@ -36,6 +70,11 @@ export const changeRequestsApi = {
       .get<ChangeRequestDetail>(`/projects/${projectId}/change-requests/${changeId}`)
       .then((r) => r.data),
 
+  summary: (projectId: string) =>
+    api
+      .get<ChangeRequestSummary>(`/projects/${projectId}/change-requests/summary`)
+      .then((r) => r.data),
+
   create: (projectId: string, body: ChangeRequestInput) =>
     api
       .post<ChangeRequest>(`/projects/${projectId}/change-requests`, body)
@@ -44,6 +83,15 @@ export const changeRequestsApi = {
   update: (projectId: string, changeId: string, body: Partial<ChangeRequestInput>) =>
     api
       .patch<ChangeRequest>(`/projects/${projectId}/change-requests/${changeId}`, body)
+      .then((r) => r.data),
+
+  /** Submit / approve / reject / resubmit / execute — the only way the ladder moves. */
+  action: (projectId: string, changeId: string, action: ChangeAction, body: ChangeActionInput = {}) =>
+    api
+      .post<ChangeRequestDetail>(
+        `/projects/${projectId}/change-requests/${changeId}/${action}`,
+        body,
+      )
       .then((r) => r.data),
 
   remove: (projectId: string, changeId: string) =>

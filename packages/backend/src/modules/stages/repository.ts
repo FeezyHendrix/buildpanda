@@ -1,5 +1,10 @@
 import type { Knex } from "knex";
-import type { StageRow, StageStatus, StageScheduleOfValueRow } from "./types.ts";
+import type {
+  StageContractCountRow,
+  StageRow,
+  StageStatus,
+  StageScheduleOfValueRow,
+} from "./types.ts";
 
 export interface NewStageRecord {
   id: string;
@@ -13,6 +18,7 @@ export interface NewStageRecord {
   progress_percent: number;
   value: string;
   sort_order: number;
+  contract_id: string | null;
 }
 
 export interface StageUpdatePatch {
@@ -24,6 +30,11 @@ export interface StageUpdatePatch {
   progress_percent?: number;
   value?: string;
   sort_order?: number;
+  contract_id?: string | null;
+  expected_cost?: string;
+  estimated_labor_hours?: string;
+  labor_budget?: string;
+  material_budget?: string;
 }
 
 export interface NewStageScheduleOfValueRecord {
@@ -35,6 +46,15 @@ export interface NewStageScheduleOfValueRecord {
   amount: string;
   billed: boolean;
   sort_order: number;
+  percent_complete: string | null;
+}
+
+export interface ScheduleProgressRecord {
+  id: string;
+  project_id: string;
+  stage_id: string;
+  period: string;
+  percent_complete: string | null;
 }
 
 const COLUMNS = [
@@ -49,6 +69,11 @@ const COLUMNS = [
   "progress_percent",
   "value",
   "sort_order",
+  "contract_id",
+  "expected_cost",
+  "estimated_labor_hours",
+  "labor_budget",
+  "material_budget",
 ] as const;
 
 export function stagesRepository(db: Knex) {
@@ -92,6 +117,15 @@ export function stagesRepository(db: Knex) {
       await db("project_phases").where({ id }).del();
     },
 
+    /** One row per contract (null = main contract) with how many stages sit on it. */
+    countByContract(projectId: string): Promise<StageContractCountRow[]> {
+      return db("project_phases")
+        .where({ project_id: projectId })
+        .groupBy("contract_id")
+        .select("contract_id")
+        .count<StageContractCountRow[]>("id as count");
+    },
+
     /** Persists a new ordering; sort_order = index in the provided id list. */
     async reorder(projectId: string, orderedIds: string[]): Promise<void> {
       await db.transaction(async (trx) => {
@@ -131,6 +165,41 @@ export function stagesRepository(db: Knex) {
           await trx("stage_schedule_of_values").insert(records);
         }
       });
+    },
+
+    /**
+     * Records cumulative progress for one month, creating the line when the
+     * month has no planned share yet. Lines are then renumbered by period so
+     * the drawer and the sheet read the months in calendar order.
+     */
+    async upsertScheduleProgress(record: ScheduleProgressRecord): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("stage_schedule_of_values")
+          .insert({ ...record, percent: "0", amount: "0.00", billed: false, sort_order: 0 })
+          .onConflict(["stage_id", "period"])
+          .merge({ percent_complete: record.percent_complete, updated_at: trx.fn.now() });
+        await trx.raw(
+          `UPDATE stage_schedule_of_values AS s
+             SET sort_order = ranked.rn - 1
+            FROM (SELECT id, row_number() OVER (ORDER BY period) AS rn
+                    FROM stage_schedule_of_values WHERE stage_id = ?) AS ranked
+           WHERE s.id = ranked.id`,
+          [record.stage_id],
+        );
+      });
+    },
+
+    /** Flags a month as invoiced on the given stages (a progress invoice was raised for it). */
+    async markScheduleOfValuesBilled(
+      projectId: string,
+      period: string,
+      stageIds: string[],
+    ): Promise<void> {
+      if (stageIds.length === 0) return;
+      await db("stage_schedule_of_values")
+        .where({ project_id: projectId, period })
+        .whereIn("stage_id", stageIds)
+        .update({ billed: true, updated_at: db.fn.now() });
     },
   };
 }

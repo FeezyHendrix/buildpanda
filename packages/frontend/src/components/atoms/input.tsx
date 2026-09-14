@@ -6,8 +6,17 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 
+/** The shared control shell for raw selects / textareas: the filled field. */
+const INPUT_BASE_CLASS =
+  "w-full rounded-lg bg-[#F6F6F6] font-sans text-base lg:text-sm text-gray-900 border-0 outline-none ring-0 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10 aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-red-300 disabled:cursor-not-allowed disabled:opacity-50";
+const INPUT_CLASS = cn(INPUT_BASE_CLASS, "h-14 px-4");
+/** Compact height for toolbars and inline table cells. */
+const INPUT_SM_CLASS = cn(INPUT_BASE_CLASS, "h-11 px-3");
+
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   suffixIcon?: ReactNode;
+  /** `sm` is the compact toolbar / inline height. */
+  inputSize?: "sm" | "md";
 }
 
 const EyeIcon = () => (
@@ -45,7 +54,7 @@ const EyeOffIcon = () => (
 );
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, suffixIcon, ...props }, ref) => {
+  ({ className, type, suffixIcon, inputSize = "md", ...props }, ref) => {
     const isPassword = type === "password";
     const [visible, setVisible] = useState(false);
 
@@ -71,11 +80,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           type={resolvedType}
           className={cn(
-            "flex h-14 w-full rounded-lg bg-[#F6F6F6] px-4 font-sans text-base lg:text-sm text-gray-900",
-            "border-0 outline-none ring-0",
-            "placeholder:text-gray-400",
-            "focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            "disabled:cursor-not-allowed disabled:opacity-50",
+            "flex",
+            inputSize === "sm" ? INPUT_SM_CLASS : INPUT_CLASS,
             hasSuffix && "pr-11",
             className,
           )}
@@ -94,4 +100,4 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = "Input";
 
-export { Input, type InputProps };
+export { Input, INPUT_CLASS, INPUT_SM_CLASS, INPUT_BASE_CLASS, type InputProps };

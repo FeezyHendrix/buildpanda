@@ -3,9 +3,9 @@ import { ConsultationForm } from "@/components/consultation-form";
 import { CheckIcon } from "@/components/icons";
 
 const assurances = [
-  "A dedicated advisor who understands building in Nigeria",
+  "A team that understands building in Nigeria",
   "A clear plan from land and design through to handover",
-  "Verified contractors and independent quality checks",
+  "Inspections you can request, with the report on the record",
   "One dashboard you can watch from anywhere in the world",
 ];
 

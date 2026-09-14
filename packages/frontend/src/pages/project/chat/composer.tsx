@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/atoms/button";
 import { toast } from "@/lib/toast";
 import { uploadFileRequest } from "@/hooks/use-files";
 import {
@@ -201,7 +202,7 @@ export function Composer({
           <button
             type="button"
             onClick={onClearQuote}
-            className="shrink-0 text-gray-400 hover:text-gray-600"
+            className="shrink-0 text-ink-muted hover:text-ink"
             aria-label="Remove quote"
           >
             ×
@@ -212,13 +213,13 @@ export function Composer({
       {references.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {references.map((r) => (
-            <div key={`${r.type}-${r.id}`} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700">
-              <span className="text-gray-400">{r.type}</span>
+            <div key={`${r.type}-${r.id}`} className="inline-flex items-center gap-1.5 rounded-full border border-line-hair bg-white px-2.5 py-1 text-xs font-medium text-ink">
+              <span className="text-ink-muted">{r.type}</span>
               {r.label}
               <button
                 type="button"
                 onClick={() => setReferences(prev => prev.filter(x => !(x.type === r.type && x.id === r.id)))}
-                className="ml-0.5 text-gray-400 hover:text-gray-600"
+                className="ml-0.5 text-ink-muted hover:text-ink"
               >
                 ×
               </button>
@@ -230,15 +231,15 @@ export function Composer({
       {attachments.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {attachments.map((a) => (
-            <div key={a.fileId} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700">
-              <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div key={a.fileId} className="inline-flex items-center gap-1.5 rounded-lg border border-line-hair bg-white px-2.5 py-1.5 text-xs font-medium text-ink">
+              <svg className="h-3.5 w-3.5 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
               </svg>
               <span className="max-w-[160px] truncate">{a.name}</span>
               <button
                 type="button"
                 onClick={() => setAttachments((prev) => prev.filter((x) => x.fileId !== a.fileId))}
-                className="ml-0.5 text-gray-400 hover:text-gray-600"
+                className="ml-0.5 text-ink-muted hover:text-ink"
               >
                 ×
               </button>
@@ -247,7 +248,7 @@ export function Composer({
         </div>
       )}
 
-      <div className={cn(isThread ? "flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3" : "overflow-hidden rounded-xl border border-gray-200 bg-white")}>
+      <div className={cn(isThread ? "flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-3" : "overflow-hidden rounded-lg border border-line bg-white")}>
         <input
           ref={fileInputRef}
           type="file"
@@ -263,13 +264,13 @@ export function Composer({
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Reply..."
-              className="flex-1 bg-transparent text-[13px] text-black-500 outline-none placeholder:text-gray-400"
+              className="flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
             />
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setEmojiOpen((v) => !v)}
-                className="flex size-7 items-center justify-center rounded-md text-gray-400 transition-[color,transform] duration-150 ease-out hover:bg-gray-100 hover:text-gray-700 active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
+                className="flex size-7 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
                 aria-label="Insert emoji"
               >
                 <SmileIcon className="size-5" />
@@ -292,13 +293,13 @@ export function Composer({
           </>
         ) : (
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="hidden items-center gap-1 border-b border-gray-100 px-3 py-2 sm:flex">
+            <div className="hidden items-center gap-1 border-b border-line-hair px-3 py-2 sm:flex">
               {[BoldIcon, ItalicIcon, LinkIcon, ListIcon, CodeIcon].map((Icon, idx) => (
                 <button
                   key={idx}
                   type="button"
                   disabled
-                  className="flex size-8 items-center justify-center rounded-md text-gray-400 disabled:opacity-60"
+                  className="flex size-8 items-center justify-center rounded-md text-ink-muted disabled:opacity-60"
                 >
                   <Icon />
                 </button>
@@ -311,7 +312,7 @@ export function Composer({
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className="max-h-56 min-h-[56px] w-full resize-none px-4 py-3 text-[13px] leading-relaxed text-black-500 outline-none placeholder:text-gray-400 sm:min-h-[88px]"
+              className="max-h-56 min-h-[56px] w-full resize-none px-4 py-3 text-sm leading-relaxed text-ink outline-none placeholder:text-ink-muted sm:min-h-[88px]"
               rows={3}
             />
 
@@ -322,7 +323,7 @@ export function Composer({
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
                   title="Attach files"
-                  className="flex size-8 items-center justify-center rounded-md text-gray-500 transition-[color,transform] duration-150 ease-out hover:bg-gray-100 hover:text-gray-700 active:scale-90 disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:scale-100"
+                  className="flex size-8 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
                   <PlusCircleIcon />
                 </button>
@@ -332,7 +333,7 @@ export function Composer({
                     onClick={() => setEmojiOpen((v) => !v)}
                     title="Insert emoji"
                     aria-label="Insert emoji"
-                    className="flex size-8 items-center justify-center rounded-md text-gray-500 transition-[color,transform] duration-150 ease-out hover:bg-gray-100 hover:text-gray-700 active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
+                    className="flex size-8 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
                   >
                     <SmileIcon />
                   </button>
@@ -345,7 +346,7 @@ export function Composer({
                 <button
                   type="button"
                   onClick={() => setText((current) => `${current}@`)}
-                  className="flex size-8 items-center justify-center rounded-md text-gray-500 transition-[color,transform] duration-150 ease-out hover:bg-gray-100 hover:text-gray-700 active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
+                  className="flex size-8 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
                   title="Mention someone"
                 >
                   <AtSignIcon />
@@ -353,28 +354,28 @@ export function Composer({
                 <button
                   type="button"
                   onClick={() => setPickerOpen(!pickerOpen)}
-                  className="flex size-8 items-center justify-center rounded-md text-gray-500 transition-[color,transform] duration-150 ease-out hover:bg-gray-100 hover:text-gray-700 active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
+                  className="flex size-8 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
                   title="Reference project item"
                 >
                   <LinkIcon className="size-5" />
                 </button>
               </div>
-              <button
+              <Button
                 type="button"
+                size="md"
                 onClick={submitFromButton}
                 disabled={(!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending}
-                className="flex items-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-primary-600 active:scale-95 disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 Send
                 <SendIcon />
-              </button>
+              </Button>
             </div>
 
           </div>
         )}
       </div>
       {!isThread && (
-        <p className="mt-2 hidden text-center text-xs text-gray-500 sm:block">
+        <p className="mt-2 hidden text-center text-xs text-ink-muted sm:block">
           <span className="font-semibold">Return</span> to send, <span className="font-semibold">Shift + Return</span> for new line
         </p>
       )}

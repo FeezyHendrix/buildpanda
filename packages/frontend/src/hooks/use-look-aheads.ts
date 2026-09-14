@@ -51,6 +51,42 @@ export function useUpdateLookAhead() {
   });
 }
 
+export function useApproveLookAhead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      lookAheadId,
+      note,
+    }: {
+      projectId: string;
+      lookAheadId: string;
+      note?: string | null;
+    }) => lookAheadsApi.approve(projectId, lookAheadId, note),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: lookAheadKeys.all(projectId) });
+    },
+  });
+}
+
+export function useRevokeLookAheadApproval() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      lookAheadId,
+      reason,
+    }: {
+      projectId: string;
+      lookAheadId: string;
+      reason?: string | null;
+    }) => lookAheadsApi.revokeApproval(projectId, lookAheadId, reason),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: lookAheadKeys.all(projectId) });
+    },
+  });
+}
+
 export function useDeleteLookAhead() {
   const queryClient = useQueryClient();
   return useMutation({

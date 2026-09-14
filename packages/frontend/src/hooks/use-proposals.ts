@@ -1,6 +1,17 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { proposalsApi, type CreateProposalInput, type ProposalStatus } from "@/api/proposals";
-import { proposalKeys } from "./query-keys";
+import {
+  proposalsApi,
+  type AddPlanInput,
+  type ConvertInclude,
+  type CreateProposalInput,
+  type PackOrigin,
+  type PackSectionKind,
+  type PaymentScheduleItem,
+  type ProposalStatus,
+  type UpdateEstimateTermsInput,
+  type UpdatePlanInput,
+} from "@/api/proposals";
+import { proposalKeys, proposalPackKeys } from "./query-keys";
 
 export function usePublicProposal(token: string) {
   return useQuery({
@@ -42,11 +53,22 @@ export function useSendEstimate(proposalId: string) {
 export function useConvertProposal(proposalId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => proposalsApi.convert(proposalId),
+    mutationFn: (include?: ConvertInclude) => proposalsApi.convert(proposalId, include),
     onSuccess: () => {
       // Conversion changes the proposal status, so lists go stale too.
       qc.invalidateQueries({ queryKey: proposalKeys.all });
     },
+  });
+}
+
+// The preview is a POST that writes nothing; it is queried on demand when the
+// convert dialog opens so the counts reflect the take-off as it stands now.
+export function useConvertPreview(proposalId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: proposalKeys.convertPreview(proposalId),
+    queryFn: () => proposalsApi.convertPreview(proposalId),
+    enabled: enabled && !!proposalId,
+    staleTime: 0,
   });
 }
 
@@ -61,7 +83,18 @@ export function useProposalPlans(proposalId: string) {
 export function useAddPlan(proposalId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { fileId: string; label?: string }) => proposalsApi.addPlan(proposalId, body),
+    mutationFn: (body: AddPlanInput) => proposalsApi.addPlan(proposalId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.plans(proposalId) });
+    },
+  });
+}
+
+export function useUpdatePlan(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ planId, ...body }: UpdatePlanInput & { planId: string }) =>
+      proposalsApi.updatePlan(proposalId, planId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.plans(proposalId) });
     },
@@ -96,26 +129,6 @@ export function useStartProposalTakeoff(proposalId: string) {
     mutationFn: (planId: string) => proposalsApi.startAutomatedTakeoff(proposalId, planId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.takeoffs(proposalId) });
-      qc.invalidateQueries({ queryKey: proposalKeys.boq(proposalId) });
-    },
-  });
-}
-
-export function useProposalBoq(proposalId: string) {
-  return useQuery({
-    queryKey: proposalKeys.boq(proposalId),
-    queryFn: () => proposalsApi.listBoq(proposalId),
-    enabled: !!proposalId,
-  });
-}
-
-export function useReplaceBoq(proposalId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (items: Array<{ groupLabel: string; description: string; qty: number; unit: string; sort: number }>) =>
-      proposalsApi.replaceBoq(proposalId, items),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: proposalKeys.boq(proposalId) });
     },
   });
 }
@@ -181,6 +194,62 @@ export function usePatchEstimate(proposalId: string) {
     }) => proposalsApi.patchEstimate(proposalId, estimateId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
+export function usePatchEstimateTerms(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ estimateId, ...body }: { estimateId: string } & UpdateEstimateTermsInput) =>
+      proposalsApi.patchEstimateTerms(proposalId, estimateId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
+export function useReplacePaymentSchedule(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      estimateId,
+      items,
+    }: {
+      estimateId: string;
+      items: Array<Omit<PaymentScheduleItem, "id" | "estimateId" | "description"> & { description?: string }>;
+    }) => proposalsApi.replaceSchedule(proposalId, estimateId, items),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
+export function useProposalPack(proposalId: string) {
+  return useQuery({
+    queryKey: proposalPackKeys.all(proposalId),
+    queryFn: () => proposalsApi.listPack(proposalId),
+    enabled: !!proposalId,
+  });
+}
+
+export function useUpsertPackSection(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { kind: PackSectionKind; bodyHtml: string; origin?: PackOrigin }) =>
+      proposalsApi.upsertPackSection(proposalId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalPackKeys.all(proposalId) });
+    },
+  });
+}
+
+export function useDraftPack(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (kinds?: PackSectionKind[]) => proposalsApi.draftPack(proposalId, kinds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalPackKeys.all(proposalId) });
     },
   });
 }

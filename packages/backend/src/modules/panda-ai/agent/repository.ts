@@ -1,5 +1,14 @@
 import type { Knex } from "knex";
 
+interface DeliveryRow {
+  order_id: string;
+  delivered_qty: string;
+  delivered_at: string;
+  delivery_note: string | null;
+  rejected: boolean;
+  rejected_reason: string | null;
+}
+
 export function agentRepository(db: Knex) {
   return {
     projectInfo(projectId: string) {
@@ -95,6 +104,55 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    /** The contract dates and where completion stands after awarded EOTs. */
+    scheduleDates(projectId: string) {
+      return db("projects")
+        .where({ id: projectId })
+        .first<{
+          start_date: string | null;
+          completion_date: string | null;
+          revised_completion_date: string | null;
+        }>("start_date", "completion_date", "revised_completion_date");
+    },
+
+    /** Delays with the attribution that decides whether the time is claimable. */
+    delaysWithCulpability(projectId: string) {
+      return db("activity_delays as d")
+        .join("activities as a", "a.id", "d.activity_id")
+        .where("a.project_id", projectId)
+        .orderBy("d.started_at", "desc")
+        .limit(200)
+        .select(
+          "d.id",
+          "a.name as activityName",
+          "d.reason_code",
+          "d.days_lost",
+          "d.culpability",
+          "d.eot_claimable",
+          "d.started_at",
+          "d.ended_at",
+          "d.resolved_at",
+        );
+    },
+
+    /** Time claims — change requests of type eot_only, days claimed vs awarded. */
+    eotClaims(projectId: string) {
+      return db("change_requests")
+        .where({ project_id: projectId, type: "eot_only" })
+        .orderBy("created_at", "asc")
+        .select("id", "title", "status", "time_impact_days", "days_awarded", "decided_at");
+    },
+
+    /** How far the projected finish has moved from the baseline programme. */
+    timelineShift(projectId: string) {
+      return db("activities")
+        .where({ project_id: projectId })
+        .whereNotNull("baseline_end_at")
+        .first<{ shift: string | null } | undefined>(
+          db.raw("MAX(EXTRACT(EPOCH FROM (planned_end_at - baseline_end_at)) / 86400) as shift"),
+        );
+    },
+
     risks(projectId: string) {
       return db("risk_factors")
         .where({ project_id: projectId })
@@ -104,6 +162,13 @@ export function agentRepository(db: Knex) {
 
     finances(projectId: string) {
       return db("project_finances").where({ project_id: projectId }).first();
+    },
+
+    stageNames(projectId: string): Promise<Array<{ id: string; name: string }>> {
+      return db("project_phases")
+        .where({ project_id: projectId })
+        .orderBy("sort_order", "asc")
+        .select("id", "name");
     },
 
     financeEvents(projectId: string) {
@@ -170,7 +235,32 @@ export function agentRepository(db: Knex) {
           "workers_expected",
           "total_hours",
           "summary",
+          "voided_at",
         );
+    },
+
+    /**
+     * The work behind the headcount: which activity each day's hours went on.
+     * A diary that reports only weather and crew size never says what was built.
+     */
+    dailyLogActivityHours(projectId: string, logDates: string[]) {
+      return db("daily_log_activities as dla")
+        .join("activities as a", "a.id", "dla.activity_id")
+        .where("dla.project_id", projectId)
+        .whereIn("dla.log_date", logDates)
+        .orderBy("dla.log_date", "desc")
+        .select("dla.log_date", "a.name as activity_name", "dla.hours_logged");
+    },
+
+    /** The written diary for each day, voided entries left out. */
+    dailyLogEntries(projectId: string, logDates: string[]) {
+      return db("daily_log_entries as e")
+        .leftJoin("daily_log_entry_voids as v", "v.entry_id", "e.id")
+        .where("e.project_id", projectId)
+        .whereIn("e.log_date", logDates)
+        .whereNull("v.id")
+        .orderBy("e.created_at", "asc")
+        .select("e.log_date", "e.author_name", "e.author_role", "e.body_text");
     },
 
     keyDates(projectId: string) {
@@ -180,11 +270,31 @@ export function agentRepository(db: Knex) {
         .select("id", "label", "target_date", "actual_date", "status");
     },
 
+    /**
+     * An inspection is an independent service order, so the service status, the
+     * assigned BuildPanda inspector and the outcome all matter to a PM asking
+     * "has anyone been out yet?".
+     */
     inspections(projectId: string) {
       return db("inspections")
+        .leftJoin("user as inspector", "inspector.id", "inspections.inspector_user_id")
         .where({ project_id: projectId })
-        .orderBy("scheduled_at", "desc")
-        .select("id", "title", "category", "status", "risk_level", "scheduled_at");
+        .orderBy("inspections.scheduled_at", "desc")
+        .select(
+          "inspections.id",
+          "inspections.title",
+          "inspections.category",
+          "inspections.status",
+          "inspections.service_status",
+          "inspections.risk_level",
+          "inspections.scheduled_at",
+          "inspections.outcome",
+          "inspections.findings",
+          "inspections.contractor_name",
+          "inspections.report_issued_at",
+          "inspections.inspector_name",
+          "inspector.name as inspector_user_name",
+        );
     },
 
     materials(projectId: string) {
@@ -199,6 +309,50 @@ export function agentRepository(db: Knex) {
           "supplier",
           "status",
           "needed_by",
+          "estimated_cost",
+          "currency",
+        );
+    },
+
+    deliveriesForOrders(orderIds: string[]) {
+      // knex renders an empty whereIn as a false predicate, so no early return.
+      return db<DeliveryRow>("material_deliveries")
+        .whereIn("order_id", orderIds)
+        .orderBy("delivered_at", "asc")
+        .select(
+          "order_id",
+          "delivered_qty",
+          "delivered_at",
+          "delivery_note",
+          "rejected",
+          "rejected_reason",
+        );
+    },
+
+    /**
+     * Late is a fact about dates, not a status: wanted before today and still
+     * not delivered, or promised by the supplier after the date it was wanted.
+     * Cancelled and rejected orders are closed and cannot be late.
+     */
+    lateMaterials(projectId: string, today: string) {
+      return db("material_orders")
+        .where({ project_id: projectId })
+        .whereNotIn("status", ["Delivered", "Cancelled", "Rejected"])
+        .where((q) =>
+          q
+            .where("needed_by", "<", today)
+            .orWhereRaw("expected_delivery_at IS NOT NULL AND expected_delivery_at > needed_by"),
+        )
+        .orderBy("needed_by", "asc")
+        .select(
+          "id",
+          "material_name",
+          "quantity",
+          "unit",
+          "supplier",
+          "status",
+          "needed_by",
+          "expected_delivery_at",
           "estimated_cost",
           "currency",
         );
@@ -246,6 +400,68 @@ export function agentRepository(db: Knex) {
           "item.description",
           "item.qty",
           "item.unit",
+        );
+    },
+
+    // The accepted offer this project was converted from: the estimate the
+    // project row points at, else the accepted estimate of the linked proposal.
+    async acceptedEstimate(projectId: string) {
+      const project = await db("projects")
+        .where({ id: projectId })
+        .select<{ estimate_id: string | null }>("estimate_id")
+        .first();
+      const estimate = await db("estimates as e")
+        .join("proposals as p", "p.id", "e.proposal_id")
+        .where("p.project_id", projectId)
+        .modify((q) => {
+          if (project?.estimate_id) q.where("e.id", project.estimate_id);
+          else q.whereIn("e.status", ["Accepted", "Superseded", "Sent"]).orderBy("e.revision_no", "desc");
+        })
+        .select(
+          "e.id",
+          "e.revision_no",
+          "e.status",
+          "e.contingency_pct",
+          "e.tax_label",
+          "e.tax_pct",
+          "e.subtotal",
+          "e.tax_amount",
+          "e.total",
+          "e.accepted_at",
+          "e.accepted_by_name",
+          "p.id as proposal_id",
+          "p.title as proposal_title",
+          "p.currency",
+        )
+        .first();
+      if (!estimate) return null;
+      const [items, schedule] = await Promise.all([
+        db("estimate_items").where({ estimate_id: estimate.id }).orderBy("sort", "asc").select("group_label", "description", "qty", "unit", "unit_rate", "total"),
+        db("estimate_payment_schedule").where({ estimate_id: estimate.id }).orderBy("sort", "asc").select("label", "percent", "description"),
+      ]);
+      return { estimate, items, schedule };
+    },
+
+    programmeBaseline(projectId: string) {
+      return db("activities as a")
+        .leftJoin("project_phases as ph", "ph.id", "a.phase_id")
+        .where("a.project_id", projectId)
+        .whereNotNull("a.baseline_start_at")
+        .orderBy("a.planned_start_at", "asc")
+        .select(
+          "a.id",
+          "a.name",
+          "ph.name as stage",
+          "a.is_milestone",
+          "a.status",
+          "a.percent_complete",
+          "a.baseline_start_at",
+          "a.baseline_end_at",
+          "a.planned_start_at",
+          "a.planned_end_at",
+          "a.actual_start_at",
+          "a.actual_end_at",
+          "a.programme_task_id",
         );
     },
 
@@ -347,11 +563,27 @@ export function agentRepository(db: Knex) {
     approvalsOpen(projectId: string) {
       return db("approvals as a")
         .leftJoin("user as u", "u.id", "a.submitted_by_id")
+        // Material approvals share this table; kind + material keep them from
+        // being reported to the PM as client sign-offs.
+        .leftJoin("material_approval_details as md", "md.approval_id", "a.id")
         .where("a.project_id", projectId)
         .whereIn("a.status", ["Pending", "Resubmit"])
         .orderBy("a.due_date", "asc")
         .limit(50)
-        .select("a.id", "a.title", "a.category", "a.status", "a.due_date", "u.name as submittedBy");
+        .select(
+          "a.id",
+          "a.kind",
+          "a.title",
+          "a.category",
+          "a.status",
+          "a.due_date",
+          "u.name as submittedBy",
+          "md.material_name as materialName",
+          "md.quantity as materialQuantity",
+          "md.unit as materialUnit",
+          "md.supplier as materialSupplier",
+          "md.needed_by as materialNeededBy",
+        );
     },
 
     drawingMarkupsOpen(projectId: string) {
@@ -376,26 +608,6 @@ export function agentRepository(db: Knex) {
           "m.created_at",
           "r.id as rfiId",
         );
-    },
-
-    actionItemsOpen(projectId: string) {
-      return db("action_items as ai")
-        .leftJoin("user as u", "u.id", "ai.assignee_id")
-        .where("ai.project_id", projectId)
-        .whereNot("ai.status", "Resolved")
-        .orderBy("ai.due_date", "asc")
-        .limit(50)
-        .select("ai.id", "ai.title", "ai.status", "ai.priority", "ai.due_date", "u.name as assignee");
-    },
-
-    queriesOpen(projectId: string) {
-      return db("queries as q")
-        .leftJoin("user as u", "u.id", "q.assignee_id")
-        .where("q.project_id", projectId)
-        .whereNot("q.status", "Closed")
-        .orderBy("q.due_date", "asc")
-        .limit(50)
-        .select("q.id", "q.subject as title", "q.status", "q.due_date", "u.name as assignee");
     },
 
     changeRequests(projectId: string) {
@@ -432,33 +644,6 @@ export function agentRepository(db: Knex) {
           "approved_date",
           "expiry_date",
         );
-    },
-
-    invoices(projectId: string, status?: string) {
-      // One query: invoices with their paid total aggregated via the payments join.
-      return db("project_invoices as i")
-        .leftJoin("invoice_payments as p", "p.invoice_id", "i.id")
-        .where("i.project_id", projectId)
-        .modify((q) => {
-          if (status) q.where("i.status", status);
-        })
-        .groupBy("i.id")
-        .orderBy("i.created_at", "desc")
-        .limit(100)
-        .select(
-          "i.id",
-          "i.number",
-          "i.vendor_name",
-          "i.invoice_type",
-          "i.status",
-          "i.currency",
-          "i.issue_date",
-          "i.due_date",
-          "i.total_invoiced",
-          "i.net_payable",
-          "i.to_party",
-        )
-        .sum({ amount_paid: "p.amount" });
     },
 
     budgetCategories(projectId: string) {
@@ -609,9 +794,6 @@ export function agentRepository(db: Knex) {
     taskEntityLinks(projectId: string) {
       return db("task_entity_links as el")
         .join("tasks as t", "t.id", "el.task_id")
-        .leftJoin("action_items as ai", function () {
-          this.on("el.entity_type", db.raw("?", ["action_item"])).andOn("ai.id", "el.entity_id");
-        })
         .leftJoin("rfis as r", function () {
           this.on("el.entity_type", db.raw("?", ["rfi"])).andOn("r.id", "el.entity_id");
         })
@@ -634,10 +816,18 @@ export function agentRepository(db: Knex) {
           "t.title as taskTitle",
           "el.entity_type as entityType",
           db.raw(
-            "COALESCE(ai.title, r.subject, cr.title, mo.material_name, inv.vendor_name, mp.name) as label",
+            "COALESCE(r.subject, cr.title, mo.material_name, inv.vendor_name, mp.name) as label",
           ),
         );
     },
+
+    /**
+     * Everything on the project whose text names a piece of work — "culvert 1",
+     * "ch 0+420", "the box culvert". A PM asking "what changed on X" means the
+     * records that describe work, so one query sweeps activities and their
+     * delays, RFIs, change requests, risks, inspections and material orders
+     * rather than leaving the model to guess a single domain tool.
+     */
   };
 }
 

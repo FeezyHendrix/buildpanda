@@ -10,8 +10,21 @@
  * calling buildAbility() directly.
  */
 
-export type Resource = "proposals" | "leads";
-export type Action = "view" | "create" | "update" | "delete" | "send" | "convert";
+export type Resource = "proposals" | "leads" | "takeoffs" | "estimates" | "rateCards" | "complianceDocs";
+export type Action =
+  | "view"
+  | "create"
+  | "update"
+  | "delete"
+  | "send"
+  | "convert"
+  | "measure"
+  | "edit"
+  | "verify"
+  | "apply"
+  | "price"
+  | "terms"
+  | "manage";
 
 export interface Ability {
   can(action: Action, resource: Resource): boolean;
@@ -23,18 +36,34 @@ const ROLE_ABILITIES: Record<string, Partial<Record<Resource, Action[]>>> = {
   owner: {
     proposals: ["view", "create", "update", "delete", "send", "convert"],
     leads: ["view", "create", "update", "delete"],
+    takeoffs: ["view", "measure", "edit", "verify", "apply"],
+    estimates: ["view", "price", "terms"],
+    rateCards: ["view", "manage"],
+    complianceDocs: ["view", "manage"],
   },
   admin: {
     proposals: ["view", "create", "update", "delete", "send", "convert"],
     leads: ["view", "create", "update", "delete"],
+    takeoffs: ["view", "measure", "edit", "verify", "apply"],
+    estimates: ["view", "price", "terms"],
+    rateCards: ["view", "manage"],
+    complianceDocs: ["view", "manage"],
   },
   member: {
     proposals: ["view", "create", "update", "send"],
     leads: ["view", "create", "update"],
+    takeoffs: ["view", "measure", "edit"],
+    estimates: ["view", "price", "terms"],
+    rateCards: ["view"],
+    complianceDocs: ["view"],
   },
   viewer: {
     proposals: ["view"],
     leads: ["view"],
+    takeoffs: ["view"],
+    estimates: ["view"],
+    rateCards: ["view"],
+    complianceDocs: ["view"],
   },
 };
 

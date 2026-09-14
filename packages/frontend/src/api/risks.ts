@@ -1,21 +1,26 @@
 import api from "./client";
-import type { RiskFactor, RiskLevel } from "@/lib/project-types";
+import type { RiskFactor, RiskLevel, RiskStatus } from "@/lib/project-types";
 
-export interface CreateRiskVariables {
-  projectId: string;
+export interface RiskFields {
   title: string;
   description: string;
   descriptionHtml?: string | null;
   severity: RiskLevel;
+  status?: RiskStatus;
+  ownerId?: string | null;
+  ownerName?: string | null;
+  mitigation?: string | null;
+  reviewDate?: string | null;
+  linkedActivityId?: string | null;
 }
 
-export interface EditRiskVariables {
+export interface CreateRiskVariables extends RiskFields {
+  projectId: string;
+}
+
+export interface EditRiskVariables extends Partial<RiskFields> {
   projectId: string;
   riskId: string;
-  title?: string;
-  description?: string;
-  descriptionHtml?: string | null;
-  severity?: RiskLevel;
 }
 
 export interface DeleteRiskVariables {

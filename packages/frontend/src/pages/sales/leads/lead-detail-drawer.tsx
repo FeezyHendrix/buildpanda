@@ -8,6 +8,7 @@ import { LEAD_STATUSES, type Lead, type LeadStatus } from "@/api/leads";
 import { formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { statusLabel } from "./lead-status-badge";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -51,8 +52,9 @@ export function LeadDetailDrawer({
     await update.mutateAsync({ id: lead.id, status });
   }
 
-  function createProposal() {
+  async function createProposal() {
     if (!lead) return;
+    if (notes !== lead.notes) await update.mutateAsync({ id: lead.id, notes });
     const params = new URLSearchParams({
       leadId: lead.id,
       clientName: lead.name,
@@ -75,25 +77,22 @@ export function LeadDetailDrawer({
       description={lead.email}
       submitLabel="Create proposal"
       onSubmit={createProposal}
+      submitting={update.isPending}
+      error={update.error?.message}
     >
       <div className="flex flex-col gap-1.5">
         <Label>Status</Label>
         <div className="flex flex-wrap gap-2">
           {LEAD_STATUSES.map((s) => (
-            <button
+            <Button
               key={s}
-              type="button"
+              size="sm"
+              variant={lead.status === s ? "primary" : "secondary"}
               onClick={() => changeStatus(s)}
               disabled={update.isPending}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                lead.status === s
-                  ? "border-[#004DE7] bg-[#004DE7] text-white"
-                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
-              )}
             >
               {statusLabel(s)}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -121,7 +120,7 @@ export function LeadDetailDrawer({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Call summary, next steps, anything to remember…"
-          className="w-full resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 resize-none")}
         />
         <div className="flex justify-end">
           <Button

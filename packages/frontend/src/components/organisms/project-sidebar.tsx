@@ -112,7 +112,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
 
   const items = useMemo<ProjectNavItem[]>(
     () =>
-      NAV_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      NAV_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -120,7 +120,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const scheduleItems = useMemo<GroupNavItem[]>(
     () =>
-      SCHEDULE_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      SCHEDULE_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -128,7 +128,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const materialsItems = useMemo<GroupNavItem[]>(
     () =>
-      MATERIALS_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      MATERIALS_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -136,7 +136,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const siteToolItems = useMemo<GroupNavItem[]>(
     () =>
-      SITE_TOOL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      SITE_TOOL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -144,7 +144,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const documentToolItems = useMemo<ProjectNavItem[]>(
     () =>
-      DOCUMENT_TOOL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      DOCUMENT_TOOL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -152,7 +152,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const financeItems = useMemo<GroupNavItem[]>(
     () =>
-      FINANCE_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      FINANCE_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -160,7 +160,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const clientItems = useMemo<ProjectNavItem[]>(
     () =>
-      CLIENT_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      CLIENT_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),

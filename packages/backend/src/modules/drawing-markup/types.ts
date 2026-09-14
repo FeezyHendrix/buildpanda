@@ -28,19 +28,52 @@ export interface Rect {
   h: number;
 }
 
-/** Percentages of the rendered sheet, so geometry survives any zoom or DPI. */
-export type MarkupGeometry =
+/**
+ * Which space a markup's coordinates are in.
+ *
+ * "percent" is what project drawings have always used: percentages of the
+ * rendered sheet, which survive any zoom or DPI but carry no scale, so a
+ * length drawn in that space can never become a quantity.
+ *
+ * "points" is the take-off space: sheet points for a PDF, drawing units
+ * through the frame for a DWG, pixels over the raster scale for a picture.
+ * A sheet with a calibrated scale turns those into millimetres, which is what
+ * lets one viewer hold both a redline and a measurement.
+ *
+ * Rows written before this existed have no space and are read as "percent".
+ */
+export const GEOMETRY_SPACES = ["percent", "points"] as const;
+export type GeometrySpace = (typeof GEOMETRY_SPACES)[number];
+
+export const GEOMETRY_SPACE = {
+  PERCENT: "percent",
+  POINTS: "points",
+} as const satisfies Record<string, GeometrySpace>;
+
+type MarkupShape =
   | { kind: "pin"; at: Point }
   | { kind: "pen"; points: Point[] }
   | { kind: "cloud"; rect: Rect }
   | { kind: "measure"; a: Point; b: Point };
 
+/** A shape plus the space its numbers are in. */
+export type MarkupGeometry = MarkupShape & { space?: GeometrySpace };
+
+/**
+ * A markup is anchored to exactly one of: a project drawing revision
+ * (project + document + version + page) or a pre-construction take-off sheet
+ * (session + sheet, optionally the bill row it questions). The DB CHECK in
+ * migration 20260822_markups_on_precon mirrors this.
+ */
 export interface DrawingMarkupRow {
   id: string;
-  project_id: string;
-  document_id: string;
-  document_version_id: string;
-  page_no: number;
+  project_id: string | null;
+  document_id: string | null;
+  document_version_id: string | null;
+  page_no: number | null;
+  precon_session_id: string | null;
+  precon_sheet_id: string | null;
+  precon_row_id: string | null;
   kind: MarkupKind;
   geometry: MarkupGeometry;
   color: string;
@@ -82,13 +115,17 @@ export interface DrawingMarkupComment {
 
 export interface DrawingMarkup {
   id: string;
-  projectId: string;
-  documentId: string;
-  documentVersionId: string;
+  projectId: string | null;
+  documentId: string | null;
+  documentVersionId: string | null;
   revisionLabel: string | null;
   /** False once a newer revision of the drawing exists — the item was raised against a superseded sheet. */
   isCurrentRevision: boolean;
-  pageNo: number;
+  pageNo: number | null;
+  /** Take-off anchor: the session (revision) and sheet the pin was raised on, plus the bill line it questions. */
+  preconSessionId: string | null;
+  preconSheetId: string | null;
+  preconRowId: string | null;
   kind: MarkupKind;
   geometry: MarkupGeometry;
   color: string;
@@ -108,6 +145,30 @@ export interface CreateMarkupInput {
   kind: MarkupKind;
   geometry: MarkupGeometry;
   color?: string;
+}
+
+/**
+ * Body of POST /precon/sessions/:sessionId/markups. Pin geometry on a take-off
+ * sheet is in sheet points (the space PreconGeometry.vertices uses), not the
+ * sheet-percent space project drawings use, so pins sit with the measurements.
+ */
+export interface CreatePreconMarkupInput {
+  sheetId: string;
+  /** The bill line selected when the pin was placed; null for a sheet-only note. */
+  rowId?: string | null;
+  kind: MarkupKind;
+  geometry: MarkupGeometry;
+  color?: string;
+}
+
+/**
+ * The slice of the pdf-takeoff service the markup module needs: every take-off
+ * access path proves the artefact belongs to the caller's organisation.
+ */
+export interface PreconAnchorGuard {
+  assertSessionOrg(sessionId: string, orgId: string): Promise<unknown>;
+  assertSheetOrg(sheetId: string, orgId: string): Promise<string>;
+  assertRowOrg(rowId: string, orgId: string): Promise<string>;
 }
 
 export interface CreateCommentInput {

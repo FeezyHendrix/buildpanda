@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { z } from "zod";
 import { extractDocumentText } from "../../lib/document-text.ts";
-import { pandaAiJson } from "./engine.ts";
+import { chatLongJsonValidated, longTextCharBudget } from "../../lib/llm-long-text.ts";
 
 const extractionSchema = z.looseObject({});
 
@@ -428,9 +428,15 @@ export async function extractProjectFromText(
   text: string,
   fileName: string,
 ): Promise<ProjectExtraction> {
-  const trimmed = text.slice(0, 24000);
-  const parsed = await pandaAiJson(LLM_SYSTEM_PROMPT, `Document: ${fileName}\n\n${trimmed}`, extractionSchema);
-  return normalizeLlmExtraction(parsed);
+  const trimmed = text.slice(0, longTextCharBudget());
+  const result = await chatLongJsonValidated(
+    [
+      { role: "system", content: LLM_SYSTEM_PROMPT },
+      { role: "user", content: `Document: ${fileName}\n\n${trimmed}` },
+    ],
+    extractionSchema,
+  );
+  return normalizeLlmExtraction(result?.data ?? null);
 }
 
 function detectFileKind(fileName: string): "workbook" | "text" {

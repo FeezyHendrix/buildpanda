@@ -1,7 +1,9 @@
+import { safeReturnPath } from "@/lib/return-path";
+import { authRecoveryPath, rememberAuthRecovery } from "@/lib/auth-recovery";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/atoms";
-import { FormField } from "@/components/molecules";
+import { Button } from "@/components/atoms/button";
+import { FormField } from "@/components/molecules/form-field";
 import { authClient } from "@/lib/auth-client";
 import { useSession } from "@/stores/auth";
 import { homePathFor } from "@/lib/route-guards";
@@ -14,7 +16,7 @@ export default function SignInForm() {
   const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get("redirect");
+  const redirectTo = safeReturnPath(searchParams.get("redirect"));
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export default function SignInForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
     setLoading(true);
 
@@ -37,6 +40,11 @@ export default function SignInForm() {
         },
         onError: (ctx) => {
           setLoading(false);
+          if (ctx.error.code === "EMAIL_NOT_VERIFIED") {
+            rememberAuthRecovery("verification", email, redirectTo);
+            navigate(authRecoveryPath("verify-email", redirectTo), { state: { email, redirectTo } });
+            return;
+          }
           setError(ctx.error.message ?? "Invalid email or password.");
         },
       },
@@ -46,16 +54,16 @@ export default function SignInForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-gray-900 text-balance">
+        <h1 className="text-2xl font-medium text-ink text-balance">
           Welcome back
         </h1>
-        <p className="text-sm text-gray-500 text-pretty">
+        <p className="text-sm text-ink-muted text-pretty">
           Sign in to your account to continue.
         </p>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="rounded-lg bg-negative-50 px-4 py-3 text-sm text-negative-600">
           {error}
         </p>
       )}
@@ -86,16 +94,16 @@ export default function SignInForm() {
 
       <div className="flex items-center justify-end">
         <Link
-          to="/auth/forgot-password"
-          className="text-sm font-medium text-[#004DE7] hover:underline"
+          to={authRecoveryPath("forgot-password", redirectTo)}
+          className="text-sm font-medium text-primary-500 hover:underline"
         >
           Forgot password?
         </Link>
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button type="submit" className="w-full h-[48px]" disabled={loading}>
-          {loading ? "Signing in..." : "Sign In"}
+        <Button type="submit" className="w-full h-[48px]" loading={loading} disabled={loading}>
+          Sign In
         </Button>
 
       </div>

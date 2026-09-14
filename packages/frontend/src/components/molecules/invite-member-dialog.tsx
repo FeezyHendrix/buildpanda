@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 interface InviteMemberDialogProps {
   open: boolean;
@@ -61,7 +62,7 @@ function InviteMemberDialog({
           autoFocus
           maxLength={254}
           placeholder="teammate@company.com"
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
 
@@ -71,7 +72,7 @@ function InviteMemberDialog({
           id="invite-role"
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         >
           {roleOptions.map((option) => (
             <option key={option.value} value={option.value}>

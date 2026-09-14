@@ -12,7 +12,7 @@ export interface LegalDocument {
 }
 
 const COMPANY = "BuildPanda";
-const SUPPORT_EMAIL = "hello@buildpanda.ai";
+const SUPPORT_EMAIL = "hello@buildpanda.io";
 const EFFECTIVE_DATE = "14 June 2026";
 
 export const privacyPolicy: LegalDocument = {

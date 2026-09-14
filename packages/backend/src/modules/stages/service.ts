@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { Money } from "../../lib/money.ts";
 import type {
@@ -6,26 +6,20 @@ import type {
   StagesRepository,
   StageUpdatePatch,
 } from "./repository.ts";
+import { recordedAfter, recordedBefore, toScheduleOfValues } from "./sov-mapper.ts";
+import type { PhaseRollupService } from "./phase-rollup.ts";
+import { clampPercent, deriveDateRange, toStage } from "./stage-mapper.ts";
 import type {
   Stage,
   StageRow,
   StageScheduleOfValue,
-  StageScheduleOfValueRow,
   StageStatus,
+  UpdateStageInput,
 } from "./types.ts";
 
 export interface CreateStageInput {
   name: string;
   buildingId?: string | null;
-  status?: StageStatus;
-  startDate?: string | null;
-  endDate?: string | null;
-  progressPercent?: number;
-  value?: number;
-}
-
-export interface UpdateStageInput {
-  name?: string;
   status?: StageStatus;
   startDate?: string | null;
   endDate?: string | null;
@@ -39,59 +33,49 @@ export interface ScheduleOfValueLineInput {
   billed?: boolean;
 }
 
-function fmt(date: string | null | undefined): string | null {
-  if (!date) return null;
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+/**
+ * The Phases-tab half of the stage: contract attribution and the estimate vs
+ * used roll-up. Optional so sheet-only callers (pay applications) can build the
+ * service without wiring three more modules.
+ */
+export interface StagePhaseDeps {
+  rollup: PhaseRollupService;
+  contractBelongsToProject: (projectId: string, contractId: string) => Promise<boolean>;
 }
 
-function deriveDateRange(start: string | null, end: string | null): string | null {
-  const s = fmt(start);
-  const e = fmt(end);
-  if (s && e) return `${s} – ${e}`;
-  if (s) return `From ${s}`;
-  if (e) return `Until ${e}`;
-  return null;
+/** What a project has priced against its contract sum. */
+export interface StageValueSummary {
+  valueTotal: number;
+  contractSum: number;
+  unallocated: number;
+  allocatedPercent: number;
 }
 
-function clampPercent(value: number | undefined, fallback: number): number {
-  if (value === undefined || Number.isNaN(value)) return fallback;
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
-
-function toStage(row: StageRow): Stage {
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    name: row.name,
-    status: row.status,
-    startDate: row.start_date,
-    endDate: row.end_date,
-    dateRange: row.date_range,
-    progressPercent: row.progress_percent,
-    value: Number(row.value),
-    sortOrder: row.sort_order,
-  };
-}
-
-function toScheduleOfValue(row: StageScheduleOfValueRow): StageScheduleOfValue {
-  return {
-    id: row.id,
-    stageId: row.stage_id,
-    period: row.period,
-    percent: Number(row.percent),
-    amount: Number(row.amount),
-    billed: row.billed,
-    sortOrder: row.sort_order,
-  };
-}
+const ACTIVE_STATUSES: ReadonlySet<StageStatus> = new Set(["InProgress", "Done"]);
 
 export function stagesService(
   repository: StagesRepository,
   soleRealBuildingId: (projectId: string) => Promise<string | undefined>,
   contractSumForProject?: (projectId: string) => Promise<number>,
+  // Reaching a stage unlocks its stage payments; wired to the finances claim
+  // chain by the route plugin so this module never touches finance tables.
+  onStageReached?: (projectId: string, stage: { id: string; name: string }) => Promise<void>,
+  phases?: StagePhaseDeps,
+  // Activities live in their own module; the stage only needs the count that
+  // decides whether it can be deleted.
+  activityCountForStage?: (stageId: string) => Promise<number>,
 ) {
+  async function decorate(projectId: string, rows: StageRow[]): Promise<Stage[]> {
+    if (!phases) return rows.map((row) => toStage(row));
+    const rollup = await phases.rollup.forProject(projectId);
+    return rows.map((row) => toStage(row, rollup));
+  }
+
+  async function one(projectId: string, row: StageRow): Promise<Stage> {
+    const [stage] = await decorate(projectId, [row]);
+    return stage as Stage;
+  }
+
   async function resolveBuildingId(projectId: string, explicit?: string | null): Promise<string> {
     if (explicit) return explicit;
     const buildingId = await soleRealBuildingId(projectId);
@@ -119,7 +103,7 @@ export function stagesService(
   return {
     async list(projectId: string, buildingId?: string): Promise<Stage[]> {
       const rows = await repository.listByProject(projectId, buildingId);
-      return rows.map(toStage);
+      return decorate(projectId, rows);
     },
 
     async create(projectId: string, input: CreateStageInput): Promise<Stage> {
@@ -142,8 +126,9 @@ export function stagesService(
         progress_percent: clampPercent(input.progressPercent, 0),
         value: String(input.value ?? 0),
         sort_order: sortOrder,
+        contract_id: null,
       });
-      return toStage(row);
+      return one(projectId, row);
     },
 
     async update(
@@ -174,32 +159,137 @@ export function stagesService(
         await assertValuesWithinContract(projectId, stageId, input.value);
         patch.value = String(input.value);
       }
+      if (input.expectedCost !== undefined) patch.expected_cost = input.expectedCost.toFixed(2);
+      if (input.estimatedLaborHours !== undefined) patch.estimated_labor_hours = input.estimatedLaborHours.toFixed(2);
+      if (input.laborBudget !== undefined) patch.labor_budget = input.laborBudget.toFixed(2);
+      if (input.materialBudget !== undefined) patch.material_budget = input.materialBudget.toFixed(2);
+      if (input.contractId !== undefined) {
+        if (input.contractId !== null) {
+          const owned = phases ? await phases.contractBelongsToProject(projectId, input.contractId) : false;
+          if (!owned) throw new BadRequestError("Contract does not belong to this project");
+        }
+        patch.contract_id = input.contractId;
+      }
 
       const updated = await repository.update(stageId, patch);
       if (!updated) throw new NotFoundError("Stage");
-      return toStage(updated);
+      const reached =
+        input.status !== undefined && ACTIVE_STATUSES.has(input.status) && !ACTIVE_STATUSES.has(existing.status);
+      if (reached && onStageReached) {
+        await onStageReached(projectId, { id: updated.id, name: updated.name });
+      }
+      return one(projectId, updated);
     },
 
+    /**
+     * A stage carrying work or contract value cannot just vanish: the activities
+     * are real programme rows and the value is part of the schedule of values.
+     * The 409 names both so the PM knows what to reassign first — it used to be
+     * a silent 500 from the database's own foreign key.
+     */
     async remove(projectId: string, stageId: string): Promise<void> {
       const existing = await repository.findById(stageId);
       if (!existing || existing.project_id !== projectId) throw new NotFoundError("Stage");
+      const activities = activityCountForStage ? await activityCountForStage(stageId) : 0;
+      const value = Number(existing.value ?? 0);
+      if (activities > 0 || value > 0) {
+        throw new ConflictError(
+          `Stage has ${activities} ${activities === 1 ? "activity" : "activities"} and a value of ${value} — reassign them first`,
+          { activities, value },
+        );
+      }
       await repository.remove(stageId);
+    },
+
+    /** Priced stage value against the contract sum — the missing "total" row. */
+    async valueSummary(projectId: string): Promise<StageValueSummary> {
+      const [rows, contractSum] = await Promise.all([
+        repository.listByProject(projectId),
+        contractSumForProject ? contractSumForProject(projectId) : Promise.resolve(0),
+      ]);
+      const valueTotal = Number(Money.sum(rows.map((row) => row.value)).toFixed(2));
+      return {
+        valueTotal,
+        contractSum,
+        unallocated: Number((contractSum - valueTotal).toFixed(2)),
+        allocatedPercent: contractSum > 0 ? Math.round((valueTotal / contractSum) * 10000) / 100 : 0,
+      };
     },
 
     async reorder(projectId: string, orderedIds: string[]): Promise<Stage[]> {
       await repository.reorder(projectId, orderedIds);
       const rows = await repository.listByProject(projectId);
-      return rows.map(toStage);
+      return decorate(projectId, rows);
     },
 
     async listScheduleOfValues(
       projectId: string,
       stageId?: string,
     ): Promise<StageScheduleOfValue[]> {
-      const rows = stageId
-        ? await repository.listScheduleOfValuesByStage(projectId, stageId)
-        : await repository.listScheduleOfValuesByProject(projectId);
-      return rows.map(toScheduleOfValue);
+      const [rows, stages] = await Promise.all([
+        stageId
+          ? repository.listScheduleOfValuesByStage(projectId, stageId)
+          : repository.listScheduleOfValuesByProject(projectId),
+        repository.listByProject(projectId),
+      ]);
+      return toScheduleOfValues(rows, new Map(stages.map((stage) => [stage.id, Number(stage.value)])));
+    },
+
+    /**
+     * Records the cumulative percent complete for one stage-month, the cell a
+     * QS types into on the billing sheet. Progress is cumulative, so a month can
+     * never sit below the last recorded month or above the next one; clearing
+     * runs from the latest month backwards so no gap opens in the middle.
+     */
+    async updateScheduleProgress(
+      projectId: string,
+      stageId: string,
+      period: string,
+      percentComplete: number | null,
+    ): Promise<StageScheduleOfValue[]> {
+      const stage = await repository.findById(stageId);
+      if (!stage || stage.project_id !== projectId) throw new NotFoundError("Stage");
+      if (Number(stage.value) <= 0) {
+        throw new BadRequestError("Price the stage before recording progress against it");
+      }
+      const rows = await repository.listScheduleOfValuesByStage(projectId, stageId);
+      const others = rows.filter((row) => row.period !== period);
+      const previous = recordedBefore(others, period);
+      const next = recordedAfter(others, period);
+
+      if (percentComplete === null) {
+        if (next) {
+          throw new ConflictError(
+            `Clear ${next.period} first — progress is cumulative, so months are cleared from the latest one backwards`,
+          );
+        }
+      } else {
+        if (previous && percentComplete < Number(previous.percent_complete)) {
+          throw new ConflictError(
+            `${period} cannot fall below ${previous.period}'s ${Number(previous.percent_complete)}% — progress is cumulative`,
+          );
+        }
+        if (next && percentComplete > Number(next.percent_complete)) {
+          throw new ConflictError(
+            `${period} cannot exceed ${next.period}'s ${Number(next.percent_complete)}% — progress is cumulative`,
+          );
+        }
+      }
+
+      await repository.upsertScheduleProgress({
+        id: generateId("sov"),
+        project_id: projectId,
+        stage_id: stageId,
+        period,
+        percent_complete: percentComplete === null ? null : String(percentComplete),
+      });
+      const updated = await repository.listScheduleOfValuesByStage(projectId, stageId);
+      return toScheduleOfValues(updated, new Map([[stageId, Number(stage.value)]]));
+    },
+
+    /** Flags a month as invoiced on the given stages once a progress invoice is raised for it. */
+    async markPeriodBilled(projectId: string, period: string, stageIds: string[]): Promise<void> {
+      await repository.markScheduleOfValuesBilled(projectId, period, stageIds);
     },
 
     async replaceScheduleOfValues(
@@ -217,6 +307,11 @@ export function stagesService(
         );
       }
 
+      // Replacing the planned schedule must not wipe the progress already
+      // recorded on those months — carry it across by period.
+      const existing = await repository.listScheduleOfValuesByStage(projectId, stageId);
+      const progressByPeriod = new Map(existing.map((row) => [row.period, row.percent_complete]));
+
       const billedTotal = Money.of(stage.value).percent(totalPercent);
       const amounts = billedTotal.allocate(lines.map((line) => line.percent));
       const records: NewStageScheduleOfValueRecord[] = lines.map((line, index) => ({
@@ -228,11 +323,12 @@ export function stagesService(
         amount: amounts[index]?.toFixed(2) ?? "0.00",
         billed: line.billed ?? false,
         sort_order: index,
+        percent_complete: progressByPeriod.get(line.period) ?? null,
       }));
 
       await repository.replaceScheduleOfValues(stageId, records);
       const rows = await repository.listScheduleOfValuesByStage(projectId, stageId);
-      return rows.map(toScheduleOfValue);
+      return toScheduleOfValues(rows, new Map([[stageId, Number(stage.value)]]));
     },
   };
 }
