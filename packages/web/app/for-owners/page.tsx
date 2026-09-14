@@ -26,7 +26,7 @@ export const metadata: Metadata = pageMetadata({
   path: "for-owners",
   title: "Construction software for developers and project owners",
   description:
-    "Follow a build you are paying for. See progress against the programme, request an inspection at any stage, and read a payment record that traces back to work that was signed off. Start free, no card.",
+    "Follow a build you are paying for. See progress against the programme, request an inspection at any stage, and read a payment record that traces back to work that was signed off. Book a demo.",
   socialTitle: "Owners: see what you are paying for, stage by stage",
 });
 
@@ -95,7 +95,7 @@ export default function ForOwnersPage() {
           </p>
           <div className="flex flex-col gap-3 sm:flex-row mt-4">
             {/* <ButtonLink href={site.appUrl} size="lg">
-              Start free
+              Book a demo
               <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink> */}
             <ButtonLink href="/talk-to-us/" variant="outline" size="lg">

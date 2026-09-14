@@ -17,8 +17,8 @@ export function FinalCta() {
           Or tell us about the job and we will build it.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <ButtonLink href={site.appUrl} variant="white" size="lg">
-            Start free
+          <ButtonLink href="/talk-to-us/" variant="white" size="lg">
+            Book a demo
             <ArrowRightIcon className="h-5 w-5" />
           </ButtonLink>
           <ButtonLink
@@ -30,7 +30,7 @@ export function FinalCta() {
           </ButtonLink>
         </div>
         <p className="text-sm text-white/60">
-          No card. Setup help included while we are early.
+          Thirty minutes, on your own project, with someone who knows the trade.
         </p>
       </Container>
     </section>

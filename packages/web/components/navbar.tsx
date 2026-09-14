@@ -88,12 +88,12 @@ export function Navbar() {
             Log in
           </ButtonLink>
           <ButtonLink
-            href={site.appUrl}
+            href="/talk-to-us/"
             variant={onDark ? "white" : "primary"}
             size="md"
             className="h-10 px-4"
           >
-            Start free
+            Book a demo
           </ButtonLink>
         </div>
 
@@ -156,8 +156,8 @@ export function Navbar() {
               </ButtonLink>
             </li>
             <li className="mt-2">
-              <ButtonLink href={site.appUrl} size="md" className="w-full">
-                Start free
+              <ButtonLink href="/talk-to-us/" size="md" className="w-full">
+                Book a demo
               </ButtonLink>
             </li>
           </ul>

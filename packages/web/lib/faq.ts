@@ -9,7 +9,7 @@ export interface FaqItem {
 export const faqItems: FaqItem[] = [
   {
     q: "What does it cost?",
-    a: "Start free, with no card. We are early, so there is no published price list: tell us about the job and we will give you the number on the call. Pricing is per project and scales with contract value, so a small job costs less than a large one. Inspections are quoted per visit. No implementation fee while we are early.",
+    a: "We are early, so there is no published price list: tell us about the job on the demo call and we will give you the number. Pricing is per project and scales with contract value, so a small job costs less than a large one. Inspections are quoted per visit. No implementation fee while we are early.",
   },
   {
     q: "Do you sell software, or do you build?",

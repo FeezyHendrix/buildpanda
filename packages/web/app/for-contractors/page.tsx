@@ -27,7 +27,7 @@ export const metadata: Metadata = pageMetadata({
   path: "for-contractors",
   title: "Construction management software for contractors",
   description:
-    "Run your own builds on BuildPanda: estimates and proposals, programme and delay records, site diaries, inspections, variations, and payment applications that trace to work that was signed off. Start free, no card.",
+    "Run your own builds on BuildPanda: estimates and proposals, programme and delay records, site diaries, inspections, variations, and payment applications that trace to work that was signed off. Book a demo.",
   socialTitle: "Contractors: run the build and keep the record that proves it",
 });
 
@@ -96,7 +96,7 @@ export default function ForContractorsPage() {
           </p>
           <div className="flex flex-col gap-3 sm:flex-row mt-4">
             {/* <ButtonLink href={site.appUrl} size="lg">
-              Start free
+              Book a demo
               <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink> */}
             <ButtonLink href="/talk-to-us/" variant="outline" size="lg">
