@@ -26,14 +26,11 @@ export function Hero() {
             report it as it happens.
           </p>
 
-          <div className="flex flex-col items-start gap-3">
+          <div className="flex items-start">
             <ButtonLink href="/talk-to-us/" variant="white" size="lg">
               Book a demo
               <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink>
-            <span className="text-sm text-white/55">
-              Thirty minutes, on your own project.
-            </span>
           </div>
         </div>
 

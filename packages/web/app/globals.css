@@ -97,3 +97,9 @@ body {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
+
+/* Never two bars at the foot of the page: the sticky call to action waits
+   until the cookie choice is made. */
+body[data-consent-open] [data-sticky-cta] {
+  display: none;
+}

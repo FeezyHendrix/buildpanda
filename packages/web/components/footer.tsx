@@ -3,6 +3,7 @@ import Link from "next/link";
 import { nav, site } from "@/lib/site";
 import { Container } from "@/components/ui";
 import { MailIcon, PhoneIcon } from "@/components/icons";
+import { ConsentReset } from "@/components/consent";
 
 const productLinks = [
   { label: "For contractors", href: "/for-contractors/" },
@@ -119,6 +120,11 @@ export function Footer() {
               >
                 Data Policy
               </Link>
+            </li>
+            <li>
+              {/* Only renders once a choice has been made, so there is always a
+                  way back to it — which both the GDPR and the NDPR require. */}
+              <ConsentReset />
             </li>
           </ul>
         </div>
