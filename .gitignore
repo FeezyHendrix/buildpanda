@@ -25,14 +25,12 @@ pnpm-debug.log*
 # Coverage
 coverage/
 
-# Tests and generated benchmark artifacts
-*.test.*
-*.spec.*
-**/__tests__/
-**/tests/
-/packages/frontend/e2e/
-/packages/backend/benchmark/
-/packages/backend/src/modules/panda-ai/benchmark/
+# Generated take-off benchmark fixtures. Each drawing.dxf is ~39,000 lines and
+# they are produced by the benchmark runner, so they are regenerated rather
+# than tracked. Test suites themselves are NOT ignored: a blanket *.test.*
+# rule removed 175 tests and 61 e2e specs from the repository and would have
+# silently swallowed every test written afterwards.
+/packages/backend/benchmark/fixtures/
 
 # Docker
 postgres_data/
