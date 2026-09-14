@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": [
+    "**/*.ts",
+    "playwright.config.ts",
+    "global-setup.ts"
+  ]
+}

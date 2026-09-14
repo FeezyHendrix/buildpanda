@@ -1,0 +1,4 @@
+# Generated at run time by the benchmark harness (needs LibreDWG dwgwrite for the DWG)
+*.dwg
+*.pdf
+*.libredwg.json
