@@ -1,3 +1,5 @@
+import { useFormExit } from "@/hooks/use-form-exit";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
@@ -20,6 +22,8 @@ interface FormDrawerProps {
   cancelLabel?: string;
   submitDisabled?: boolean;
   submitting?: boolean;
+  dirty?: boolean;
+  onDiscard?: () => void;
   error?: string | null;
   onSubmit: () => void | Promise<void>;
   children: ReactNode;
@@ -27,7 +31,7 @@ interface FormDrawerProps {
   className?: string;
 }
 
-function FormDrawer({
+function OpenFormDrawer({
   open,
   onOpenChange,
   title,
@@ -36,12 +40,16 @@ function FormDrawer({
   cancelLabel = "Cancel",
   submitDisabled = false,
   submitting = false,
+  dirty,
+  onDiscard,
   error,
   onSubmit,
   children,
   width = "md",
   className,
 }: FormDrawerProps) {
+  const exit = useFormExit(open, submitting, () => onOpenChange(false), { dirty, onDiscard });
+
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (submitting || submitDisabled) return;
@@ -49,7 +57,8 @@ function FormDrawer({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <>
+    <Dialog.Root open={open} onOpenChange={(next) => next ? onOpenChange(true) : exit.close()}>
       <Dialog.Portal>
         <Dialog.Backdrop
           className={cn(
@@ -66,7 +75,7 @@ function FormDrawer({
             className,
           )}
         >
-          <form onSubmit={handleSubmit} className="flex h-full flex-col">
+          <form onChangeCapture={exit.markDirty} onSubmit={handleSubmit} className="flex h-full flex-col">
             <header className="border-b border-[#F0F0F0] px-6 py-5">
               <Dialog.Title className="text-lg font-semibold text-gray-900">
                 {title}
@@ -111,7 +120,15 @@ function FormDrawer({
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
+    <ConfirmDialog open={exit.confirming} onOpenChange={(next) => { if (!next) exit.keepEditing(); }}
+      title="Discard unsaved changes?" description="Your changes have not been saved."
+      confirmLabel="Discard changes" cancelLabel="Keep editing" variant="danger" onConfirm={exit.discard} />
+    </>
   );
+}
+
+function FormDrawer(props: FormDrawerProps) {
+  return props.open ? <OpenFormDrawer {...props} /> : null;
 }
 
 FormDrawer.displayName = "FormDrawer";

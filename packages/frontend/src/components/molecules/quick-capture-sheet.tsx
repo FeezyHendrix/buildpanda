@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { useDraftState } from "@/hooks/use-draft-state";
+import { useDraftFiles } from "@/hooks/use-draft-files";
+import { useRef, useState, useEffect } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Button } from "@/components/atoms/button";
 import { uploadFileRequest, resolveFileUrl } from "@/hooks/use-files";
@@ -6,11 +8,6 @@ import { useAddDailyLogEntry } from "@/hooks/use-daily-logs";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { INPUT_CLASS } from "@/components/atoms/input";
-
-interface PendingPhoto {
-  file: File;
-  preview: string;
-}
 
 function todayIso(): string {
   const now = new Date();
@@ -69,58 +66,65 @@ interface QuickCaptureSheetProps {
   projectId: string;
 }
 
+function PhotoPreview({ file, onRemove }: { file: File; onRemove: () => void }) {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    const preview = URL.createObjectURL(file);
+    setUrl(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [file]);
+
+  return (
+    <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
+      <img src={url} alt="" className="h-full w-full object-cover" />
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove photo"
+        className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 /**
  * Bottom-sheet "capture from site" flow: photo(s) + a one-line note posted as
  * a daily-log entry for today (photos embed as <img data-file-id> in bodyHtml,
  * the same convention the rich-text editor uses for daily-log images).
  */
 function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetProps) {
-  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
-  const [note, setNote] = useState("");
+  const draft = useDraftFiles(`capture:${projectId}`);
+  const [note, setNote] = useDraftState<string>(`capture:${projectId}:note`, "");
   const [submitting, setSubmitting] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const libraryInputRef = useRef<HTMLInputElement | null>(null);
   const addEntry = useAddDailyLogEntry();
 
-  const canSubmit = photos.length > 0 || note.trim().length > 0;
+  const canSubmit = draft.files.length > 0 || note.trim().length > 0;
 
   function addFiles(list: FileList | null): void {
-    if (!list || list.length === 0) return;
-    const next = Array.from(list).map((file) => ({
-      file,
-      preview: URL.createObjectURL(file),
-    }));
-    setPhotos((curr) => [...curr, ...next]);
+    if (!draft.ready || !list || list.length === 0) return;
+    draft.setFiles(current => [...current, ...Array.from(list)]);
   }
 
-  function removePhoto(preview: string): void {
-    setPhotos((curr) => {
-      const target = curr.find((p) => p.preview === preview);
-      if (target) URL.revokeObjectURL(target.preview);
-      return curr.filter((p) => p.preview !== preview);
-    });
-  }
-
-  function reset(): void {
-    setPhotos((curr) => {
-      for (const p of curr) URL.revokeObjectURL(p.preview);
-      return [];
-    });
+  async function reset(): Promise<void> {
+    await draft.clear();
     setNote("");
   }
 
   function handleOpenChange(next: boolean): void {
     if (submitting) return;
-    if (!next) reset();
     onOpenChange(next);
   }
 
   async function handleSubmit(): Promise<void> {
-    if (!canSubmit || submitting) return;
+    if (!canSubmit || submitting || !draft.ready) return;
     setSubmitting(true);
     try {
       const uploaded = await Promise.all(
-        photos.map(async ({ file }) => {
+        draft.files.map(async (file) => {
           const meta = await uploadFileRequest(file, undefined, projectId);
           const url = await resolveFileUrl(meta.id);
           return { id: meta.id, url, name: meta.fileName };
@@ -141,7 +145,7 @@ function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetP
         bodyText: trimmedNote || "Site photos",
       });
       toast("Added to today's daily log", "success");
-      reset();
+      await reset();
       onOpenChange(false);
     } catch {
       toast("Could not post your capture");
@@ -166,7 +170,7 @@ function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetP
               Capture from site
             </Dialog.Title>
             <Dialog.Description className="mt-1 text-sm text-gray-500 text-pretty">
-              Photos and a quick note go straight into today's daily log.
+              Photos and a quick note go into today's daily log when you post.
             </Dialog.Description>
           </header>
 
@@ -198,20 +202,14 @@ function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetP
               </button>
             </div>
 
-            {photos.length > 0 ? (
+            {draft.files.length > 0 ? (
               <div className="grid grid-cols-4 gap-2">
-                {photos.map((photo) => (
-                  <div key={photo.preview} className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
-                    <img src={photo.preview} alt="" className="h-full w-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(photo.preview)}
-                      aria-label="Remove photo"
-                      className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white"
-                    >
-                      ×
-                    </button>
-                  </div>
+                {draft.files.map((file, index) => (
+                  <PhotoPreview
+                    key={`${file.name}:${file.lastModified}:${index}`}
+                    file={file}
+                    onRemove={() => draft.setFiles(current => current.filter((_, i) => i !== index))}
+                  />
                 ))}
               </div>
             ) : null}
@@ -225,17 +223,19 @@ function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetP
             />
           </div>
 
+          <p className="px-5 pb-3 text-xs text-ink-muted" role="status">{draft.error ? "Device storage is unavailable. Keep this page open until you post." : draft.saved ? "Photo draft saved on this device. Your note is saved in this tab." : "Saving photo draft…"}</p>
           <footer className="shrink-0 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Button
               type="button"
               variant="primary"
               size="lg" className="w-full"
-              disabled={!canSubmit}
+              disabled={!canSubmit || !draft.ready}
               loading={submitting}
               onClick={() => void handleSubmit()}
             >
               Post to daily log
             </Button>
+            <Button variant="secondary" className="mt-2 w-full" onClick={() => onOpenChange(false)} disabled={submitting}>Save for later</Button>
           </footer>
 
           <input
@@ -283,7 +283,7 @@ function QuickCapture({ projectId }: QuickCaptureProps) {
         onClick={() => setOpen(true)}
         aria-label="Capture from site"
         className={cn(
-          "fixed right-4 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-40 lg:hidden",
+          "fixed right-6 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-40 lg:hidden",
           "flex size-14 items-center justify-center rounded-full bg-primary-500 text-white shadow-lg",
           "outline-none transition-transform active:scale-95 focus-visible:shadow-focus",
         )}

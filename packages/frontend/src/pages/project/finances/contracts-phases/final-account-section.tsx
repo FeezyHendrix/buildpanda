@@ -4,6 +4,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { FinancesIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
+import { QueryError } from "@/components/molecules/query-error";
 import { useFinancePosition, useProjectFinances } from "@/hooks/use-finances";
 import { useProjectContext } from "@/layouts/project-layout";
 import { formatCurrency } from "@/lib/formatters";
@@ -19,9 +20,11 @@ import { SettlementStatement, isSettled } from "../settlement-statement";
  */
 export function FinalAccountSection() {
   const { project } = useProjectContext();
-  const { data: summary, isPending } = useFinancePosition(project.id);
+  const { data: summary, isPending, error, refetch } = useFinancePosition(project.id);
   // The payment ledger is still part of the legacy finances payload.
-  const { data: finances } = useProjectFinances(project.id);
+  const ledger = useProjectFinances(project.id);
+
+  if (error && !summary) return <QueryError error={error} retry={refetch} noun="the final account" />;
 
   if (isPending) {
     return (
@@ -45,8 +48,9 @@ export function FinalAccountSection() {
 
   return (
     <section aria-label="Final account">
+      {error ? <QueryError error={error} retry={refetch} noun="the final account" /> : null}
       <TabActions>
-        {isSettled(summary) ? (
+        {!error && isSettled(summary) ? (
           <Badge tone="success" size="md" className="gap-1.5">
             <span aria-hidden="true">✓</span>
             Settled
@@ -76,7 +80,10 @@ export function FinalAccountSection() {
         <ClosingChecklist summary={summary} />
       </div>
 
-      {finances ? <PaymentLedgerTable entries={finances.ledger} currency={currency} /> : null}
+      {ledger.error ? <QueryError error={ledger.error} retry={ledger.refetch} noun="funding activity" /> : null}
+      {ledger.isPending ? <div className="mt-6" role="status" aria-label="Loading funding activity"><Spinner /></div> : null}
+      {ledger.data ? <PaymentLedgerTable entries={ledger.data.ledger} currency={currency}
+        paymentsPath={`/project/${project.id}/finances/budget-invoices?tab=payments`} /> : null}
     </section>
   );
 }

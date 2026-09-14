@@ -102,7 +102,10 @@ export function buildCreate(
 } {
   const projectId = generateId("prj");
   const realBuildingId = generateId("bld");
-  const address = `${input.location.city}, ${input.location.state}`;
+  const address = [input.location.city, input.location.state, input.location.country]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(", ");
 
   const project: NewProjectRecord = {
     id: projectId,
@@ -158,6 +161,9 @@ export function buildCreate(
   if (input.templateId && !template) {
     throw new BadRequestError("Unknown project template.");
   }
+  if (template && toProjectTypeCode(template.projectType) !== toProjectTypeCode(input.projectType)) {
+    throw new BadRequestError("Choose a template that matches your project type, or start blank.");
+  }
 
   // Blank means blank. "Start from scratch" used to seed seven house stages —
   // a road job then opened onto Foundation, Superstructure and Finishes, and
@@ -170,4 +176,3 @@ export function buildCreate(
 
   return { project, buildings, phases, financesCurrency: input.details.currency, taskSeed };
 }
-

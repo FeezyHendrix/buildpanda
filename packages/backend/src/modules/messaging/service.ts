@@ -157,6 +157,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
   async function notifyMentions(
     channelId: string,
     messageCreatedAt: string,
+    messageId: string,
     mentions: MessageMention[],
     memberIds: Set<string>,
     mutedUsers: Set<string>,
@@ -198,7 +199,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         deps.realtime.publish({
           event: "notification.created",
           userId,
-          data: { type: "chat_mention", title, projectId, channelName },
+          data: { type: "chat_mention", title, projectId, channelName, ctaUrl: `/messages?channel=${channelId}&message=${messageId}` },
         });
       } else {
         void deps.notifications
@@ -206,6 +207,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
             title,
             body: "",
             projectId: projectId ?? undefined,
+            ctaUrl: `/messages?channel=${channelId}&message=${messageId}`,
             emailMode: "skip",
           })
           .catch(() => undefined);
@@ -227,6 +229,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
   function notifyDm(
     channelId: string,
     messageCreatedAt: string,
+    messageId: string,
     memberIds: string[],
     recentlyActive: Set<string>,
     mutedUsers: Set<string>,
@@ -238,7 +241,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       if (mutedUsers.has(userId)) continue;
       const title = `New message from ${actorName}`;
       void deps.notifications
-        ?.notify(userId, "chat_dm", { title, body: "", emailMode: "skip" })
+        ?.notify(userId, "chat_dm", { title, body: "", ctaUrl: `/messages?channel=${channelId}&message=${messageId}`, emailMode: "skip" })
         .catch(() => undefined);
       if (recentlyActive.has(userId)) continue;
       void deps
@@ -469,6 +472,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       await notifyMentions(
         channelId,
         message.createdAt,
+        message.id,
         input.mentions ?? [],
         new Set(memberIds),
         mutedUsers,
@@ -480,7 +484,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         actor.name,
       );
       if (channelRow.type === "dm" || channelRow.type === "group_dm") {
-        notifyDm(channelId, message.createdAt, memberIds, recentlyActive, mutedUsers, actor.id, actor.name);
+        notifyDm(channelId, message.createdAt, message.id, memberIds, recentlyActive, mutedUsers, actor.id, actor.name);
       }
 
       return message;

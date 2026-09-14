@@ -1,7 +1,6 @@
 import { OptionCard } from "@/components/atoms/option-card";
 import buildHomeIcon from "@/assets/icons/build-a-new-home-icon.svg";
 import renovateIcon from "@/assets/icons/renovate-a-property.svg";
-import investIcon from "@/assets/icons/invest-in-real-estate.svg";
 
 type ProjectType = "build" | "renovate" | "civil" | "invest";
 
@@ -34,14 +33,6 @@ const options = [
     subtitle:
       "Roads, drainage, bridges and other linear or public works, measured by chainage and section.",
   },
-  {
-    type: "invest" as const,
-    icon: investIcon,
-    title: "Invest in Real Estate",
-    subtitle:
-      "Browse vetted development opportunities and fractional ownership projects.",
-    badge: "Coming Soon",
-  },
 ] as const;
 
 function ProjectTypeStep({ selected, onSelect }: ProjectTypeStepProps) {
@@ -65,7 +56,6 @@ function ProjectTypeStep({ selected, onSelect }: ProjectTypeStepProps) {
             title={option.title}
             subtitle={option.subtitle}
             selected={selected === option.type}
-            badge={"badge" in option ? option.badge : undefined}
             onClick={() => onSelect(option.type)}
           />
         ))}

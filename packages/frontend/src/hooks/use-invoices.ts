@@ -14,12 +14,6 @@ export type {
   PaymentInput,
   SendInvoiceInput,
   InvoiceAllocation,
-  ExtractedInvoice,
-  ExtractedInvoiceLineItem,
-  ExtractedInvoiceParty,
-  InvoiceScanResult,
-  InvoiceDocumentKind,
-  InvoiceScanConfidence,
   PayApplicationLine,
   PayApplicationSummary,
   PayApplicationLineInput,
@@ -31,6 +25,10 @@ export type {
   InvoiceEventType,
   InvoiceCertificate,
 } from "@/api/invoices";
+export type {
+  ExtractedInvoice, ExtractedInvoiceLineItem, ExtractedInvoiceParty,
+  InvoiceScanResult, InvoiceDocumentKind, InvoiceScanConfidence,
+} from "@/api/invoice-scan-types";
 import { financeKeys, invoiceKeys, stageKeys } from "./query-keys";
 
 /**
@@ -65,7 +63,7 @@ export function useInvoiceDetail(projectId: string | undefined, invoiceId: strin
   });
 }
 
-/** The payments endpoint may not be live yet: a failure reads as "no data" and the tab falls back to the invoice list. */
+/** Recorded invoice payments; consumers distinguish unavailable data from an empty ledger. */
 export function useInvoicePayments(projectId: string | undefined) {
   return useQuery({
     queryKey: invoiceKeys.payments(projectId ?? "__none__"),

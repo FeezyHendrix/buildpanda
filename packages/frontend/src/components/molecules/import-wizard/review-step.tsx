@@ -2,13 +2,14 @@ import { useImportSession } from "@/hooks/use-import-session";
 import { Spinner } from "@/components/atoms/spinner";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import type { SessionDocumentStatus } from "@/hooks/use-import-session";
+import type { SessionDocumentKind, SessionDocumentStatus } from "@/hooks/use-import-session";
 
 interface ReviewStepProps {
   sessionId: string;
+  onRetry: (kind: SessionDocumentKind) => void;
 }
 
-export function ReviewStep({ sessionId }: ReviewStepProps) {
+export function ReviewStep({ sessionId, onRetry }: ReviewStepProps) {
   const { data: session, isPending } = useImportSession(sessionId);
 
   if (isPending) {
@@ -30,8 +31,9 @@ export function ReviewStep({ sessionId }: ReviewStepProps) {
   const getStatusBadge = (status: SessionDocumentStatus) => {
     switch (status) {
       case "applied":
-      case "ready":
         return <Badge tone="success" dot>Success</Badge>;
+      case "ready":
+        return <Badge tone="info" dot>Ready to review</Badge>;
       case "failed":
         return <Badge tone="danger" dot>Failed</Badge>;
       case "skipped":
@@ -62,7 +64,7 @@ export function ReviewStep({ sessionId }: ReviewStepProps) {
               <div className="flex items-center gap-3">
                 {getStatusBadge(doc.status)}
                 {doc.status === "failed" && (
-                  <Button variant="ghost" size="sm" className="text-sm text-primary-500">
+                  <Button variant="ghost" size="sm" className="text-sm text-primary-500" onClick={() => onRetry(doc.kind)}>
                     Retry
                   </Button>
                 )}

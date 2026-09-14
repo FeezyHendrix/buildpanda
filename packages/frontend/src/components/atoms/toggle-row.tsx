@@ -51,6 +51,7 @@ function ToggleRow({
       </div>
 
       <ToggleSwitch
+        ariaLabel={title}
         checked={checked}
         onChange={onChange}
         disabled={disabled}

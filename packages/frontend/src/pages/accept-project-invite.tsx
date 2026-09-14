@@ -1,169 +1,60 @@
-import { useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Card } from "@/components/atoms/card";
 import { Button } from "@/components/atoms/button";
-import { Badge } from "@/components/atoms/badge";
-import { useAcceptProjectInvite, useProjectInvite } from "@/hooks/use-participants";
-import { PENDING_PROJECT_INVITE_KEY } from "@/lib/route-guards";
-import { authClient } from "@/lib/auth-client";
+import { Spinner } from "@/components/atoms/spinner";
+import { QueryError } from "@/components/molecules/query-error";
+import { useProjectInvitation } from "@/hooks/use-project-invitation";
+import { errorMessage, getApiErrorStatus } from "@/lib/api-error";
+import { signInPath } from "@/lib/return-path";
 import logo from "@/assets/images/logo.svg";
-import { errorMessage } from "@/lib/api-error";
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 export default function AcceptProjectInvite() {
   const { token = "" } = useParams();
-  const navigate = useNavigate();
-  const { data: session, isPending: sessionPending } = authClient.useSession();
-  const { data: invite, isLoading, isError } = useProjectInvite(token);
-  const accept = useAcceptProjectInvite();
+  const invitation = useProjectInvitation(token);
+  return <div className="flex min-h-screen items-center justify-center bg-surface-alt p-6">
+    <Card padding="none" className="w-full max-w-xl p-8 text-center sm:p-12">
+      <img src={logo} alt="BuildPanda" className="mx-auto h-8 w-auto" />
+      <div className="mt-8"><InvitationContent invitation={invitation} /></div>
+    </Card>
+  </div>;
+}
 
-  // The session store can be stale right after signing in as a different
-  // account (better-auth caches it in a cookie for up to 5 min), which made
-  // emailMatches compare against the previous account and reject a valid
-  // accept until the user refreshed. Force one fresh, cache-bypassing fetch on
-  // mount so the mismatch decision is always made against the real account.
-  useEffect(() => {
-    void authClient.getSession({ query: { disableCookieCache: true } });
-  }, []);
-
-  const signedIn = Boolean(session?.user);
-  const sessionEmail = session?.user?.email?.toLowerCase() ?? null;
-  const emailMatches =
-    !invite || !sessionEmail || sessionEmail === invite.email.toLowerCase();
-
-  useEffect(() => {
-    if (sessionPending || !token) return;
-    if (!signedIn) {
-      localStorage.setItem(PENDING_PROJECT_INVITE_KEY, token);
-    }
-  }, [sessionPending, signedIn, token]);
-
-  function handleAccept(): void {
-    accept.mutate(token, {
-      onSuccess: (res) => {
-        localStorage.removeItem(PENDING_PROJECT_INVITE_KEY);
-        navigate(`/project/${res.projectId}/overview`, { replace: true });
-      },
-    });
+function InvitationContent({ invitation }: { invitation: ReturnType<typeof useProjectInvitation> }) {
+  const { preview, session, user, emailMatches, join, accept, switchAccount, destination } = invitation;
+  const invite = preview.data;
+  if (preview.isPending || session.isPending) return <div className="flex justify-center"><Spinner size="md" /></div>;
+  if (preview.error) {
+    if (getApiErrorStatus(preview.error) === 404) return <p className="text-sm text-ink-muted">This invitation is invalid or has been withdrawn. Ask the person who invited you for a new link.</p>;
+    return <QueryError error={preview.error} retry={preview.refetch} noun="this invitation" />;
   }
+  if (session.error) return <QueryError error={session.error} retry={session.refetch} noun="your account" />;
+  if (!invite) return null;
+  if (invite.expired) return <p className="text-sm text-ink-muted">This invitation has expired. Ask the person who invited you to send a new one.</p>;
 
-  async function switchAccount(): Promise<void> {
-    if (token) localStorage.setItem(PENDING_PROJECT_INVITE_KEY, token);
-    await authClient.signOut();
-    navigate(
-      `/auth/sign-in?redirect=${encodeURIComponent(`/accept-project-invite/${token}`)}`,
-      { replace: true },
-    );
-  }
-
-  useEffect(() => {
-    if (sessionPending || !token || !signedIn || !invite || invite.expired) return;
-    if (!emailMatches || accept.isPending || accept.isSuccess) return;
-    handleAccept();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionPending, signedIn, token, invite, emailMatches]);
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-alt p-6">
-      <Card padding="none" className="w-full max-w-xl p-8 sm:p-12 text-center">
-        <img src={logo} alt="BuildPanda" className="mx-auto h-8 w-auto" />
-        {isLoading ? (
-          <p className="mt-8 text-sm text-ink-muted">Loading invitation…</p>
-        ) : isError || !invite ? (
-          <p className="mt-8 text-sm text-ink-muted">This invitation is invalid or has been withdrawn.</p>
-        ) : invite.expired ? (
-          <p className="mt-8 text-sm text-ink-muted">This invitation has expired. Ask your builder to send a new one.</p>
-        ) : (
-          <div className="mt-8 flex flex-col gap-6">
-            <div>
-              <h1 className="text-2xl font-medium text-ink">Follow {invite.projectName}</h1>
-              <p className="mt-2 text-sm text-ink-muted">
-                {invite.inviterName ? `${invite.inviterName} invited you` : "You've been invited"} to follow this build
-                as the {invite.role}.
-              </p>
-            </div>
-            {signedIn ? (
-              emailMatches ? (
-                <>
-                  <Button variant="primary" size="lg" className="mt-2" loading={accept.isPending} onClick={handleAccept}>
-                    Open my portal
-                  </Button>
-                  {accept.isError && (
-                    <p className="text-sm text-negative-600">
-                      {errorMessage(accept.error, "Could not accept the invitation.")}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <div className="mt-2 flex flex-col gap-6 text-left">
-                  <p className="text-sm text-ink-muted text-center">
-                    This invitation was sent to <strong className="text-ink">{invite.email}</strong>, but you're signed
-                    in as <strong className="text-ink">{sessionEmail}</strong>. You must continue as the invited account.
-                  </p>
-                  
-                  <div className="flex flex-col gap-3">
-                    <button 
-                      onClick={() => void switchAccount()}
-                      className="group flex items-center gap-4 rounded-lg border border-line-hair p-4 text-left transition-colors hover:border-primary-500 hover:bg-surface-alt"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-500/10 text-sm font-semibold text-primary-500">
-                        {session?.user?.name ? getInitials(session.user.name) : sessionEmail?.substring(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-semibold text-ink">{session?.user?.name || "Current Account"}</span>
-                          <Badge tone="neutral" className="shrink-0">Signed in</Badge>
-                        </div>
-                        <span className="truncate text-sm text-ink-muted">{sessionEmail}</span>
-                      </div>
-                      <svg className="h-5 w-5 shrink-0 text-ink-muted group-hover:text-primary-500 transition-colors" viewBox="0 0 20 20" fill="none" stroke="currentColor">
-                        <path d="M7.5 15L12.5 10L7.5 5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-
-                    <button
-                      onClick={() => void switchAccount()}
-                      className="group flex items-center gap-4 rounded-lg border border-line-hair p-4 text-left transition-colors hover:border-primary-500 hover:bg-surface-alt"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-alt text-ink-muted group-hover:bg-primary-500/10 group-hover:text-primary-500 transition-colors">
-                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                      </div>
-                      <div className="flex flex-1 flex-col">
-                        <span className="text-sm font-semibold text-ink">Use a different account</span>
-                        <span className="text-sm text-ink-muted">Sign in to {invite.email}</span>
-                      </div>
-                      <svg className="h-5 w-5 shrink-0 text-ink-muted group-hover:text-primary-500 transition-colors" viewBox="0 0 20 20" fill="none" stroke="currentColor">
-                        <path d="M7.5 15L12.5 10L7.5 5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              )
-            ) : (
-              <div className="mt-2 flex flex-col gap-3">
-                <p className="text-sm text-ink-muted">Sign in or create an account as <strong className="text-ink">{invite.email}</strong> to continue.</p>
-                <Link to={`/auth/sign-up?email=${encodeURIComponent(invite.email)}&redirect=${encodeURIComponent(`/accept-project-invite/${token}`)}`}>
-                  <Button variant="primary" size="lg" className="w-full">Create account</Button>
-                </Link>
-                <Link to={`/auth/sign-in?redirect=${encodeURIComponent(`/accept-project-invite/${token}`)}`} className="text-sm font-medium text-primary-500 hover:text-primary-600">
-                  I already have an account
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
+  return <div className="flex flex-col gap-6">
+    <div>
+      <h1 className="text-2xl font-medium text-ink">Follow {invite.projectName}</h1>
+      <p className="mt-2 text-sm text-ink-muted">
+        {invite.inviterName ? `${invite.inviterName} invited you` : "You've been invited"} to follow this build as the {invite.role}.
+      </p>
     </div>
-  );
+    {user && emailMatches ? <>
+      <Button size="lg" loading={accept.isPending || session.isFetching} onClick={join}>
+        {accept.isError ? "Try again" : "Open my portal"}
+      </Button>
+      {accept.error ? <p role="alert" className="text-sm text-negative-600">{errorMessage(accept.error, "Could not accept the invitation. Please try again.")}</p> : null}
+    </> : null}
+    {user && !emailMatches ? <div className="flex flex-col gap-4">
+      <p className="text-sm text-ink-muted">This invitation was sent to <strong className="text-ink">{invite.email}</strong>. You're signed in as <strong className="text-ink">{user.email}</strong>.</p>
+      <Button size="lg" loading={switchAccount.isPending} onClick={() => switchAccount.mutate()}>Use invited account</Button>
+      {switchAccount.error ? <p role="alert" className="text-sm text-negative-600">{errorMessage(switchAccount.error, "Could not switch accounts. Please try again.")}</p> : null}
+    </div> : null}
+    {!user ? <div className="flex flex-col gap-3">
+      <p className="text-sm text-ink-muted">Sign in or create an account as <strong className="text-ink">{invite.email}</strong> to continue.</p>
+      <Link to={`/auth/sign-up?email=${encodeURIComponent(invite.email)}&redirect=${encodeURIComponent(destination)}`}>
+        <Button size="lg" className="w-full">Create account</Button>
+      </Link>
+      <Link to={signInPath(destination)} className="text-sm font-medium text-primary-500 hover:text-primary-600">I already have an account</Link>
+    </div> : null}
+  </div>;
 }

@@ -45,9 +45,7 @@ function RowActionsMenu({
     <Menu.Root>
       <Menu.Trigger
         aria-label={ariaLabel}
-        // Base UI opens on mousedown and then treats the click as a toggle, which
-        // closes the menu again inside a clickable row; opening on click only is reliable.
-        onMouseDown={(event) => event.preventBaseUIHandler()}
+        onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
         className={cn(
           "inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-gray-400",

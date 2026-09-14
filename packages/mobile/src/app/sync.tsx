@@ -1,3 +1,6 @@
+import { outboxRecordPath } from "@/db/outbox-context";
+import { useProjects } from "@/hooks/use-projects";
+import { useFieldSession } from "@/lib/field-session";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -34,6 +37,8 @@ function labelFor(resource: string): string {
 
 function QueueList({ db, ready }: { db: Db; ready: boolean }) {
   const sync = useSyncState();
+  const { data: projects = [] } = useProjects();
+  const { selectProject } = useFieldSession();
   const { data: rows } = useOutboxRows(db);
   const pending = rows.filter((row) => row.status === "pending");
   const failed = rows.filter((row) => row.status === "failed");
@@ -91,7 +96,7 @@ function QueueList({ db, ready }: { db: Db; ready: boolean }) {
         <View key={item.id} className="border-b border-hairline px-4 py-3">
           <View className="flex-row items-center gap-2">
             <Text weight="semibold" className="flex-1 text-[15px]">
-              {labelFor(item.resource)}
+              {item.title}
             </Text>
             <View className={item.status === "failed" ? "rounded-full bg-error-50 px-2 py-1" : "rounded-full bg-primary-50 px-2 py-1"}>
               <Text weight="semibold" tone={item.status === "failed" ? "danger" : "brand"} className="text-[10px] uppercase">
@@ -99,6 +104,13 @@ function QueueList({ db, ready }: { db: Db; ready: boolean }) {
               </Text>
             </View>
           </View>
+          <Text tone="secondary" className="pt-1 text-xs">
+            {projects.find(project => project.id === item.projectId)?.name ?? item.projectId} · {labelFor(item.resource)}
+          </Text>
+          {outboxRecordPath(item.resource, item.entityId) ? <Button variant="secondary" onPress={() => {
+            selectProject(item.projectId);
+            router.push(outboxRecordPath(item.resource, item.entityId) as never);
+          }}>Open record to review or repair</Button> : null}
           {item.lastError ? (
             <Text tone="danger" className="pt-1 text-xs">
               {item.lastError}

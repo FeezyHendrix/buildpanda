@@ -1,3 +1,4 @@
+import { useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import { MessageCircleQuestion } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
@@ -7,6 +8,7 @@ import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { QueryError } from "@/components/molecules/query-error";
 import {
   UpsertRfiDialog,
   type AssigneeOption,
@@ -34,6 +36,8 @@ const FILTERS: { value: RfiFilter; label: string }[] = [
   { value: "Answered", label: "Answered" },
   { value: "Closed", label: "Closed" },
 ];
+const FILTER_VALUES = FILTERS.map(filter => filter.value);
+const EMPTY_RFIS: Rfi[] = [];
 
 export default function ProjectRfis() {
   const { project, access } = useProjectContext();
@@ -41,10 +45,10 @@ export default function ProjectRfis() {
   const canRaise = canResourceAction(access, "rfis", "create");
   const canRespond = canResourceAction(access, "rfis", "respond");
 
-  const [filter, setFilter] = useState<RfiFilter>("all");
+  const [filter, setFilter] = useUrlState<RfiFilter>("status", "all", FILTER_VALUES);
   // Overdue is derived, so the list is always fetched unfiltered for it.
   const statusParam = filter === "all" || filter === "overdue" ? undefined : filter;
-  const { data: rfis = [], isLoading } = useProjectRfis(project.id, statusParam);
+  const { data: rfis = EMPTY_RFIS, isLoading, error, refetch } = useProjectRfis(project.id, statusParam);
   const createRfi = useCreateRfi();
   const updateRfi = useUpdateRfi();
 
@@ -70,7 +74,7 @@ export default function ProjectRfis() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Rfi | null>(null);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useUrlState<string | null>("rfi", null);
 
   const visible = useMemo(
     () => (filter === "overdue" ? rfis.filter((rfi) => isRfiOverdue(rfi)) : rfis),
@@ -117,7 +121,8 @@ export default function ProjectRfis() {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-col gap-3">
+      {error ? <QueryError error={error} retry={refetch} noun="RFIs" /> : null}
+      {!error ? <div className="mt-4 flex flex-col gap-3">
         {isLoading ? (
           <div className="flex justify-center py-10">
             <Spinner size="md" />
@@ -125,14 +130,14 @@ export default function ProjectRfis() {
         ) : visible.length === 0 ? (
           <EmptyState
             icon={<MessageCircleQuestion />}
-            title={filter === "overdue" ? "Nothing is overdue" : "No RFIs yet"}
+            title={filter === "all" ? "No RFIs yet" : "No RFIs match this filter"}
             description={
-              filter === "overdue"
-                ? "Every RFI awaiting an answer is still inside its due date."
-                : "Requests for information raised against this project will appear here."
+              filter === "all"
+                ? "Requests for information raised against this project will appear here."
+                : "Choose another status or return to all RFIs."
             }
             action={
-              canRaise && filter !== "overdue"
+              filter !== "all" ? { label: "Clear filter", onClick: () => setFilter("all") } : canRaise
                 ? { label: "Raise the first RFI", onClick: () => setCreateOpen(true) }
                 : undefined
             }
@@ -140,7 +145,7 @@ export default function ProjectRfis() {
         ) : (
           visible.map((rfi) => <RfiRow key={rfi.id} rfi={rfi} onOpen={setDetailId} />)
         )}
-      </div>
+      </div> : null}
 
       <UpsertRfiDialog
         open={createOpen}
@@ -166,6 +171,7 @@ export default function ProjectRfis() {
       />
 
       <RfiDetailDialog
+        key={detailId}
         open={detailId !== null}
         onOpenChange={(open) => !open && setDetailId(null)}
         projectId={project.id}
@@ -174,10 +180,9 @@ export default function ProjectRfis() {
         canRespond={canRespond}
         onEdit={
           canManage
-            ? (rfiId) => {
-                const target = rfis.find((rfi) => rfi.id === rfiId) ?? null;
+            ? (rfi) => {
                 setDetailId(null);
-                setEditing(target);
+                setEditing(rfi);
               }
             : undefined
         }

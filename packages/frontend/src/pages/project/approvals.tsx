@@ -1,3 +1,5 @@
+import { useUrlState } from "@/hooks/use-url-state";
+import { QueryError } from "@/components/molecules/query-error";
 import { useState } from "react";
 import { FileCheck } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
@@ -26,7 +28,6 @@ import {
   useUpdateApproval,
 } from "@/hooks/use-approvals";
 import { formatDayMonth } from "@/lib/formatters";
-import { toast } from "@/lib/toast";
 import { canResourceAction } from "@/lib/project-types";
 import type { Approval, ApprovalStatus } from "@/lib/project-types";
 import { MessagesIcon } from "@/components/atoms/project-nav-icons";
@@ -51,8 +52,8 @@ export default function ProjectApprovals() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? "";
   const { data: reviewerOptions = [] } = useAssignableUsers(project.id);
-  const [filter, setFilter] = useState<ApprovalStatus | "all">("all");
-  const { data: approvals = [], isLoading } = useApprovals(
+  const [filter, setFilter] = useUrlState<ApprovalStatus | "all">("status", "all", FILTERS.map(f => f.value));
+  const { data: approvals = [], isLoading, error: listError, refetch } = useApprovals(
     project.id,
     filter === "all" ? undefined : filter,
   );
@@ -63,7 +64,7 @@ export default function ProjectApprovals() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editApproval, setEditApproval] = useState<Approval | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useUrlState<string | null>("approval", null);
 
   function canDecideApproval(approval: Approval): boolean {
     if (!canDecide) return false;
@@ -85,22 +86,6 @@ export default function ProjectApprovals() {
     updateApproval.mutate(
       { projectId: project.id, approvalId: editApproval.id, ...values },
       { onSuccess: () => setEditApproval(null) },
-    );
-  }
-
-  function handleDecision(approvalId: string, status: ApprovalStatus) {
-    updateApproval.mutate(
-      { projectId: project.id, approvalId, status },
-      {
-        onSuccess: () => {
-          const msg =
-            status === "Approved" ? "Approval approved" :
-            status === "Rejected" ? "Approval rejected" :
-            status === "Resubmit" ? "Resubmission requested" :
-            "Status updated";
-          toast(msg, status === "Approved" ? "success" : status === "Rejected" ? "error" : "info");
-        }
-      }
     );
   }
 
@@ -128,7 +113,7 @@ export default function ProjectApprovals() {
         ) : null}
       </div>
 
-      {isLoading ? (
+      {listError ? <QueryError error={listError} retry={refetch} noun="approvals" /> : isLoading ? (
         <div className="flex justify-center py-10">
           <Spinner size="md" />
         </div>
@@ -157,7 +142,6 @@ export default function ProjectApprovals() {
                     onEdit={() => setEditApproval(a)}
                     onDelete={() => setDeleteId(a.id)}
                     onClick={() => setDetailId(a.id)}
-                    onDecide={handleDecision}
                   />
                 ))}
               </div>
@@ -180,7 +164,6 @@ export default function ProjectApprovals() {
                     onEdit={() => setEditApproval(a)}
                     onDelete={() => setDeleteId(a.id)}
                     onClick={() => setDetailId(a.id)}
-                    onDecide={handleDecision}
                   />
                 ))}
               </div>
@@ -203,7 +186,6 @@ export default function ProjectApprovals() {
                     onEdit={() => setEditApproval(a)}
                     onDelete={() => setDeleteId(a.id)}
                     onClick={() => setDetailId(a.id)}
-                    onDecide={handleDecision}
                   />
                 ))}
               </div>
@@ -260,11 +242,8 @@ export default function ProjectApprovals() {
           onOpenChange={(o) => !o && setDetailId(null)}
           projectId={project.id}
           approvalId={detailId}
-          canDecide={
-            approvals.find((a) => a.id === detailId)
-              ? canDecideApproval(approvals.find((a) => a.id === detailId)!)
-              : false
-          }
+          currentUserId={currentUserId}
+          canDecide={canDecide}
         />
       )}
     </div>
@@ -278,7 +257,6 @@ function ApprovalCard({
   onClick,
   onEdit,
   onDelete,
-  onDecide,
 }: {
   approval: Approval;
   canManage: boolean;
@@ -286,14 +264,13 @@ function ApprovalCard({
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onDecide: (id: string, status: ApprovalStatus) => void;
 }) {
   const statusMeta = APPROVAL_STATUS_META[approval.status];
   const due = formatDue(approval.dueDate);
 
   return (
     <Card className="overflow-hidden hover:border-line transition-colors group">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between p-4 gap-4" onClick={onClick} role="button" tabIndex={0}>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between p-4 gap-4" onClick={onClick} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClick(); } }} role="button" tabIndex={0}>
         <div className="flex flex-col gap-2 flex-grow">
           <div className="flex items-center gap-3">
             <span className="font-semibold text-ink">{approval.title}</span>
@@ -324,15 +301,10 @@ function ApprovalCard({
 
           {canDecide && (approval.status === "Pending" || approval.status === "Resubmit") && (
             <div className="flex flex-wrap items-center gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-              <Button size="sm" variant="secondary" className="border-success-500/40 text-success-600 hover:border-success-500 hover:bg-success-50 hover:text-success-700" onClick={() => onDecide(approval.id, "Approved")}>
-                Approve
+              <Button size="sm" variant="secondary" className="border-success-500/40 text-success-600 hover:border-success-500 hover:bg-success-50 hover:text-success-700" onClick={onClick}>
+                Review decision
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => onDecide(approval.id, "Resubmit")}>
-                Request changes
-              </Button>
-              <Button size="sm" variant="secondary" className="border-negative-500/40 text-negative-500 hover:border-negative-500 hover:bg-negative-50 hover:text-negative-600" onClick={() => onDecide(approval.id, "Rejected")}>
-                Reject
-              </Button>
+
             </div>
           )}
         </div>

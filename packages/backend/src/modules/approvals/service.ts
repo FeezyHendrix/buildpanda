@@ -109,7 +109,7 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
         document_version_id: input.documentVersionId ?? null,
         source_markup_id: input.sourceMarkupId ?? null,
       });
-      notifyApprovalReviewer(deps, row.requested_reviewer_id, projectId, row.title, userId);
+      notifyApprovalReviewer(deps, row.requested_reviewer_id, projectId, row.title, userId, row.id);
       return toApproval(row, 0);
     },
 
@@ -133,7 +133,7 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
       if (input.requestedReviewerId !== undefined) {
         patch.requested_reviewer_id = input.requestedReviewerId;
         if (input.requestedReviewerId && input.requestedReviewerId !== existing.requested_reviewer_id) {
-          notifyApprovalReviewer(deps, input.requestedReviewerId, projectId, input.title ?? existing.title, userId);
+          notifyApprovalReviewer(deps, input.requestedReviewerId, projectId, input.title ?? existing.title, userId, existing.id);
         }
       }
 
@@ -146,7 +146,7 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
         ) {
           patch.reviewed_at = new Date().toISOString();
           patch.reviewed_by_id = userId;
-          notifyApprovalDecided(deps, existing.submitted_by_id, projectId, existing.title, input.status, userId);
+          notifyApprovalDecided(deps, existing.submitted_by_id, projectId, existing.title, input.status, userId, existing.id);
         } else if (input.status === "Pending") {
           patch.reviewed_at = null;
           patch.reviewed_by_id = null;

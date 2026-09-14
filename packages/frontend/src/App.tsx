@@ -171,6 +171,8 @@ function sf(flag: FeatureFlagKey, el: ReactElement) {
   return <SalesFeatureFlagGate flag={flag}>{el}</SalesFeatureFlagGate>;
 }
 
+const Messages = lazy(() => import("@/pages/messages"));
+
 export const router = createBrowserRouter([
   {
     errorElement: <RouterErrorPage />,
@@ -270,6 +272,10 @@ export const router = createBrowserRouter([
   {
     path: "/accept-project-invite/:token",
     element: <AcceptProjectInvite />,
+  },
+  {
+    path: "/messages",
+    element: <RequireAuth><Messages /></RequireAuth>,
   },
   {
     path: "/my-build",

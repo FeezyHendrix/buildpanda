@@ -1,3 +1,4 @@
+import { ProjectSetupChecklist } from "@/components/molecules/project-setup-checklist";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
@@ -118,6 +119,8 @@ export default function ProjectOverview() {
         </section>
       ) : null}
 
+      <ProjectSetupChecklist />
+      <div className="my-4"><WhatsNextCard projectId={project.id} /></div>
       <OverviewKpis project={project} />
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -149,7 +152,7 @@ export default function ProjectOverview() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <FieldActivityCard projectId={project.id} className={PANEL_CLASS} />
-        <WhatsNextCard projectId={project.id} />
+
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 pb-8 lg:grid-cols-2">

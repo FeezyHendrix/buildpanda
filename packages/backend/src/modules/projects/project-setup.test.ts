@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildCreate } from "./create.ts";
 import { toProjectTypeCode } from "./project-type.ts";
+import { PROJECT_TEMPLATES, toTemplateSummary } from "./templates.ts";
 import { projectsService } from "./service.ts";
 import type { ProjectsRepository } from "./repository.ts";
 import type { CreateProjectInput, ProjectRow } from "./types.ts";
@@ -41,10 +42,43 @@ test("the project records its type so the app knows what kind of works it is", (
   assert.equal(buildCreate(input("civil"), "usr_1", null).project.project_type, "civil");
 });
 
+test("international locations retain their country in setup and the project address", () => {
+  const data = input("build");
+  data.location = { country: "Canada", state: "Ontario", city: "Toronto", ownsLand: true };
+  const { project } = buildCreate(data, "usr_1", null);
+  assert.equal(project.address, "Toronto, Ontario, Canada");
+  assert.deepEqual(project.setup?.location, data.location);
+});
+
+test("locations can omit a region without leaving an empty address segment", () => {
+  const data = input("build");
+  data.location = { country: "Singapore", state: "", city: "Marina Bay", ownsLand: true };
+  assert.equal(buildCreate(data, "usr_1", null).project.address, "Marina Bay, Singapore");
+});
+
+test("legacy locations without a country remain supported without guessing one", () => {
+  const { project } = buildCreate(input("build"), "usr_1", null);
+  assert.equal(project.address, "Ikorodu, Lagos");
+  assert.equal(project.setup?.location.country, undefined);
+});
+
 test("a chosen template still seeds its stages", () => {
   const { phases } = buildCreate(input("build", "residential-new-build"), "usr_1", null);
   assert.ok(phases.length > 0);
   assert.ok(phases.every((p) => p.building_id !== ""));
+});
+
+test("template summaries identify which creation choice they support", () => {
+  const templates = PROJECT_TEMPLATES.map(toTemplateSummary);
+  assert.deepEqual(templates.filter(template => template.projectType === "build").map(template => template.id), ["residential-new-build"]);
+  assert.equal(templates.filter(template => template.projectType === "renovate").length, 3);
+});
+
+test("a template cannot seed an incompatible project type", () => {
+  assert.throws(() => buildCreate(input("civil", "residential-new-build"), "usr_1", null), /matches your project type/);
+  assert.throws(() => buildCreate(input("build", "residential-renovation"), "usr_1", null), /matches your project type/);
+  assert.throws(() => buildCreate(input("renovate", "residential-new-build"), "usr_1", null), /matches your project type/);
+  assert.ok(buildCreate(input("renovate", "residential-extension"), "usr_1", null).phases.length > 0);
 });
 
 function projectRow(over: Partial<ProjectRow> = {}): ProjectRow {

@@ -1,3 +1,5 @@
+import { Spinner } from "@/components/atoms/spinner";
+import { QueryError } from "@/components/molecules/query-error";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ReactSVG } from "react-svg";
@@ -24,7 +26,7 @@ export default function ProjectPlans() {
   const navigate = useNavigate();
   const canManage = Boolean(access && canResourceAction(access, "documents", "upload"));
   const { data: categories = [] } = useProjectDocumentCategories(project.id);
-  const { data: documents = [] } = useProjectDocuments(project.id);
+  const { data: documents = [], isPending, error, refetch } = useProjectDocuments(project.id);
   const uploader = useDocumentUpload(project.id, "Plan uploaded");
   const [filters, setFilters] = useState(EMPTY_DOCUMENT_FILTERS);
 
@@ -77,14 +79,14 @@ export default function ProjectPlans() {
           </p>
         </div>
 
-        <DocumentsTable
+        {error ? <QueryError error={error} retry={refetch} noun="plans" /> : isPending ? <Spinner size="md" /> : <DocumentsTable
           documents={visible}
           emptyMessage={planDocuments.length > 0 ? "No plans match these filters." : "No plans uploaded yet."}
           projectId={project.id}
           categories={planCategories}
           canManage={canManage}
           onOpenDocument={(doc) => navigate(`/project/${project.id}/plans/review?sheet=${doc.id}`)}
-        />
+        />}
       </section>
     </div>
   );

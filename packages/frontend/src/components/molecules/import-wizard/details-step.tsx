@@ -1,3 +1,4 @@
+import { useDraftState } from "@/hooks/use-draft-state";
 import { useState } from "react";
 import { useCreateProject } from "@/hooks/use-projects";
 import { useLinkSessionProject } from "@/hooks/use-import-session";
@@ -10,6 +11,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import type { Currency } from "@/lib/project-types";
 import { CURRENCY_CODES } from "@/lib/currency";
+import { CreatedProjectStep } from "./created-project-step";
 
 const CURRENCY_CHOICES = CURRENCY_CODES.slice(0, 5);
 
@@ -20,23 +22,28 @@ interface DetailsStepProps {
   onNext: () => void;
 }
 
-export function DetailsStep({ sessionId, onProjectCreated, onNext }: Omit<DetailsStepProps, "projectId">) {
+export function DetailsStep({ sessionId, projectId, onProjectCreated, onNext }: DetailsStepProps) {
   const createProject = useCreateProject();
   const linkSession = useLinkSessionProject();
 
-  const [title, setTitle] = useState("");
-  const [city, setCity] = useState("");
-  const [stateName, setStateName] = useState("");
-  const [ownsLand, setOwnsLand] = useState<SwitcherValue>("yes");
-  const [currency, setCurrency] = useState<Currency>("NGN");
-  const [budgetMin, setBudgetMin] = useState("");
-  const [budgetMax, setBudgetMax] = useState("");
+  const [title, setTitle] = useDraftState(`import:${sessionId}:title`, "");
+  const [city, setCity] = useDraftState(`import:${sessionId}:city`, "");
+  const [stateName, setStateName] = useDraftState(`import:${sessionId}:stateName`, "");
+  const [ownsLand, setOwnsLand] = useDraftState<SwitcherValue>(`import:${sessionId}:ownsLand`, "yes");
+  const [currency, setCurrency] = useDraftState<Currency>(`import:${sessionId}:currency`, "NGN");
+  const [budgetMin, setBudgetMin] = useDraftState(`import:${sessionId}:budgetMin`, "");
+  const [budgetMax, setBudgetMax] = useDraftState(`import:${sessionId}:budgetMax`, "");
   
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleCreate = async () => {
     setErrorMsg("");
     try {
+      if (projectId) {
+        await linkSession.mutateAsync({ sessionId, projectId });
+        onNext();
+        return;
+      }
       const minNum = parseFloat(budgetMin) || 0;
       const maxNum = parseFloat(budgetMax) || 0;
       
@@ -66,11 +73,15 @@ export function DetailsStep({ sessionId, onProjectCreated, onNext }: Omit<Detail
       await linkSession.mutateAsync({ sessionId, projectId: res.id });
       onNext();
     } catch (err) {
-      setErrorMsg(getApiErrorMessage(err, "Failed to create project"));
+      setErrorMsg(getApiErrorMessage(err, "Could not complete setup. Your progress is saved; please try again."));
     }
   };
 
   const isComplete = title && city && stateName && budgetMin && budgetMax;
+
+  if (projectId) {
+    return <CreatedProjectStep onContinue={handleCreate} pending={linkSession.isPending} error={errorMsg} />;
+  }
 
   return (
     <div className="flex flex-col max-w-2xl mx-auto mt-4 gap-8 pb-12">

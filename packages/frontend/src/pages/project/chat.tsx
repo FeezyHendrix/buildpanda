@@ -1,12 +1,15 @@
+import { useUrlState } from "@/hooks/use-url-state";
+import { useCachedMessages } from "./chat/use-cached-messages";
+import { useMessageDestination } from "./chat/use-message-destination";
+import { MessageEditDialog } from "./chat/message-edit-dialog";
+import { groupMessages } from "./chat/group-messages";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/atoms/button";
-import { INPUT_CLASS } from "@/components/atoms/input";
 import { useProjectContext } from "@/layouts/project-layout";
 import { toast } from "@/lib/toast";
 import {
   useProjectChannels,
   useChannelMessages,
-  useEditMessage,
   useDeleteMessage,
   useMarkChannelRead,
   useToggleReaction,
@@ -24,7 +27,6 @@ import { authClient } from "@/lib/auth-client";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { useChannelRealtime } from "@/lib/realtime";
 import { cn } from "@/lib/utils";
-import { cacheMessages, readCachedMessages } from "@/lib/chat-cache";
 import type { Channel, ChatMessage } from "@/lib/project-types";
 import { BellIcon, BellOffIcon, PlusIcon, StarIcon } from "@/components/atoms/chat-icons";
 
@@ -40,67 +42,53 @@ import { DmHeaderTitle } from "./chat/dm-header-title";
 
 export default function ProjectChat() {
   const { project } = useProjectContext();
+  return <ChatWorkspace projectId={project.id} />;
+}
+
+export function ChatWorkspace({ projectId = "" }: { projectId?: string }) {
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
 
-  const { data: projectChannels = [] } = useProjectChannels(project.id);
+  const { data: scopedChannels = [] } = useProjectChannels(projectId);
   const { data: allChannels = [] } = useAllChannels();
-  const dmChannels = allChannels.filter((c: Channel) => c.type === "dm");
+  const projectChannels = projectId ? scopedChannels : allChannels.filter(c => c.type === "project" || c.type === "org");
+  const dmChannels = allChannels.filter(c => c.type === "dm" || c.type === "group_dm");
 
-  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
-  const [mobileShowChat, setMobileShowChat] = useState(false);
-  const [cachedMessages, setCachedMessages] = useState<ChatMessage[]>([]);
+  const [activeChannelId, setActiveChannelId] = useUrlState<string | null>("channel", null);
+  const [targetMessageId] = useUrlState<string | null>("message", null);
+  const [mobileShowChat, setMobileShowChat] = useState(Boolean(activeChannelId));
+  const firstChannelId = projectChannels[0]?.id ?? dmChannels[0]?.id;
 
   useEffect(() => {
-    if (projectChannels.length > 0 && !activeChannelId) {
-      setActiveChannelId(projectChannels[0]!.id);
+    if (firstChannelId && !activeChannelId) {
+      setActiveChannelId(firstChannelId);
     }
-  }, [projectChannels, activeChannelId]);
+  }, [firstChannelId, activeChannelId, setActiveChannelId]);
 
-  const { data: messagesData, hasPreviousPage, fetchPreviousPage, isFetchingPreviousPage } = useChannelMessages(activeChannelId);
+  const { data: messagesData, hasPreviousPage, fetchPreviousPage, isFetchingPreviousPage, isPending: messagesPending } = useChannelMessages(activeChannelId);
   const serverMessages = useMemo(
     () => messagesData?.pages.flat() ?? [],
     [messagesData],
   );
-  const messages = serverMessages.length > 0 ? serverMessages : cachedMessages;
+  const messages = useCachedMessages(activeChannelId, serverMessages, messagesData !== undefined);
+  const destinationError = useMessageDestination(messages, hasPreviousPage, isFetchingPreviousPage || messagesPending, fetchPreviousPage);
   useChannelRealtime(activeChannelId ?? undefined);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!activeChannelId) {
-      setCachedMessages([]);
-      return () => {
-        cancelled = true;
-      };
-    }
-    void readCachedMessages(activeChannelId).then((rows) => {
-      if (!cancelled) setCachedMessages(rows);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeChannelId]);
+  const markRead = useMarkChannelRead(projectId, activeChannelId!);
+  const markChannelRead = markRead.mutate;
+  const lastMessageId = serverMessages[serverMessages.length - 1]?.id;
 
   useEffect(() => {
-    if (!activeChannelId || serverMessages.length === 0) return;
-    setCachedMessages(serverMessages);
-    void cacheMessages(activeChannelId, serverMessages);
-  }, [activeChannelId, serverMessages]);
-  const markRead = useMarkChannelRead(project.id, activeChannelId!);
-
-  useEffect(() => {
-    if (messages.length > 0 && activeChannelId) {
-      const lastMsg = messages[messages.length - 1]!;
-      markRead.mutate(lastMsg.id);
+    if (lastMessageId && activeChannelId) {
+      markChannelRead(lastMessageId);
     }
-  }, [messages.length, activeChannelId]);
+  }, [lastMessageId, activeChannelId, markChannelRead]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!targetMessageId) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [lastMessageId, targetMessageId]);
 
-  const editMsg = useEditMessage(activeChannelId!);
   const deleteMsg = useDeleteMessage(activeChannelId!);
   const pinMsg = usePinMessage(activeChannelId!);
   const unpinMsg = useUnpinMessage(activeChannelId!);
@@ -111,18 +99,10 @@ export default function ProjectChat() {
   const { data: pins = [] } = usePins(activeChannelId);
   const pinnedIds = new Set(pins.map((p: ChatMessage) => p.id));
 
-  
-  const defaultProjectChannel = projectChannels[0];
-  const { data: channelMembers = [] } = useChannelMembers(
-    activeChannelId && projectChannels.find(c => c.id === activeChannelId) 
-      ? activeChannelId 
-      : defaultProjectChannel?.id
-  );
+  const { data: channelMembers = [] } = useChannelMembers(activeChannelId ?? undefined);
 
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
-  const [editBody, setEditBody] = useState("");
   const [deletingMsg, setDeletingMsg] = useState<ChatMessage | null>(null);
-  
   const [threadRootMsg, setThreadRootMsg] = useState<ChatMessage | null>(null);
   const [quotedMsg, setQuotedMsg] = useState<ChatMessage | null>(null);
   const [showPins, setShowPins] = useState(false);
@@ -157,24 +137,7 @@ export default function ProjectChat() {
 
   const activeChannel = projectChannels.find((c) => c.id === activeChannelId) || dmChannels.find((c: Channel) => c.id === activeChannelId);
 
-  const groups: ChatMessage[][] = [];
-  let currentGroup: ChatMessage[] = [];
-  messages.forEach((m) => {
-    if (!currentGroup.length) {
-      currentGroup.push(m);
-    } else {
-      const prev = currentGroup[currentGroup.length - 1]!;
-      const sameAuthor = prev.authorId === m.authorId;
-      const timeDiff = new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime();
-      if (sameAuthor && timeDiff < 5 * 60 * 1000) {
-        currentGroup.push(m);
-      } else {
-        groups.push(currentGroup);
-        currentGroup = [m];
-      }
-    }
-  });
-  if (currentGroup.length) groups.push(currentGroup);
+  const groups = groupMessages(messages);
 
   if (projectChannels.length === 0 && dmChannels.length === 0) {
     return (
@@ -184,7 +147,6 @@ export default function ProjectChat() {
     );
   }
 
-  
   return (
     <div className="absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white">
       <div className={cn(
@@ -199,7 +161,7 @@ export default function ProjectChat() {
           <div>
             <div className="mb-1 flex items-center justify-between px-3">
               <span className="text-xs font-medium uppercase text-ink-muted">Groups</span>
-              <button type="button" onClick={() => setShowNewGroup(true)} className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink" aria-label="New group">
+              <button hidden={!projectId} type="button" onClick={() => setShowNewGroup(true)} className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink" aria-label="New group">
                 <PlusIcon className="size-4" />
               </button>
             </div>
@@ -301,6 +263,7 @@ export default function ProjectChat() {
           </div>
 
           <div className="flex-1 overflow-y-auto py-4">
+            {destinationError ? <p role="status" className="p-4 text-sm text-ink-muted">{destinationError}</p> : null}
             {hasPreviousPage && (
               <div className="flex justify-center py-4">
                 <Button
@@ -314,7 +277,6 @@ export default function ProjectChat() {
                 </Button>
               </div>
             )}
-            
             {groups.map((group, i) => (
               <MessageGroup
                 key={group[0]!.id + i}
@@ -337,7 +299,7 @@ export default function ProjectChat() {
 
           <Composer
             channelId={activeChannelId}
-            projectId={project.id}
+            projectId={projectId}
             placeholder={activeChannel.type === "dm" ? "Message direct message" : `Message #${activeChannel.name || "general"}`}
             quotedMessage={quotedMsg}
             onClearQuote={() => setQuotedMsg(null)}
@@ -352,7 +314,7 @@ export default function ProjectChat() {
       {threadRootMsg && (
         <ThreadPanel
           rootMessage={threadRootMsg}
-          projectId={project.id}
+          projectId={projectId}
           currentUserId={currentUserId}
           pinnedIds={pinnedIds}
           onClose={() => setThreadRootMsg(null)}
@@ -386,7 +348,7 @@ export default function ProjectChat() {
         loading={createChannel.isPending}
         onSubmit={(name, isPrivate) => {
           createChannel.mutate(
-            { type: "project", name, projectId: project.id, isPrivate },
+            { type: "project", name, projectId: projectId, isPrivate },
             {
               onSuccess: (newChannel) => {
                 setActiveChannelId(newChannel.id);
@@ -415,45 +377,7 @@ export default function ProjectChat() {
         variant="danger"
       />
 
-      {editingMsg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg rounded-lg border border-line-hair bg-white p-6 shadow-lg">
-            <h3 className="mb-4 text-base font-semibold text-ink">
-              Edit message
-            </h3>
-            <textarea
-              autoFocus
-              value={editBody || editingMsg.body}
-              onChange={(e) => setEditBody(e.target.value)}
-              className={cn(INPUT_CLASS, "min-h-32 resize-none py-3")}
-            />
-            <div className="mt-4 flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                onClick={() => { setEditingMsg(null); setEditBody(""); }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="lg"
-                onClick={() => {
-                  editMsg.mutate({
-                    messageId: editingMsg.id,
-                    body: editBody || editingMsg.body,
-                  });
-                  setEditingMsg(null);
-                  setEditBody("");
-                }}
-              >
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {editingMsg ? <MessageEditDialog key={editingMsg.id} message={editingMsg} onClose={() => setEditingMsg(null)} /> : null}
     </div>
   );
 }

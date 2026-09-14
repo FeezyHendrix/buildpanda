@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { useProjectContext } from "@/layouts/project-layout";
 import { Card } from "@/components/atoms/card";
 import { cn } from "@/lib/utils";
 import type { FinanceSummary } from "@/hooks/use-finances";
@@ -6,27 +8,32 @@ interface Step {
   title: string;
   detail: string;
   done: (s: FinanceSummary) => boolean;
+  to: string;
 }
 
 const STEPS: readonly Step[] = [
   {
     title: "Certify remaining work",
+    to: "finances/budget-invoices?tab=invoices",
     detail: "Value the last activities and record them against the adjusted contract sum.",
     done: (s) => s.outstanding === 0,
   },
   {
     title: "Record the final receipt",
+    to: "finances/budget-invoices?tab=payments",
     detail: "Log the last payment against the certificates once the employer has paid off-platform.",
     done: (s) => s.unpaidCertified === 0,
   },
   {
     title: "Release retention",
+    to: "finances/budget-invoices?tab=invoices",
     detail: "Release the retention held after the defects liability period ends.",
     done: (s) => s.retentionHeld === 0,
   },
 ];
 
 function ChecklistItem({ step, index, done }: { step: Step; index: number; done: boolean }) {
+  const { project } = useProjectContext();
   return (
     <li className="flex gap-3">
       <span
@@ -40,6 +47,7 @@ function ChecklistItem({ step, index, done }: { step: Step; index: number; done:
       <div>
         <p className="font-medium text-ink">{step.title}</p>
         <p className="text-xs text-ink-muted">{step.detail}</p>
+        {!done ? <Link className="text-sm text-primary-500 underline" to={`/project/${project.id}/${step.to}`}>Open related records</Link> : null}
       </div>
     </li>
   );

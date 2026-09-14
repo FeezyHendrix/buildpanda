@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useTaskDraft } from "./use-task-draft";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { RichTextEditor } from "@/components/molecules/rich-text-editor";
@@ -17,20 +19,7 @@ import { TaskExtras } from "./task-extras";
 import { TaskImageGallery } from "./task-image-gallery";
 import { Button } from "@/components/atoms/button";
 
-export function UpsertTaskDialog({
-  open,
-  onOpenChange,
-  projectId,
-  task,
-  allTasks,
-  userOptions,
-  teamOptions,
-  selfId,
-  submitting,
-  onSubmit,
-  onRequestDelete,
-  onOpenTask,
-}: {
+interface UpsertTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
@@ -39,22 +28,33 @@ export function UpsertTaskDialog({
   userOptions: AssigneeOption[];
   teamOptions: AssigneeOption[];
   selfId: string | null;
-  submitting: boolean;
-  onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignees: AssigneeOption[]; dueDate: string | null; priority: TaskPriority; labels: string[] }) => void;
-  onRequestDelete?: () => void;
+  onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignees: AssigneeOption[]; dueDate: string | null; priority: TaskPriority; labels: string[] }) => Promise<void>;
+  onDelete?: () => Promise<void>;
   onOpenTask?: (taskId: string) => void;
-}) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [descriptionHtml, setDescriptionHtml] = useState("");
-  const [assigneeValues, setAssigneeValues] = useState<string[]>([]);
-  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
-  const [dueDate, setDueDate] = useState<string>("");
-  const [priority, setPriority] = useState<TaskPriority>("Medium");
-  const [labels, setLabels] = useState<string[]>([]);
-  const [labelDraft, setLabelDraft] = useState<string>("");
+}
 
-  const dialogKey = task?.id ?? "new";
+export function UpsertTaskDialog(props: UpsertTaskDialogProps) {
+  return props.open ? <TaskForm key={props.task?.id ?? "new"} {...props} /> : null;
+}
+
+function TaskForm({
+  open,
+  onOpenChange,
+  projectId,
+  task,
+  allTasks,
+  userOptions,
+  teamOptions,
+  selfId,
+  onSubmit,
+  onDelete,
+  onOpenTask,
+}: UpsertTaskDialogProps) {
+  const { draft, dirty, update, setField, clear } = useTaskDraft(projectId, task);
+  const { title, description, descriptionHtml, assigneeValues, dueDate, priority, labels, labelDraft } = draft;
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
 
   const assigneeItems = useMemo<ComboItem[]>(
     () => [
@@ -78,44 +78,23 @@ export function UpsertTaskDialog({
       .catch(() => toast("Could not copy link"));
   }
 
-  useEffect(() => {
-    if (open) {
-      setTitle(task?.title ?? "");
-      setDescription(task?.description ?? "");
-      setDescriptionHtml(task?.descriptionHtml ?? task?.description ?? "");
-      setAssigneeValues(
-        task?.assignees?.map((assignee) => `${assignee.kind}:${assignee.id}`) ??
-          (task?.assigneeId
-            ? [`user:${task.assigneeId}`]
-            : task?.assigneeTeamMemberId
-              ? [`team:${task.assigneeTeamMemberId}`]
-              : []),
-      );
-      setDueDate(task?.dueDate ? task.dueDate.slice(0, 10) : "");
-      setPriority(task?.priority ?? "Medium");
-      setLabels(task?.labels ?? []);
-      setLabelDraft("");
-      setAssigneePickerOpen(false);
-    }
-  }, [open, dialogKey]);
-
   function addLabel(raw: string): void {
     const label = raw.trim().slice(0, 40);
     if (!label) return;
-    setLabels((prev) =>
+    setField("labels", (prev) =>
       prev.some((l) => l.toLowerCase() === label.toLowerCase()) || prev.length >= 20
         ? prev
         : [...prev, label],
     );
-    setLabelDraft("");
+    setField("labelDraft", "");
   }
 
   function removeLabel(label: string): void {
-    setLabels((prev) => prev.filter((l) => l !== label));
+    setField("labels", (prev) => prev.filter((l) => l !== label));
   }
 
   function toggleAssignee(value: string): void {
-    setAssigneeValues((prev) =>
+    setField("assigneeValues", (prev) =>
       prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value],
     );
   }
@@ -133,8 +112,9 @@ export function UpsertTaskDialog({
     return assigneeItems.find((option) => option.id === value)?.label ?? value;
   }
 
-  function handleSubmit(): void {
-    if (!title.trim()) return;
+  async function handleSubmit(): Promise<void> {
+    if (!title.trim() || submitting) return;
+    setSubmitting(true);
     const html = descriptionHtml.trim();
     const isEmpty = html === "" || html === "<p></p>";
     const draft = labelDraft.trim().slice(0, 40);
@@ -142,15 +122,37 @@ export function UpsertTaskDialog({
       draft && !labels.some((l) => l.toLowerCase() === draft.toLowerCase()) && labels.length < 20
         ? [...labels, draft]
         : labels;
-    onSubmit({
-      title: title.trim(),
-      description: isEmpty ? "" : description.trim(),
-      descriptionHtml: isEmpty ? "" : html,
-      assignees: resolveAssignees(),
-      dueDate: dueDate || null,
-      priority,
-      labels: finalLabels,
-    });
+    try {
+      await onSubmit({
+        title: title.trim(),
+        description: isEmpty ? "" : description.trim(),
+        descriptionHtml: isEmpty ? "" : html,
+        assignees: resolveAssignees(),
+        dueDate: dueDate || null,
+        priority,
+        labels: finalLabels,
+      });
+      clear();
+      onOpenChange(false);
+    } catch {
+      toast("Could not save task. Your draft is still here.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!onDelete || submitting) return;
+    setSubmitting(true);
+    try {
+      await onDelete();
+      clear();
+      onOpenChange(false);
+    } catch {
+      toast("Could not delete task. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -161,6 +163,8 @@ export function UpsertTaskDialog({
       submitLabel={task ? "Save" : "Create task"}
       submitDisabled={!title.trim()}
       submitting={submitting}
+      dirty={dirty}
+      onDiscard={clear}
       onSubmit={handleSubmit}
     >
       {task && (
@@ -177,7 +181,7 @@ export function UpsertTaskDialog({
         <input
           id="task-title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => setField("title", e.target.value)}
           placeholder="e.g. Inspect scaffolding"
           className={FIELD}
         />
@@ -187,8 +191,7 @@ export function UpsertTaskDialog({
         <RichTextEditor
           value={descriptionHtml}
           onChange={(html, text) => {
-            setDescriptionHtml(html);
-            setDescription(text);
+            update({ descriptionHtml: html, description: text });
           }}
           projectId={projectId}
           placeholder="Add details, checklists, images…"
@@ -197,8 +200,7 @@ export function UpsertTaskDialog({
       <TaskImageGallery
         descriptionHtml={descriptionHtml}
         onDescriptionChange={(html, text) => {
-          setDescriptionHtml(html);
-          setDescription(text);
+          update({ descriptionHtml: html, description: text });
         }}
         projectId={projectId}
       />
@@ -209,7 +211,7 @@ export function UpsertTaskDialog({
             <button
               type="button"
               onClick={() => {
-                setAssigneeValues((prev) => [...prev, `user:${selfId}`]);
+                setField("assigneeValues", (prev) => [...prev, `user:${selfId}`]);
                 setAssigneePickerOpen(false);
               }}
               className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
@@ -277,7 +279,7 @@ export function UpsertTaskDialog({
           id="task-due"
           type="date"
           value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
+          onChange={(e) => setField("dueDate", e.target.value)}
           className={FIELD}
         />
       </div>
@@ -291,7 +293,7 @@ export function UpsertTaskDialog({
               <button
                 key={p}
                 type="button"
-                onClick={() => setPriority(p)}
+                onClick={() => setField("priority", p)}
                 aria-pressed={selected}
                 className="rounded-full outline-none focus-visible:shadow-focus"
               >
@@ -332,7 +334,7 @@ export function UpsertTaskDialog({
           id="task-labels"
           type="text"
           value={labelDraft}
-          onChange={(e) => setLabelDraft(e.target.value)}
+          onChange={(e) => setField("labelDraft", e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === ",") {
               e.preventDefault();
@@ -368,15 +370,18 @@ export function UpsertTaskDialog({
       {task && (
         <TaskExtras projectId={projectId} taskId={task.id} allTasks={allTasks} onOpenTask={onOpenTask} />
       )}
-      {onRequestDelete && (
+      {onDelete && (
         <button
           type="button"
-          onClick={onRequestDelete}
+          onClick={() => setConfirmDelete(true)}
           className="mt-1 self-start text-sm font-medium text-red-500 hover:text-red-600"
         >
           Delete task
         </button>
       )}
+      <ConfirmDialog open={confirmDelete} onOpenChange={open => { if (!submitting) setConfirmDelete(open); }}
+        title="Delete task" description={`Delete "${task?.title}"? This cannot be undone.`}
+        confirmLabel="Delete" variant="danger" loading={submitting} onConfirm={handleDelete} />
     </FormDrawer>
   );
 }

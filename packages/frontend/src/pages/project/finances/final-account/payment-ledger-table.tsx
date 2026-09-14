@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
@@ -35,9 +36,11 @@ function LedgerRow({ entry, currency }: { entry: PaymentLedgerEntry; currency: C
 export function PaymentLedgerTable({
   entries,
   currency,
+  paymentsPath,
 }: {
   entries: PaymentLedgerEntry[];
   currency: Currency;
+  paymentsPath: string;
 }) {
   const sorted = useMemo(
     () => [...entries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
@@ -47,16 +50,17 @@ export function PaymentLedgerTable({
   return (
     <Card padding="lg" className="mt-6">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-ink-muted">Payment ledger</h3>
+        <h3 className="text-sm font-semibold text-ink-muted">Funding activity</h3>
         <p className="mt-1 text-xs text-ink-muted">
-          Chronological trail of every release, deposit and hold logged against this project.
+          Funding deposits, milestone releases and holds. Invoice receipts are listed separately under Payments.
         </p>
+        <Link className="mt-2 inline-block text-sm text-primary-500 underline" to={paymentsPath}>View invoice payments</Link>
       </div>
 
       {sorted.length === 0 ? (
         <EmptyState
           variant="inline"
-          title="No payment activity yet"
+          title="No funding activity recorded"
           description="Deposits, releases and retention holds will appear here as they are recorded."
         />
       ) : (

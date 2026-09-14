@@ -67,6 +67,7 @@ export interface Notification {
   title: string;
   body: string;
   projectId: string | null;
+  ctaUrl?: string | null;
   readAt: string | null;
   createdAt: string;
 }
@@ -78,6 +79,7 @@ export interface NotificationRow {
   title: string;
   body: string;
   project_id: string | null;
+  cta_url?: string | null;
   read_at: Date | string | null;
   created_at: Date | string;
 }

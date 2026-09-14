@@ -78,6 +78,10 @@ const GENERIC: TypePresentation = {
   ctaLabel: "Open BuildPanda",
 };
 
+function notificationUrl(path: string | null, projectId: string | null): string {
+  return path ? new URL(path, config.mail.appUrl).href : fallbackUrl(projectId);
+}
+
 function fallbackUrl(projectId: string | null): string {
   const base = config.mail.appUrl.replace(/\/+$/, "");
   return projectId ? `${base}/project/${projectId}/overview` : `${base}/dashboard`;
@@ -95,7 +99,7 @@ export function buildNotificationEmail(
     accent: preset.accent,
     cta: {
       label: preset.ctaLabel,
-      url: input.ctaUrl ?? fallbackUrl(input.projectId),
+      url: notificationUrl(input.ctaUrl, input.projectId),
     },
   });
 }
@@ -120,6 +124,6 @@ export function buildNotificationPush(input: {
   return {
     title: input.title,
     body: input.body,
-    url: input.ctaUrl ?? fallbackUrl(input.projectId),
+    url: notificationUrl(input.ctaUrl, input.projectId),
   };
 }

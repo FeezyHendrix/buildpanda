@@ -22,6 +22,7 @@ const listTemplatesResponse = {
       type: "object",
       properties: {
         id: { type: "string" },
+        projectType: { type: "string", enum: ["build", "renovate"] },
         name: { type: "string" },
         description: { type: "string" },
         stageCount: { type: "integer" },
@@ -134,7 +135,8 @@ const createProjectBody = {
       required: ["state", "city", "ownsLand"],
       additionalProperties: false,
       properties: {
-        state: { type: "string", minLength: 1, maxLength: 100 },
+        country: { type: "string", minLength: 1, maxLength: 100 },
+        state: { type: "string", maxLength: 100 },
         city: { type: "string", minLength: 1, maxLength: 100 },
         ownsLand: { type: "boolean" },
       },

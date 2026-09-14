@@ -22,7 +22,7 @@ function WizardFooter({
     <span className="text-sm text-gray-500">
       Need help?{" "}
       <a
-        href="mailto:support@buildpanda.com"
+        href="mailto:support@buildpanda.io"
         className="font-medium text-primary-500 hover:underline"
       >
         Contact Support
