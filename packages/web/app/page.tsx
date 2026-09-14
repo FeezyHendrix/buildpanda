@@ -17,7 +17,7 @@ export const metadata: Metadata = pageMetadata({
   // search result get the term buyers actually type.
   title: "Construction management software",
   description:
-    "BuildPanda is the software contractors, developers and project managers run their builds on: estimates, programme and delays, inspections, and payment certificates that trace to work that was signed off. Or have us run the build. Start free, no card.",
+    "BuildPanda is the software contractors, developers and project managers run their builds on: estimates, programme and delays, inspections, and payment certificates that trace to work that was signed off. Or have us run the build. Book a demo.",
   socialTitle: "Run every project from estimate to handover, on one system",
 });
 export default function HomePage() {

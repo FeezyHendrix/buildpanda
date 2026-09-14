@@ -49,11 +49,11 @@ export function StickyCta() {
         </p>
         <div className="flex flex-1 items-center gap-2 sm:flex-none">
           <Link
-            href={site.appUrl}
+            href="/talk-to-us/"
             tabIndex={visible ? undefined : -1}
             className="inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-hover sm:flex-none"
           >
-            Start free
+            Book a demo
           </Link>
           <Link
             href="/talk-to-us/"

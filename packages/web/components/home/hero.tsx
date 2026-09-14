@@ -27,11 +27,13 @@ export function Hero() {
           </p>
 
           <div className="flex flex-col items-start gap-3">
-            <ButtonLink href={site.appUrl} variant="white" size="lg">
-              Start free
+            <ButtonLink href="/talk-to-us/" variant="white" size="lg">
+              Book a demo
               <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink>
-            <span className="text-sm text-white/55">No card required.</span>
+            <span className="text-sm text-white/55">
+              Thirty minutes, on your own project.
+            </span>
           </div>
         </div>
 

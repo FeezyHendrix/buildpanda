@@ -10,7 +10,7 @@ const doors = [
     title: "You run the build",
     body: "Estimates, programme and delays, certificates and variations, the site diary, and the client's view.",
     who: "For contractors, developers and project managers.",
-    cta: { label: "Start free", href: site.appUrl },
+    cta: { label: "Book a demo", href: "/talk-to-us/" },
     fill: "bg-tint-brand",
   },
   {
