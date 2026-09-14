@@ -8,7 +8,6 @@ import { Objections } from "@/components/home/objections";
 import { ProductShots } from "@/components/home/product-shots";
 import { PandaAi } from "@/components/home/panda-ai";
 import { Faq } from "@/components/home/faq";
-import { FinalCta } from "@/components/home/final-cta";
 import { StickyCta } from "@/components/home/sticky-cta";
 export const metadata: Metadata = pageMetadata({
   path: "",
@@ -30,7 +29,6 @@ export default function HomePage() {
       <ProductShots />
       <PandaAi />
       <Faq />
-      <FinalCta />
       <StickyCta />
     </>
   );
