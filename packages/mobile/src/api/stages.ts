@@ -1,6 +1,7 @@
 import { request } from "./client";
 
 export interface Stage {
+  buildingId?: string | null;
   id: string;
   name: string;
   status: string;

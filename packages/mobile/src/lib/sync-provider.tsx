@@ -1,18 +1,19 @@
 import NetInfo, { useNetInfo } from "@react-native-community/netinfo";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { focusManager, onlineManager } from "@tanstack/react-query";
 import {
   createContext,
   useContext,
+  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import type { SyncState } from "@/components/atoms/sync-indicator";
 import type { Db } from "@/db/client";
-import { flushOutbox, outboxQuery } from "@/db/outbox";
+import { flushOutbox, outboxQuery, type FlushResult } from "@/db/outbox";
 import { API_BASE_URL } from "@/lib/auth-client";
 import { useLocalDb } from "@/db/provider";
 
@@ -24,6 +25,9 @@ const FOREGROUND_INTERVAL_MS = 60_000;
 // answers, so /healthz is the probe.
 NetInfo.configure({
   reachabilityUrl: `${API_BASE_URL.replace(/\/+$/, "")}/healthz`,
+  // NetInfo defaults to HEAD, but the public health route only allows GET.
+  // HEAD returns 401 and incorrectly leaves a connected device offline.
+  reachabilityMethod: "GET",
   reachabilityTest: async (response) => response.status === 200,
   reachabilityLongTimeout: 60_000,
   reachabilityShortTimeout: 5_000,
@@ -37,6 +41,8 @@ interface SyncStatus {
   pendingCount: number;
   failedCount: number;
   isOnline: boolean;
+  needsSignIn: boolean;
+  syncNow: () => Promise<FlushResult | undefined>;
 }
 
 interface QueueCounts {
@@ -49,6 +55,8 @@ const SyncContext = createContext<SyncStatus>({
   pendingCount: 0,
   failedCount: 0,
   isOnline: true,
+  needsSignIn: false,
+  syncNow: async () => undefined,
 });
 
 /**
@@ -65,14 +73,15 @@ function QueueWatcher({
   db,
   isOnline,
   onCounts,
+  syncNow,
 }: {
   db: Db;
   isOnline: boolean;
   onCounts: (counts: QueueCounts) => void;
+  syncNow: () => Promise<FlushResult | undefined>;
 }) {
   const query = useMemo(() => outboxQuery(db), [db]);
-  const live = useLiveQuery(query);
-  const wasOffline = useRef(!isOnline);
+  const live = useLiveQuery(query, [query]);
 
   const rows = live.data;
   useEffect(() => {
@@ -84,23 +93,22 @@ function QueueWatcher({
   }, [rows, onCounts]);
 
   useEffect(() => {
-    if (isOnline && wasOffline.current) void flushOutbox(db).catch(() => undefined);
-    wasOffline.current = !isOnline;
-  }, [db, isOnline]);
-
-  useEffect(() => {
+    if (!isOnline) return;
+    const sync = () => {
+      if (AppState.currentState === "active" || AppState.currentState === null) {
+        void syncNow().catch(() => undefined);
+      }
+    };
+    sync();
     const subscription = AppState.addEventListener("change", (next) => {
-      if (next === "active") void flushOutbox(db).catch(() => undefined);
+      if (next === "active") sync();
     });
-    return () => subscription.remove();
-  }, [db]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      void flushOutbox(db).catch(() => undefined);
-    }, FOREGROUND_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [db]);
+    const timer = setInterval(sync, FOREGROUND_INTERVAL_MS);
+    return () => {
+      subscription.remove();
+      clearInterval(timer);
+    };
+  }, [db, isOnline, syncNow]);
 
   return null;
 }
@@ -116,23 +124,56 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   // online for good.
   const isOnline = network.isConnected !== false && network.isInternetReachable !== false;
 
+  useEffect(() => {
+    onlineManager.setOnline(isOnline);
+  }, [isOnline]);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    focusManager.setFocused(AppState.currentState === "active");
+    const listener = AppState.addEventListener("change", (state) => {
+      focusManager.setFocused(state === "active");
+      if (state === "active") void NetInfo.refresh().catch(() => undefined);
+    });
+    return () => listener.remove();
+  }, []);
+
   const [counts, setCounts] = useState<QueueCounts>({ pendingCount: 0, failedCount: 0 });
+  const [syncing, setSyncing] = useState(false);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
+
+  useEffect(() => {
+    setCounts({ pendingCount: 0, failedCount: 0 });
+    setNeedsSignIn(false);
+  }, [db]);
+
+  const syncNow = useCallback(async () => {
+    if (!db || !ready || !isOnline) return;
+    setSyncing(true);
+    try {
+      const result = await flushOutbox(db);
+      setNeedsSignIn(result.pausedForAuth);
+      return result;
+    } finally {
+      setSyncing(false);
+    }
+  }, [db, ready, isOnline]);
 
   const value = useMemo<SyncStatus>(() => {
     const state: SyncState =
-      counts.failedCount > 0
+      needsSignIn || counts.failedCount > 0
         ? "error"
         : counts.pendingCount === 0
           ? "synced"
-          : isOnline
+          : syncing && isOnline
             ? "syncing"
             : "pending";
-    return { state, ...counts, isOnline };
-  }, [counts, isOnline]);
+    return { state, ...counts, isOnline, needsSignIn, syncNow };
+  }, [counts, isOnline, needsSignIn, syncing, syncNow]);
 
   return (
     <SyncContext.Provider value={value}>
-      {db && ready ? <QueueWatcher db={db} isOnline={isOnline} onCounts={setCounts} /> : null}
+      {db && ready ? <QueueWatcher db={db} isOnline={isOnline} onCounts={setCounts} syncNow={syncNow} /> : null}
       {children}
     </SyncContext.Provider>
   );

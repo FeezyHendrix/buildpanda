@@ -1,3 +1,4 @@
+import { useActivities } from "./use-activities";
 import { useCallback } from "react";
 import { dailyLogsApi } from "@/api/daily-logs";
 import { materialsLedgerApi } from "@/api/materials-ledger";
@@ -42,6 +43,7 @@ export function useApplyProposedAction() {
   const createRfi = useCreateLocalRfi();
   const addDailyEntry = useAddDailyLogEntry(db, projectId);
   const { buildingId } = useProjectBuilding();
+  const activities = useActivities(projectId, true, null);
   const saveDailyLog = useSaveDailyLog(db, projectId);
   const createChangeRequest = useCreateChangeRequest(db, projectId);
   const createMaterialOrder = useCreateMaterialOrder(db, projectId);
@@ -73,7 +75,7 @@ export function useApplyProposedAction() {
             action.payload.bodyText,
             user?.name ?? "Field team",
             null,
-            (action.payload as { buildingId?: string | null }).buildingId ?? buildingId,
+            action.payload.buildingId ?? buildingId,
           );
           return;
         case "change_request":
@@ -146,12 +148,13 @@ export function useApplyProposedAction() {
           );
           return;
         case "update_daily_log":
-          await saveDailyLog(localDateIso(), { totalHours: action.payload.totalHours });
+          await saveDailyLog(localDateIso(), { totalHours: action.payload.totalHours, buildingId: action.payload.buildingId ?? buildingId });
           return;
         case "log_activity": {
           if (!db) throw new Error("Local database is not ready yet.");
           await dailyLogsRepository.logActivityLocal(db, requireProject(), localDateIso(), {
             activityId: action.payload.activityId,
+            buildingId: activities.data?.find((a) => a.id === action.payload.activityId)?.buildingId,
             activityName: action.payload.activityName,
             hoursLogged: action.payload.hoursLogged,
             delayReasonCode: action.payload.delayReasonCode ?? null,
@@ -210,6 +213,7 @@ export function useApplyProposedAction() {
       projectId,
       user,
       buildingId,
+      activities.data,
     ],
   );
 }

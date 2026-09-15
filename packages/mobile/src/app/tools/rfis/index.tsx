@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
@@ -96,7 +97,7 @@ export default function Rfis() {
   return (
     <Page
       title="RFIs"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         <HeaderIconButton icon="add" label="New RFI" onPress={() => router.push("/tools/rfis/new")} />
       }

@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
@@ -69,7 +70,7 @@ export default function ChangeRequests() {
   return (
     <Page
       title="Change requests"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         <HeaderIconButton icon="add" label="New change request" onPress={() => router.push("/tools/change-requests/new")} />
       }

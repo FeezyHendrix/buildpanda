@@ -1,6 +1,6 @@
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { storage } from "./storage";
+import { queryStorage } from "./query-storage";
 
 /**
  * A read that survives going offline.
@@ -18,7 +18,7 @@ function cacheKey(ownerId: string | undefined, queryKey: readonly unknown[]): st
 
 function readCache<T>(ownerId: string | undefined, queryKey: readonly unknown[]): T | undefined {
   try {
-    const raw = storage.getItem(cacheKey(ownerId, queryKey));
+    const raw = queryStorage.getItem(cacheKey(ownerId, queryKey));
     return raw ? (JSON.parse(raw) as T) : undefined;
   } catch {
     return undefined;
@@ -27,7 +27,7 @@ function readCache<T>(ownerId: string | undefined, queryKey: readonly unknown[])
 
 function writeCache<T>(ownerId: string | undefined, queryKey: readonly unknown[], value: T): void {
   try {
-    storage.setItem(cacheKey(ownerId, queryKey), JSON.stringify(value));
+    queryStorage.setItem(cacheKey(ownerId, queryKey), JSON.stringify(value));
   } catch {
     // Storage unavailable — the query still works while the app is open.
   }
@@ -49,30 +49,23 @@ export function usePersistentQuery<T>({
   queryFn,
   enabled = true,
 }: PersistentQueryOptions<T>): PersistentQueryResult<T> {
-  // Read the cache once per mount, not once per render — this is a synchronous
-  // native keychain call, and it used to run on every render of every screen.
-  const seededRef = useRef<{ value: T | undefined } | null>(null);
-  if (seededRef.current === null) {
-    seededRef.current = { value: readCache<T>(ownerId, queryKey) };
-  }
-  const seeded = seededRef.current.value;
+  const key = cacheKey(ownerId, queryKey);
+  const seeded = useMemo(() => readCache<T>(ownerId, queryKey), [key]);
 
   const query = useQuery({
-    queryKey,
+    // Keep feature prefixes intact so existing invalidations still match.
+    queryKey: [...queryKey, { ownerId: ownerId ?? null }],
     queryFn: async () => {
       const data = await queryFn();
       writeCache(ownerId, queryKey, data);
       return data;
     },
-    enabled,
+    enabled: enabled && Boolean(ownerId),
     initialData: seeded,
+    initialDataUpdatedAt: 0,
+    networkMode: "always",
     retry: 1,
   });
 
-  // Memoised so the returned object keeps a stable identity between renders;
-  // spreading the query result inline made every consumer re-render.
-  return useMemo(
-    () => Object.assign(query, { isStale: query.isError && seeded !== undefined }),
-    [query, seeded],
-  ) as PersistentQueryResult<T>;
+  return { ...query, isStale: query.isError && query.data !== undefined } as PersistentQueryResult<T>;
 }

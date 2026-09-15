@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
@@ -67,7 +68,7 @@ export default function Materials() {
   return (
     <Page
       title="Materials"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         <HeaderIconButton icon="add" label="New material order" onPress={() => router.push("/tools/materials/new")} />
       }

@@ -1,8 +1,10 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_BRAND, ICON_FAINT } from "@/constants/colors";
+import { UnassignedLogs } from "@/components/molecules/unassigned-logs";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { todayIso } from "@/db/daily-logs-repository";
@@ -26,6 +28,7 @@ function DayList({ db, projectId }: { db: Db; projectId: string }) {
 
   return (
     <>
+      <UnassignedLogs db={db} projectId={projectId} />
       {!hasToday ? (
         <Pressable
           onPress={() => router.push(`/tools/daily-log/${today}`)}
@@ -95,7 +98,7 @@ export default function DailyLogIndex() {
   const { db, ready } = useLocalDb();
 
   return (
-    <Page title="Daily log" onBack={() => router.back()}>
+    <Page buildingScope title="Daily log" onBack={() => goBack()}>
       {ready && db && projectId ? (
         <DayList db={db} projectId={projectId} />
       ) : (

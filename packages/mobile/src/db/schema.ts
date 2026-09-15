@@ -126,7 +126,7 @@ export const outbox = sqliteTable(
 );
 
 /**
- * Daily logs are keyed by (project, date) rather than an id — one log per day —
+ * Daily logs are keyed by (project, building, date) — one log per building per day —
  * so the local primary key is the composite, and there is never a "local_" row
  * to reconcile the way RFIs need.
  */
@@ -162,6 +162,7 @@ export const dailyLogs = sqliteTable(
 export const dailyLogActivities = sqliteTable(
   "daily_log_activities",
   {
+    buildingId: text("building_id"),
     id: text("id").primaryKey(),
     projectId: text("project_id").notNull(),
     logDate: text("log_date").notNull(),

@@ -115,8 +115,8 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
             </Text>
             <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
               {group === DOCUMENT_GROUP.PLAN
-                ? "Upload a drawing with the cloud button above and it is filed here."
-                : "Upload a document with the cloud button above and it is filed here."}
+                ? "Use Upload a plan below to add a drawing."
+                : "Use Upload a document below to add a file."}
             </Text>
           </View>
         ) : (
@@ -149,8 +149,8 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
           </Text>
           <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
             {group === DOCUMENT_GROUP.PLAN
-              ? "Upload a drawing with the cloud button above, or open this project once with signal to fetch its folders."
-              : "Upload a document with the cloud button above, or open this project once with signal to fetch its folders."}
+              ? "Use Upload a plan below, or connect to load this project’s folders."
+              : "Use Upload a document below, or connect to load this project’s folders."}
           </Text>
         </View>
       ) : (
@@ -192,7 +192,7 @@ export default function Plans() {
 
       {ready && db && projectId ? (
         <>
-          <Browser db={db} projectId={projectId} group={group} />
+          <Browser key={`${projectId}:${group}`} db={db} projectId={projectId} group={group} />
           <View className="pt-4">
             <Button
               variant="secondary"

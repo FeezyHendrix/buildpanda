@@ -23,7 +23,7 @@ export function ScheduleListScreen({
   children: ReactNode;
 }) {
   return (
-    <Page title={title} onBack={() => router.back()}>
+    <Page buildingScope title={title} onBack={() => router.back()}>
       {isPending ? (
         <View className="items-center py-12">
           <Spinner size="md" />

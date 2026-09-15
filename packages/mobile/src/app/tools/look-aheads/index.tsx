@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
@@ -67,8 +68,9 @@ export default function LookAheads() {
 
   return (
     <Page
+      buildingScope
       title="Look aheads"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         <HeaderIconButton icon="add" label="New look ahead" onPress={() => router.push("/tools/look-aheads/new")} />
       }

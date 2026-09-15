@@ -53,12 +53,14 @@ function NeedsBadge({ count }: { count: number }) {
 export function VoiceActionsReview({
   actions,
   includedIndexes,
+  appliedIndexes,
   values,
   onToggle,
   onChangeField,
 }: {
   actions: ProposedAction[];
   includedIndexes: ReadonlySet<number>;
+  appliedIndexes?: ReadonlySet<number>;
   values: MissingFieldValues;
   onToggle: (index: number) => void;
   onChangeField: (actionIndex: number, fieldName: string, value: string) => void;
@@ -67,6 +69,7 @@ export function VoiceActionsReview({
     <View className="gap-3">
       {actions.map((action, index) => {
         const meta = META[action.kind];
+        const applied = appliedIndexes?.has(index) ?? false;
         const included = includedIndexes.has(index);
         const answers = values[index];
         const showFields = included && action.missing.length > 0;
@@ -74,9 +77,10 @@ export function VoiceActionsReview({
         return (
           <Card key={index} className={cn("p-4", !included && "opacity-50")}>
             <Pressable
+              disabled={applied}
               onPress={() => onToggle(index)}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: included }}
+              accessibilityState={{ checked: included || applied, disabled: applied }}
               className="min-h-11 flex-row items-start gap-3"
             >
               <View className={cn("h-10 w-10 items-center justify-center rounded-xl", meta.destructive ? "bg-error-50" : "bg-primary-50")}>
@@ -85,7 +89,7 @@ export function VoiceActionsReview({
               <View className="min-w-0 flex-1">
                 <View className="flex-row flex-wrap items-center gap-2">
                   <Text tone={meta.destructive ? "danger" : "brand"} weight="semibold" className="text-[11px] uppercase">
-                    {meta.label}
+                    {applied ? "Saved" : meta.label}
                   </Text>
                   {outstanding > 0 ? <NeedsBadge count={outstanding} /> : null}
                 </View>
@@ -97,7 +101,7 @@ export function VoiceActionsReview({
                 </Text>
               </View>
               <Ionicons
-                name={included ? "checkmark-circle" : "ellipse-outline"}
+                name={included || applied ? "checkmark-circle" : "ellipse-outline"}
                 size={24}
                 color={included ? ICON_BRAND : ICON_FAINT}
               />

@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import { outboxRecordPath } from "@/db/outbox-context";
 import { useProjects } from "@/hooks/use-projects";
 import { useFieldSession } from "@/lib/field-session";
@@ -9,7 +10,7 @@ import { Button, Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { ICON_BRAND } from "@/constants/colors";
 import type { Db } from "@/db/client";
-import { discardOutboxItem, flushOutbox, retryOutboxItem } from "@/db/outbox";
+import { discardOutboxItem, retryOutboxItem } from "@/db/outbox";
 import { useLocalDb } from "@/db/provider";
 import { useOutboxRows } from "@/hooks/use-outbox";
 import { useSyncState } from "@/lib/sync-provider";
@@ -43,12 +44,15 @@ function QueueList({ db, ready }: { db: Db; ready: boolean }) {
   const pending = rows.filter((row) => row.status === "pending");
   const failed = rows.filter((row) => row.status === "failed");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function retry(id: string) {
     setBusyId(id);
     try {
       await retryOutboxItem(db, id);
-      await flushOutbox(db).catch(() => undefined);
+      await sync.syncNow();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not retry this change.");
     } finally {
       setBusyId(null);
     }
@@ -67,7 +71,9 @@ function QueueList({ db, ready }: { db: Db; ready: boolean }) {
           style: "destructive",
           onPress: () => {
             setBusyId(id);
-            discardOutboxItem(db, id).finally(() => setBusyId(null));
+            void discardOutboxItem(db, id).catch((cause) => {
+              setError(cause instanceof Error ? cause.message : "Could not discard this change.");
+            }).finally(() => setBusyId(null));
           },
         },
       ],
@@ -92,6 +98,7 @@ function QueueList({ db, ready }: { db: Db; ready: boolean }) {
 
   return (
     <Card>
+      {error ? <Text tone="danger" className="p-4">{error}</Text> : null}
       {[...failed, ...pending].map((item) => (
         <View key={item.id} className="border-b border-hairline px-4 py-3">
           <View className="flex-row items-center gap-2">
@@ -151,12 +158,16 @@ export default function SyncPage() {
   const { db, ready } = useLocalDb();
   const sync = useSyncState();
   const [flushing, setFlushing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function retryNow() {
     if (!db || flushing) return;
     setFlushing(true);
+    setError(null);
     try {
-      await flushOutbox(db);
+      await sync.syncNow();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not sync. Your changes are still saved.");
     } finally {
       setFlushing(false);
     }
@@ -165,7 +176,7 @@ export default function SyncPage() {
   return (
     <Page
       title="Sync"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       showSync={false}
       footer={
         <Button onPress={retryNow} loading={flushing} disabled={!ready || !db || !sync.isOnline}>
@@ -173,6 +184,13 @@ export default function SyncPage() {
         </Button>
       }
     >
+      {sync.needsSignIn ? (
+        <View className="mb-4 gap-3 rounded-xl bg-warning-50 p-4">
+          <Text>Your session has expired. Sign in again to sync. Your saved changes remain on this device.</Text>
+          <Button onPress={() => router.push("/sign-in")}>Sign in again</Button>
+        </View>
+      ) : null}
+      {error ? <Text tone="danger" className="pb-4">{error}</Text> : null}
       <Card className="p-4">
         <View className="flex-row items-center gap-3">
           <View className="h-11 w-11 items-center justify-center rounded-full bg-primary-50">

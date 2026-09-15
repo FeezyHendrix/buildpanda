@@ -1,6 +1,7 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as DocumentPicker from "expo-document-picker";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { Button, FieldLabel, OptionRow, Spinner, Text } from "@/components/atoms";
@@ -119,7 +120,7 @@ export default function UploadDocument() {
       });
       // the row is safe on disk; the push is a bonus if there is signal right now
       void flushOutbox(db).catch(() => undefined);
-      router.back();
+      goBack();
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Couldn't save that file.");
     } finally {
@@ -132,7 +133,7 @@ export default function UploadDocument() {
   return (
     <Page
       title={isPlan ? "Upload plan" : "Upload document"}
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={handleQueue} disabled={!canSubmit} loading={saving}>
           {isOnline ? "Upload" : "Queue upload"}

@@ -1,12 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SyncIndicator, Text } from "@/components/atoms";
 import { ICON_INVERSE } from "@/constants/colors";
 import { useSyncState } from "@/lib/sync-provider";
 import { cn } from "@/lib/utils";
+import { BuildingSelector } from "./building-selector";
+import { useProjectBuilding } from "@/hooks/use-project-building";
 import { ScopeSelector } from "./scope-selector";
 
 interface PageProps {
@@ -27,6 +29,7 @@ interface PageProps {
   scroll?: boolean;
   footer?: ReactNode;
   className?: string;
+  buildingScope?: boolean;
   children: ReactNode;
 }
 
@@ -37,7 +40,7 @@ interface PageProps {
  * The centred title is an absolutely-positioned overlay, so it stays optically
  * centred no matter how wide the switcher or button cluster on either side is.
  */
-export function Page({
+function PageContent({
   variant = "default",
   title,
   description,
@@ -53,6 +56,7 @@ export function Page({
   footer,
   className,
   children,
+  buildingScope = false,
 }: PageProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -63,6 +67,9 @@ export function Page({
   const isCentred = variant === "default";
   const hasBar = Boolean(onBack || title || rightButtons || showSync);
   const hasScope = Boolean(projectName || workspaceName || projectPending);
+  const titleBelowScope = isCentred && (hasScope || Boolean(rightButtons)) && width < 600;
+  const [leftWidth, setLeftWidth] = useState(0);
+  const [rightWidth, setRightWidth] = useState(0);
   const handleSyncPress = onPressSync ?? (() => router.push("/sync"));
 
   return (
@@ -70,7 +77,7 @@ export function Page({
       <View className="bg-primary-500 px-4 pb-4" style={{ paddingTop: insets.top + 8 }}>
         {hasBar ? (
           <View className="relative min-h-11 flex-row items-center justify-between gap-2">
-            <View className={cn("min-w-0 flex-row items-center", !isCentred && "flex-1")}>
+            <View onLayout={(event) => setLeftWidth(event.nativeEvent.layout.width)} className={cn("min-w-0 flex-row items-center", !isCentred && "flex-1")}>
               {onBack ? (
                 <Pressable
                   onPress={onBack}
@@ -106,7 +113,7 @@ export function Page({
               ) : null}
             </View>
 
-            <View className="flex-row items-center justify-end gap-1">
+            <View onLayout={(event) => setRightWidth(event.nativeEvent.layout.width)} className="flex-row items-center justify-end gap-1">
               {rightButtons}
               {showSync ? (
                 <SyncIndicator
@@ -118,11 +125,11 @@ export function Page({
               ) : null}
             </View>
 
-            {isCentred && (title || description) ? (
+            {isCentred && !titleBelowScope && (title || description) ? (
               <View
                 pointerEvents="none"
                 className="absolute inset-0 items-center justify-center"
-                style={{ paddingHorizontal: hasScope ? scopeWidth : 56 }}
+                style={{ paddingHorizontal: Math.max(leftWidth, rightWidth, 44) + 8 }}
               >
                 {title ? (
                   <Text weight="bold" tone="inverse" className="text-[17px]" numberOfLines={1}>
@@ -138,8 +145,15 @@ export function Page({
             ) : null}
           </View>
         ) : null}
-
+        {titleBelowScope && title ? (
+          <View className="pt-3">
+            <Text weight="bold" tone="inverse" className="text-lg">{title}</Text>
+            {description ? <Text tone="inverse" className="pt-1 text-xs opacity-80">{description}</Text> : null}
+          </View>
+        ) : null}
       </View>
+
+      {buildingScope ? <BuildingSelector /> : null}
 
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         {scroll ? (
@@ -162,6 +176,25 @@ export function Page({
       </KeyboardAvoidingView>
     </View>
   );
+}
+
+function BuildingPage(props: PageProps) {
+  const { buildingId, isLoading } = useProjectBuilding();
+  return (
+    <PageContent {...props} footer={buildingId ? props.footer : undefined}>
+      {buildingId ? props.children : (
+        <View className="items-center py-12">
+          <Text tone="secondary" className="text-center">
+            {isLoading ? "Loading buildings…" : "Choose a building above to see its records."}
+          </Text>
+        </View>
+      )}
+    </PageContent>
+  );
+}
+
+export function Page(props: PageProps) {
+  return props.buildingScope ? <BuildingPage {...props} /> : <PageContent {...props} />;
 }
 
 Page.displayName = "Page";

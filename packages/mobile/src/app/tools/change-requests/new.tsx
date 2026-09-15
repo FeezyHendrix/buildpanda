@@ -1,4 +1,5 @@
-import { router } from "expo-router";
+import { goBack } from "@/lib/navigation";
+
 import { useState } from "react";
 import { View } from "react-native";
 import { Button, Field, FieldLabel, Text } from "@/components/atoms";
@@ -23,7 +24,9 @@ export default function NewChangeRequest() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = title.trim().length > 0 && !saving;
+  const costNumber = cost.trim() ? Number(cost) : 0;
+  const daysNumber = days.trim() ? Number(days) : 0;
+  const canSubmit = title.trim().length > 0 && Number.isFinite(costNumber) && Number.isInteger(daysNumber) && !saving;
 
   async function submit() {
     if (!canSubmit) return;
@@ -34,10 +37,10 @@ export default function NewChangeRequest() {
         title: title.trim(),
         description: htmlToText(descriptionHtml) || null,
         descriptionHtml: descriptionHtml || null,
-        costImpact: Number.parseFloat(cost) || 0,
-        timeImpactDays: Number.parseInt(days, 10) || 0,
+        costImpact: costNumber,
+        timeImpactDays: daysNumber,
       });
-      router.back();
+      goBack();
     } catch (err) {
       setSaving(false);
       setError(err instanceof Error ? err.message : "Could not save this change request.");
@@ -47,7 +50,7 @@ export default function NewChangeRequest() {
   return (
     <Page
       title="New change request"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={submit} disabled={!canSubmit} loading={saving}>
           Raise change request

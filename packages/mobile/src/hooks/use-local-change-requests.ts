@@ -1,3 +1,4 @@
+import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
 import { changeRequestsApi, type UpsertChangeRequestInput } from "@/api/change-requests";
@@ -7,10 +8,12 @@ import { changeRequestsRepository, toChangeRequest } from "@/db/change-requests-
 
 /** SQLite first, background refresh — opens with no signal. */
 export function useLocalChangeRequests(db: Db, projectId: string) {
+  const { isOnline } = useSyncState();
   const query = useMemo(() => changeRequestsRepository.listQuery(db, projectId), [db, projectId]);
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
+    if (!isOnline) return;
     let cancelled = false;
     changeRequestsApi
       .list(projectId)
@@ -21,19 +24,19 @@ export function useLocalChangeRequests(db: Db, projectId: string) {
     return () => {
       cancelled = true;
     };
-  }, [db, projectId]);
+  }, [db, projectId, isOnline]);
 
   const data = useMemo(() => (live.data ?? []).map(toChangeRequest), [live.data]);
-  return { data, isPending: live.data === undefined };
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
 /** One change request from SQLite; `null` once the query has run and found nothing. */
 export function useLocalChangeRequest(db: Db, id: string) {
   const query = useMemo(() => changeRequestsRepository.byIdQuery(db, id), [db, id]);
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
   const row = live.data?.[0];
   const data = useMemo(() => (row ? toChangeRequest(row) : null), [row]);
-  return { data, isPending: live.data === undefined };
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
 export function useCreateChangeRequest(db: Db | null, projectId: string | undefined) {

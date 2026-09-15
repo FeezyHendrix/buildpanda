@@ -7,7 +7,8 @@ import { Page } from "@/components/molecules/page";
 import { ICON_MUTED } from "@/constants/colors";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { useProject } from "@/hooks/use-projects";
-import { useSession } from "@/lib/auth-client";
+import { useAuthGate } from "@/lib/use-auth-gate";
+import { useQueryClient } from "@tanstack/react-query";
 import { signOutAndClearScope, useFieldSession } from "@/lib/field-session";
 
 function ScopeRow({
@@ -45,7 +46,8 @@ function ScopeRow({
 }
 
 export default function Account() {
-  const { data: session } = useSession();
+  const { user } = useAuthGate();
+  const queryClient = useQueryClient();
   const { projectId, organizationId } = useFieldSession();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -62,10 +64,10 @@ export default function Account() {
       <Card>
         <View className="border-b border-hairline p-4">
           <Text weight="semibold" className="text-base">
-            {session?.user.name ?? "Signed in"}
+            {user?.name ?? "Signed in"}
           </Text>
           <Text tone="secondary" className="pt-0.5 text-[13px]" numberOfLines={1}>
-            {session?.user.email}
+            {user?.email}
           </Text>
         </View>
         <ScopeRow
@@ -86,8 +88,15 @@ export default function Account() {
         loading={signingOut}
         onPress={async () => {
           setSigningOut(true);
-          await signOutAndClearScope();
-          router.replace("/sign-in");
+          try {
+            await signOutAndClearScope();
+          } catch {
+            // Local logout still completes when the server cannot be reached.
+          } finally {
+            queryClient.clear();
+            setSigningOut(false);
+            router.replace("/sign-in");
+          }
         }}
       >
         Sign out

@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { TextInput, View, type TextInputProps } from "react-native";
 import { ICON_SUBTLE } from "@/constants/colors";
 import { Text } from "./text";
@@ -19,6 +20,7 @@ export function FieldLabel({ children }: { children: string }) {
 FieldLabel.displayName = "FieldLabel";
 
 interface FieldProps extends TextInputProps {
+  ref?: Ref<TextInput>;
   label: string;
   error?: string;
   helperText?: string;
@@ -31,9 +33,12 @@ export function Field({ label, error, helperText, className, ...props }: FieldPr
       <FieldLabel>{label}</FieldLabel>
       <TextInput
         className={cn(
-          "h-14 rounded-xl bg-surface-alt px-4 font-jakarta text-base text-black-500",
+          "min-h-14 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500",
+          props.multiline && "min-h-28",
           error && "border border-error-500",
         )}
+        accessibilityLabel={label}
+        textAlignVertical={props.multiline ? "top" : "center"}
         placeholderTextColor={ICON_SUBTLE}
         {...props}
       />

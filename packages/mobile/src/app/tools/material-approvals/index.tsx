@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
@@ -141,7 +142,7 @@ export default function MaterialApprovals() {
   return (
     <Page
       title="Material approvals"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         <HeaderIconButton
           icon="add"

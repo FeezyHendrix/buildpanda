@@ -1,8 +1,9 @@
+import { remapQueuedRecord } from "./sync-write-state";
 import { randomUUID } from "expo-crypto";
 import { and, desc, eq } from "drizzle-orm";
 import type { MaterialApproval, MaterialApprovalCreateInput } from "@/api/material-approvals";
 import type { Db } from "./client";
-import { enqueueDelete } from "./enqueue-update";
+import { enqueueDelete, enqueueUpdate } from "./enqueue-update";
 import { MATERIAL_APPROVAL_COMMENTS_RESOURCE } from "./material-approval-comments-repository";
 import {
   materialApprovalComments,
@@ -33,40 +34,6 @@ function localId(): string {
   return `local_${randomUUID()}`;
 }
 
-async function hasQueuedUpdate(
-  tx: Parameters<Parameters<Db["transaction"]>[0]>[0],
-  entityId: string,
-): Promise<boolean> {
-  const [row] = await tx
-    .select({ id: outbox.id })
-    .from(outbox)
-    .where(
-      and(
-        eq(outbox.resource, MATERIAL_APPROVALS_RESOURCE),
-        eq(outbox.entityId, entityId),
-        eq(outbox.operation, "update"),
-      ),
-    )
-    .limit(1);
-  return Boolean(row);
-}
-
-async function queueMaterialApprovalUpdate(
-  tx: Parameters<Parameters<Db["transaction"]>[0]>[0],
-  id: string,
-  projectId: string,
-): Promise<void> {
-  if (await hasQueuedUpdate(tx, id)) return;
-  await tx.insert(outbox).values({
-    id: randomUUID(),
-    resource: MATERIAL_APPROVALS_RESOURCE,
-    entityId: id,
-    projectId,
-    operation: "update",
-    nextAttemptAt: 0,
-  });
-}
-
 export const materialApprovalsRepository = {
   listQuery: (db: Db, projectId: string) =>
     db
@@ -94,8 +61,8 @@ export const materialApprovalsRepository = {
 
   async createLocal(db: Db, projectId: string, input: LocalMaterialApprovalDraft): Promise<string> {
     const id = localId();
-    await db.transaction(async (tx) => {
-      await tx.insert(materialApprovals).values({
+    await db.transaction((tx) => {
+      tx.insert(materialApprovals).values({
         id,
         projectId,
         title: input.title,
@@ -115,15 +82,15 @@ export const materialApprovalsRepository = {
         isPendingSync: true,
         serverLastSyncedAt: null,
         updatedAt: Date.now(),
-      });
-      await tx.insert(outbox).values({
+      }).run();
+      tx.insert(outbox).values({
         id: randomUUID(),
         resource: MATERIAL_APPROVALS_RESOURCE,
         entityId: id,
         projectId,
         operation: "create",
         nextAttemptAt: 0,
-      });
+      }).run();
     });
     return id;
   },
@@ -134,8 +101,8 @@ export const materialApprovalsRepository = {
     id: string,
     patch: Partial<MaterialApprovalCreateInput>,
   ): Promise<void> {
-    await db.transaction(async (tx) => {
-      await tx
+    await db.transaction((tx) => {
+      tx
         .update(materialApprovals)
         .set({
           ...(patch.title !== undefined ? { title: patch.title } : {}),
@@ -149,9 +116,9 @@ export const materialApprovalsRepository = {
           isPendingSync: true,
           updatedAt: Date.now(),
         })
-        .where(eq(materialApprovals.id, id));
+        .where(eq(materialApprovals.id, id)).run();
 
-      await queueMaterialApprovalUpdate(tx, id, projectId);
+      enqueueUpdate(tx, MATERIAL_APPROVALS_RESOURCE, id, projectId, randomUUID());
     });
   },
 
@@ -170,8 +137,8 @@ export const materialApprovalsRepository = {
     decision: ApprovalDecisionInput,
   ): Promise<void> {
     const isRevert = decision.status === "Pending";
-    await db.transaction(async (tx) => {
-      await tx
+    await db.transaction((tx) => {
+      tx
         .update(materialApprovals)
         .set({
           status: decision.status,
@@ -181,9 +148,9 @@ export const materialApprovalsRepository = {
           isPendingSync: true,
           updatedAt: Date.now(),
         })
-        .where(eq(materialApprovals.id, id));
+        .where(eq(materialApprovals.id, id)).run();
 
-      await tx
+      tx
         .delete(outbox)
         .where(
           and(
@@ -191,15 +158,15 @@ export const materialApprovalsRepository = {
             eq(outbox.entityId, id),
             eq(outbox.operation, "decision"),
           ),
-        );
-      await tx.insert(outbox).values({
+        ).run();
+      tx.insert(outbox).values({
         id: randomUUID(),
         resource: MATERIAL_APPROVALS_RESOURCE,
         entityId: id,
         projectId,
         operation: "decision",
         nextAttemptAt: 0,
-      });
+      }).run();
     });
   },
 
@@ -209,24 +176,24 @@ export const materialApprovalsRepository = {
    * request the server is about to lose would only ever 404.
    */
   async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      const orphaned = await tx
+    await db.transaction((tx) => {
+      const orphaned = tx
         .select({ id: materialApprovalComments.id })
         .from(materialApprovalComments)
-        .where(eq(materialApprovalComments.approvalId, id));
+        .where(eq(materialApprovalComments.approvalId, id)).all();
       for (const comment of orphaned) {
-        await tx
+        tx
           .delete(outbox)
           .where(
             and(
               eq(outbox.resource, MATERIAL_APPROVAL_COMMENTS_RESOURCE),
               eq(outbox.entityId, comment.id),
             ),
-          );
+          ).run();
       }
-      await tx.delete(materialApprovalComments).where(eq(materialApprovalComments.approvalId, id));
-      await tx.delete(materialApprovals).where(eq(materialApprovals.id, id));
-      await enqueueDelete(tx as never, MATERIAL_APPROVALS_RESOURCE, id, projectId, randomUUID());
+      tx.delete(materialApprovalComments).where(eq(materialApprovalComments.approvalId, id)).run();
+      tx.delete(materialApprovals).where(eq(materialApprovals.id, id)).run();
+      enqueueDelete(tx, MATERIAL_APPROVALS_RESOURCE, id, projectId, randomUUID());
     });
   },
 
@@ -262,40 +229,39 @@ export const materialApprovalsRepository = {
     server: MaterialApproval,
   ): Promise<void> {
     const now = Date.now();
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
       // The DTO does not echo the sheet or pin back; keep what was sent so the
       // plan still shows the link after the id changes.
-      const [local] = await tx
-        .select({
-          documentId: materialApprovals.documentId,
-          documentVersionId: materialApprovals.documentVersionId,
-          sourceMarkupId: materialApprovals.sourceMarkupId,
-        })
+      const [local] = tx
+        .select()
         .from(materialApprovals)
         .where(eq(materialApprovals.id, localRowId))
-        .limit(1);
-      await tx.delete(materialApprovals).where(eq(materialApprovals.id, localRowId));
-      await tx.insert(materialApprovals).values({
+        .limit(1).all();
+      const hasEdits = remapQueuedRecord(tx, "material-approvals", localRowId, server.id);
+      if (!local) return;
+      tx.delete(materialApprovals).where(eq(materialApprovals.id, localRowId)).run();
+      const values = {
         ...materialApprovalServerValues(projectId, server, now),
         documentId: local?.documentId ?? null,
         documentVersionId: local?.documentVersionId ?? null,
         sourceMarkupId: local?.sourceMarkupId ?? null,
-      });
+        ...(hasEdits ? local : {}),
+        id: server.id,
+        isPendingSync: hasEdits,
+      };
+      // A concurrent pull may already have received the server-assigned ID.
+      // Preserve any later local edit on that row while reconciling the draft.
+      tx.insert(materialApprovals).values(values).onConflictDoUpdate({
+        target: materialApprovals.id,
+        set: values,
+        where: eq(materialApprovals.isPendingSync, false),
+      }).run();
 
-      await tx
+      tx
         .update(materialApprovalComments)
         .set({ approvalId: server.id })
-        .where(eq(materialApprovalComments.approvalId, localRowId));
+        .where(eq(materialApprovalComments.approvalId, localRowId)).run();
 
-      await tx
-        .update(outbox)
-        .set({ entityId: server.id })
-        .where(
-          and(
-            eq(outbox.resource, MATERIAL_APPROVALS_RESOURCE),
-            eq(outbox.entityId, localRowId),
-          ),
-        );
     });
   },
 
@@ -307,18 +273,18 @@ export const materialApprovalsRepository = {
   ): Promise<void> {
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
       for (const row of rows) {
         const values = materialApprovalServerValues(projectId, row, now);
         const { id: _id, projectId: _projectId, ...mutable } = values;
-        await tx
+        tx
           .insert(materialApprovals)
           .values(values)
           .onConflictDoUpdate({
             target: materialApprovals.id,
             set: mutable,
             where: eq(materialApprovals.isPendingSync, false),
-          });
+          }).run();
       }
     });
   },
