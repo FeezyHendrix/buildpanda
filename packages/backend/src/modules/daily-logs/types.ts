@@ -13,6 +13,7 @@ export interface DailyLogActivityLink {
 }
 
 export interface DailyLog {
+  buildingId: string;
   projectId: string;
   logDate: string;
   weatherCondition: WeatherCondition | null;
@@ -95,6 +96,7 @@ export interface DailyLogEntryVoid {
 }
 
 export interface DailyLogEntry {
+  buildingId: string;
   id: string;
   projectId: string;
   logDate: string;
@@ -138,6 +140,8 @@ export interface CreateDailyLogEntryInput {
 }
 
 export interface DailyLogDay {
+  summary: string | null;
+  buildingId: string;
   projectId: string;
   logDate: string;
   weatherCondition: WeatherCondition | null;
