@@ -1,7 +1,6 @@
-import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { useEffect, useMemo } from "react";
-import { documentsApi } from "@/api/documents";
+import { useMemo } from "react";
+import { documentFolders, UNFILED_CATEGORY } from "@/lib/document-folders";
 import type { Db } from "@/db/client";
 import {
   documentsRepository,
@@ -18,27 +17,14 @@ import {
  * table but no tab asks for them, the same as the web's Documents page.
  */
 export function useDocumentCategories(db: Db, projectId: string, group: DocumentGroup) {
-  const { isOnline } = useSyncState();
   const query = useMemo(() => documentsRepository.categoriesQuery(db, projectId), [db, projectId]);
   const live = useLiveQuery(query, [query]);
-
-  useEffect(() => {
-    if (!isOnline) return;
-    let cancelled = false;
-    documentsApi
-      .categories(projectId)
-      .then((rows) => {
-        if (!cancelled) return documentsRepository.upsertCategories(db, projectId, rows);
-      })
-      .catch(() => undefined); // offline: cached folders already rendered
-    return () => {
-      cancelled = true;
-    };
-  }, [db, projectId, isOnline]);
-
-  const all = useMemo(() => (live.data ?? []).map(toCategory), [live.data]);
-  const data = useMemo(() => all.filter((c) => c.group === group), [all, group]);
-  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
+  const filesQuery = useMemo(() => documentsRepository.listQuery(db, projectId), [db, projectId]);
+  const files = useLiveQuery(filesQuery, [filesQuery]);
+  const data = useMemo(() => documentFolders(
+    (live.data ?? []).map(toCategory), (files.data ?? []).map(toDocument), group,
+  ), [live.data, files.data, group]);
+  return { data, isPending: (live.updatedAt === undefined && !live.error) || (files.updatedAt === undefined && !files.error), error: live.error ?? files.error };
 }
 
 /** Files in a group, optionally narrowed to one category folder by its id. Queued uploads are included. */
@@ -48,29 +34,14 @@ export function useLocalDocuments(
   group: DocumentGroup,
   categoryId?: string,
 ) {
-  const { isOnline } = useSyncState();
   const query = useMemo(() => documentsRepository.listQuery(db, projectId), [db, projectId]);
   const live = useLiveQuery(query, [query]);
-
-  useEffect(() => {
-    if (!isOnline) return;
-    let cancelled = false;
-    documentsApi
-      .list(projectId)
-      .then((rows) => {
-        if (!cancelled) return documentsRepository.upsertFromServer(db, projectId, rows);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [db, projectId, isOnline]);
 
   const all = useMemo(() => (live.data ?? []).map(toDocument), [live.data]);
   const data = useMemo(
     () =>
       all.filter(
-        (doc) => doc.group === group && (!categoryId || doc.categoryId === categoryId),
+        (doc) => doc.group === group && (!categoryId || (categoryId === UNFILED_CATEGORY ? !doc.categoryId : doc.categoryId === categoryId)),
       ),
     [all, group, categoryId],
   );

@@ -29,6 +29,7 @@ export function DocumentFileRow({
   onOpen: (id: string) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const missingFile = !doc.currentVersionId && !doc.isPendingSync;
 
   async function handlePress() {
     if (doc.isPendingSync) {
@@ -41,6 +42,8 @@ export function DocumentFileRow({
     setBusy(true);
     try {
       await onOpen(doc.id);
+    } catch {
+      return; // The browser shows the download error beside the file list.
     } finally {
       setBusy(false);
     }
@@ -54,7 +57,7 @@ export function DocumentFileRow({
   return (
     <Pressable
       onPress={handlePress}
-      disabled={busy}
+      disabled={busy || missingFile}
       accessibilityRole="button"
       className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt"
     >
@@ -86,8 +89,11 @@ export function DocumentFileRow({
             </View>
           ) : null}
         </View>
+        <Text tone="secondary" className="pt-1 text-xs">
+          {missingFile ? "No file attached" : doc.isAvailableOffline || doc.stagedUri ? "Available offline" : "Not downloaded yet"}
+        </Text>
       </View>
-      {doc.isPendingSync ? (
+      {missingFile ? null : doc.isPendingSync ? (
         <PendingBadge />
       ) : busy ? (
         <Spinner size="xs" />

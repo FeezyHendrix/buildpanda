@@ -16,6 +16,7 @@ import { NavColors } from "@/constants/theme";
 import { LocalDbProvider } from "@/db/provider";
 import { FieldSessionProvider } from "@/lib/field-session";
 import { SyncProvider } from "@/lib/sync-provider";
+import { OfflinePlansProvider } from "@/lib/offline-plans-provider";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -57,6 +58,7 @@ export default function RootLayout() {
         <FieldSessionProvider>
           <LocalDbProvider>
           <SyncProvider>
+          <OfflinePlansProvider>
           <StatusBar style="light" />
           <Stack
             initialRouteName="index"
@@ -68,6 +70,7 @@ export default function RootLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="capture" options={{ presentation: "modal" }} />
           </Stack>
+          </OfflinePlansProvider>
           </SyncProvider>
           </LocalDbProvider>
         </FieldSessionProvider>
