@@ -19,7 +19,7 @@ export function Hero() {
           </h1>
 
           <p className="max-w-md text-base leading-relaxed text-white/70 2xl:max-w-lg 2xl:text-lg">
-            Construction management software for estimates, schedules, site
+            AI-powered construction management software for estimates, schedules, site
             inspections and payment records. Keep contractors, project managers
             and owners working from one project record.
           </p>
