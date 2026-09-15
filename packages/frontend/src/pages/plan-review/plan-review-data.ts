@@ -26,6 +26,11 @@ export interface Sheet {
   documentVersionId: string | null;
 }
 
+/** Calibration belongs to one page of one document revision. */
+export function sheetPageKey(sheet: Sheet, page: number): string {
+  return `${sheet.documentVersionId ?? sheet.id}:${page}`;
+}
+
 export interface Pt {
   x: number;
   y: number;

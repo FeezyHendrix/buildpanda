@@ -11,8 +11,9 @@ import { SELECTION_KIND, TOOL, type Pin, type Selection, type Tool } from "./pla
 import { usePersistedMarkup } from "./use-persisted-markup";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
+import type { ReviewTools } from "./use-review-tools";
 
-const DEFAULT_MARKUP_COLOR = "#004DE7";
+
 /** Pen samples closer than this (in sheet percent) are dropped, so a stroke stays a light polyline. */
 const PEN_MIN_STEP_PCT = 0.4;
 /** Vertical offset from the click so the comment popover clears the pointer. */
@@ -41,6 +42,7 @@ export type PersistMarkup = (
 ) => Promise<string | null>;
 
 interface MarkupToolsArgs {
+  tools: ReviewTools;
   sheet: Sheet | null;
   projectId: string | undefined;
   /** PDF page the markup belongs to; image sheets stay on page 1. */
@@ -115,10 +117,9 @@ export function useMarkupTools({
   setPins,
   setCommentAnchor,
   setThreadTarget,
+  tools,
 }: MarkupToolsArgs): MarkupToolsController {
-  const [activeTool, setActiveTool] = useState<Tool>(TOOL.SELECT);
-  const [markupColor, setMarkupColor] = useState(DEFAULT_MARKUP_COLOR);
-  const [markupVisible, setMarkupVisible] = useState(true);
+  const { activeTool, setActiveTool, markupColor, setMarkupColor, markupVisible, setMarkupVisible } = tools;
   const [markups, setMarkups] = useState<Markup[]>([]);
   const [draft, setDraft] = useState<Markup | null>(null);
   const [measureStart, setMeasureStart] = useState<Pt | null>(null);

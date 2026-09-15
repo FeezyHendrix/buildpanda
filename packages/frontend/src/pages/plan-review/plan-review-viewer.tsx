@@ -1,8 +1,7 @@
 import { MarkupThreadPopover } from "@/components/molecules/markup-thread/markup-thread-popover";
 import type { CommentAssignee, CommentCapture } from "@/lib/markup-meta";
 import { CommentComposerPopover } from "./plan-review-comment";
-import type { Sheet } from "./plan-review-data";
-import { PlanReviewSplit } from "./plan-review-split";
+import { sheetPageKey, type Sheet } from "./plan-review-data";
 import { PlanReviewStage } from "./plan-review-stage";
 import { SELECTION_KIND } from "./plan-review-types";
 import type { CommentAnchor, MarkupToolsController } from "./use-markup-tools";
@@ -20,7 +19,7 @@ interface ViewerComment {
 }
 interface PlanReviewViewerProps {
   sheet: Sheet;
-  sheets: Sheet[];
+  label?: string;
   nav: SheetNavigationController;
   markup: MarkupToolsController;
   scale: SheetScaleController;
@@ -31,7 +30,7 @@ interface PlanReviewViewerProps {
 
 export function PlanReviewViewer({
   sheet,
-  sheets,
+  label,
   nav,
   markup,
   scale,
@@ -43,10 +42,11 @@ export function PlanReviewViewer({
   function submitCalibration(): void {
     const selection = markup.selection;
     if (selection?.kind !== SELECTION_KIND.MARKUP) return;
-    scale.calibrate(sheet.id, markup.sheetMarkups.find((item) => item.id === selection.id) ?? null);
+    scale.calibrate(
+      sheetPageKey(sheet, nav.pdfPage),
+      markup.sheetMarkups.find((item) => item.id === selection.id) ?? null,
+    );
   }
-  if (nav.comparing && sheets.length > 1)
-    return <PlanReviewSplit sheets={sheets} activeIndex={sheets.indexOf(sheet)} />;
   return (
     <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <PlanReviewStage
@@ -56,6 +56,7 @@ export function PlanReviewViewer({
         scale={scale}
         drawingRef={drawingRef}
         onCalibrate={submitCalibration}
+        label={label}
       />
       {thread.target && threadMarkup ? (
         <MarkupThreadPopover

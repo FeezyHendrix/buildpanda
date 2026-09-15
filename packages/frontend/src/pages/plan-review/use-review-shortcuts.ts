@@ -8,12 +8,15 @@ export function useReviewShortcuts({
   nav,
   markup,
   onDismiss,
+  enabled = true,
 }: {
   nav: SheetNavigationController;
   markup: MarkupToolsController;
   onDismiss: () => void;
+  enabled?: boolean;
 }): void {
   useEffect(() => {
+    if (!enabled) return;
     function onKey(event: KeyboardEvent): void {
       if (event.defaultPrevented) return;
       if (event.key === KEY.ESCAPE) {
@@ -23,7 +26,6 @@ export function useReviewShortcuts({
       }
       const target = event.target as HTMLElement;
       if (
-        nav.comparing ||
         event.isComposing ||
         event.ctrlKey ||
         event.metaKey ||

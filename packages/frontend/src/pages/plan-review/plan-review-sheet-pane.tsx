@@ -1,29 +1,40 @@
-import { useState } from "react";
-import type { Sheet } from "./plan-review-data";
-import { SheetImage } from "./plan-review-sheet-image";
-import { ReviewPageControls, ReviewZoomControls } from "./review-view-controls";
+import { Button } from "@/components/atoms/button";
+import { PlanReviewViewer } from "./plan-review-viewer";
+import { PlanReviewStatusBar } from "./plan-review-status-bar";
+import type { ReviewPane } from "./use-review-pane";
 
-/** A comparison pane owns the page and zoom for its selected document. */
-export function SheetPane({ sheet, label }: { sheet: Sheet; label: string }) {
-  const [zoom, setZoom] = useState(100);
-  const [page, setPage] = useState(1);
-  const [pageCount, setPageCount] = useState(1);
+/** The same editable canvas is used alone and in both comparison panes. */
+export function SheetPane({ review, label }: { review: ReviewPane; label?: string }) {
+  if (!review.sheet) return null;
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-auto bg-gray-100 p-4">
-        <div className="mx-auto" style={{ width: `${zoom}%` }}>
-          <SheetImage
-            sheet={sheet}
-            pageNumber={page}
-            onRender={(state) => setPageCount(state.pageCount ?? 1)}
-            className="block w-full rounded-lg border border-line bg-white shadow-sm"
-          />
+      {review.markupQuery.isError ? (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 border-b border-line bg-white px-4 py-2 text-sm text-red-600"
+        >
+          Could not load annotations.
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={review.markupQuery.isFetching}
+            onClick={() => void review.markupQuery.refetch()}
+          >
+            Retry
+          </Button>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-hair p-2">
-        <ReviewZoomControls label={label} zoom={zoom} onChange={setZoom} />
-        <ReviewPageControls label={label} page={page} count={pageCount} onChange={setPage} />
-      </div>
+      ) : null}
+      <PlanReviewViewer
+        sheet={review.sheet}
+        nav={review.nav}
+        markup={review.markup}
+        scale={review.scale}
+        drawingRef={review.drawingRef}
+        thread={review.thread}
+        comment={review.comment}
+        label={label}
+      />
+      <PlanReviewStatusBar save={review.save} />
     </>
   );
 }

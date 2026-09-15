@@ -1,7 +1,8 @@
+import { useId } from "react";
 import { Ruler, Trash2 } from "lucide-react";
 import { MARKUP_KIND, type DrawingMarkup } from "@/api/drawing-markup";
 import { cn } from "@/lib/utils";
-import type { Sheet } from "./plan-review-data";
+import { sheetPageKey, type Sheet } from "./plan-review-data";
 import { MarkupLayer } from "./plan-review-markup";
 import { CommentPin } from "@/components/molecules/comment-pin";
 import { anchorBelow } from "@/components/molecules/markup-thread/pin-popover";
@@ -26,10 +27,12 @@ interface PlanReviewStageProps {
   scale: SheetScaleController;
   drawingRef: React.RefObject<HTMLDivElement | null>;
   onCalibrate: () => void;
+  label?: string;
 }
 
 /** The drawing fills the page; controls stay outside its scrolling surface. */
-export function PlanReviewStage({ sheet, nav, markup, scale, drawingRef, onCalibrate }: PlanReviewStageProps) {
+export function PlanReviewStage({ sheet, nav, markup, scale, drawingRef, onCalibrate, label }: PlanReviewStageProps) {
+  const calibrationId = useId();
   const selection = markup.selection;
   const selectedMarkup =
     selection?.kind === SELECTION_KIND.MARKUP ? markup.sheetMarkups.find((item) => item.id === selection.id) : null;
@@ -55,7 +58,7 @@ export function PlanReviewStage({ sheet, nav, markup, scale, drawingRef, onCalib
               sheet={sheet}
               className="block w-full rounded-lg"
               pageNumber={nav.pdfPage}
-              onRender={(state) => scale.applyRender(sheet.id, state)}
+              onRender={(state) => scale.applyRender(sheetPageKey(sheet, nav.pdfPage), state)}
             />
             {markup.markupVisible ? (
               <MarkupLayer
@@ -65,7 +68,7 @@ export function PlanReviewStage({ sheet, nav, markup, scale, drawingRef, onCalib
                 dimmedIds={markup.dimmedIds}
                 scale={sheet.scale}
                 aspect={scale.imgAspect}
-                customFtPerPct={scale.scaleFor(sheet.id)}
+                customFtPerPct={scale.scaleFor(sheetPageKey(sheet, nav.pdfPage))}
               />
             ) : null}
             {markup.markupVisible
@@ -100,10 +103,10 @@ export function PlanReviewStage({ sheet, nav, markup, scale, drawingRef, onCalib
       </div>
       <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-end justify-between gap-2">
         <div className="pointer-events-auto">
-          <ReviewZoomControls zoom={nav.zoom} onChange={nav.setZoom} />
+          <ReviewZoomControls label={label} zoom={nav.zoom} onChange={nav.setZoom} />
         </div>
         <div className="pointer-events-auto">
-          <ReviewPageControls page={nav.pdfPage} count={nav.pdfPageCount} onChange={nav.goToPage} />
+          <ReviewPageControls label={label} page={nav.pdfPage} count={nav.pdfPageCount} onChange={nav.goToPage} />
         </div>
       </div>
       {selection && (measurementSelected || localSelection) ? (
@@ -118,12 +121,12 @@ export function PlanReviewStage({ sheet, nav, markup, scale, drawingRef, onCalib
                   data-popover-root
                   className="absolute left-1/2 top-full mt-2 w-64 -translate-x-1/2 rounded-lg border border-line bg-white p-3 shadow-lg"
                 >
-                  <label htmlFor="review-calibration" className="text-xs font-semibold text-gray-900">
+                  <label htmlFor={calibrationId} className="text-xs font-semibold text-gray-900">
                     Actual distance (feet)
                   </label>
                   <div className="mt-2 flex items-center gap-2">
                     <input
-                      id="review-calibration"
+                      id={calibrationId}
                       type="number"
                       min="0"
                       step="any"
