@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * Local mirror of the server, following the sync columns Ernest uses:
@@ -203,7 +203,7 @@ export const dailyLogEntries = sqliteTable(
 export const documentCategories = sqliteTable(
   "document_categories",
   {
-    id: text("id").primaryKey(),
+    id: text("id").notNull(),
     projectId: text("project_id").notNull(),
     name: text("name").notNull(),
     fileCount: integer("file_count").notNull().default(0),
@@ -211,7 +211,10 @@ export const documentCategories = sqliteTable(
     tone: text("tone").notNull().default("brand"),
     group: text("group").notNull().default("document"),
   },
-  (table) => [index("document_categories_project_idx").on(table.projectId, table.group)],
+  (table) => [
+    primaryKey({ columns: [table.projectId, table.id] }),
+    index("document_categories_project_idx").on(table.projectId, table.group),
+  ],
 );
 
 export const changeRequests = sqliteTable(

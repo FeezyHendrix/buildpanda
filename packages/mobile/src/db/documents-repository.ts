@@ -141,7 +141,7 @@ export const documentsRepository = {
             group: row.group,
           })
           .onConflictDoUpdate({
-            target: documentCategories.id,
+            target: [documentCategories.projectId, documentCategories.id],
             set: {
               name: row.name,
               fileCount: row.fileCount,
@@ -181,6 +181,7 @@ export const documentsRepository = {
       );
       for (const row of rows) {
         const existing = cached.get(row.id);
+        if (existing?.isPendingSync) continue;
         const values = {
           ...fromServer(projectId, row, now),
           localUri: existing?.currentVersionId === row.currentVersionId ? existing?.localUri ?? null : null,

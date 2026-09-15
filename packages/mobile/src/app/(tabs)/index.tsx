@@ -5,6 +5,7 @@ import { Pressable, View, useWindowDimensions } from "react-native";
 import { Button, Card, Spinner, Text } from "@/components/atoms";
 import { CategoryCard } from "@/components/molecules/category-card";
 import { DocumentFileRow } from "@/components/molecules/document-file-row";
+import { OfflinePlansStatus } from "@/components/molecules/offline-plans-status";
 import { Page } from "@/components/molecules/page";
 import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
 import { ICON_BRAND } from "@/constants/colors";
@@ -78,6 +79,7 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
           ? `Couldn't download that file: ${err.message}`
           : "Couldn't download that file. Try again when you have signal.",
       );
+      throw err;
     }
   };
 
@@ -192,6 +194,7 @@ export default function Plans() {
 
       {ready && db && projectId ? (
         <>
+          {isPlans ? <OfflinePlansStatus db={db} projectId={projectId} /> : null}
           <Browser key={`${projectId}:${group}`} db={db} projectId={projectId} group={group} />
           <View className="pt-4">
             <Button
