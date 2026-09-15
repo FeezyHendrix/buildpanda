@@ -1,33 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { useProjectDocuments } from "@/hooks/use-documents";
 import { useParticipants } from "@/hooks/use-participants";
-import { useCreateRfi } from "@/hooks/use-rfis";
-import { useCreateApproval } from "@/hooks/use-approvals";
-import { useUploadFile } from "@/hooks/use-files";
-import {
-  useAddMarkupComment,
-  useCreateDrawingMarkup,
-  useDeleteDrawingMarkup,
-  useDrawingMarkups,
-} from "@/hooks/use-drawing-markup";
-import { getApiErrorMessage } from "@/lib/api-error";
-import { toast } from "@/lib/toast";
-import { MOCK_SHEETS, adaptPlanDocuments, clamp, type Pt, type Sheet } from "./plan-review/plan-review-data";
-import { PARTICIPANT_ACTIVE, type Pin } from "./plan-review/plan-review-types";
+import { MOCK_SHEETS, adaptPlanDocuments, type Sheet } from "./plan-review/plan-review-data";
+import { PARTICIPANT_ACTIVE } from "./plan-review/plan-review-types";
 import { MarkupToolbar } from "./plan-review/plan-review-toolbar";
 import { WorkspaceHeader } from "./plan-review/plan-review-header";
-import { PlanReviewStatusBar } from "./plan-review/plan-review-status-bar";
-import { PlanReviewViewer } from "./plan-review/plan-review-viewer";
-import { useMarkupThread } from "./plan-review/use-markup-thread";
-import { useMarkupTools, type CommentAnchor } from "./plan-review/use-markup-tools";
-import { usePinComments } from "./plan-review/use-pin-comments";
-import { useReviewShortcuts } from "./plan-review/use-review-shortcuts";
-import { useSheetNavigation } from "./plan-review/use-sheet-navigation";
-import { useSheetScale } from "./plan-review/use-sheet-scale";
+import { SheetPane } from "./plan-review/plan-review-sheet-pane";
+import { PlanReviewSplit } from "./plan-review/plan-review-split";
+import { useReviewPane } from "./plan-review/use-review-pane";
+import { useReviewTools } from "./plan-review/use-review-tools";
 
 /** Project drawing review: one canvas, one tool strip, and persisted comment threads. */
 export default function DrawingReviewWorkspace() {
@@ -40,17 +25,10 @@ export default function DrawingReviewWorkspace() {
     () => (projectId ? adaptPlanDocuments(docsQuery.data ?? [], projectId) : MOCK_SHEETS),
     [projectId, docsQuery.data],
   );
-  const [pins, setPins] = useState<Pin[]>([]);
-  const [commentAnchor, setCommentAnchor] = useState<CommentAnchor | null>(null);
-  const drawingRef = useRef<HTMLDivElement>(null);
-  const nav = useSheetNavigation(sheets.length, () => {
-    markup.resetTransient();
-    scale.setCalibrateOpen(false);
-  });
-  const activeIndex = clamp(nav.activeSheetIndex, 0, Math.max(0, sheets.length - 1));
-  const sheet = sheets[activeIndex] ?? null;
+  const tools = useReviewTools();
+  const [compareOpen, setCompareOpen] = useState(false);
   const canCompare = sheets.length >= 2;
-  const comparing = nav.comparing && canCompare;
+  const comparing = compareOpen && canCompare;
   const { data: participants = [] } = useParticipants(projectId);
   const assignees = useMemo(
     () =>
@@ -59,51 +37,9 @@ export default function DrawingReviewWorkspace() {
         .map((p) => ({ id: p.userId!, name: p.name ?? p.email })),
     [participants],
   );
-  const markupQuery = useDrawingMarkups(projectId, sheet?.documentVersionId, nav.pdfPage);
-  const createMarkup = useCreateDrawingMarkup(projectId);
-  const addMarkupComment = useAddMarkupComment(projectId);
-  const deleteMarkup = useDeleteDrawingMarkup(projectId);
-  const uploadFile = useUploadFile();
-  const createRfi = useCreateRfi();
-  const createApproval = useCreateApproval();
-  const thread = useMarkupThread({ projectId, assignees, addComment: addMarkupComment, remove: deleteMarkup });
-  const scale = useSheetScale(nav.setPdfPageCount);
-
-  const pointFromEvent = useCallback((event: { clientX: number; clientY: number }): Pt | null => {
-    const rect = drawingRef.current?.getBoundingClientRect();
-    if (!rect || !rect.width || !rect.height) return null;
-    return {
-      x: clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100),
-      y: clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100),
-    };
-  }, []);
-
-  const markup = useMarkupTools({
-    sheet,
-    projectId,
-    pageNo: nav.pdfPage,
-    drawingRef,
-    pointFromEvent,
-    markupQuery,
-    createMarkup,
-    deleteMarkup,
-    pins,
-    setPins,
-    setCommentAnchor,
-    setThreadTarget: thread.setTarget,
-  });
-  const comments = usePinComments({
-    sheet,
-    projectId,
-    persistMarkup: markup.persistMarkup,
-    commentAnchor,
-    setCommentAnchor,
-    uploadFile,
-    addMarkupComment,
-    createRfi,
-    createApproval,
-  });
-  useReviewShortcuts({ nav, markup, onDismiss: () => scale.setCalibrateOpen(false) });
+  const context = { sheets, projectId, assignees, tools };
+  const review = useReviewPane(context, 0, !comparing);
+  const { nav, sheet, activeIndex } = review;
 
   const appliedRequestedSheet = useRef<string | null>(null);
   useEffect(() => {
@@ -160,73 +96,17 @@ export default function DrawingReviewWorkspace() {
         onExit={exitWorkspace}
       />
       <MarkupToolbar
-        activeTool={markup.activeTool}
-        onSelectTool={(tool) => {
-          markup.selectTool(tool);
-          scale.setCalibrateOpen(false);
-        }}
-        markupColor={markup.markupColor}
-        onSelectColor={markup.setMarkupColor}
-        markupVisible={markup.markupVisible}
-        onToggleMarkup={() => markup.setMarkupVisible((visible) => !visible)}
+        activeTool={tools.activeTool}
+        onSelectTool={tools.setActiveTool}
+        markupColor={tools.markupColor}
+        onSelectColor={tools.setMarkupColor}
+        markupVisible={tools.markupVisible}
+        onToggleMarkup={() => tools.setMarkupVisible((visible) => !visible)}
         canCompare={canCompare}
         comparing={comparing}
-        onCompare={nav.toggleCompare}
+        onCompare={() => setCompareOpen((open) => !open)}
       />
-      {!comparing && markupQuery.isError ? (
-        <div
-          role="alert"
-          className="flex items-center justify-between gap-3 border-b border-line bg-white px-4 py-2 text-sm text-red-600"
-        >
-          Could not load annotations.
-          <Button variant="ghost" size="sm" loading={markupQuery.isFetching} onClick={() => void markupQuery.refetch()}>
-            Retry
-          </Button>
-        </div>
-      ) : null}
-      <PlanReviewViewer
-        sheet={sheet}
-        sheets={sheets}
-        nav={nav}
-        markup={markup}
-        scale={scale}
-        drawingRef={drawingRef}
-        thread={thread}
-        comment={{
-          anchor: commentAnchor,
-          assignees,
-          projectId,
-          busy:
-            createMarkup.isPending ||
-            addMarkupComment.isPending ||
-            uploadFile.isPending ||
-            createRfi.isPending ||
-            createApproval.isPending,
-          onCancel: () => setCommentAnchor(null),
-          onSubmit: (capture) => {
-            void comments
-              .submitPinComment(capture)
-              .catch((error) => toast(getApiErrorMessage(error, "Could not save this comment"), "error"));
-          },
-        }}
-      />
-      {!comparing ? (
-        <PlanReviewStatusBar
-          save={{
-            canPersist: Boolean(projectId && sheet.documentVersionId),
-            isSaving:
-              createMarkup.isPending ||
-              addMarkupComment.isPending ||
-              deleteMarkup.isPending ||
-              thread.actions.resolve.isPending,
-            hasError: Boolean(
-              createMarkup.error ?? addMarkupComment.error ?? deleteMarkup.error ?? thread.actions.resolve.error,
-            ),
-            loadError: markupQuery.isError,
-            markupLoading: markupQuery.isPending,
-          }}
-        />
-      ) : null}
+      {comparing ? <PlanReviewSplit context={context} activeIndex={activeIndex} /> : <SheetPane review={review} />}
     </main>
   );
 }
