@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Alert, View } from "react-native";
@@ -136,7 +137,9 @@ export default function MaterialOrderDetail() {
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          void removeRecord(id).then(() => router.back()).catch(() => undefined);
+          void removeRecord(id).then(() => goBack()).catch((error: unknown) => {
+            Alert.alert("Could not delete this record", error instanceof Error ? error.message : "Please try again.");
+          });
         },
       },
     ]);
@@ -145,7 +148,7 @@ export default function MaterialOrderDetail() {
   return (
     <Page
       title="Material order"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         id ? (
           <>

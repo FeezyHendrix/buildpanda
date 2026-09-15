@@ -17,18 +17,18 @@ import { useFieldSession } from "@/lib/field-session";
  */
 export function useLocalRfis(db: Db, projectId: string) {
   const query = useMemo(() => rfisRepository.listQuery(db, projectId), [db, projectId]);
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
   const data = useMemo(() => (live.data ?? []).map(toRfi), [live.data]);
-  return { data, isPending: live.data === undefined };
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
 /** One RFI from SQLite; `null` once the query has run and found nothing. */
 export function useLocalRfi(db: Db, id: string) {
   const query = useMemo(() => rfisRepository.byIdQuery(db, id), [db, id]);
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
   const row = live.data?.[0];
   const data = useMemo(() => (row ? toRfi(row) : null), [row]);
-  return { data, isPending: live.data === undefined };
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
 /**
@@ -38,7 +38,7 @@ export function useLocalRfi(db: Db, id: string) {
  */
 export function useLocalRfiForMarkup(db: Db, markupId: string) {
   const query = useMemo(() => rfisRepository.bySourceMarkupQuery(db, markupId), [db, markupId]);
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
   const row = live.data?.[0];
   return useMemo(() => (row ? toRfi(row) : null), [row]);
 }

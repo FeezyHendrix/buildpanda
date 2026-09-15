@@ -1,4 +1,5 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { goBack } from "@/lib/navigation";
+import { useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
@@ -15,7 +16,7 @@ export default function UpdateDetail() {
   const update = useMemo(() => (data ?? []).find((row) => row.id === id), [data, id]);
 
   return (
-    <Page title="Update" onBack={() => router.back()}>
+    <Page title="Update" onBack={() => goBack()}>
       {isPending && !update ? (
         <View className="items-center py-12">
           <Spinner size="md" />

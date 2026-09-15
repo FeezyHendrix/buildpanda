@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import { router } from "expo-router";
 import { Pressable } from "react-native";
 import { Text } from "@/components/atoms";
@@ -7,7 +8,7 @@ import { useFieldSession } from "@/lib/field-session";
 
 export default function SelectProject() {
   const { projectId, selectProject } = useFieldSession();
-  const { data, isPending, error, isStale } = useProjects();
+  const { data, isPending, error, isStale, refetch } = useProjects();
 
   const items: PickerItem[] = (data ?? []).map((project) => ({
     id: project.id,
@@ -23,12 +24,14 @@ export default function SelectProject() {
   return (
     <PickerScreen
       title="Choose a project"
+      onBack={projectId ? goBack : undefined}
       description="Everything you capture in Field Tools is filed against this project."
       items={items}
       activeId={projectId}
       loading={isPending}
       isStale={isStale}
       errorMessage={error && !data ? error.message : undefined}
+      onRetry={() => { void refetch(); }}
       searchPlaceholder="Search projects"
       emptyTitle="No projects in this workspace"
       emptyDescription="Pick a different workspace, or ask your project manager to add you to a project."

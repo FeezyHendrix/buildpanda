@@ -1,13 +1,11 @@
 import "@/global.css";
 
-import {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-  useFonts,
-} from "@expo-google-fonts/plus-jakarta-sans";
+import { PlusJakartaSans_400Regular } from "@expo-google-fonts/plus-jakarta-sans/400Regular";
+import { PlusJakartaSans_500Medium } from "@expo-google-fonts/plus-jakarta-sans/500Medium";
+import { PlusJakartaSans_600SemiBold } from "@expo-google-fonts/plus-jakarta-sans/600SemiBold";
+import { PlusJakartaSans_700Bold } from "@expo-google-fonts/plus-jakarta-sans/700Bold";
+import { PlusJakartaSans_800ExtraBold } from "@expo-google-fonts/plus-jakarta-sans/800ExtraBold";
+import { useFonts } from "expo-font";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -19,7 +17,7 @@ import { LocalDbProvider } from "@/db/provider";
 import { FieldSessionProvider } from "@/lib/field-session";
 import { SyncProvider } from "@/lib/sync-provider";
 
-void SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 // Without an anchor the root stack has no route beneath `capture`, so a reload
 // or deep link can surface the capture modal with nothing to go back to.
@@ -39,7 +37,7 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
@@ -48,10 +46,10 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) void SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    if (fontsLoaded || fontError) void SplashScreen.hideAsync().catch(() => undefined);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
@@ -59,13 +57,15 @@ export default function RootLayout() {
         <FieldSessionProvider>
           <LocalDbProvider>
           <SyncProvider>
-          <StatusBar style="dark" />
+          <StatusBar style="light" />
           <Stack
+            initialRouteName="index"
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: NavColors.background },
             }}
           >
+            <Stack.Screen name="index" />
             <Stack.Screen name="capture" options={{ presentation: "modal" }} />
           </Stack>
           </SyncProvider>
@@ -75,3 +75,5 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+export { ErrorBoundary } from "expo-router";

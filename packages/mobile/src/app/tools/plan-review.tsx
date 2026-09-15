@@ -1,7 +1,8 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { goBack } from "@/lib/navigation";
+import { useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { View, useWindowDimensions } from "react-native";
-import { Spinner, Text } from "@/components/atoms";
+import { Button, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { DEFAULT_ASPECT } from "@/components/plan-review/canvas-support";
 import { CommentComposer } from "@/components/plan-review/comment-composer";
@@ -44,7 +45,7 @@ export default function PlanReview() {
 
   if (!db || !ready || !projectId) {
     return (
-      <Page title="Plan review" onBack={() => router.back()} scroll={false}>
+      <Page title="Plan review" onBack={() => goBack()} scroll={false}>
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>
@@ -85,7 +86,7 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
   const assignees = useProjectAssignees(projectId);
   const aspect = renderInfo?.aspect ?? DEFAULT_ASPECT;
 
-  const { source } = useSheetSource(db, projectId, sheetId, fileName, setError);
+  const { source, retry: retrySource } = useSheetSource(db, projectId, sheetId, fileName, setError, versionId);
   const { markups, readLocal, reset: resetMarkups } = usePageMarkups(db, projectId, sheetId, versionId, pageNo);
   const undo = useMarkupUndo(db, projectId, versionId ? `${versionId}:${pageNo}` : null);
   const sheetScale = useSheetScale(userId, versionId);
@@ -213,7 +214,7 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
 
   if (sheets.length === 0) {
     return (
-      <Page title="Plan review" onBack={() => router.back()} scroll={false}>
+      <Page title="Plan review" onBack={() => goBack()} scroll={false}>
         <View className="items-center py-12">
           {plans.isPending ? (
             <Spinner size="md" />
@@ -264,7 +265,7 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
   );
 
   return (
-    <Page title={fileName || "Plan review"} onBack={() => router.back()} scroll={false} className="px-0 pb-0 pt-0">
+    <Page title={fileName || "Plan review"} onBack={() => goBack()} scroll={false} className="px-0 pb-0 pt-0">
       <View className="flex-1">
         <SheetStrip sheets={sheets} activeId={activeSheet?.id} onSelect={switchSheet} />
 
@@ -301,6 +302,11 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
                 onRendered={async (info) => setRenderInfo(info)}
                 onZoom={async (pct) => setZoomPct(pct)}
               />
+            ) : error ? (
+              <View className="flex-1 items-center justify-center gap-3 px-6">
+                <Text tone="secondary">This plan could not be opened.</Text>
+                <Button onPress={retrySource}>Try again</Button>
+              </View>
             ) : (
               <View className="flex-1 items-center justify-center">
                 <Spinner size="md" />

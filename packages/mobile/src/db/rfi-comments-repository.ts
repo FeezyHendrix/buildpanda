@@ -45,8 +45,8 @@ export const rfiCommentsRepository = {
     const id = `local_${randomUUID()}`;
     const now = Date.now();
 
-    await db.transaction(async (tx) => {
-      await tx.insert(rfiComments).values({
+    await db.transaction((tx) => {
+      tx.insert(rfiComments).values({
         id,
         rfiId,
         projectId,
@@ -56,23 +56,23 @@ export const rfiCommentsRepository = {
         createdAt: now,
         official,
         isPendingSync: true,
-      });
+      }).run();
 
       if (official) {
-        await tx
+        tx
           .update(rfis)
           .set({ status: "Answered", officialResponse: body, updatedAt: now })
-          .where(eq(rfis.id, rfiId));
+          .where(eq(rfis.id, rfiId)).run();
       }
 
-      await tx.insert(outbox).values({
+      tx.insert(outbox).values({
         id: randomUUID(),
         resource: "rfi-comments",
         entityId: id,
         projectId,
         operation: "create",
         nextAttemptAt: 0,
-      });
+      }).run();
     });
 
     return id;
@@ -84,14 +84,14 @@ export const rfiCommentsRepository = {
     server: RfiComment,
     official = false,
   ): Promise<void> {
-    await db.transaction(async (tx) => {
-      const [local] = await tx
+    await db.transaction((tx) => {
+      const [local] = tx
         .select({ projectId: rfiComments.projectId })
         .from(rfiComments)
         .where(eq(rfiComments.id, localRowId))
-        .limit(1);
-      await tx.delete(rfiComments).where(eq(rfiComments.id, localRowId));
-      await tx
+        .limit(1).all();
+      tx.delete(rfiComments).where(eq(rfiComments.id, localRowId)).run();
+      tx
         .insert(rfiComments)
         .values({
           id: server.id,
@@ -109,7 +109,7 @@ export const rfiCommentsRepository = {
         .onConflictDoUpdate({
           target: rfiComments.id,
           set: { official, isPendingSync: false, serverLastSyncedAt: Date.now() },
-        });
+        }).run();
     });
   },
 
@@ -121,9 +121,9 @@ export const rfiCommentsRepository = {
   ): Promise<void> {
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
       for (const row of rows) {
-        await tx
+        tx
           .insert(rfiComments)
           .values({
             id: row.id,
@@ -142,7 +142,7 @@ export const rfiCommentsRepository = {
             target: rfiComments.id,
             set: { body: row.body, contentHtml: row.contentHtml, authorName: row.authorName, serverLastSyncedAt: now },
             where: eq(rfiComments.isPendingSync, false),
-          });
+          }).run();
       }
     });
   },

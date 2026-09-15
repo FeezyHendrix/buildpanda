@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import { router } from "expo-router";
 import { View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
@@ -13,7 +14,7 @@ export default function ProjectUpdates() {
   const updates = data ?? [];
 
   return (
-    <Page title="Updates" onBack={() => router.back()}>
+    <Page title="Updates" onBack={() => goBack()}>
       {isStale ? <StaleBanner what="updates" /> : null}
 
       {isPending ? (
