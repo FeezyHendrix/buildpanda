@@ -1,3 +1,4 @@
+import type { NotificationsService } from "../notifications/service.ts";
 import type { Tone } from "../projects/types.ts";
 
 export type DocumentStatus = "Verified" | "Pending" | "Expired";
@@ -96,3 +97,41 @@ export interface CategoryAggregateRow {
   file_count: string;
   total_bytes: string | null;
 }
+
+export interface DocumentRegisterFields {
+  /** The title a person reads; the filename stays the file's own name. */
+  title?: string | null;
+  /** "Rev C", "P02" — free text; every discipline numbers differently. */
+  revision?: string | null;
+  /** The document this one replaces, so the register shows the chain. */
+  supersedesId?: string | null;
+  visibility?: DocumentVisibility;
+  /** The date on the document itself, not the day it was uploaded. */
+  documentDate?: string | null;
+}
+
+export interface CreateDocumentInput extends DocumentRegisterFields {
+  categoryId?: string | null;
+  fileId?: string;
+  fileName?: string;
+  size?: string;
+  uploadedAt?: string;
+  status?: DocumentStatus;
+}
+
+export interface EditDocumentInput extends DocumentRegisterFields {
+  categoryId?: string;
+  fileName?: string;
+  status?: DocumentStatus;
+}
+
+export interface AddVersionInput {
+  fileId: string;
+  revisionLabel?: string;
+  notes?: string;
+}
+
+export interface DocumentsDeps {
+  notifications?: NotificationsService;
+}
+
