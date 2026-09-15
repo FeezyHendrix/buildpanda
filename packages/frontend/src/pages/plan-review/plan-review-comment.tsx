@@ -333,7 +333,6 @@ export function CommentComposerPopover({
       </div>
 
       <div className="mt-3 flex items-center gap-2">
-        <p className="text-[10px] text-gray-400">⌘↵ to save</p>
         <button
           type="button"
           onClick={onCancel}
