@@ -39,10 +39,9 @@ const registerFields = {
 
 const createDocumentBody = {
   type: "object",
-  required: ["categoryId"],
   additionalProperties: false,
   properties: {
-    categoryId: { type: "string", minLength: 1, maxLength: 100 },
+    categoryId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     fileId: { type: "string", minLength: 1, maxLength: 100 },
     fileName: { type: "string", minLength: 1, maxLength: 255 },
     size: { type: "string", minLength: 1, maxLength: 50 },
