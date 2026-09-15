@@ -4,7 +4,7 @@ import multipart from "@fastify/multipart";
 import { config } from "../../config/index.ts";
 import { BadRequestError, ForbiddenError } from "../../lib/errors.ts";
 import { openStoredFile } from "../../lib/file-storage.ts";
-import { publicTokenRateLimit } from "../../plugins/security.ts";
+import { otaAssetRateLimit, publicTokenRateLimit } from "../../plugins/security.ts";
 import { otaRepository } from "./repository.ts";
 import { otaService } from "./service.ts";
 import { OTA_PLATFORMS, type OtaPlatform, type PublishManifestInput } from "./types.ts";
@@ -79,7 +79,7 @@ const otaRoutes: FastifyPluginAsync = async (fastify) => {
   // be cached indefinitely.
   fastify.get<{ Params: { id: string; key: string } }>(
     "/ota/assets/:id/:key",
-    { schema: { params: assetParams }, config: { rateLimit: publicTokenRateLimit } },
+    { schema: { params: assetParams }, config: { rateLimit: otaAssetRateLimit } },
     async (request, reply) => {
       const asset = await service.findAsset(request.params.id, request.params.key);
       const stream = await openStoredFile(asset.storagePath);
