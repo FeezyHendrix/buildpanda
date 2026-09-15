@@ -1,99 +1,98 @@
-import { Check, ChevronDown, Layers } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { MARKUP_COLORS, TOOL, TOOLS, type Tool } from "./plan-review-types";
-import { Kbd, PopShell } from "./plan-review-ui";
+import { Columns2, Eye, EyeOff, X } from "lucide-react";
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
+import { MARKUP_COLORS, TOOLS, type Tool } from "./plan-review-types";
 
+interface MarkupToolbarProps {
+  activeTool: Tool;
+  onSelectTool: (tool: Tool) => void;
+  markupColor: string;
+  onSelectColor: (color: string) => void;
+  markupVisible: boolean;
+  onToggleMarkup: () => void;
+  canCompare: boolean;
+  comparing: boolean;
+  onCompare: () => void;
+}
+
+/** Each action has one home; comparison hides drawing controls it cannot use. */
 export function MarkupToolbar({
   activeTool,
   onSelectTool,
   markupColor,
   onSelectColor,
-  colorOpen,
-  onToggleColor,
-  measuring,
+  markupVisible,
+  onToggleMarkup,
   canCompare,
+  comparing,
   onCompare,
-}: {
-  activeTool: Tool;
-  onSelectTool: (tool: Tool) => void;
-  markupColor: string;
-  onSelectColor: (color: string) => void;
-  colorOpen: boolean;
-  onToggleColor: () => void;
-  measuring: boolean;
-  canCompare: boolean;
-  onCompare: () => void;
-}) {
+}: MarkupToolbarProps) {
   return (
-      <div className="relative z-30 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line-hair bg-white px-3 py-1.5">
-        {TOOLS.map(({ id, label, shortcut, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            aria-label={label}
-            aria-pressed={activeTool === id}
-            title={`${label} (${shortcut})`}
-            onClick={() => onSelectTool(id)}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
-              activeTool === id
-                ? "bg-primary-600 text-white ring-1 ring-primary-200"
-                : "text-gray-600 hover:bg-surface-alt hover:text-gray-900",
-            )}
-          >
-            <Icon size={15} />
-            <span className="hidden lg:inline">{label}</span>
-            <Kbd className="hidden md:inline-block">{shortcut}</Kbd>
-          </button>
-        ))}
-
-        <div className="relative ml-1">
-          <button
-            type="button"
-            data-popover-trigger
-            aria-label="Markup color"
-            aria-haspopup="true"
-            aria-expanded={colorOpen}
-            title="Markup color"
-            onClick={onToggleColor}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-surface-alt"
-          >
-            <span className="size-4 rounded-full border border-black/10" style={{ backgroundColor: markupColor }} />
-            <ChevronDown size={12} className="text-gray-400" />
-          </button>
-          {colorOpen && (
-            <PopShell className="left-0 flex w-max gap-1.5 p-2">
+    <div
+      role="toolbar"
+      aria-label="Plan tools"
+      className="flex shrink-0 flex-wrap items-center gap-1 border-b border-line-hair bg-white px-3 py-2"
+    >
+      {comparing ? (
+        <p className="px-1 text-xs text-gray-500">Choose a plan in each pane.</p>
+      ) : (
+        <>
+          {TOOLS.map(({ id, label, shortcut, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              aria-label={label}
+              aria-pressed={activeTool === id}
+              title={`${label} (${shortcut})`}
+              onClick={() => onSelectTool(id)}
+              className={cn(
+                "flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium",
+                activeTool === id ? "bg-primary-600 text-white" : "text-gray-600 hover:bg-surface-alt",
+              )}
+            >
+              <Icon size={15} /> {label}
+            </button>
+          ))}
+          <label className="ml-1 flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="size-3 shrink-0 rounded-full border border-black/10"
+              style={{ backgroundColor: markupColor }}
+            />
+            <span className="sr-only">Ink color</span>
+            <select
+              aria-label="Ink color"
+              value={markupColor}
+              onChange={(event) => onSelectColor(event.target.value)}
+              className={cn(INPUT_SM_CLASS, "w-auto")}
+            >
               {MARKUP_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  aria-label={`${color.label} markup color`}
-                  title={color.label}
-                  onClick={() => onSelectColor(color.value)}
-                  className="flex size-7 items-center justify-center rounded-full border border-black/10"
-                  style={{ backgroundColor: color.value }}
-                >
-                  {markupColor === color.value ? <Check size={13} className="text-white drop-shadow" /> : null}
-                </button>
+                <option key={color.value} value={color.value}>
+                  {color.label}
+                </option>
               ))}
-            </PopShell>
-          )}
-        </div>
-
-        {activeTool === TOOL.MEASURE && (
-          <span className="ml-2 hidden shrink-0 text-xs text-gray-500 md:inline">
-            {measuring ? "Click the second point to finish" : "Click two points to measure"}
-          </span>
-        )}
-
-        {canCompare && (
-          <Button variant="secondary" size="sm" className="ml-auto" title="Compare revisions" onClick={onCompare}>
-            <Layers size={14} /> Compare
-          </Button>
-        )}
-      </div>
+            </select>
+          </label>
+          <button
+            type="button"
+            aria-label={markupVisible ? "Hide annotations" : "Show annotations"}
+            title={markupVisible ? "Hide annotations" : "Show annotations"}
+            aria-pressed={!markupVisible}
+            onClick={onToggleMarkup}
+            className="flex min-h-9 min-w-9 items-center justify-center rounded-lg text-gray-600 hover:bg-surface-alt"
+          >
+            {markupVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+          </button>
+        </>
+      )}
+      {canCompare ? (
+        <Button variant="secondary" size="sm" className="ml-auto" onClick={onCompare}>
+          {comparing ? <X size={14} /> : <Columns2 size={14} />}
+          {comparing ? "Back to review" : "Compare plans"}
+        </Button>
+      ) : null}
+    </div>
   );
 }
-
 MarkupToolbar.displayName = "MarkupToolbar";
