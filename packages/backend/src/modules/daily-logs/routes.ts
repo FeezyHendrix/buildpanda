@@ -10,6 +10,7 @@ import { updatesRepository } from "../updates/repository.ts";
 import { updatesService } from "../updates/service.ts";
 import { activitiesRepository } from "../activities/repository.ts";
 import { activitiesService } from "../activities/service.ts";
+import { buildingsService } from "../buildings/service.ts";
 import { buildingsRepository } from "../buildings/repository.ts";
 import { filesRepository } from "../files/repository.ts";
 import { filesService } from "../files/service.ts";
@@ -157,6 +158,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     (projectId) => buildings.soleRealBuildingId(projectId),
   );
   const service = dailyLogsService(dailyLogsRepository(fastify.db), {
+    assertBuilding: buildingsService(buildings).assertRealBuilding,
     createUpdate: (projectId, input, actor) => updates.create(projectId, input, actor),
     markActivityInProgress: async (projectId, activityId) => {
       const current = await activitiesRepo.findById(activityId).catch(() => undefined);
@@ -204,12 +206,12 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.get<{ Params: { id: string; date: string } }>(
+  fastify.get<{ Params: { id: string; date: string }; Querystring: { buildingId?: string } }>(
     "/projects/:id/daily-logs/:date/day",
-    { schema: { params: dateParams } },
+    { schema: { params: dateParams, querystring: listQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
-      return service.getDay(project.id, request.params.date);
+      return service.getDay(project.id, request.params.date, request.query.buildingId);
     },
   );
 
@@ -264,12 +266,12 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.get<{ Params: { id: string; date: string } }>(
+  fastify.get<{ Params: { id: string; date: string }; Querystring: { buildingId?: string } }>(
     "/projects/:id/daily-logs/:date",
-    { schema: { params: dateParams } },
+    { schema: { params: dateParams, querystring: listQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
-      return service.getOne(project.id, request.params.date);
+      return service.getOne(project.id, request.params.date, request.query.buildingId);
     },
   );
 

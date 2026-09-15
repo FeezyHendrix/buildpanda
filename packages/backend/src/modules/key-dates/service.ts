@@ -21,6 +21,7 @@ function toKeyDate(r: KeyDateRow): KeyDate {
   return {
     id: r.id,
     projectId: r.project_id,
+    buildingId: r.building_id,
     label: r.label,
     targetDate: r.target_date,
     actualDate: r.actual_date,
