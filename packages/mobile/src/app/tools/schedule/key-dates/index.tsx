@@ -15,11 +15,12 @@ export default function KeyDates() {
       title="Key dates"
       isPending={keyDates.isPending}
       isStale={keyDates.isStale}
-      isEmpty={data.length === 0}
+      key={projectId}
+      data={data}
+      fields={(keyDate) => [keyDate.label, keyDate.status, keyDate.notes, keyDate.targetDate]}
       emptyTitle="No key dates"
       emptyBody="Milestone and compliance dates for this project will appear here."
-    >
-      {data.map((keyDate) => (
+      renderItem={(keyDate) => (
         <Pressable
           key={keyDate.id}
           onPress={() => router.push(`/tools/schedule/key-dates/${keyDate.id}` as never)}
@@ -27,7 +28,7 @@ export default function KeyDates() {
         >
           <KeyDateRow keyDate={keyDate} />
         </Pressable>
-      ))}
-    </ScheduleListScreen>
+      )}
+    />
   );
 }

@@ -134,4 +134,3 @@ export interface AddVersionInput {
 export interface DocumentsDeps {
   notifications?: NotificationsService;
 }
-

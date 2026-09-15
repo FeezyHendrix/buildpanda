@@ -28,7 +28,6 @@ export async function pushDocumentOutboxItem(db: Db, item: OutboxRow): Promise<O
     await db.delete(outbox).where(eq(outbox.id, item.id));
     return done(false);
   }
-  if (!row.categoryId) throw new PermanentOutboxError("This file was queued without a category.");
   if (!row.stagedUri || !new File(row.stagedUri).exists) {
     throw new PermanentOutboxError("The file picked for upload is no longer on this device.");
   }
@@ -40,7 +39,7 @@ export async function pushDocumentOutboxItem(db: Db, item: OutboxRow): Promise<O
     row.mimeType ?? "application/octet-stream",
   );
   const server = await documentsApi.createDocument(item.projectId, {
-    categoryId: row.categoryId,
+    ...(row.categoryId ? { categoryId: row.categoryId } : {}),
     fileId: uploaded.id,
   });
   // swaps the local row for the server's and drops the staged copy

@@ -7,9 +7,7 @@ import { documentCategories, documents, outbox, type DocumentCategoryRow, type D
 
 export type { DocumentGroup };
 
-// The backend's three groups. The Plans and Documents tabs mirror the web's
-// two pages; media has its own library on the web and is kept out of both
-// here rather than folded into Documents.
+// Retain server group metadata while presenting one file list on mobile.
 export const DOCUMENT_GROUP = {
   PLAN: "plan",
   DOCUMENT: "document",
@@ -66,8 +64,8 @@ export interface LocalDocumentInput {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
-  categoryId: string;
-  categoryName: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
   group: DocumentGroup;
 }
 
@@ -185,6 +183,7 @@ export const documentsRepository = {
         const values = {
           ...fromServer(projectId, row, now),
           localUri: existing?.currentVersionId === row.currentVersionId ? existing?.localUri ?? null : null,
+          stagedUri: existing?.currentVersionId === row.currentVersionId ? existing?.stagedUri ?? null : null,
         };
         tx
           .insert(documents)
@@ -251,7 +250,17 @@ export const documentsRepository = {
     server: ProjectDocument,
   ): Promise<void> {
     const local = await this.findById(db, localId);
-    const values = fromServer(projectId, server, Date.now());
+    let localUri = local?.stagedUri ?? null;
+    if (localUri && server.currentVersionId) {
+      try {
+        localUri = (await import("@/lib/download-file")).cachePickedVersion(localUri, server.currentVersionId, server.fileName);
+      } catch {
+        // The upload already succeeded. Keep its durable staged bytes if a
+        // second copy cannot fit; retrying creation would duplicate the file.
+      }
+    }
+    const stagedUri = localUri === local?.stagedUri ? localUri : null;
+    const values = { ...fromServer(projectId, server, Date.now()), localUri, stagedUri };
     await db.transaction((tx) => {
       tx.delete(documents).where(eq(documents.id, localId)).run();
       tx
@@ -259,7 +268,7 @@ export const documentsRepository = {
         .values({ id: server.id, ...values, mimeType: local?.mimeType ?? null })
         .onConflictDoUpdate({ target: documents.id, set: values }).run();
     });
-    discardStagedMedia(local?.stagedUri ?? null);
+    if (!stagedUri) discardStagedMedia(local?.stagedUri ?? null);
   },
 
   async setLocalUri(db: Db, documentId: string, uri: string | null, versionId?: string): Promise<void> {

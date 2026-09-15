@@ -61,6 +61,13 @@ export async function cacheVersionFile(
   return downloadToCache(documentsApi.versionDownloadUrl(projectId, documentId, versionId), destination);
 }
 
+/** Keep the picked bytes available after its queued upload gains a server revision. */
+export function cachePickedVersion(uri: string, versionId: string, fileName: string): string {
+  const destination = new File(cacheDir(), `${versionId}${extensionOf(fileName)}`);
+  if (!destination.exists || destination.size === 0) new File(uri).copy(destination);
+  return destination.uri;
+}
+
 /** Downloads an uploaded file (comment media, attachments) and returns its local URI. */
 export async function cacheFileById(fileId: string, fileName: string): Promise<string> {
   const destination = new File(cacheDir(), `${fileId}${extensionOf(fileName)}`);
@@ -90,7 +97,8 @@ export async function cacheDocument(
   if (row.localUri) {
     const existing = new File(row.localUri);
     const expectedName = `${row.currentVersionId}${extensionOf(row.fileName)}`;
-    if (existing.exists && existing.size > 0 && existing.name === expectedName) return row.localUri;
+    const retainedUpload = !row.isPendingSync && row.stagedUri === row.localUri;
+    if (existing.exists && existing.size > 0 && (existing.name === expectedName || retainedUpload)) return row.localUri;
     await documentsRepository.setLocalUri(db, documentId, null, row.currentVersionId);
   }
 

@@ -25,7 +25,7 @@ import { ScalePrompt, type ScalePromptStage } from "@/components/plan-review/she
 import { SheetStrip } from "@/components/plan-review/sheet-strip";
 import { TabletMinWidth } from "@/constants/theme";
 import type { Db } from "@/db/client";
-import { DOCUMENT_GROUP } from "@/db/documents-repository";
+import { isReviewableFile } from "@/lib/reviewable-file";
 import { useLocalDb } from "@/db/provider";
 import { drawingMarkupsRepository } from "@/db/drawing-markups-repository";
 import { flushOutbox } from "@/db/outbox";
@@ -57,11 +57,11 @@ export default function PlanReview() {
 
 function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; userId: string | undefined }) {
   const { documentId } = useLocalSearchParams<{ documentId?: string }>();
-  const plans = useLocalDocuments(db, projectId, DOCUMENT_GROUP.PLAN);
+  const plans = useLocalDocuments(db, projectId);
   const { width, height } = useWindowDimensions();
   const sidePanel = width > height && width >= TabletMinWidth;
 
-  const sheets = useMemo(() => plans.data.filter((doc) => doc.currentVersionId), [plans.data]);
+  const sheets = useMemo(() => plans.data.filter((doc) => doc.currentVersionId && isReviewableFile(doc.fileName)), [plans.data]);
 
   const [activeDocId, setActiveDocId] = useState<string | undefined>(documentId);
   const activeSheet = useMemo(() => sheets.find((s) => s.id === activeDocId) ?? sheets[0], [sheets, activeDocId]);
