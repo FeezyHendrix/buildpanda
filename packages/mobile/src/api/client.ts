@@ -51,16 +51,36 @@ export async function request<T>(path: string, init?: RequestOptions): Promise<T
   };
   if (Platform.OS !== "web") headers.cookie = authClient.getCookie();
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    credentials: "include",
-    headers,
-  });
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const signal = init?.signal;
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", abort, { once: true });
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 30_000);
 
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as ErrorBody | null;
-    throw new ApiError(response.status, describeError(body, response.status));
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+      credentials: "include",
+      headers,
+    });
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as ErrorBody | null;
+      throw new ApiError(response.status, describeError(body, response.status));
+    }
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  } catch (error) {
+    if (timedOut) throw new ApiError(0, "The connection timed out. Your saved changes are still on this device.");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener("abort", abort);
   }
-
-  return (await response.json()) as T;
 }

@@ -30,6 +30,7 @@ export function toStage(row: StageRow, rollup: PhaseRollup = EMPTY_ROLLUP): Stag
   return {
     id: row.id,
     projectId: row.project_id,
+    buildingId: row.building_id,
     name: row.name,
     status: row.status,
     startDate: row.start_date,

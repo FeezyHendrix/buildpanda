@@ -52,8 +52,8 @@ export const materialApprovalCommentsRepository = {
   /** Comment row and its outbox entry are written together so they can't diverge. */
   async createLocal(db: Db, projectId: string, comment: ApprovalCommentDraft): Promise<string> {
     const id = `local_${randomUUID()}`;
-    await db.transaction(async (tx) => {
-      await tx.insert(materialApprovalComments).values({
+    await db.transaction((tx) => {
+      tx.insert(materialApprovalComments).values({
         id,
         approvalId: comment.approvalId,
         projectId,
@@ -61,15 +61,15 @@ export const materialApprovalCommentsRepository = {
         body: comment.body,
         createdAt: Date.now(),
         isPendingSync: true,
-      });
-      await tx.insert(outbox).values({
+      }).run();
+      tx.insert(outbox).values({
         id: randomUUID(),
         resource: MATERIAL_APPROVAL_COMMENTS_RESOURCE,
         entityId: id,
         projectId,
         operation: "create",
         nextAttemptAt: 0,
-      });
+      }).run();
     });
     return id;
   },
@@ -82,9 +82,9 @@ export const materialApprovalCommentsRepository = {
       .limit(1);
     if (!existing) return;
 
-    await db.transaction(async (tx) => {
-      await tx.delete(materialApprovalComments).where(eq(materialApprovalComments.id, localRowId));
-      await tx.insert(materialApprovalComments).values({
+    await db.transaction((tx) => {
+      tx.delete(materialApprovalComments).where(eq(materialApprovalComments.id, localRowId)).run();
+      tx.insert(materialApprovalComments).values({
         id: server.id,
         approvalId: server.approvalId,
         projectId: existing.projectId,
@@ -93,7 +93,7 @@ export const materialApprovalCommentsRepository = {
         createdAt: Date.parse(server.createdAt) || Date.now(),
         isPendingSync: false,
         serverLastSyncedAt: Date.now(),
-      });
+      }).run();
     });
   },
 
@@ -105,9 +105,9 @@ export const materialApprovalCommentsRepository = {
   ): Promise<void> {
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
       for (const row of rows) {
-        await tx
+        tx
           .insert(materialApprovalComments)
           .values({
             id: row.id,
@@ -123,7 +123,7 @@ export const materialApprovalCommentsRepository = {
             target: materialApprovalComments.id,
             set: { body: row.body, authorName: row.authorName, serverLastSyncedAt: now },
             where: eq(materialApprovalComments.isPendingSync, false),
-          });
+          }).run();
       }
     });
   },

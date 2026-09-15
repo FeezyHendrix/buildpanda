@@ -258,6 +258,7 @@ export default function Schedule() {
 
   return (
     <Page
+      buildingScope
       title="Schedule"
       projectName={project?.name}
       projectPending={Boolean(projectId) && !project}

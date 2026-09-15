@@ -3,6 +3,7 @@ import type { PhaseStatus } from "../projects/types.ts";
 export type StageStatus = PhaseStatus; // "Done" | "InProgress" | "Pending"
 
 export interface Stage {
+  buildingId: string;
   id: string;
   projectId: string;
   name: string;

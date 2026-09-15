@@ -1,4 +1,5 @@
-import { router } from "expo-router";
+import { goBack } from "@/lib/navigation";
+
 import { useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Text } from "@/components/atoms";
@@ -26,7 +27,7 @@ export default function NewMaterialOrder() {
 
   // The API rejects an order with no quantity or no needed-by date, so the
   // form refuses them too instead of queuing a write that can never land.
-  const quantityValue = Number.parseFloat(quantity);
+  const quantityValue = Number(quantity.trim());
   const isQuantityValid = Number.isFinite(quantityValue) && quantityValue > 0;
   const isNeededByValid = isIsoDate(neededBy.trim());
   const canSubmit =
@@ -50,7 +51,7 @@ export default function NewMaterialOrder() {
         neededBy: neededBy.trim(),
         supplier: supplier.trim() || null,
       });
-      router.back();
+      goBack();
     } catch (err) {
       setSaving(false);
       setError(err instanceof Error ? err.message : "Could not save this order.");
@@ -60,7 +61,7 @@ export default function NewMaterialOrder() {
   return (
     <Page
       title="New material order"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={submit} disabled={!canSubmit} loading={saving}>
           Raise order

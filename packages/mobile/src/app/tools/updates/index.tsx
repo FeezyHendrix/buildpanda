@@ -1,7 +1,7 @@
+import { goBack } from "@/lib/navigation";
 import { router } from "expo-router";
-import { View } from "react-native";
-import { Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { SearchableList } from "@/components/molecules/searchable-list";
 import { StaleBanner } from "@/components/molecules/stale-banner";
 import { UpdateCard } from "@/components/molecules/update-card";
 import { useProjectUpdates } from "@/hooks/use-updates";
@@ -13,34 +13,25 @@ export default function ProjectUpdates() {
   const updates = data ?? [];
 
   return (
-    <Page title="Updates" onBack={() => router.back()}>
+    <Page scroll={false} title="Updates" onBack={() => goBack()}>
       {isStale ? <StaleBanner what="updates" /> : null}
 
-      {isPending ? (
-        <View className="items-center py-12">
-          <Spinner size="md" />
-        </View>
-      ) : updates.length === 0 ? (
-        <View className="items-center py-12">
-          <Text weight="semibold" className="text-center text-base">
-            No updates yet
-          </Text>
-          <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-            Published project updates appear here. Panda AI also drafts a weekly one from the
-            field data unless it&apos;s turned off in project settings.
-          </Text>
-        </View>
-      ) : (
-        <View className="gap-3">
-          {updates.map((update) => (
-            <UpdateCard
-              key={update.id}
-              update={update}
-              onPress={() => router.push(`/tools/updates/${update.id}` as never)}
-            />
-          ))}
-        </View>
-      )}
+      <SearchableList
+        key={projectId}
+        data={updates}
+        loading={isPending}
+        cards
+        fields={(update) => [update.title, update.description, update.author.name, update.category]}
+        placeholder="Search updates"
+        emptyTitle="No updates yet"
+        emptyBody="Published project updates appear here."
+        renderItem={(update) => (
+          <UpdateCard
+            update={update}
+            onPress={() => router.push(`/tools/updates/${update.id}` as never)}
+          />
+        )}
+      />
     </Page>
   );
 }

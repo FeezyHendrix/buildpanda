@@ -20,6 +20,8 @@ import m0015 from './0015_black_luke_cage.sql';
 import m0016 from './0016_strange_mongoose.sql';
 import m0017 from './0017_material_order_needed_by.sql';
 import m0018 from './0018_field_close_the_loop.sql';
+import m0019 from './0019_building_scope.sql';
+import m0020 from './0020_project_document_folders.sql';
 
   export default {
     journal,
@@ -42,7 +44,9 @@ m0014,
 m0015,
 m0016,
 m0017,
-m0018
+m0018,
+m0019,
+m0020
     }
   }
   

@@ -1,5 +1,6 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
+
 import { useRef, useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
@@ -54,7 +55,7 @@ export default function PandaAiChat() {
   return (
     <Page
       title="Panda AI"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       showSync={false}
       // A fresh thread: the history is what Panda AI answers against, so
       // starting over is the only way to ask about something unrelated.

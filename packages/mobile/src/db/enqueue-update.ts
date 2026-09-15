@@ -1,35 +1,28 @@
 import { and, eq } from "drizzle-orm";
 import { outbox } from "./schema";
+import { isOutboxItemSending } from "./sync-write-state";
 
-type Tx = {
-  select: (fields: { id: typeof outbox.id; status: typeof outbox.status }) => {
-    from: (table: typeof outbox) => {
-      where: (condition: unknown) => { limit: (n: number) => Promise<{ id: string; status: string }[]> };
-    };
-  };
-  insert: (table: typeof outbox) => { values: (row: Record<string, unknown>) => Promise<unknown> };
-  update: (table: typeof outbox) => {
-    set: (values: Record<string, unknown>) => { where: (condition: unknown) => Promise<unknown> };
-  };
-  delete: (table: typeof outbox) => { where: (condition: unknown) => Promise<unknown> };
-};
+import type { Db } from "./client";
 
-async function findQueued(tx: Tx, resource: string, entityId: string, operation: string) {
-  const [row] = await tx
+// Expo SQLite transactions are synchronous; helpers must finish before commit.
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+function findQueued(tx: Tx, resource: string, entityId: string, operation: string, includeSending = false) {
+  const rows = tx
     .select({ id: outbox.id, status: outbox.status })
     .from(outbox)
     .where(
       and(eq(outbox.resource, resource), eq(outbox.entityId, entityId), eq(outbox.operation, operation)),
     )
-    .limit(1);
-  return row ?? null;
+    .all();
+  return rows.find((row) => includeSending || !isOutboxItemSending(row.id)) ?? null;
 }
 
-async function revive(tx: Tx, id: string): Promise<void> {
-  await tx
+function revive(tx: Tx, id: string): void {
+  tx
     .update(outbox)
     .set({ status: "pending", attempts: 0, nextAttemptAt: 0, lastError: null })
-    .where(eq(outbox.id, id));
+    .where(eq(outbox.id, id)).run();
 }
 
 /**
@@ -37,32 +30,32 @@ async function revive(tx: Tx, id: string): Promise<void> {
  *
  * A row that already failed is revived rather than left dead beside a fresh
  * one: the local record carries the crew member's newest edit, so sending it
- * again is exactly what they asked for. A row still pending is left alone —
- * it will read the same local state when it runs.
+ * again is exactly what they asked for. Pending rows are reused until sending
+ * starts; later edits get a follow-up entry with the new values.
  */
-export async function reviveOrQueue(
+export function reviveOrQueue(
   tx: Tx,
   row: { resource: string; entityId: string; projectId: string; operation: string; newId: string },
-): Promise<void> {
-  const existing = await findQueued(tx, row.resource, row.entityId, row.operation);
+): void {
+  const existing = findQueued(tx, row.resource, row.entityId, row.operation);
   if (existing) {
-    if (existing.status === "failed") await revive(tx, existing.id);
+    if (existing.status === "failed") revive(tx, existing.id);
     return;
   }
-  await tx.insert(outbox).values({
+  tx.insert(outbox).values({
     id: row.newId,
     resource: row.resource,
     entityId: row.entityId,
     projectId: row.projectId,
     operation: row.operation,
     nextAttemptAt: 0,
-  });
+  }).run();
 }
 
 /**
  * Queues an edit for push, in the caller's transaction.
  *
- * Returns without queuing when the record's create is still pending: its id has
+ * Returns without queuing when the record's create has not started: its id has
  * never reached the server, so an update would PATCH something that does not
  * exist — the queued create carries the newer local state instead. A second
  * edit coalesces onto the update already queued rather than stacking rows.
@@ -71,19 +64,19 @@ export async function reviveOrQueue(
  * copy quietly loses the guard. The row id is passed in rather than generated
  * here, so this stays free of native modules and can be tested directly.
  */
-export async function enqueueUpdate(
+export function enqueueUpdate(
   tx: Tx,
   resource: string,
   entityId: string,
   projectId: string,
   newId: string,
-): Promise<void> {
-  const create = await findQueued(tx, resource, entityId, "create");
+): void {
+  const create = findQueued(tx, resource, entityId, "create");
   if (create) {
-    if (create.status === "failed") await revive(tx, create.id);
+    if (create.status === "failed") revive(tx, create.id);
     return;
   }
-  await reviveOrQueue(tx, { resource, entityId, projectId, operation: "update", newId });
+  reviveOrQueue(tx, { resource, entityId, projectId, operation: "update", newId });
 }
 
 /**
@@ -94,27 +87,29 @@ export async function enqueueUpdate(
  * then the server has no such record, so nothing is queued at all — pushing a
  * delete for an id the server has never seen would 404.
  */
-export async function enqueueDelete(
+export function enqueueDelete(
   tx: Tx,
   resource: string,
   entityId: string,
   projectId: string,
   newId: string,
-): Promise<void> {
-  const neverReachedServer = (await findQueued(tx, resource, entityId, "create")) !== null;
-
-  await tx
-    .delete(outbox)
-    .where(and(eq(outbox.resource, resource), eq(outbox.entityId, entityId)));
+): void {
+  const create = findQueued(tx, resource, entityId, "create", true);
+  const neverReachedServer = create !== null && !isOutboxItemSending(create.id);
+  const queued = tx.select({ id: outbox.id }).from(outbox)
+    .where(and(eq(outbox.resource, resource), eq(outbox.entityId, entityId))).all();
+  for (const row of queued) {
+    if (!isOutboxItemSending(row.id)) tx.delete(outbox).where(eq(outbox.id, row.id)).run();
+  }
 
   if (neverReachedServer) return;
 
-  await tx.insert(outbox).values({
+  tx.insert(outbox).values({
     id: newId,
     resource,
     entityId,
     projectId,
     operation: "delete",
     nextAttemptAt: 0,
-  });
+  }).run();
 }

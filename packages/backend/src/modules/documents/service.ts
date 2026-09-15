@@ -2,56 +2,19 @@ import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors
 import { formatBytes } from "../../lib/file-storage.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { FilesRepository } from "../files/repository.ts";
-import type { NotificationsService } from "../notifications/service.ts";
 import type { DocumentsRepository, VersionWithFile } from "./repository.ts";
 import type {
+  CreateDocumentInput, EditDocumentInput, AddVersionInput, DocumentsDeps,
   CategoryAggregateRow,
   CategoryRow,
   DocumentCategory,
   DocumentRow,
-  DocumentStatus,
   DocumentVersion,
-  DocumentVisibility,
   DocumentVersionRow,
   ProjectDocument,
 } from "./types.ts";
 
-export interface DocumentRegisterFields {
-  /** The title a person reads; the filename stays the file's own name. */
-  title?: string | null;
-  /** "Rev C", "P02" — free text; every discipline numbers differently. */
-  revision?: string | null;
-  /** The document this one replaces, so the register shows the chain. */
-  supersedesId?: string | null;
-  visibility?: DocumentVisibility;
-  /** The date on the document itself, not the day it was uploaded. */
-  documentDate?: string | null;
-}
-
-export interface CreateDocumentInput extends DocumentRegisterFields {
-  categoryId: string;
-  fileId?: string;
-  fileName?: string;
-  size?: string;
-  uploadedAt?: string;
-  status?: DocumentStatus;
-}
-
-export interface EditDocumentInput extends DocumentRegisterFields {
-  categoryId?: string;
-  fileName?: string;
-  status?: DocumentStatus;
-}
-
-export interface AddVersionInput {
-  fileId: string;
-  revisionLabel?: string;
-  notes?: string;
-}
-
-export interface DocumentsDeps {
-  notifications?: NotificationsService;
-}
+export type { CreateDocumentInput, EditDocumentInput, AddVersionInput } from "./types.ts";
 
 function notifyDocumentUploaded(
   deps: DocumentsDeps,
@@ -160,8 +123,8 @@ export function documentsService(
       input: CreateDocumentInput,
       ownerId: string,
     ): Promise<ProjectDocument> {
-      const category = await repository.findCategoryById(input.categoryId);
-      if (!category) throw new NotFoundError("Document category");
+      const category = input.categoryId ? await repository.findCategoryById(input.categoryId) : null;
+      if (input.categoryId && !category) throw new NotFoundError("Document category");
 
       let fileId: string | null = null;
       let fileName: string | undefined = input.fileName;
@@ -186,7 +149,7 @@ export function documentsService(
       const row = await repository.create({
         id: generateId("doc"),
         project_id: projectId,
-        category_id: category.id,
+        category_id: category?.id ?? null,
         file_id: fileId,
         file_name: fileName,
         size,
@@ -225,7 +188,7 @@ export function documentsService(
         notifyDocumentUploaded(deps, recipientId, projectId, row.file_name, ownerId);
       }
 
-      return toDocument(row, category, versionCount);
+      return toDocument(row, category ?? null, versionCount);
     },
 
     async edit(

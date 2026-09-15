@@ -46,6 +46,7 @@ const keyDateSchema = {
   properties: {
     id: { type: "string" },
     projectId: { type: "string" },
+    buildingId: { type: "string" },
     label: { type: "string" },
     targetDate: { type: ["string", "null"] },
     actualDate: { type: ["string", "null"] },
