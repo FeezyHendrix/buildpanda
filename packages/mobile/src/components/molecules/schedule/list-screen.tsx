@@ -1,48 +1,40 @@
 import { router } from "expo-router";
-import type { ReactNode } from "react";
-import { View } from "react-native";
-import { Card, Spinner, Text } from "@/components/atoms";
+import type { ReactElement } from "react";
 import { Page } from "@/components/molecules/page";
+import { SearchableList } from "@/components/molecules/searchable-list";
 import { StaleBanner } from "@/components/molecules/stale-banner";
 
-export function ScheduleListScreen({
+export function ScheduleListScreen<T extends { id: string }>({
   title,
   isPending,
   isStale,
-  isEmpty,
   emptyTitle,
   emptyBody,
-  children,
+  data,
+  fields,
+  renderItem,
 }: {
   title: string;
   isPending: boolean;
   isStale: boolean;
-  isEmpty: boolean;
   emptyTitle: string;
   emptyBody: string;
-  children: ReactNode;
+  data: readonly T[];
+  fields: (row: T) => readonly (string | number | null | undefined)[];
+  renderItem: (row: T) => ReactElement;
 }) {
   return (
-    <Page buildingScope title={title} onBack={() => router.back()}>
-      {isPending ? (
-        <View className="items-center py-12">
-          <Spinner size="md" />
-        </View>
-      ) : isEmpty ? (
-        <View className="items-center py-12">
-          <Text weight="semibold" className="text-center text-base">
-            {emptyTitle}
-          </Text>
-          <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-            {emptyBody}
-          </Text>
-        </View>
-      ) : (
-        <>
-          {isStale ? <StaleBanner what="schedule" /> : null}
-          <Card>{children}</Card>
-        </>
-      )}
+    <Page buildingScope scroll={false} title={title} onBack={() => router.back()}>
+      {isStale ? <StaleBanner what="schedule" /> : null}
+      <SearchableList
+        data={data}
+        fields={fields}
+        loading={isPending}
+        renderItem={renderItem}
+        placeholder={`Search ${title.toLowerCase()}`}
+        emptyTitle={emptyTitle}
+        emptyBody={emptyBody}
+      />
     </Page>
   );
 }

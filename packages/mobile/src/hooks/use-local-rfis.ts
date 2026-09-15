@@ -1,11 +1,12 @@
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { useMemo } from "react";
-import type { RfiStatusTransition, UpsertRfiInput } from "@/api/rfis";
+import { useEffect, useMemo } from "react";
+import { rfisApi, type RfiStatusTransition, type UpsertRfiInput } from "@/api/rfis";
 import type { Db } from "@/db/client";
 import { flushOutbox } from "@/db/outbox";
 import { useLocalDb } from "@/db/provider";
 import { rfisRepository, toRfi } from "@/db/rfis-repository";
 import { useFieldSession } from "@/lib/field-session";
+import { useSyncState } from "@/lib/sync-provider";
 
 /**
  * RFIs straight from SQLite.
@@ -16,8 +17,19 @@ import { useFieldSession } from "@/lib/field-session";
  * project so an unrelated write doesn't re-render this list.
  */
 export function useLocalRfis(db: Db, projectId: string) {
+  const { isOnline } = useSyncState();
   const query = useMemo(() => rfisRepository.listQuery(db, projectId), [db, projectId]);
   const live = useLiveQuery(query, [query]);
+  useEffect(() => {
+    if (!isOnline) return;
+    let cancelled = false;
+    rfisApi.list(projectId)
+      .then((rows) => {
+        if (!cancelled) return rfisRepository.upsertFromServer(db, projectId, rows);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [db, projectId, isOnline]);
   const data = useMemo(() => (live.data ?? []).map(toRfi), [live.data]);
   return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }

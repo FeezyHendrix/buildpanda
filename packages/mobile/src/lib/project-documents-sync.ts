@@ -1,7 +1,8 @@
 import { documentsApi } from "@/api/documents";
 import type { Db } from "@/db/client";
-import { DOCUMENT_GROUP, documentsRepository } from "@/db/documents-repository";
+import { documentsRepository } from "@/db/documents-repository";
 import { cacheDocument } from "./download-file";
+import { isReviewableFile } from "./reviewable-file";
 
 export interface PlanDownloadProgress {
   completed: number;
@@ -10,7 +11,7 @@ export interface PlanDownloadProgress {
   error: string | null;
 }
 
-/** Prepare only the selected project's current drawings, two files at a time. */
+/** Prepare the selected project's PDFs and images, two files at a time. */
 export async function syncProjectDocuments(
   db: Db,
   projectId: string,
@@ -18,20 +19,15 @@ export async function syncProjectDocuments(
   cancelled: () => boolean,
 ): Promise<void> {
   const progress: PlanDownloadProgress = { completed: 0, total: 0, failed: 0, error: null };
-  const results = await Promise.allSettled([
-    documentsApi.categories(projectId).then(async (rows) => {
-      if (!cancelled()) await documentsRepository.upsertCategories(db, projectId, rows);
-    }),
-    documentsApi.list(projectId).then(async (rows) => {
-      if (!cancelled()) await documentsRepository.upsertFromServer(db, projectId, rows);
-    }),
-  ]);
-  if (cancelled()) return;
-  if (results.some((result) => result.status === "rejected")) {
-    progress.error = "Couldn't refresh all plan details. Saved plans are still available.";
+  try {
+    const rows = await documentsApi.list(projectId);
+    if (!cancelled()) await documentsRepository.upsertFromServer(db, projectId, rows);
+  } catch {
+    progress.error = "Couldn't refresh the file list. Saved files are still available.";
   }
+  if (cancelled()) return;
   const plans = (await documentsRepository.listQuery(db, projectId))
-    .filter((row) => row.group === DOCUMENT_GROUP.PLAN && row.currentVersionId && !row.isPendingSync);
+    .filter((row) => isReviewableFile(row.fileName) && row.currentVersionId && !row.isPendingSync);
   progress.total = plans.length;
   onProgress({ ...progress });
   let next = 0;

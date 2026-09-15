@@ -12,9 +12,9 @@ import { useFieldSession } from "@/lib/field-session";
 import { useAuthGate } from "@/lib/use-auth-gate";
 
 // Split so the raised mic button can hold the centre slot, Ernest-style:
-// Plans · Schedule · [mic] · Tools · Account.
+// Files · Schedule · [mic] · Tools · Account.
 const LEFT_TABS = [
-  { name: "index", title: "Plans", icon: "document-outline", iconActive: "document" },
+  { name: "index", title: "Files", icon: "document-outline", iconActive: "document" },
   { name: "schedule", title: "Schedule", icon: "list-outline", iconActive: "list" },
 ] as const;
 

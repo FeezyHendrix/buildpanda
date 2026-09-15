@@ -4,10 +4,11 @@ import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import { RFI_STATUS_LABELS, type RfiPriority } from "@/api/rfis";
 import type { LocalRfi } from "@/db/rfis-repository";
-import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_FAINT } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
+import { SearchableList } from "@/components/molecules/searchable-list";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useLocalRfis } from "@/hooks/use-local-rfis";
@@ -59,34 +60,22 @@ function RfiRow({ rfi }: { rfi: LocalRfi }) {
 /** Split out so the live query only mounts once the database is open. */
 function RfiList({ db, projectId }: { db: Db; projectId: string }) {
   const { data, isPending } = useLocalRfis(db, projectId);
-
-  if (isPending) {
-    return (
-      <View className="items-center py-12">
-        <Spinner size="md" />
-      </View>
-    );
-  }
-
-  if (data.length === 0) {
-    return (
-      <View className="items-center py-12">
-        <Text weight="semibold" className="text-center text-base">
-          No RFIs yet
-        </Text>
-        <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-          Raise one when site needs an answer before work can continue.
-        </Text>
-      </View>
-    );
-  }
-
   return (
-    <Card>
-      {data.map((rfi) => (
-        <RfiRow key={rfi.id} rfi={rfi} />
-      ))}
-    </Card>
+    <SearchableList
+      data={data}
+      loading={isPending}
+      fields={(row) => [
+        row.subject,
+        row.number > 0 ? `#${row.number}` : null,
+        RFI_STATUS_LABELS[row.status],
+        row.ballInCourtName,
+        row.priority,
+      ]}
+      placeholder="Search RFIs"
+      emptyTitle="No RFIs yet"
+      emptyBody="Raise one when site needs an answer before work can continue."
+      renderItem={(row) => <RfiRow rfi={row} />}
+    />
   );
 }
 
@@ -96,14 +85,19 @@ export default function Rfis() {
 
   return (
     <Page
+      scroll={false}
       title="RFIs"
       onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton icon="add" label="New RFI" onPress={() => router.push("/tools/rfis/new")} />
+        <HeaderIconButton
+          icon="add"
+          label="New RFI"
+          onPress={() => router.push("/tools/rfis/new")}
+        />
       }
     >
       {ready && db && projectId ? (
-        <RfiList db={db} projectId={projectId} />
+        <RfiList key={projectId} db={db} projectId={projectId} />
       ) : (
         <View className="items-center py-12">
           <Spinner size="md" />

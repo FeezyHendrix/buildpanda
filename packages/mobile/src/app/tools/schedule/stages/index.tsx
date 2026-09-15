@@ -15,11 +15,12 @@ export default function Stages() {
       title="Build stages"
       isPending={stages.isPending}
       isStale={stages.isStale}
-      isEmpty={data.length === 0}
+      key={projectId}
+      data={data}
+      fields={(stage) => [stage.name, stage.status, stage.dateRange]}
       emptyTitle="No build stages"
       emptyBody="Stages break the build into phases with their own progress."
-    >
-      {data.map((stage) => (
+      renderItem={(stage) => (
         <Pressable
           key={stage.id}
           onPress={() => router.push(`/tools/schedule/stages/${stage.id}` as never)}
@@ -27,7 +28,7 @@ export default function Stages() {
         >
           <StageRow stage={stage} />
         </Pressable>
-      ))}
-    </ScheduleListScreen>
+      )}
+    />
   );
 }
