@@ -8,10 +8,8 @@ const nextConfig = {
   // Runs as a Node server (next start). No static export.
   trailingSlash: true,
   outputFileTracingRoot: monorepoRoot,
-  images: {
-    // Logo is an SVG; keep optimization off so next/image serves it directly.
-    unoptimized: true,
-  },
+  // Use Next's responsive image optimization for product screenshots.
+  // SVG logos automatically bypass the optimizer.
 };
 
 export default nextConfig;

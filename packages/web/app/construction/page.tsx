@@ -19,9 +19,9 @@ import {
 
 export const metadata: Metadata = pageMetadata({
   path: "construction",
-  title: "Managed construction service in Nigeria",
+  title: "Managed construction service",
   description:
-    "We scope the work, set the budget and programme, appoint and manage the trades, and report progress and spend as it happens. You get the record a contractor would keep, without having to keep it. For owners and investors, including from abroad.",
+    "BuildPanda manages your construction project, from scope and budget to site delivery. Stay informed with clear progress, cost and inspection records.",
   socialTitle: "We run the build, and report it to you as it happens",
 });
 
@@ -30,9 +30,8 @@ const serviceJsonLd = {
   "@type": "Service",
   serviceType: "Construction project management",
   provider: { "@type": "Organization", name: site.name, url: site.url },
-  areaServed: { "@type": "Country", name: "Nigeria" },
   description:
-    "A construction service managed on the ground in Nigeria and run on the BuildPanda software, covering planning, day-to-day site management, inspections you can request, daily site reporting, and a payment record that traces back to work that was signed off.",
+    "A managed construction service run on the BuildPanda software, covering planning, day-to-day site management, inspections you can request, daily site reporting, and a payment record that traces back to work that was signed off.",
 };
 
 const phases = [
@@ -87,10 +86,10 @@ export default function ConstructionPage() {
             A true partner on the ground, from groundbreaking to completion.
           </h1>
           <p className="max-w-2xl text-pretty text-lg leading-relaxed text-muted">
-            This is our managed construction service. BuildPanda runs your build
-            in Nigeria, and every stage, payment certificate and inspection
-            report goes on the record where you can read it. If you would rather
-            run your own build, that is the software.
+            This is our managed construction service. BuildPanda runs your build,
+            and every stage, payment certificate and inspection report goes on
+            the record where you can read it. If you would rather run your own
+            build, that is the software.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/talk-to-us/" size="lg">
@@ -132,7 +131,7 @@ export default function ConstructionPage() {
             <FeatureCard
               icon={<GlobeIcon className="h-6 w-6" />}
               title="Real-time visibility, anywhere"
-              description="Daily logs, photos and progress stream to your dashboard, so you always know what is happening on site without flying in."
+              description="Daily logs, photos and progress stream to your dashboard, so you can follow what is happening without being on site."
             />
           </div>
         </Container>
@@ -180,17 +179,16 @@ export default function ConstructionPage() {
             <div className="flex flex-col gap-5">
               <span className="inline-flex items-center gap-2 text-sm font-semibold text-brand">
                 <GlobeIcon className="h-5 w-5" />
-                Building from the diaspora
+                Building from a distance
               </span>
               <h2 className="text-balance text-3xl font-bold leading-tight text-ink sm:text-4xl">
                 You found us because you did not know who to trust. That ends here.
               </h2>
               <p className="text-pretty text-base leading-relaxed text-muted sm:text-lg">
-                Many of the people we work with live abroad and want to build back
-                home. They have heard the horror stories: stalled projects,
-                inflated costs, work that does not match the money sent.
-                BuildPanda exists to make that fear obsolete. We are your eyes,
-                hands and accountability on the ground.
+                Managing a build from a distance can make it difficult to verify
+                progress, costs and quality. BuildPanda keeps you connected to
+                the site with clear updates, inspection reports and payment
+                records. We are your eyes, hands and accountability on the ground.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

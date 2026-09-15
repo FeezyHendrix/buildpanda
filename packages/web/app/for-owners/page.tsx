@@ -24,9 +24,9 @@ import {
 
 export const metadata: Metadata = pageMetadata({
   path: "for-owners",
-  title: "Construction software for developers and project owners",
+  title: "Construction software for owners and developers",
   description:
-    "Follow a build you are paying for. See progress against the programme, request an inspection at any stage, and read a payment record that traces back to work that was signed off. Book a demo.",
+    "Track construction progress, request site inspections and review payment records with BuildPanda software for owners and developers, wherever you are.",
   socialTitle: "Owners: see what you are paying for, stage by stage",
 });
 

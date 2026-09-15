@@ -9,25 +9,21 @@ import {
   SectionHeading,
   FeatureCard,
 } from "@/components/ui";
-import { site } from "@/lib/site";
 import { ConsultationSection } from "@/components/consultation-section";
 import { ContractorOnboardingTimeline } from "@/components/contractor-onboarding-timeline";
+import { ProductScreenshot } from "@/components/product-screenshot";
+import { ProductWalkthrough } from "@/components/product-walkthrough";
 import {
   UsersIcon,
   ClipboardIcon,
   LayersIcon,
-  MilestoneIcon,
-  WalletIcon,
-  ChartIcon,
-  ArrowRightIcon,
-  DocumentIcon,
 } from "@/components/icons";
 
 export const metadata: Metadata = pageMetadata({
   path: "for-contractors",
   title: "Construction management software for contractors",
   description:
-    "Run your own builds on BuildPanda: estimates and proposals, programme and delay records, site diaries, inspections, variations, and payment applications that trace to work that was signed off. Book a demo.",
+    "Manage estimates, construction schedules, site diaries and payment certificates with BuildPanda software for contractors. Book a demo for your next project.",
   socialTitle: "Contractors: run the build and keep the record that proves it",
 });
 
@@ -52,37 +48,58 @@ const winWorkFeatures = [
   },
 ];
 
-const deliveryFeatures = [
+const preconstructionScreens = [
   {
-    icon: <MilestoneIcon className="h-6 w-6" />,
-    title: "Milestones & schedule",
+    src: "/product/boq.png",
+    alt: "BuildPanda bill of quantities with grouped work items, quantities, units and an action to price them into an estimate",
+    title: "Build an estimate from the bill of quantities",
     description:
-      "Break your build into clear milestones with a live schedule of what comes next.",
+      "Keep the scope, quantities and units together, then price the work into an estimate for your proposal.",
   },
   {
-    icon: <WalletIcon className="h-6 w-6" />,
-    title: "Payment records",
+    src: "/product/client-proposal.png",
+    alt: "A branded BuildPanda client proposal showing the project brief and an itemised estimate with quantities, rates and totals",
+    title: "Show the client exactly what you are pricing",
     description:
-      "Certify work, record what the client paid, and keep an audit trail of both. The money moves through your own bank.",
+      "Share a branded proposal with the project brief and a clear breakdown of the work, quantities, rates and totals.",
+  },
+];
+
+const deliveryScreens = [
+  {
+    src: "/product/programme.jpg",
+    alt: "BuildPanda construction programme with a Gantt chart, recorded delays, delay costs and a revised completion date",
+    title: "Milestones, schedules and delays",
+    description:
+      "See the programme, record delays and follow their effect on the completion date and cost of the job.",
   },
   {
-    icon: <ChartIcon className="h-6 w-6" />,
-    title: "Budget & finances",
+    src: "/product/finance.jpg",
+    alt: "BuildPanda finance overview showing contract value, variations, certified work, payments and retention",
+    title: "Payment records and project finances",
     description:
-      "Allocate your budget, track every expense, and watch your spend against the plan with no hidden surprises.",
+      "Track variations, certified work, payments and retention against the contract. Every total has a record behind it.",
   },
   {
-    icon: <DocumentIcon className="h-6 w-6" />,
-    title: "Documents in one place",
+    src: "/product/daily-log.jpg",
+    alt: "BuildPanda site diary listing daily weather, crew, working hours and the activities completed on site",
+    title: "Site diaries and daily reports",
     description:
-      "Drawings, permits, contracts, and receipts are stored securely and accessible whenever you need them.",
+      "Capture weather, crew and hours against the day's activities, so site progress stays in the project record.",
+  },
+  {
+    src: "/product/plans.jpg",
+    alt: "A construction drawing in BuildPanda with drawing scale, markup tools and a panel for review notes",
+    title: "Drawings and review notes together",
+    description:
+      "Open a drawing, measure from its scale and add markups and review notes where the team can find them.",
   },
 ];
 
 export default function ForContractorsPage() {
   return (
     <>
-    <JsonLd data={breadcrumbJsonLd([{ name: "For contractors", path: "for-contractors" }])} />
+      <JsonLd data={breadcrumbJsonLd([{ name: "For contractors", path: "for-contractors" }])} />
       <section className="bg-white py-16 sm:py-20 lg:py-24">
         <Container className="flex flex-col items-center text-center gap-6">
           <Badge>FOR CONTRACTORS & BUILDERS</Badge>
@@ -95,15 +112,14 @@ export default function ForContractorsPage() {
             the finances from a single dashboard.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row mt-4">
-            {/* <ButtonLink href={site.appUrl} size="lg">
+            <ButtonLink href="/talk-to-us/" size="lg">
               Book a demo
-              <ArrowRightIcon className="h-5 w-5" />
-            </ButtonLink> */}
-            <ButtonLink href="/talk-to-us/" variant="outline" size="lg">
-              Talk to us
-              <ArrowRightIcon className="h-5 w-5" />
+            </ButtonLink>
+            <ButtonLink href="#product-tour" variant="outline" size="lg">
+              Watch the product tour
             </ButtonLink>
           </div>
+          <ProductWalkthrough />
         </Container>
       </section>
 
@@ -118,6 +134,11 @@ export default function ForContractorsPage() {
               <FeatureCard key={feature.title} {...feature} />
             ))}
           </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {preconstructionScreens.map((screen) => (
+              <ProductScreenshot key={screen.src} {...screen} width={1500} height={940} />
+            ))}
+          </div>
         </Container>
       </section>
 
@@ -125,24 +146,11 @@ export default function ForContractorsPage() {
         <Container className="flex flex-col gap-12">
           <SectionHeading
             title="Deliver without chaos"
-            description="Keep your team, your clients, and your finances perfectly aligned."
+            description="See how the programme, finances, daily reports and drawings connect. Select any screenshot to view it at full size."
           />
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {deliveryFeatures.map((feature) => (
-              <div
-                key={feature.title}
-                className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-6"
-              >
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft text-brand">
-                  {feature.icon}
-                </span>
-                <h3 className="text-lg font-semibold text-ink mt-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm leading-relaxed text-muted">
-                  {feature.description}
-                </p>
-              </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {deliveryScreens.map((screen) => (
+              <ProductScreenshot key={screen.src} {...screen} width={2468} height={1542} />
             ))}
           </div>
         </Container>
