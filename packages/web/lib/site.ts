@@ -4,7 +4,7 @@ export const site = {
   url: "https://buildpanda.io",
   tagline: "Run every project from estimate to handover, on one system.",
   description:
-    "BuildPanda is the software contractors, developers and project managers run their builds on: estimates and proposals, programme and delays, inspections, and payment certificates that trace to work that was signed off. If you would rather not run the site yourself, we will build it for you.",
+    "Manage construction estimates, schedules, site inspections and payment records in one place with BuildPanda. Built for contractors and owners. Book a demo.",
   // Configure these for the live site.
   email: "hello@buildpanda.io",
   phones: ["+234 810 991 8957", "+234 906 545 7397"],

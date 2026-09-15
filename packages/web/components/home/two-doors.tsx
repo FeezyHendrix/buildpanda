@@ -1,5 +1,4 @@
 import { Container, ButtonLink, SectionHeading } from "@/components/ui";
-import { site } from "@/lib/site";
 
 // Two flat tint panels side by side rather than stacked rows: the grid gives
 // them equal height, so the two calls to action land on the same line. Neither
@@ -10,15 +9,15 @@ const doors = [
     title: "You run the build",
     body: "Estimates, programme and delays, certificates and variations, the site diary, and the client's view.",
     who: "For contractors, developers and project managers.",
-    cta: { label: "Book a demo", href: "/talk-to-us/" },
+    cta: { label: "Software for contractors", href: "/for-contractors/" },
     fill: "bg-tint-brand",
   },
   {
     number: "02",
     title: "We run the build",
     body: "We scope it, budget it, programme it, appoint and manage the trades, and report as it happens.",
-    who: "For owners and investors, including from abroad.",
-    cta: { label: "Talk to us about building", href: "/talk-to-us/" },
+    who: "For owners and investors, on site or managing remotely.",
+    cta: { label: "Our construction service", href: "/construction/" },
     fill: "bg-tint-sky",
   },
 ];

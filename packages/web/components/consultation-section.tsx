@@ -3,7 +3,7 @@ import { ConsultationForm } from "@/components/consultation-form";
 import { CheckIcon } from "@/components/icons";
 
 const assurances = [
-  "A team that understands building in Nigeria",
+  "A team that understands your building project",
   "A clear plan from land and design through to handover",
   "Inspections you can request, with the report on the record",
   "One dashboard you can watch from anywhere in the world",

@@ -22,7 +22,7 @@ export const scenes: Scene[] = [
     ask: "Take off the quantities on this drawing and price them.",
     answer: [
       "Measured 14 items off sheet P-03 at 1:120.",
-      "Priced against your rate library — ₦42,500,000.",
+      "Priced against your rate library: 42,500,000 in the project currency.",
       "Every line is editable before it reaches a proposal.",
     ],
     source: "Pre-construction take-off",
@@ -41,9 +41,9 @@ export const scenes: Scene[] = [
     label: "Ask about the money",
     ask: "How much have we certified, and what is still unpaid?",
     answer: [
-      "Certified gross to date ₦20,187,500 on an adjusted sum of ₦854,200,000.",
-      "Nothing received against it, so ₦20,187,500 is unpaid certified.",
-      "Retention held ₦1,009,375.",
+      "Certified gross to date: 20,187,500 on an adjusted sum of 854,200,000.",
+      "Nothing received against it, so 20,187,500 is unpaid certified.",
+      "Retention held: 1,009,375. All amounts are in the project currency.",
     ],
     source: "Reads the certificates and recorded receipts",
   },
