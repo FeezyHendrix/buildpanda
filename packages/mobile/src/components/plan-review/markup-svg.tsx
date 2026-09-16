@@ -60,7 +60,11 @@ function PinShape({ at, color, selected, resolved, w, h }: { at: MarkupPoint; co
     <g opacity={resolved ? 0.45 : 1}>
       {selected ? <circle cx={p.x} cy={p.y} r={19} fill="none" stroke={color} strokeWidth={2} /> : null}
       <circle cx={p.x} cy={p.y} r={13} fill={color} stroke={palette.surface} strokeWidth={2.5} />
-      <circle cx={p.x} cy={p.y} r={4} fill={palette.surface} />
+      {/* Keep the pin glyph consistent with the comment tool and the web viewer. */}
+      <g transform={`translate(${p.x - 7} ${p.y - 7})`} fill="none" stroke={palette.surface} strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2.5 3.5h9A1.5 1.5 0 0 1 13 5v3.5A1.5 1.5 0 0 1 11.5 10H6l-3.5 2.5V10h0A1.5 1.5 0 0 1 1 8.5V5a1.5 1.5 0 0 1 1.5-1.5Z" />
+        <path d="M4.5 6.75h.01M7 6.75h.01M9.5 6.75h.01" strokeWidth={1.75} />
+      </g>
     </g>
   );
 }
