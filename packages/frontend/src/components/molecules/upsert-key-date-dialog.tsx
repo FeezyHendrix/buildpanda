@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
+import { Select, type SelectOption } from "@/components/atoms/select";
+import { TextArea } from "@/components/atoms/text-area";
+import { TextInput } from "@/components/atoms/text-input";
 import type { KeyDateStatus } from "@/lib/project-types";
 
 export interface UpsertKeyDateValues {
@@ -21,10 +23,11 @@ interface Props {
   error?: string | null;
 }
 
-const STATUS: KeyDateStatus[] = ["Upcoming", "Met", "Missed"];
-
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const STATUS_OPTIONS: SelectOption[] = [
+  { value: "Upcoming", label: "Upcoming" },
+  { value: "Met", label: "Met" },
+  { value: "Missed", label: "Missed" },
+];
 
 function UpsertKeyDateDialog({ open, onOpenChange, mode, initial, onSubmit, isSubmitting = false, error }: Props) {
   const [label, setLabel] = useState("");
@@ -58,38 +61,63 @@ function UpsertKeyDateDialog({ open, onOpenChange, mode, initial, onSubmit, isSu
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={mode === "create" ? "Add key date" : "Edit key date"}
-      description="A milestone date to track (e.g. Roof on, Move-in target)."
-      submitLabel={mode === "create" ? "Add" : "Save changes"}
+      title={mode === "create" ? "Add Key Date" : "Edit Key Date"}
+      description="Record an important project date, such as a milestone, inspection, payment due date, or handover, so your team stays on schedule."
+      submitLabel={mode === "create" ? "Create Stage" : "Save Changes"}
       submitDisabled={!label.trim()}
       submitting={isSubmitting}
       error={error ?? null}
       onSubmit={handleSubmit}
+      footerVariant="stacked"
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="kd-label">Label</Label>
-        <input id="kd-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Roof on (weathertight)" className={field} />
-      </div>
+      <TextInput label="Label" value={label} onChange={setLabel} placeholder="" />
+
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="kd-target">Target date</Label>
-          <input id="kd-target" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} className={field} />
+          <label htmlFor="kd-target" className="text-[13px] font-medium leading-none text-[#1E1E1E]">
+            Start date
+          </label>
+          <input
+            id="kd-target"
+            type="date"
+            value={targetDate}
+            onChange={(e) => setTargetDate(e.target.value)}
+            placeholder="DD/MM/YY"
+            className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
+          />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="kd-actual">Actual date</Label>
-          <input id="kd-actual" type="date" value={actualDate} onChange={(e) => setActualDate(e.target.value)} className={field} />
+          <label htmlFor="kd-actual" className="text-[13px] font-medium leading-none text-[#1E1E1E]">
+            Target end date
+          </label>
+          <input
+            id="kd-actual"
+            type="date"
+            value={actualDate}
+            onChange={(e) => setActualDate(e.target.value)}
+            placeholder="DD/MM/YY"
+            className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
+          />
         </div>
       </div>
+
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="kd-status">Status</Label>
-        <select id="kd-status" value={status} onChange={(e) => setStatus(e.target.value as KeyDateStatus)} className={field}>
-          {STATUS.map((s) => (<option key={s} value={s}>{s}</option>))}
-        </select>
+        <label className="text-[13px] font-medium leading-none text-[#1E1E1E]">Status</label>
+        <Select
+          options={STATUS_OPTIONS}
+          value={status}
+          onChange={(v) => v && setStatus(v as KeyDateStatus)}
+          placeholder="Select Phase"
+        />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="kd-notes">Notes</Label>
-        <textarea id="kd-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-base lg:text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
-      </div>
+
+      <TextArea
+        label="Notes"
+        placeholder="Describe what happened on site."
+        value={notes}
+        onChange={setNotes}
+        rows={8}
+      />
     </FormDrawer>
   );
 }
