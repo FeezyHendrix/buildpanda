@@ -110,6 +110,15 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/media",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "documents", "view");
+      return service.listProjectMedia(project.id);
+    },
+  );
+
   fastify.post<{ Params: { id: string }; Body: CreateDocumentInput }>(
     "/projects/:id/documents",
     { schema: { params: projectIdParams, body: createDocumentBody } },

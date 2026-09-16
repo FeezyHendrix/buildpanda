@@ -1,5 +1,5 @@
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
-import { formatBytes } from "../../lib/file-storage.ts";
+import { formatBytes, getDownloadUrl } from "../../lib/file-storage.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { FilesRepository } from "../files/repository.ts";
 import type { DocumentsRepository, VersionWithFile } from "./repository.ts";
@@ -97,6 +97,17 @@ export function documentsService(
   deps: DocumentsDeps = {},
 ) {
   return {
+    async listProjectMedia(projectId: string) {
+      const rows = await repository.listProjectMediaSources(projectId);
+      return Promise.all(rows.map(async (item: { id: string; type: "photo" | "video"; url: string | null; storage_path: string | null; title: string; source: string; created_at: Date | string }) => ({
+        id: item.id,
+        type: item.type,
+        url: item.url ?? (item.storage_path ? await getDownloadUrl(item.storage_path) : ""),
+        title: item.title,
+        source: item.source,
+        createdAt: new Date(item.created_at).toISOString(),
+      })));
+    },
     async listByProject(projectId: string): Promise<ProjectDocument[]> {
       const [docs, categories, versionCounts] = await Promise.all([
         repository.listByProject(projectId),
