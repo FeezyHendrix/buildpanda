@@ -194,7 +194,9 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
         aria-hidden="true"
         className={cn(
           "fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 lg:hidden",
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+          open
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none",
         )}
         onClick={onClose}
       >
@@ -229,7 +231,12 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
             "lg:hidden",
           )}
         >
-          <ChevronRightIcon className={cn("size-4 text-gray-400 transition-transform duration-300", open && "rotate-180")} />
+          <ChevronRightIcon
+            className={cn(
+              "size-4 text-gray-400 transition-transform duration-300",
+              open && "rotate-180",
+            )}
+          />
         </button>
 
         {/* Desktop expand tab — peeks from the top-left screen edge while the sidebar is hidden */}
@@ -249,263 +256,312 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           </button>
         )}
 
-      <aside
-        className={cn(
-          "flex h-full flex-col overflow-hidden border-r border-border bg-[#FAFAFA] w-[260px]",
-          "transition-[width] duration-300 ease-in-out",
-          collapsed && "lg:w-0 lg:border-r-0",
-          className,
-        )}
-      >
-        {/* Logo header — same h-16 as the content-area topbar so they sit flush */}
-        <div className="flex h-16 w-[260px] shrink-0 items-center border-b border-[#EBEBEB] px-4">
-          <Link to="/" aria-label="BuildPanda home">
-            <img src={logo} alt="BuildPanda" className="h-8" />
-          </Link>
-        </div>
-
-      <div className="flex min-h-0 flex-1 w-[260px] shrink-0 flex-col gap-4 px-4 py-5 overflow-hidden">
-      <div className="flex items-center justify-between gap-2">
-        <Link
-          to={isClient ? "/my-build" : "/dashboard"}
+        <aside
           className={cn(
-            "inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-600",
-            "outline-none transition-colors hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+            "flex h-full flex-col overflow-hidden border-r border-border bg-[#FAFAFA] w-[260px]",
+            "transition-[width] duration-300 ease-in-out",
+            collapsed && "lg:w-0 lg:border-r-0",
+            className,
           )}
         >
-          <BackArrowIcon className="size-4" />
-          My Projects
-        </Link>
-        {/* Collapse control — top row, floated right of Projects (desktop only) */}
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          aria-label="Hide sidebar"
-          className={cn(
-            "hidden size-7 shrink-0 items-center justify-center rounded-md lg:flex",
-            "text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700",
-            "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          )}
-        >
-          <ChevronRightIcon className="size-4 rotate-180" />
-        </button>
-      </div>
-
-      <div className="-mx-4 border-b border-[#EBEBEB] px-4 pb-4">
-        <div className="flex items-start gap-3">
-          <ReactSVG src={icons2.folder} />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-gray-900">
-              {project.name}
-            </p>
-            <p className="line-clamp-2 text-xs text-gray-500">
-              {project.address}
-            </p>
-          </div>
-        </div>
-        {isOn("projects.multiBuilding") && canViewSection(access, "projects.schedule", "buildings") && realBuildings.length > 0 && (
-          <div className="mt-3 flex flex-col gap-1.5">
-            <BuildingSwitcher buildings={realBuildings} onClose={onClose} />
-            <Link
-              to={`/project/${project.id}/buildings`}
-              onClick={onClose}
-              className="text-caption-m font-medium text-primary-500 hover:text-primary-600"
-            >
-              Manage Buildings
+          {/* Logo header — same h-16 as the content-area topbar so they sit flush */}
+          <div className="flex h-16 w-[260px] shrink-0 items-center border-b border-[#EBEBEB] px-4">
+            <Link to="/" aria-label="BuildPanda home">
+              <img src={logo} alt="BuildPanda" className="h-8" />
             </Link>
           </div>
-        )}
-      </div>
 
-      {isClient ? (
-        <nav data-tour="project-nav" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1 no-scrollbar">
-          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-            My build
-          </p>
-          {clientItems.map((entry) => (
-            <ProjectNavLink
-              key={entry.slug}
-              item={{ ...entry, to: `/project/${project.id}/${entry.slug}` }}
-              onClose={onClose}
-            />
-          ))}
-        </nav>
-      ) : (
-        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1 pb-4 no-scrollbar">
-          {showMultiBuildingNav ? (
-            <>
-              <div className="mt-1 mb-2">
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  {activeBuilding ? activeBuilding.name : "All buildings"}
-                </p>
-                {progressItems.map(item => <ProjectNavLink key={item.slug} item={item} onClose={onClose} />)}
-                {tasksItem && <ProjectNavLink item={tasksItem} onClose={onClose} />}
-                {scopedOperationsItems.map(item => <ProjectNavLink key={item.slug} item={item} onClose={onClose} />)}
+          <div className="flex min-h-0 flex-1 w-[260px] shrink-0 flex-col gap-4 px-4 py-5 overflow-hidden">
+            <div className="flex items-center justify-between gap-2">
+              <Link
+                to={isClient ? "/my-build" : "/dashboard"}
+                className={cn(
+                  "inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-600",
+                  "outline-none transition-colors hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                )}
+              >
+                <BackArrowIcon className="size-4" />
+                My Projects
+              </Link>
+              {/* Collapse control — top row, floated right of Projects (desktop only) */}
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                aria-label="Hide sidebar"
+                className={cn(
+                  "hidden size-7 shrink-0 items-center justify-center rounded-md lg:flex",
+                  "text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700",
+                  "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                )}
+              >
+                <ChevronRightIcon className="size-4 rotate-180" />
+              </button>
+            </div>
+
+            <div className="-mx-4 border-b border-[#EBEBEB] px-4 pb-4">
+              <div className="flex items-start gap-3">
+                {project.name === "Sample Project" ? (
+                  <ReactSVG
+                    src={icons2.folderGrey}
+                    className="[&_svg]:size-10"
+                  />
+                ) : (
+                  <ReactSVG src={icons2.folder} 
+                    className="[&_svg]:size-10" 
+                  />
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-900">
+                    {project.name}
+                  </p>
+                  <p className="line-clamp-2 text-xs text-gray-500">
+                    {project.address}
+                  </p>
+                </div>
               </div>
+              {isOn("projects.multiBuilding") &&
+                canViewSection(access, "projects.schedule", "buildings") &&
+                realBuildings.length > 0 && (
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    <BuildingSwitcher
+                      buildings={realBuildings}
+                      onClose={onClose}
+                    />
+                    <Link
+                      to={`/project/${project.id}/buildings`}
+                      onClick={onClose}
+                      className="text-caption-m font-medium text-primary-500 hover:text-primary-600"
+                    >
+                      Manage Buildings
+                    </Link>
+                  </div>
+                )}
+            </div>
 
-              <div className="my-2 border-t border-gray-100" />
+            {isClient ? (
+              <nav
+                data-tour="project-nav"
+                className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1 no-scrollbar"
+              >
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  My build
+                </p>
+                {clientItems.map((entry) => (
+                  <ProjectNavLink
+                    key={entry.slug}
+                    item={{
+                      ...entry,
+                      to: `/project/${project.id}/${entry.slug}`,
+                    }}
+                    onClose={onClose}
+                  />
+                ))}
+              </nav>
+            ) : (
+              <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1 pb-4 no-scrollbar">
+                {showMultiBuildingNav ? (
+                  <>
+                    <div className="mt-1 mb-2">
+                      <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                        {activeBuilding ? activeBuilding.name : "All buildings"}
+                      </p>
+                      {progressItems.map((item) => (
+                        <ProjectNavLink
+                          key={item.slug}
+                          item={item}
+                          onClose={onClose}
+                        />
+                      ))}
+                      {tasksItem && (
+                        <ProjectNavLink item={tasksItem} onClose={onClose} />
+                      )}
+                      {scopedOperationsItems.map((item) => (
+                        <ProjectNavLink
+                          key={item.slug}
+                          item={item}
+                          onClose={onClose}
+                        />
+                      ))}
+                    </div>
 
-              <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
-                Project Workspace
-              </span>
-              {items.map((item) => (
-                <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
-              ))}
-              {siteControlItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Site Control"
-                  Icon={icons2.bulb}
-                  items={siteControlItems}
-                  active={isSiteControlActive}
-                  onClose={onClose}
-                />
-              )}
-              {materialsItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Materials & Equipment"
-                  Icon={icons2.spanner}
-                  items={materialsItems}
-                  active={isMaterialsActive}
-                  activeIconClassName="text-[#004DE7]"
-                  onClose={onClose}
-                />
-              )}
-              {financeItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Finance"
-                  Icon={icons2.money}
-                  items={financeItems}
-                  active={isFinanceActive}
-                  onClose={onClose}
-                />
-              )}
-            </>
-          ) : (
-            <>
-              <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
-                Project Workspace
-              </span>
-              {items.map((item) => (
-                <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
-              ))}
-              {progressItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Progress"
-                  Icon={icons2.trendUp}
-                  items={progressItems}
-                  active={isProgressActive}
-                  onClose={onClose}
-                />
-              )}
-              {operationsItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Operations"
-                  Icon={icons2.refresh}
-                  items={operationsItems}
-                  active={isOperationsActive}
-                  onClose={onClose}
-                />
-              )}
-              {siteControlItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Site Control"
-                  Icon={icons2.bulb}
-                  items={siteControlItems}
-                  active={isSiteControlActive}
-                  onClose={onClose}
-                />
-              )}
-              {materialsItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Materials & Equipment"
-                  Icon={icons2.spanner}
-                  items={materialsItems}
-                  active={isMaterialsActive}
-                  activeIconClassName="text-[#004DE7]"
-                  onClose={onClose}
-                />
-              )}
+                    <div className="my-2 border-t border-gray-100" />
 
-              {financeItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Finance"
-                  Icon={icons2.money}
-                  items={financeItems}
-                  active={isFinanceActive}
+                    <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
+                      Project Workspace
+                    </span>
+                    {items.map((item) => (
+                      <ProjectNavLink
+                        key={item.slug}
+                        item={item}
+                        onClose={onClose}
+                      />
+                    ))}
+                    {siteControlItems.length > 0 && (
+                      <SidebarNavGroup
+                        label="Site Control"
+                        Icon={icons2.bulb}
+                        items={siteControlItems}
+                        active={isSiteControlActive}
+                        onClose={onClose}
+                      />
+                    )}
+                    {materialsItems.length > 0 && (
+                      <SidebarNavGroup
+                        label="Materials & Equipment"
+                        Icon={icons2.spanner}
+                        items={materialsItems}
+                        active={isMaterialsActive}
+                        activeIconClassName="text-[#004DE7]"
+                        onClose={onClose}
+                      />
+                    )}
+                    {financeItems.length > 0 && (
+                      <SidebarNavGroup
+                        label="Finance"
+                        Icon={icons2.money}
+                        items={financeItems}
+                        active={isFinanceActive}
+                        onClose={onClose}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
+                      Project Workspace
+                    </span>
+                    {items.map((item) => (
+                      <ProjectNavLink
+                        key={item.slug}
+                        item={item}
+                        onClose={onClose}
+                      />
+                    ))}
+                    {progressItems.length > 0 && (
+                      <SidebarNavGroup
+                        label="Progress"
+                        Icon={icons2.trendUp}
+                        items={progressItems}
+                        active={isProgressActive}
+                        onClose={onClose}
+                      />
+                    )}
+                    {operationsItems.length > 0 && (
+                      <SidebarNavGroup
+                        label="Operations"
+                        Icon={icons2.refresh}
+                        items={operationsItems}
+                        active={isOperationsActive}
+                        onClose={onClose}
+                      />
+                    )}
+                    {siteControlItems.length > 0 && (
+                      <SidebarNavGroup
+                        label="Site Control"
+                        Icon={icons2.bulb}
+                        items={siteControlItems}
+                        active={isSiteControlActive}
+                        onClose={onClose}
+                      />
+                    )}
+                    {materialsItems.length > 0 && (
+                      <SidebarNavGroup
+                        label="Materials & Equipment"
+                        Icon={icons2.spanner}
+                        items={materialsItems}
+                        active={isMaterialsActive}
+                        activeIconClassName="text-[#004DE7]"
+                        onClose={onClose}
+                      />
+                    )}
+
+                    {financeItems.length > 0 && (
+                      <SidebarNavGroup
+                        label="Finance"
+                        Icon={icons2.money}
+                        items={financeItems}
+                        active={isFinanceActive}
+                        onClose={onClose}
+                      />
+                    )}
+                  </>
+                )}
+
+                {isOn("projects.documents") &&
+                  canViewSection(access, "projects.documents", "documents") && (
+                    <ProjectNavLink
+                      item={{
+                        label: "Documents",
+                        slug: "documents",
+                        Icon: icons2.folderBlack,
+                        to: `/project/${project.id}/documents`,
+                      }}
+                      onClose={onClose}
+                    />
+                  )}
+
+                <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
+                  Intelligence
+                </span>
+                <ProjectNavLink
+                  item={{
+                    label: "Panda AI",
+                    slug: "panda-ai",
+                    Icon: icons2.stars,
+                    to: `/project/${project.id}/panda-ai`,
+                  }}
                   onClose={onClose}
                 />
-              )}
-            </>
-          )}
 
-          {isOn("projects.documents") && canViewSection(access, "projects.documents", "documents") && (
-            <ProjectNavLink
-              item={{
-                label: "Documents",
-                slug: "documents",
-                Icon: icons2.folderBlack,
-                to: `/project/${project.id}/documents`,
-              }}
-              onClose={onClose}
-            />
-          )}
+                <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
+                  Team Workspace
+                </span>
+                {isOn("project.team") &&
+                  canViewSection(access, undefined, "teamMembers") && (
+                    <ProjectNavLink
+                      item={{
+                        label: "My Team",
+                        slug: "team",
+                        Icon: icons2.team,
+                        to: `/project/${project.id}/team`,
+                      }}
+                      onClose={onClose}
+                    />
+                  )}
+                {isOn("collaboration.messaging") &&
+                  canViewSection(
+                    access,
+                    "collaboration.messaging",
+                    "messages",
+                  ) && (
+                    <ProjectNavLink
+                      item={{
+                        label: "Messages",
+                        slug: "chat",
+                        Icon: icons2.messages,
+                        to: `/project/${project.id}/chat`,
+                        badge: totalUnread > 0 ? totalUnread : undefined,
+                      }}
+                      onClose={onClose}
+                    />
+                  )}
 
-          <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
-            Intelligence
-          </span>
-          <ProjectNavLink
-            item={{
-              label: "Panda AI",
-              slug: "panda-ai",
-              Icon: icons2.stars,
-              to: `/project/${project.id}/panda-ai`,
-            }}
-            onClose={onClose}
-          />
-
-          <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
-            Team Workspace
-          </span>
-          {isOn("project.team") && canViewSection(access, undefined, "teamMembers") && (
-            <ProjectNavLink
-              item={{
-                label: "My Team",
-                slug: "team",
-                Icon: icons2.team,
-                to: `/project/${project.id}/team`,
-              }}
-              onClose={onClose}
-            />
-          )}
-          {isOn("collaboration.messaging") && canViewSection(access, "collaboration.messaging", "messages") && (
-            <ProjectNavLink
-              item={{
-                label: "Messages",
-                slug: "chat",
-                Icon: icons2.messages,
-                to: `/project/${project.id}/chat`,
-                badge: totalUnread > 0 ? totalUnread : undefined,
-              }}
-              onClose={onClose}
-            />
-          )}
-
-          <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
-            System
-          </span>
-          <ProjectNavLink
-            item={{
-              label: "Settings",
-              slug: "settings",
-              Icon: icons2.settings,
-              to: `/project/${project.id}/settings`,
-            }}
-            onClose={onClose}
-          />
-        </nav>
-      )}
-      </div>
-      </aside>
+                <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
+                  System
+                </span>
+                <ProjectNavLink
+                  item={{
+                    label: "Settings",
+                    slug: "settings",
+                    Icon: icons2.settings,
+                    to: `/project/${project.id}/settings`,
+                  }}
+                  onClose={onClose}
+                />
+              </nav>
+            )}
+          </div>
+        </aside>
       </div>
     </>
   );
