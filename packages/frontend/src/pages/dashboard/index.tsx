@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
@@ -29,17 +29,6 @@ function getGreeting(hour: number): string {
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
-
-function DotsMenuIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <circle cx="9" cy="4" r="1.5" fill="#B0B0B0" />
-      <circle cx="9" cy="9" r="1.5" fill="#B0B0B0" />
-      <circle cx="9" cy="14" r="1.5" fill="#B0B0B0" />
-    </svg>
-  );
-}
-
 function ChevronDownIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -124,49 +113,40 @@ export default function Dashboard() {
             </Button>
           </div>
 
-          {/* New Project split button */}
+          {/* New Project */}
           {canCreateProject && (
-            <div className="relative flex">
-              <Button
-                variant="primary"
-                size="md"
-                className="rounded-none pr-3"
-                onClick={() => navigate("/project/create")}
-              >
-                <ReactSVG src={icons2.plus} className='[&_svg]:size-[14px] [&_path]:fill-white shrink-0' />
-                New Project
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="primary"
-                      size="md"
-                      className="flex items-center justify-center border-l border-[#3371EE] bg-[#004DE7] px-2.5 text-white transition-colors hover:bg-[#053DAB]"
-                      aria-label="More project options"
-                    >
-                      <ChevronDownIcon />
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent align="end" className='p-2 w-[380px]'>
-                  <DropdownMenuItem onSelect={() => navigate("/project/create")} className='flex items-center gap-2'>
-                    <ReactSVG src={icons2.folderAdd} />
-                    <div className='flex flex-col'>
-                      <span className="text-caption-l font-semibold text-black-700">Start a New project</span>
-                      <span className="text-caption-m font-medium text-grey-450">Spin up a new construction project from scratch</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => navigate("/import")} className='flex items-center gap-2'>
-                    <ReactSVG src={icons2.folderImport} />
-                    <div className='flex flex-col'>
-                      <span className="text-caption-l font-semibold text-black-700">Import Project</span>
-                      <span className="text-caption-m font-medium text-grey-450">Import a programme, BOQ, drawings or BIM and we'll build the project for you</span>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="primary"
+                    size="md"
+                    className="gap-2"
+                    aria-label="New project options"
+                  >
+                    <ReactSVG src={icons2.plus} className='[&_svg]:size-[14px] [&_path]:fill-white shrink-0' />
+                    New Project
+                    <ChevronDownIcon />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end" className='p-2 w-[380px]'>
+                <DropdownMenuItem onSelect={() => navigate("/project/create")} className='flex items-center gap-2'>
+                  <ReactSVG src={icons2.folderAdd} />
+                  <div className='flex flex-col'>
+                    <span className="text-caption-l font-semibold text-black-700">Start a New project</span>
+                    <span className="text-caption-m font-medium text-grey-450">Spin up a new construction project from scratch</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate("/import")} className='flex items-center gap-2'>
+                  <ReactSVG src={icons2.folderImport} />
+                  <div className='flex flex-col'>
+                    <span className="text-caption-l font-semibold text-black-700">Import Project</span>
+                    <span className="text-caption-m font-medium text-grey-450">Import a programme, BOQ, drawings or BIM and we'll build the project for you</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
@@ -191,6 +171,7 @@ export default function Dashboard() {
 // ── Project card ──────────────────────────────────────────────────────────────
 
 function ProjectCard({ project, view }: { project: Project; view: "grid" | "list" }) {
+  const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const deleteProject = useDeleteProject();
 
@@ -202,29 +183,45 @@ function ProjectCard({ project, view }: { project: Project; view: "grid" | "list
   }
 
   const cardMenu = (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <button
-              type="button"
-              aria-label="Project options"
-              className="flex size-7 items-center justify-center transition-colors hover:bg-[#F5F5F5]"
-            >
-              <DotsMenuIcon />
-            </button>
-          }
-        />
-        <DropdownMenuContent align="end" className='p-1 gap-1'>
-          <DropdownMenuItem className='py-1.5 cursor-pointer' onSelect={() => window.location.assign(`/project/${project.id}/overview`)}>
-            Edit Project
-          </DropdownMenuItem>
-          <DropdownMenuItem tone="danger" className='py-1.5 cursor-pointer' onSelect={() => setConfirmOpen(true)}>
-            Delete Project
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
+    <div
+      className="flex gap-1"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {project.name !== "Sample Project" && (
+        <>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/project/${project.id}/overview`);
+            }}
+            className="w-6 h-6 flex items-center justify-center"
+          >
+            <ReactSVG
+              src={icons2.edit}
+              className="[&_path]:fill-[#A1A1A1] hover:[&_path]:fill-black-500 [&_svg]:size-4.5"
+            />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmOpen(true);
+            }}
+            className="w-6 h-6 flex items-center justify-center"
+          >
+            <ReactSVG
+              src={icons2.delete}
+              className="[&_path]:fill-[#A1A1A1] hover:[&_path]:fill-red-500 [&_svg]:size-4.5"
+            />
+          </Button>
+        </>
+      )}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -234,16 +231,24 @@ function ProjectCard({ project, view }: { project: Project; view: "grid" | "list
         confirmLabel="Delete"
         variant="danger"
       />
-    </>
+    </div>
   );
 
   if (view === "list") {
     return (
-      <div className="flex items-center gap-4 border border-[#F0F0F0] bg-white px-5 py-4 transition-shadow hover:shadow-sm">
-        <Link
-          to={`/project/${project.id}/overview`}
-          className="flex min-w-0 flex-1 items-center gap-4 outline-none"
-        >
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={() => navigate(`/project/${project.id}/overview`)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            navigate(`/project/${project.id}/overview`);
+          }
+        }}
+        className="flex cursor-pointer items-center gap-4 border border-[#F0F0F0] bg-white px-5 py-4 transition-shadow hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/20"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-4">
           <ReactSVG src={icons2.folder} className="shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-caption-l font-semibold text-black-700">{project.name}</p>
@@ -252,32 +257,43 @@ function ProjectCard({ project, view }: { project: Project; view: "grid" | "list
           <Badge tone="danger" variant="soft" size="md" className="shrink-0">
             {project.progressPercent}% Completed
           </Badge>
-        </Link>
+        </div>
         {cardMenu}
       </div>
     );
   }
 
   return (
-    <div className="relative border-[0.5px] border-[#DDDDDD] bg-white p-5 transition-shadow hover:shadow-md">
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate(`/project/${project.id}/overview`)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate(`/project/${project.id}/overview`);
+        }
+      }}
+      className="relative cursor-pointer border-[0.5px] border-[#DDDDDD] bg-white p-5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/20"
+    >
       {/* Top row */}
-      <div className="relative z-10 mb-8 flex items-center justify-between">
-        <ReactSVG src={icons2.folder} className="[&_svg]:size-[60px] shrink-0" />
+      <div className="mb-8 flex items-center justify-between">
+        {project.name === "Sample Project" ? (
+          <ReactSVG src={icons2.folderGrey} className="[&_svg]:size-[60px] shrink-0" />
+        ) : (
+          <ReactSVG src={icons2.folder} className="[&_svg]:size-[60px] shrink-0" />
+        )}
         {cardMenu}
       </div>
 
-      {/* Name + address — full card is clickable via the link */}
-      <Link
-        to={`/project/${project.id}/overview`}
-        className="mt-1 block outline-none after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-[#004DE7]/20"
-      >
-        {/* Badge */}
+      {/* Name + address */}
+      <div className="mt-1 block">
         <Badge variant="outline" size="sm" className="mb-3">
           {project.progressPercent}% Completed
         </Badge>
         <p className="line-clamp-1 text-body-s font-semibold text-black-700">{project.name}</p>
         <p className="mt-0.5 text-caption-m font-medium text-black-500 opacity-50">{project.address}</p>
-      </Link>
+      </div>
     </div>
   );
 }

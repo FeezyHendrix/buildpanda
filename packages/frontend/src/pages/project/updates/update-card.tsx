@@ -25,7 +25,7 @@ import {
 import { formatTimeAgo } from "@/lib/formatters";
 import type { ProjectUpdate } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
-import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { MoreVertical } from "lucide-react";
 import { icons2 } from "@/assets/icons2/icon2";
 
 function CategoryBadge({ category }: { category: string }) {
@@ -122,11 +122,11 @@ export function UpdateCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[148px] p-1">
                 <DropdownMenuItem onSelect={() => setEditOpen(true)} className="flex items-center gap-2.5 py-2 text-[13px]">
-                  <Pencil className="size-3.5 text-gray-500" />
+                  <ReactSVG src={icons2.edit} className="[&_svg]:size-4 shrink-0" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem tone="danger" onSelect={() => setDeleteOpen(true)} className="flex items-center gap-2.5 py-2 text-[13px]">
-                  <Trash2 className="size-3.5" />
+                  <ReactSVG src={icons2.delete} className="[&_svg]:size-4 shrink-0" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
