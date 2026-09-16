@@ -62,7 +62,7 @@ function FormDrawer({
             className="flex h-full flex-col no-scrollbar"
           >
             <header className="px-6 py-5">
-              <Dialog.Title className="text-h4 font-bold text-grey-800">
+              <Dialog.Title className="text-h6 font-bold text-grey-800">
                 {title}
               </Dialog.Title>
               {description && (

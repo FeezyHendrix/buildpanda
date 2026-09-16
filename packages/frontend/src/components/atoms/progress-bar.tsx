@@ -52,7 +52,7 @@ const ProgressBar = forwardRef<HTMLDivElement, ProgressBarProps>(
         aria-valuemin={0}
         aria-valuemax={max}
         className={cn(
-          "w-full overflow-hidden rounded-full bg-success-50",
+          "w-full overflow-hidden bg-[#0000001C]",
           trackHeight[size],
           trackClassName,
           className,

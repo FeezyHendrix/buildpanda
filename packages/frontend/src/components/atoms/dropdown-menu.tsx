@@ -17,7 +17,7 @@ function DropdownMenuItem({ children, onSelect, tone = "default", className, dis
     <Menu.Item
       disabled={disabled}
       className={cn(
-        "flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-[14px] outline-none bg-white",
+        "flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-[14px] outline-none bg-white",
         "transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40",
         tone === "danger"
           ? "text-[#C10007] hover:bg-[#FEF2F2] data-[highlighted]:bg-[#FEF2F2]"
@@ -51,7 +51,7 @@ function DropdownMenuContent({
       <Menu.Positioner align={align} sideOffset={sideOffset} className="z-50">
         <Menu.Popup
           className={cn(
-            "flex flex-col gap-2 z-50 min-w-[160px] overflow-hidden border border-[#EBEBEB] bg-grey-50 p-2 shadow-xl",
+            "flex flex-col gap-2 z-50 min-w-[160px] overflow-hidden border border-[#EBEBEB] bg-grey-50 p-1 shadow-xl",
             "origin-[var(--transform-origin)] transition-[transform,scale,opacity]",
             "data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
             "data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
