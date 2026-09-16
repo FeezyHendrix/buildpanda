@@ -29,6 +29,7 @@ export async function withTempFile<T>(storagePath: string, ext: string, fn: (fil
 }
 
 const SHEET_TITLE_KINDS: [RegExp, SheetKind][] = [
+  [/roof\s*plan/i, "roof-plan"],
   [/floor\s*plan|ground\s*floor|first\s*floor|typical\s*floor/i, "floor-plan"],
   [/elevation/i, "elevation"],
   [/section/i, "section"],

@@ -26,6 +26,7 @@ import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measure
 import { isLlmConfigured } from "../../../../lib/llm.ts";
 import { chatLongJsonValidated } from "../../../../lib/llm-long-text.ts";
 import { priceRow } from "./price.ts";
+import { measureRoofPlan } from "./roof-measure.ts";
 
 // PDF take-off. The sibling dwg-takeoff module reads DWG vectors natively and
 // stays fully deterministic; PDFs lose that fidelity, so this pipeline adds a
@@ -174,7 +175,24 @@ export async function generateForSession(
             if (calibration && extracted.segments.length >= 20) {
               civilSheets.push({ segments: extracted.segments, mmPerPt: calibration.mmPerPt, pageNumber: globalPage });
             }
-            if (calibration && kind === "floor-plan") {
+            if (kind === "roof-plan") {
+              const visionItems = await measureSheetViaVision(
+                {
+                  storagePath: placeholder.storage_path,
+                  pageNumber: pageNo,
+                  globalPage,
+                  sheetLabel,
+                  focus: "roof",
+                },
+                visionBudget,
+              );
+              const roofItems = visionItems?.filter((item) => item.elementGroup === "Roof")
+                ?? (calibration
+                  ? measureRoofPlan(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel)
+                  : []);
+              allItems.push(...roofItems);
+              await progress("reading", `Measured ${sheetLabel}: ${roofItems.length} roof items${visionItems ? " with vision" : " from vector fallback"}`, { sheetId, items: roofItems.length });
+            } else if (calibration && kind === "floor-plan") {
               const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel, areasOnly, {
                 calibrationMatches: calibration.matches,
                 dimUnit: calibration.dimUnit,
@@ -337,7 +355,8 @@ export async function generateForSession(
         ? `Building up ${scope.elements.join(", ")} with QS agents`
         : "Building up the bill with parallel QS agents",
     );
-    const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans only (no structural, roof or MEP drawings).${scheduleSummary}`;
+    const hasRoofPlan = classifySheets.some((sheet) => sheet.kind === "roof-plan");
+    const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans${hasRoofPlan ? " and a roof plan" : ""} (no structural or MEP drawings).${scheduleSummary}`;
     const resolveBesmm = besmmResolverFor(db);
     const outcome = await buildUpBill(
       billItems,
