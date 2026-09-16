@@ -1,12 +1,16 @@
-import { useEffect, useState } from "react";
-import { Label } from "@/components/atoms/label";
+import { useEffect, useMemo, useState } from "react";
+import { ReactSVG } from "react-svg";
+import { icons2 } from "@/assets/icons2/icon2";
 import { MoneyInput } from "@/components/atoms/money-input";
+import { Select } from "@/components/atoms/select";
+import { TextArea } from "@/components/atoms/text-area";
+import { TextInput } from "@/components/atoms/text-input";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { CONSTRUCTION_UNITS } from "@/lib/construction-units";
 import { currencySymbol } from "@/lib/formatters";
 import type { MaterialOrder, RequestPriority } from "@/lib/project-types";
 import { useProjectBoqMaterials, type MaterialOrderInput } from "@/hooks/use-materials-equipment";
-import { FIELD, nextWeek, today } from "./shared";
-import { UnitInput } from "@/components/atoms/unit-input";
+import { nextWeek } from "./shared";
 
 export interface MaterialOrderDialogProps {
   open: boolean;
@@ -19,16 +23,22 @@ export interface MaterialOrderDialogProps {
   currency?: string;
 }
 
+const PRIORITY_OPTIONS = (["Low", "Normal", "High", "Critical"] as RequestPriority[]).map(
+  (priority) => ({ value: priority, label: priority }),
+);
+
+const CURRENCIES = ["NGN", "USD"] as const;
+
 export function MaterialOrderDialog({ open, onOpenChange, projectId, initial, onSubmit, isSubmitting, error, currency = "NGN" }: MaterialOrderDialogProps) {
   const { data: boqMaterials = [] } = useProjectBoqMaterials(open ? projectId : undefined);
   const [title, setTitle] = useState("");
-  const symbol = currencySymbol(currency);
   const [materialName, setMaterialName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unit, setUnit] = useState("bags");
   const [supplier, setSupplier] = useState("");
   const [priority, setPriority] = useState<RequestPriority>("Normal");
   const [neededBy, setNeededBy] = useState(nextWeek());
+  const [orderCurrency, setOrderCurrency] = useState(currency);
   const [estimatedCost, setEstimatedCost] = useState("0");
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [notes, setNotes] = useState("");
@@ -42,10 +52,19 @@ export function MaterialOrderDialog({ open, onOpenChange, projectId, initial, on
     setSupplier(initial?.supplier ?? "");
     setPriority(initial?.priority ?? "Normal");
     setNeededBy(initial?.neededBy.slice(0, 10) ?? nextWeek());
+    setOrderCurrency(initial?.currency ?? currency);
     setEstimatedCost(String(initial?.estimatedCost ?? 0));
     setDeliveryLocation(initial?.deliveryLocation ?? "");
     setNotes(initial?.notes ?? "");
-  }, [initial, open]);
+  }, [initial, open, currency]);
+
+  // Units come from the shared construction list. A legacy custom unit on an
+  // existing order is appended so it still displays instead of blanking out.
+  const unitOptions = useMemo(() => {
+    const base = CONSTRUCTION_UNITS.map((u) => ({ value: u, label: u }));
+    const known = new Set<string>(CONSTRUCTION_UNITS);
+    return unit && !known.has(unit) ? [...base, { value: unit, label: unit }] : base;
+  }, [unit]);
 
   function handleMaterialName(value: string) {
     setMaterialName(value);
@@ -64,7 +83,7 @@ export function MaterialOrderDialog({ open, onOpenChange, projectId, initial, on
       onOpenChange={onOpenChange}
       title={initial ? "Edit material order" : "New material order"}
       description="Connect the request to the work it unlocks, then move it through approval, order, and delivery."
-      submitLabel={initial ? "Save changes" : "Create order"}
+      submitLabel={initial ? "Save changes" : "Create Order"}
       submitDisabled={!valid}
       submitting={isSubmitting}
       error={error}
@@ -78,22 +97,28 @@ export function MaterialOrderDialog({ open, onOpenChange, projectId, initial, on
           priority,
           neededBy,
           estimatedCost: Number(estimatedCost || 0),
-          currency: "NGN",
+          currency: orderCurrency as "NGN" | "USD",
           deliveryLocation: deliveryLocation.trim() || null,
           notes: notes.trim() || null,
         });
       }}
+      footerVariant="stacked"
     >
-      <Field label="Title" id="mat-title" value={title} onChange={setTitle} placeholder="e.g. Cement for first-floor blockwork" />
+      <TextInput
+        label="Title"
+        value={title}
+        onChange={setTitle}
+        placeholder="e.g Cement for first floor"
+        autoFocus
+      />
+
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="mat-name">Material</Label>
-        <input
-          id="mat-name"
+        <TextInput
+          label="Material"
           value={materialName}
-          onChange={(e) => handleMaterialName(e.target.value)}
-          placeholder={boqMaterials.length > 0 ? "Pick from BoQ or type a material" : "Dangote cement 42.5"}
+          onChange={handleMaterialName}
+          placeholder="Lafarge cement"
           list="mat-boq-materials"
-          className={FIELD}
           autoComplete="off"
         />
         <datalist id="mat-boq-materials">
@@ -101,47 +126,112 @@ export function MaterialOrderDialog({ open, onOpenChange, projectId, initial, on
             <option key={m.materialName} value={m.materialName} />
           ))}
         </datalist>
-        {boqMaterials.length > 0 && (
-          <p className="text-xs text-gray-400">{boqMaterials.length} materials from the project BoQ available.</p>
-        )}
       </div>
+
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Quantity" id="mat-quantity" value={quantity} onChange={setQuantity} type="number" step="any" />
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="mat-unit">Unit</Label>
-          <UnitInput id="mat-unit" value={unit} onChange={setUnit} className={FIELD} />
+        <TextInput
+          label="Quantity"
+          value={quantity}
+          onChange={setQuantity}
+          type="number"
+          min="0"
+          step="any"
+        />
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label className="text-[13px] font-medium text-[#1E1E1E]">Unit</label>
+          <Select
+            options={unitOptions}
+            value={unit || null}
+            onChange={(v) => setUnit(v ?? "")}
+            placeholder="Select unit"
+          />
         </div>
       </div>
+
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="mat-priority">Priority</Label>
-          <select id="mat-priority" value={priority} onChange={(e) => setPriority(e.target.value as RequestPriority)} className={FIELD}>
-            {(["Low", "Normal", "High", "Critical"] as RequestPriority[]).map((item) => <option key={item}>{item}</option>)}
-          </select>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label className="text-[13px] font-medium text-[#1E1E1E]">Priority</label>
+          <Select
+            options={PRIORITY_OPTIONS}
+            value={priority}
+            onChange={(v) => v && setPriority(v as RequestPriority)}
+            placeholder="Select priority"
+          />
         </div>
-        <Field label="Needed by" id="mat-needed" value={neededBy || today()} onChange={setNeededBy} type="date" />
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label
+            htmlFor="mat-needed-by"
+            className="text-[13px] font-medium text-[#1E1E1E]"
+          >
+            Needed by
+          </label>
+          <div
+            className="relative"
+            onClick={(e) =>
+              (e.currentTarget.querySelector("input") as HTMLInputElement | null)?.showPicker?.()
+            }
+          >
+            <input
+              id="mat-needed-by"
+              type="date"
+              value={neededBy}
+              onChange={(e) => setNeededBy(e.target.value)}
+              onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+              placeholder="DD/MM/YY"
+              className="h-11 w-full cursor-pointer border border-[#EBEBEB] bg-white px-3.5 pr-9 text-caption-l text-black-500 outline-none transition-colors placeholder:text-[#B0B0B0] focus:border-black-500 focus:ring-1 focus:ring-black-500/10 [&::-webkit-calendar-picker-indicator]:hidden"
+            />
+            <ReactSVG
+              src={icons2.calendar}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 [&_svg]:size-[16px]"
+            />
+          </div>
+        </div>
       </div>
-      <Field label="Supplier" id="mat-supplier" value={supplier} onChange={setSupplier} placeholder="Optional" />
+
+      <TextInput
+        label="Supplier"
+        optional
+        value={supplier}
+        onChange={setSupplier}
+        placeholder="Name of Supplier"
+      />
+
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="mat-cost">Estimated cost</Label>
-        <MoneyInput id="mat-cost" value={estimatedCost} onChange={setEstimatedCost} currencySymbol={symbol} placeholder="0.00" />
+        <label className="text-[13px] font-medium text-[#1E1E1E]">Estimated Cost</label>
+        <div className="flex">
+          <div className="w-28 shrink-0">
+            <Select
+              options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+              value={orderCurrency}
+              onChange={(v) => v && setOrderCurrency(v)}
+            />
+          </div>
+          <div className="flex-1">
+            <MoneyInput
+              placeholder="0"
+              value={estimatedCost}
+              onChange={setEstimatedCost}
+              currencySymbol={currencySymbol(orderCurrency)}
+              aria-label="Estimated cost"
+              className="rounded-none indent-4 border border-border bg-white px-3.5 text-[14px] text-left text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none transition-colors focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
+            />
+          </div>
+        </div>
       </div>
-      <Field label="Delivery location" id="mat-location" value={deliveryLocation} onChange={setDeliveryLocation} placeholder="Site store, gate, yard…" />
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="mat-notes">Lifecycle notes</Label>
-        <textarea id="mat-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-24 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
-      </div>
+
+      <TextInput
+        label="Delivery Location"
+        value={deliveryLocation}
+        onChange={setDeliveryLocation}
+        placeholder="Site store, gate,..."
+      />
+
+      <TextArea
+        label="Lifecycle Notes"
+        value={notes}
+        onChange={setNotes}
+        rows={5}
+      />
     </FormDrawer>
-  );
-}
-
-
-
-export function Field({ label, id, value, onChange, placeholder, type = "text", step="any" }: { label: string; id: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string, step?: string }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} type={type} step={step} className={FIELD} />
-    </div>
   );
 }
