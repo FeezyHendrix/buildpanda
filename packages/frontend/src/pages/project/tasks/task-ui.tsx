@@ -1,5 +1,9 @@
 import { Badge } from "@/components/atoms/badge";
-import type { TaskEntityType, TaskLinkType, TaskPriority } from "@/lib/project-types";
+import type {
+  TaskEntityType,
+  TaskLinkType,
+  TaskPriority,
+} from "@/lib/project-types";
 
 export interface AssigneeOption {
   kind: "user" | "team";
@@ -41,7 +45,16 @@ export const PRIORITY_ORDER: TaskPriority[] = ["Low", "Medium", "High"];
 
 export function PriorityIcon({ shape }: { shape: "down" | "dash" | "up" }) {
   return (
-    <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      className="size-3"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       {shape === "down" && <polyline points="6 9 12 15 18 9" />}
       {shape === "dash" && <line x1="5" y1="12" x2="19" y2="12" />}
       {shape === "up" && <polyline points="6 15 12 9 18 15" />}
@@ -51,7 +64,16 @@ export function PriorityIcon({ shape }: { shape: "down" | "dash" | "up" }) {
 
 export function LinkGlyph() {
   return (
-    <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      className="size-2.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
       <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     </svg>
@@ -61,8 +83,7 @@ export function LinkGlyph() {
 export function PriorityBadge({ priority }: { priority: TaskPriority }) {
   const meta = PRIORITY_META[priority];
   return (
-    <Badge tone={meta.tone} size="sm">
-      <PriorityIcon shape={meta.shape} />
+    <Badge tone={meta.tone} size="md" className="border-[0.2px]">
       {priority}
     </Badge>
   );
@@ -75,7 +96,12 @@ export const LINK_TYPE_LABELS: Record<TaskLinkType, string> = {
   duplicates: "Duplicates",
 };
 
-export const LINK_TYPE_ORDER: TaskLinkType[] = ["blocks", "blocked_by", "relates_to", "duplicates"];
+export const LINK_TYPE_ORDER: TaskLinkType[] = [
+  "blocks",
+  "blocked_by",
+  "relates_to",
+  "duplicates",
+];
 
 export const LINK_TYPE_TONE: Record<TaskLinkType, string> = {
   blocks: "bg-[#FEE2E2] text-[#B42318]",
@@ -84,7 +110,10 @@ export const LINK_TYPE_TONE: Record<TaskLinkType, string> = {
   duplicates: "bg-[#F2F4F7] text-[#475467]",
 };
 
-export const ENTITY_META: Record<TaskEntityType, { label: string; route: string }> = {
+export const ENTITY_META: Record<
+  TaskEntityType,
+  { label: string; route: string }
+> = {
   action_item: { label: "Action item", route: "action-items" },
   rfi: { label: "RFI", route: "rfis" },
   change_request: { label: "Change request", route: "change-requests" },
