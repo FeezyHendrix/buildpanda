@@ -20,7 +20,7 @@ import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
-import { PageHeader } from "@/components/molecules/page-header";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
 import {
@@ -38,13 +38,18 @@ import {
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { canResourceAction, type Task, type TaskPriority } from "@/lib/project-types";
-import { type AssigneeOption, FIELD } from "./tasks/task-ui";
+import { type AssigneeOption } from "./tasks/task-ui";
 import { BoardColumn } from "./tasks/task-board-column";
+import { TaskDetailSheet } from "./tasks/task-detail-sheet";
 import { UpsertTaskDialog } from "./tasks/upsert-task-dialog";
 
 type TaskBoardScope = "assigned" | "all";
 
 export default function ProjectTasks() {
+  useSetPageTitle(
+    "Tasks",
+    "Plan and track work across the team. Drag cards between columns.",
+  );
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
   const canAddTasks = Boolean(access && canResourceAction(access, "tasks", "add"));
@@ -74,6 +79,8 @@ export default function ProjectTasks() {
   const [deleting, setDeleting] = useState<Task | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!focusedTaskId || !board) return;
@@ -161,6 +168,13 @@ export default function ProjectTasks() {
     setDialogOpen(true);
     setFocusedTask(task.id);
   }
+
+  function openDetail(task: Task): void {
+    setDetailTaskId(task.id);
+    setDetailOpen(true);
+  }
+
+  const detailTask = detailTaskId ? board?.tasks.find((t) => t.id === detailTaskId) ?? null : null;
 
   function handleDialogOpenChange(open: boolean): void {
     setDialogOpen(open);
@@ -278,49 +292,32 @@ export default function ProjectTasks() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <PageHeader
-        title="Tasks"
-        description={
-          board.scope === "assigned"
-            ? "Your personal task board shows only tasks assigned to you. Moving a card updates the shared team board."
-            : "Plan and track work across the team. Drag cards between columns."
-        }
-        actions={
-          canAddTasks && board.columns[0] ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => openCreate(board.columns[0]!.id)}
-            >
-              <PlusIcon className="size-4" />
-              New task
-            </Button>
-          ) : null
-        }
-      />
-
+    <div className="w-full px-4 lg:px-8 py-6">
       {canSeeAllTasks ? (
-        <div className="mt-4 inline-flex rounded-xl bg-[#F6F6F6] p-1">
+        <div className="inline-flex items-center border-[0.5px] border-border bg-white">
           <button
             type="button"
             onClick={() => setBoardScope("assigned")}
             className={cn(
-              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-              requestedScope === "assigned" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+              "h-9 px-4 text-[13px] font-medium transition-colors",
+              requestedScope === "assigned"
+                ? "bg-primary text-white"
+                : "text-[#131B2E] hover:bg-black/5",
             )}
           >
-            My tasks
+            For me
           </button>
           <button
             type="button"
             onClick={() => setBoardScope("all")}
             className={cn(
-              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-              requestedScope === "all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+              "h-9 px-4 text-[13px] font-medium transition-colors",
+              requestedScope === "all"
+                ? "bg-primary text-white"
+                : "text-[#131B2E] hover:bg-black/5",
             )}
           >
-            All tasks
+            All Tasks
           </button>
         </div>
       ) : null}
@@ -339,7 +336,7 @@ export default function ProjectTasks() {
                 canManage={canManage}
                 canAddCard={canAddTasks}
                 onAddCard={() => openCreate(column.id)}
-                onOpenTask={openEdit}
+                onOpenTask={openDetail}
                 onRename={(name) => handleRenameColumn(column.id, name)}
                 onDelete={() => handleDeleteColumn(column.id)}
               />
@@ -349,7 +346,7 @@ export default function ProjectTasks() {
           {canManage && (
             <div className="w-[85vw] shrink-0 snap-start sm:w-72">
               {addingColumn ? (
-                <div className="flex flex-col gap-2 rounded-2xl bg-[#FAFAFA] p-3">
+                <div className="flex flex-col gap-2 border border-[#EBEBEB] bg-white p-3">
                   <input
                     autoFocus
                     value={newColumnName}
@@ -362,7 +359,7 @@ export default function ProjectTasks() {
                       }
                     }}
                     placeholder="Column name"
-                    className={FIELD}
+                    className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
                   />
                   <div className="flex gap-2">
                     <Button
@@ -386,19 +383,32 @@ export default function ProjectTasks() {
                   </div>
                 </div>
               ) : (
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="lg"
                   onClick={() => setAddingColumn(true)}
-                  className="flex w-full items-center gap-1.5 rounded-2xl border border-dashed border-gray-300 px-3 py-3 text-sm font-medium text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900"
+                  className='w-[316px] flex justify-start bg-black-50 border-[0.3px] border-border'
                 >
                   <PlusIcon className="size-4" />
-                  Add column
-                </button>
+                  Add new column
+                </Button>
               )}
             </div>
           )}
         </div>
       </DndContext>
+
+      <TaskDetailSheet
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open);
+          if (!open) setDetailTaskId(null);
+        }}
+        projectId={project.id}
+        taskId={detailTaskId}
+        task={detailTask}
+      />
 
       <UpsertTaskDialog
         open={dialogOpen}

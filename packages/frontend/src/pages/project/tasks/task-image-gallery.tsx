@@ -4,8 +4,9 @@ import { FileViewerDialog } from "@/components/molecules/file-viewer-dialog";
 
 interface Props {
   descriptionHtml: string;
-  onDescriptionChange: (html: string, text: string) => void;
+  onDescriptionChange?: (html: string, text: string) => void;
   projectId: string;
+  readOnly?: boolean;
 }
 
 function allImageFileIds(html: string): string[] {
@@ -23,7 +24,7 @@ interface ResolvedImage {
   url: string;
 }
 
-export function TaskImageGallery({ descriptionHtml, onDescriptionChange, projectId }: Props) {
+export function TaskImageGallery({ descriptionHtml, onDescriptionChange, projectId, readOnly = false }: Props) {
   const fileIds = allImageFileIds(descriptionHtml);
   const [images, setImages] = useState<ResolvedImage[]>([]);
   const [viewerImage, setViewerImage] = useState<ResolvedImage | null>(null);
@@ -51,6 +52,7 @@ export function TaskImageGallery({ descriptionHtml, onDescriptionChange, project
   }, [fileIds.join(",")]);
 
   async function handleAddImage(file: File): Promise<void> {
+    if (readOnly || !onDescriptionChange) return;
     setUploading(true);
     try {
       const uploaded = await uploadFileRequest(file, undefined, projectId);
@@ -89,31 +91,33 @@ export function TaskImageGallery({ descriptionHtml, onDescriptionChange, project
             </button>
           ))}
 
-          <label
-            className="flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#004DE7] hover:text-[#004DE7]"
-          >
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={uploading}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleAddImage(file);
-                e.target.value = "";
-              }}
-            />
-            {uploading ? (
-              <svg className="size-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <circle cx="12" cy="12" r="10" strokeOpacity={0.25} />
-                <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            )}
-          </label>
+          {!readOnly && (
+            <label
+              className="flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-[#004DE7] hover:text-[#004DE7]"
+            >
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleAddImage(file);
+                  e.target.value = "";
+                }}
+              />
+              {uploading ? (
+                <svg className="size-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="10" strokeOpacity={0.25} />
+                  <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              )}
+            </label>
+          )}
         </div>
       </div>
 

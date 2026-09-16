@@ -1,18 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/atoms/badge";
-import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { RichTextEditor } from "@/components/molecules/rich-text-editor";
+import { MultiSearchableSelect } from "@/components/atoms/multi-searchable-select";
+import { Select } from "@/components/atoms/select";
+import { TextInput } from "@/components/atoms/text-input";
 import type { ComboItem } from "@/components/molecules/combo-select";
 import { toast } from "@/lib/toast";
 import type { Task, TaskPriority } from "@/lib/project-types";
-import {
-  type AssigneeOption,
-  FIELD,
-  PRIORITY_META,
-  PRIORITY_ORDER,
-  PriorityIcon,
-} from "./task-ui";
+import { type AssigneeOption, PRIORITY_ORDER } from "./task-ui";
 import { TaskExtras } from "./task-extras";
 import { TaskImageGallery } from "./task-image-gallery";
 
@@ -47,7 +42,6 @@ export function UpsertTaskDialog({
   const [description, setDescription] = useState("");
   const [descriptionHtml, setDescriptionHtml] = useState("");
   const [assigneeValues, setAssigneeValues] = useState<string[]>([]);
-  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
   const [dueDate, setDueDate] = useState<string>("");
   const [priority, setPriority] = useState<TaskPriority>("Medium");
   const [labels, setLabels] = useState<string[]>([]);
@@ -61,6 +55,11 @@ export function UpsertTaskDialog({
       ...teamOptions.map((o) => ({ id: `team:${o.id}`, label: o.name, group: "Team" })),
     ],
     [userOptions, teamOptions],
+  );
+
+  const assigneeSelectItems = useMemo(
+    () => assigneeItems.map((i) => ({ value: i.id, label: i.label, meta: i.group })),
+    [assigneeItems],
   );
 
   const [linkCopied, setLinkCopied] = useState(false);
@@ -94,7 +93,6 @@ export function UpsertTaskDialog({
       setPriority(task?.priority ?? "Medium");
       setLabels(task?.labels ?? []);
       setLabelDraft("");
-      setAssigneePickerOpen(false);
     }
   }, [open, dialogKey]);
 
@@ -113,12 +111,6 @@ export function UpsertTaskDialog({
     setLabels((prev) => prev.filter((l) => l !== label));
   }
 
-  function toggleAssignee(value: string): void {
-    setAssigneeValues((prev) =>
-      prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value],
-    );
-  }
-
   function resolveAssignees(): AssigneeOption[] {
     return assigneeValues.flatMap((value) => {
       const [kind, id] = value.split(":");
@@ -126,10 +118,6 @@ export function UpsertTaskDialog({
       const found = pool.find((o) => o.id === id);
       return found ? [found] : [];
     });
-  }
-
-  function assigneeLabel(value: string): string {
-    return assigneeItems.find((option) => option.id === value)?.label ?? value;
   }
 
   function handleSubmit(): void {
@@ -152,15 +140,19 @@ export function UpsertTaskDialog({
     });
   }
 
+  const priorityOptions = PRIORITY_ORDER.map((p) => ({ value: p, label: p }));
+
   return (
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title={task ? "Edit task" : "New task"}
-      submitLabel={task ? "Save" : "Create task"}
+      description={task ? "Update the task details." : undefined}
+      submitLabel={task ? "Save" : "Create Task"}
       submitDisabled={!title.trim()}
       submitting={submitting}
       onSubmit={handleSubmit}
+      footerVariant="stacked"
     >
       {task && (
         <button
@@ -175,18 +167,21 @@ export function UpsertTaskDialog({
           {linkCopied ? "Link copied" : "Copy task link"}
         </button>
       )}
+
+      {/* Title */}
+      <TextInput
+        label="Title"
+        value={title}
+        onChange={setTitle}
+        placeholder="e.g Rob a bank"
+        autoFocus
+      />
+
+      {/* Description */}
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="task-title">Title</Label>
-        <input
-          id="task-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Inspect scaffolding"
-          className={FIELD}
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="task-desc">Description (optional)</Label>
+        <label className="text-[13px] font-medium leading-none text-[#1E1E1E]">
+          Description <span className="font-normal text-[#B0B0B0]">(optional)</span>
+        </label>
         <RichTextEditor
           value={descriptionHtml}
           onChange={(html, text) => {
@@ -194,9 +189,10 @@ export function UpsertTaskDialog({
             setDescription(text);
           }}
           projectId={projectId}
-          placeholder="Add details, checklists, images…"
+          placeholder="Describe what this task entails."
         />
       </div>
+
       <TaskImageGallery
         descriptionHtml={descriptionHtml}
         onDescriptionChange={(html, text) => {
@@ -205,110 +201,62 @@ export function UpsertTaskDialog({
         }}
         projectId={projectId}
       />
+
+      {/* Assignees */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <Label>Assignees</Label>
+          <label className="text-caption-l font-medium text-black-500">Assignees</label>
           {selfId && !assigneeValues.includes(`user:${selfId}`) && (
             <button
               type="button"
-              onClick={() => {
-                setAssigneeValues((prev) => [...prev, `user:${selfId}`]);
-                setAssigneePickerOpen(false);
-              }}
-              className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+              onClick={() => setAssigneeValues((prev) => [...prev, `user:${selfId}`])}
+              className="text-xs font-medium text-[#004DE7] hover:underline"
             >
               Assign to me
             </button>
           )}
         </div>
-        <div className="rounded-lg bg-[#F6F6F6] p-2">
-          <button
-            type="button"
-            onClick={() => setAssigneePickerOpen((prev) => !prev)}
-            aria-expanded={assigneePickerOpen}
-            className="flex min-h-9 w-full items-center justify-between gap-3 rounded-md bg-white px-2.5 py-2 text-left text-sm text-gray-900 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-          >
-            <span className="min-w-0 flex-1 truncate text-gray-400">
-              {assigneeValues.length === 0
-                ? "Select assignees"
-                : assigneeValues.length === 1
-                  ? assigneeLabel(assigneeValues[0]!)
-                  : `${assigneeLabel(assigneeValues[0]!)} +${assigneeValues.length - 1}`}
-            </span>
-            <span className="text-gray-400">▾</span>
-          </button>
-          {assigneeValues.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {assigneeValues.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => toggleAssignee(value)}
-                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-sm hover:text-gray-900"
-                >
-                  {assigneeLabel(value)}
-                  <span className="text-gray-400">×</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {assigneePickerOpen && (
-            <div className="mt-2 max-h-44 overflow-y-auto rounded-md bg-white p-1">
-            {assigneeItems.map((item) => (
-              <label
-                key={item.id}
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <input
-                  type="checkbox"
-                  checked={assigneeValues.includes(item.id)}
-                  onChange={() => toggleAssignee(item.id)}
-                  className="size-4 rounded border-gray-300"
-                />
-                <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                {item.group && <span className="text-xs text-gray-400">{item.group}</span>}
-              </label>
-            ))}
-            {assigneeItems.length === 0 && <p className="px-2 py-1.5 text-sm text-gray-400">No people found</p>}
-            </div>
-          )}
-        </div>
+        <MultiSearchableSelect
+          items={assigneeSelectItems}
+          values={assigneeValues}
+          onChange={setAssigneeValues}
+          placeholder="Select Assignees"
+          searchPlaceholder="Search assignees"
+          emptyText="No people found"
+        />
       </div>
+
+      {/* Due date */}
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="task-due">Due date (optional)</Label>
+        <label htmlFor="task-due" className="text-[13px] font-medium leading-none text-[#1E1E1E]">
+          Due date <span className="font-normal text-[#B0B0B0]">(optional)</span>
+        </label>
         <input
           id="task-due"
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
-          className={FIELD}
+          placeholder="DD/MM/YY"
+          className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
         />
       </div>
+
+      {/* Priority - Select dropdown */}
       <div className="flex flex-col gap-1.5">
-        <Label>Priority</Label>
-        <div className="flex gap-2">
-          {PRIORITY_ORDER.map((p) => {
-            const meta = PRIORITY_META[p];
-            const selected = priority === p;
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPriority(p)}
-                aria-pressed={selected}
-                className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-              >
-                <Badge tone={meta.tone} variant={selected ? "solid" : "soft"} size="md">
-                  <PriorityIcon shape={meta.shape} />
-                  {p}
-                </Badge>
-              </button>
-            );
-          })}
-        </div>
+        <label className="text-caption-l font-medium text-black-500">Priority</label>
+        <Select
+          options={priorityOptions}
+          value={priority}
+          onChange={(v) => v && setPriority(v as TaskPriority)}
+          placeholder="Select Priority"
+        />
       </div>
+
+      {/* Labels */}
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="task-labels">Labels (optional)</Label>
+        <label htmlFor="task-labels" className="text-[13px] font-medium leading-none text-[#1E1E1E]">
+          Labels <span className="font-normal text-[#B0B0B0]">(optional)</span>
+        </label>
         {labels.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {labels.map((label) => (
@@ -346,22 +294,23 @@ export function UpsertTaskDialog({
             }
           }}
           onBlur={() => addLabel(labelDraft)}
-          placeholder="Add a label, press Enter"
+          placeholder="Add a label"
           maxLength={40}
-          className={FIELD}
+          className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
         />
       </div>
+
       {task && (task.createdByName || task.createdAt) && (
-        <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+        <div className="flex flex-wrap gap-x-6 gap-y-1 border border-[#EBEBEB] bg-[#FAFAFA] px-3 py-2 text-xs text-[#767676]">
           {task.createdByName && (
             <span>
-              Reporter <span className="font-medium text-gray-700">{task.createdByName}</span>
+              Reporter <span className="font-medium text-[#1E1E1E]">{task.createdByName}</span>
             </span>
           )}
           {task.createdAt && (
             <span>
               Created{" "}
-              <span className="font-medium text-gray-700">
+              <span className="font-medium text-[#1E1E1E]">
                 {new Date(task.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
               </span>
             </span>
@@ -375,7 +324,7 @@ export function UpsertTaskDialog({
         <button
           type="button"
           onClick={onRequestDelete}
-          className="mt-1 self-start text-sm font-medium text-red-500 hover:text-red-600"
+          className="self-start text-sm font-medium text-[#E7000B] hover:text-[#A30006]"
         >
           Delete task
         </button>

@@ -41,7 +41,9 @@ const FileImage = Image.extend({
         default: null,
         parseHTML: (el) => el.getAttribute("data-file-id"),
         renderHTML: (attrs) =>
-          attrs["data-file-id"] ? { "data-file-id": attrs["data-file-id"] } : {},
+          attrs["data-file-id"]
+            ? { "data-file-id": attrs["data-file-id"] }
+            : {},
       },
     };
   },
@@ -79,7 +81,9 @@ function ToolbarButton({
       }}
       className={cn(
         "flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-sm",
-        active ? "bg-grey-100 text-gray-900" : "text-gray-600 hover:bg-grey-100",
+        active
+          ? "bg-grey-100 text-gray-900"
+          : "text-gray-600 hover:bg-grey-100",
       )}
     >
       {children}
@@ -87,14 +91,24 @@ function ToolbarButton({
   );
 }
 
-export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, placeholder, disabled }: Props) {
+export function RichTextEditor({
+  value,
+  onChange,
+  onAttach,
+  projectId,
+  onReady,
+  placeholder,
+  disabled,
+}: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       FileImage.configure({ inline: false }),
-      Placeholder.configure({ placeholder: placeholder ?? "Write a response…" }),
+      Placeholder.configure({
+        placeholder: placeholder ?? "Write a response…",
+      }),
     ],
     content: value,
     editable: !disabled,
@@ -110,7 +124,11 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
         editor
           .chain()
           .focus()
-          .setImage({ src: url, alt: uploaded.fileName, "data-file-id": uploaded.id } as {
+          .setImage({
+            src: url,
+            alt: uploaded.fileName,
+            "data-file-id": uploaded.id,
+          } as {
             src: string;
             alt: string;
           })
@@ -128,7 +146,9 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files ?? []);
       e.target.value = "";
-      void (async () => { for (const file of files) await insertImage(file); })();
+      void (async () => {
+        for (const file of files) await insertImage(file);
+      })();
     },
     [insertImage],
   );
@@ -136,6 +156,18 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
   useEffect(() => {
     if (editor) onReady?.({ insertImageFile: (file) => insertImage(file) });
   }, [editor, onReady, insertImage]);
+
+  // Keep editor in sync when `value` changes externally (e.g. mention autocomplete).
+  useEffect(() => {
+    if (!editor) return;
+    const current = editor.getHTML();
+    // Normalize empty
+    const next = value || "<p></p>";
+    if (current !== value && current !== next) {
+      // Use setContent without adding to history so caret stays reasonable
+      editor.commands.setContent(next, { emitUpdate: false });
+    }
+  }, [value, editor]);
 
   // Refresh each embedded image's src from its stable data-file-id. Presigned
   // S3 URLs expire, so the stored HTML keeps only the id and we fetch a live
