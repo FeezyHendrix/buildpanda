@@ -13,9 +13,9 @@ export interface MediaDropzoneProps {
 }
 
 export function MediaDropzone({
-  accept = "image/*,video/*",
+  accept,
   multiple = true,
-  hint = "MP4, JPG or PNG (max. 10MB)",
+  hint,
   onFiles,
   disabled = false,
   className,
