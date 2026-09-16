@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 import { generateId } from "../../../../lib/ids.ts";
 import { preconRepository } from "../repository.ts";
-import type { MeasuredBoqItem, PreconSheetRow, Segment, SheetKind, TextRun, PreconPhase, TakeoffScope } from "../types.ts";
+import { SHEET_KIND, type MeasuredBoqItem, type PreconSheetRow, type Segment, type SheetKind, type TextRun, type PreconPhase, type TakeoffScope } from "../types.ts";
 import { classifySheet, measureSheetRegions, regionShareOfSheet, withTempFile } from "./measure-sheet.ts";
 
 export { regionShareOfSheet };
@@ -91,7 +91,7 @@ export async function generateForSession(
                   page_number: globalPage,
                   code: null,
                   title: null,
-                  kind: "unknown",
+                  kind: SHEET_KIND.UNKNOWN,
                   status: "pending",
                   scale_mm_per_pt: null,
                   scale_confidence: null,
@@ -110,6 +110,12 @@ export async function generateForSession(
             const sheetReport = buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never));
             extractionBySheet[sheetId] = sheetReport;
             await repo.updateSheetGeoSummary(sheetId, summarise(sheetReport));
+            const textForClassification = extracted.texts.map((t) => t.str).join(" ");
+            const earlyClassification = classifySheet(
+              extracted.texts,
+              false,
+              /bed\s*room|kitchen|living|lounge/i.test(textForClassification),
+            );
             // a scanned plan on a vector sheet has a title block's worth of lines and an image: still not measurable
             if (extracted.segments.length < 100 || rasterNote(extracted)) {
               const visionItems = await measureSheetViaVision(
@@ -118,6 +124,7 @@ export async function generateForSession(
                   pageNumber: pageNo,
                   globalPage,
                   sheetLabel: `${placeholder.file_name} p${pageNo}`,
+                  focus: earlyClassification.kind === SHEET_KIND.ROOF_PLAN ? "roof" : undefined,
                 },
                 visionBudget,
               );
@@ -127,7 +134,7 @@ export async function generateForSession(
                 await repo.updateSheet(sheetId, {
                   code: `SHT-${String(globalPage).padStart(2, "0")}`,
                   title: placeholder.file_name,
-                  kind: "floor-plan",
+                  kind: earlyClassification.kind === SHEET_KIND.UNKNOWN ? SHEET_KIND.FLOOR_PLAN : earlyClassification.kind,
                   status: "measured",
                   page_number: globalPage,
                 });
@@ -175,7 +182,7 @@ export async function generateForSession(
             if (calibration && extracted.segments.length >= 20) {
               civilSheets.push({ segments: extracted.segments, mmPerPt: calibration.mmPerPt, pageNumber: globalPage });
             }
-            if (kind === "roof-plan") {
+            if (kind === SHEET_KIND.ROOF_PLAN) {
               const visionItems = await measureSheetViaVision(
                 {
                   storagePath: placeholder.storage_path,
@@ -192,7 +199,7 @@ export async function generateForSession(
                   : []);
               allItems.push(...roofItems);
               await progress("reading", `Measured ${sheetLabel}: ${roofItems.length} roof items${visionItems ? " with vision" : " from vector fallback"}`, { sheetId, items: roofItems.length });
-            } else if (calibration && kind === "floor-plan") {
+            } else if (calibration && kind === SHEET_KIND.FLOOR_PLAN) {
               const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel, areasOnly, {
                 calibrationMatches: calibration.matches,
                 dimUnit: calibration.dimUnit,
@@ -355,7 +362,7 @@ export async function generateForSession(
         ? `Building up ${scope.elements.join(", ")} with QS agents`
         : "Building up the bill with parallel QS agents",
     );
-    const hasRoofPlan = classifySheets.some((sheet) => sheet.kind === "roof-plan");
+    const hasRoofPlan = classifySheets.some((sheet) => sheet.kind === SHEET_KIND.ROOF_PLAN);
     const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans${hasRoofPlan ? " and a roof plan" : ""} (no structural or MEP drawings).${scheduleSummary}`;
     const resolveBesmm = besmmResolverFor(db);
     const outcome = await buildUpBill(

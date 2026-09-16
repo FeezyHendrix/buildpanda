@@ -36,7 +36,24 @@ export type TakeoffKind = (typeof TAKEOFF_KINDS)[number];
 export const ROW_ORIGINS = ["ai", "manual", "prompt", "migrated"] as const;
 export type RowOrigin = (typeof ROW_ORIGINS)[number];
 
-export const SHEET_KINDS = ["floor-plan", "roof-plan", "elevation", "section", "detail", "schedule", "unknown"] as const;
+export const SHEET_KIND = {
+  FLOOR_PLAN: "floor-plan",
+  ROOF_PLAN: "roof-plan",
+  ELEVATION: "elevation",
+  SECTION: "section",
+  DETAIL: "detail",
+  SCHEDULE: "schedule",
+  UNKNOWN: "unknown",
+} as const;
+export const SHEET_KINDS = [
+  SHEET_KIND.FLOOR_PLAN,
+  SHEET_KIND.ROOF_PLAN,
+  SHEET_KIND.ELEVATION,
+  SHEET_KIND.SECTION,
+  SHEET_KIND.DETAIL,
+  SHEET_KIND.SCHEDULE,
+  SHEET_KIND.UNKNOWN,
+] as const;
 export type SheetKind = (typeof SHEET_KINDS)[number];
 
 // The window of the DWG model space one register sheet occupies, in drawing units.

@@ -6,6 +6,7 @@ import type {
   StructureClass,
   StructureContext,
 } from "../types.ts";
+import { SHEET_KIND } from "../types.ts";
 
 export interface ClassifySheet {
   kind: SheetKind;
@@ -108,7 +109,7 @@ function countStoreys(sheets: ClassifySheet[], haystack: string): number | null 
   const planLevels = new Set<number>();
   let intermediateStoreys = 0;
   for (const sheet of sheets) {
-    if (sheet.kind !== "floor-plan") continue;
+    if (sheet.kind !== SHEET_KIND.FLOOR_PLAN) continue;
     const level = floorLevelOf(sheet.title);
     if (level !== null) planLevels.add(level);
     else if (isIntermediateStorey(sheet.title)) intermediateStoreys += 1;
@@ -151,7 +152,7 @@ function inferSheetKind(title: string): SheetKind {
   if (/section/i.test(title)) return "section";
   if (/schedule/i.test(title)) return "schedule";
   if (/detail/i.test(title)) return "detail";
-  if (/floor\s+plan|\bplan\b/i.test(title)) return "floor-plan";
+  if (/floor\s+plan|\bplan\b/i.test(title)) return SHEET_KIND.FLOOR_PLAN;
   return "unknown";
 }
 

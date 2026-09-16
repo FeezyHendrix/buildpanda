@@ -2,7 +2,7 @@ import type { Knex } from "knex";
 import { generateId } from "../../../../lib/ids.ts";
 import { NotFoundError, BadRequestError } from "../../../../lib/errors.ts";
 import { preconRepository } from "../repository.ts";
-import type { DimUnit, MeasuredBoqItem, PreconBillRow } from "../types.ts";
+import { SHEET_KIND, type DimUnit, type MeasuredBoqItem, type PreconBillRow } from "../types.ts";
 import { buildSnapIndex } from "./pdf-extract.ts";
 import { contextFromPages, extractAllPages } from "./measure-file.ts";
 import { fromPdf } from "../../geometry/from-pdf.ts";
@@ -91,7 +91,7 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
       snap_index: buildSnapIndex(extracted.segments),
       error: calibration ? null : "No reliable scale — set one by typing it or drawing a known dimension",
     });
-    if (kind === "roof-plan") {
+    if (kind === SHEET_KIND.ROOF_PLAN) {
       const visionItems = await measureSheetViaVision(
         { storagePath: sheet.storage_path, pageNumber: pageNo, globalPage: sheet.page_number, sheetLabel: label, focus: "roof" },
         visionBudget,
@@ -100,7 +100,7 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
         ?? (calibration ? measureRoofPlan(extracted, calibration.mmPerPt, calibration.confidence, sheet.page_number, label) : []);
     }
     if (!calibration) return [];
-    if (kind !== "floor-plan") return [];
+    if (kind !== SHEET_KIND.FLOOR_PLAN) return [];
     const measured = measureSheetRegions(
       extracted,
       calibration.mmPerPt,
