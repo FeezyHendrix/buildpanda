@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * Local mirror of the server, following the sync columns Ernest uses:
@@ -126,7 +126,7 @@ export const outbox = sqliteTable(
 );
 
 /**
- * Daily logs are keyed by (project, date) rather than an id — one log per day —
+ * Daily logs are keyed by (project, building, date) — one log per building per day —
  * so the local primary key is the composite, and there is never a "local_" row
  * to reconcile the way RFIs need.
  */
@@ -162,6 +162,7 @@ export const dailyLogs = sqliteTable(
 export const dailyLogActivities = sqliteTable(
   "daily_log_activities",
   {
+    buildingId: text("building_id"),
     id: text("id").primaryKey(),
     projectId: text("project_id").notNull(),
     logDate: text("log_date").notNull(),
@@ -202,7 +203,7 @@ export const dailyLogEntries = sqliteTable(
 export const documentCategories = sqliteTable(
   "document_categories",
   {
-    id: text("id").primaryKey(),
+    id: text("id").notNull(),
     projectId: text("project_id").notNull(),
     name: text("name").notNull(),
     fileCount: integer("file_count").notNull().default(0),
@@ -210,7 +211,10 @@ export const documentCategories = sqliteTable(
     tone: text("tone").notNull().default("brand"),
     group: text("group").notNull().default("document"),
   },
-  (table) => [index("document_categories_project_idx").on(table.projectId, table.group)],
+  (table) => [
+    primaryKey({ columns: [table.projectId, table.id] }),
+    index("document_categories_project_idx").on(table.projectId, table.group),
+  ],
 );
 
 export const changeRequests = sqliteTable(

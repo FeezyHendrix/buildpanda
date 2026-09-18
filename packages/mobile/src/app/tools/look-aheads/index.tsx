@@ -1,10 +1,12 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
-import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_FAINT } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
+import { SearchableList } from "@/components/molecules/searchable-list";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useLocalLookAheads } from "@/hooks/use-local-look-aheads";
@@ -13,31 +15,15 @@ import { useFieldSession } from "@/lib/field-session";
 
 function List({ db, projectId }: { db: Db; projectId: string }) {
   const { data, isPending } = useLocalLookAheads(db, projectId);
-
-  if (isPending) {
-    return (
-      <View className="items-center py-12">
-        <Spinner size="md" />
-      </View>
-    );
-  }
-
-  if (data.length === 0) {
-    return (
-      <View className="items-center py-12">
-        <Text weight="semibold" className="text-center text-base">
-          No look aheads yet
-        </Text>
-        <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-          Create one to plan the next window of work with the crew.
-        </Text>
-      </View>
-    );
-  }
-
   return (
-    <Card>
-      {data.map((row) => (
+    <SearchableList
+      data={data}
+      loading={isPending}
+      fields={(row) => [row.name, row.status, formatDateRange(row.startDate, row.endDate)]}
+      placeholder="Search look-aheads"
+      emptyTitle="No look aheads yet"
+      emptyBody="Create one to plan the next window of work with the crew."
+      renderItem={(row) => (
         <Pressable
           key={row.id}
           onPress={() => router.push(`/tools/look-aheads/${row.id}`)}
@@ -56,8 +42,8 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
           {row.isPendingSync ? <PendingBadge /> : null}
           <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
         </Pressable>
-      ))}
-    </Card>
+      )}
+    />
   );
 }
 
@@ -67,14 +53,20 @@ export default function LookAheads() {
 
   return (
     <Page
+      scroll={false}
+      buildingScope
       title="Look aheads"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton icon="add" label="New look ahead" onPress={() => router.push("/tools/look-aheads/new")} />
+        <HeaderIconButton
+          icon="add"
+          label="New look ahead"
+          onPress={() => router.push("/tools/look-aheads/new")}
+        />
       }
     >
       {ready && db && projectId ? (
-        <List db={db} projectId={projectId} />
+        <List key={projectId} db={db} projectId={projectId} />
       ) : (
         <View className="items-center py-12">
           <Spinner size="md" />

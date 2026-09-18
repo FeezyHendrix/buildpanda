@@ -21,6 +21,13 @@ export const publicTokenRateLimit: RateLimitOptions = {
   timeWindow: 60_000,
 };
 
+// One app update downloads dozens of immutable assets in a burst. Allow the
+// full update and retries without relaxing limits on manifests or token links.
+export const otaAssetRateLimit: RateLimitOptions = {
+  max: 300,
+  timeWindow: 60_000,
+};
+
 export const leadsRateLimit: RateLimitOptions = {
   max: 5,
   timeWindow: 60_000,

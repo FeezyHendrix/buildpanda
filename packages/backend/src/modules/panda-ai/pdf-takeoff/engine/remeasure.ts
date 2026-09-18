@@ -2,7 +2,7 @@ import type { Knex } from "knex";
 import { generateId } from "../../../../lib/ids.ts";
 import { NotFoundError, BadRequestError } from "../../../../lib/errors.ts";
 import { preconRepository } from "../repository.ts";
-import type { DimUnit, MeasuredBoqItem, PreconBillRow } from "../types.ts";
+import { SHEET_KIND, type DimUnit, type MeasuredBoqItem, type PreconBillRow } from "../types.ts";
 import { buildSnapIndex } from "./pdf-extract.ts";
 import { contextFromPages, extractAllPages } from "./measure-file.ts";
 import { fromPdf } from "../../geometry/from-pdf.ts";
@@ -11,6 +11,8 @@ import { calibrate } from "./calibrate.ts";
 import { countDoorArcs } from "./measure.ts";
 import { classifySheet, measureSheetRegions, withTempFile } from "./measure-sheet.ts";
 import { draftBoq } from "./boq-draft.ts";
+import { measureRoofPlan } from "./roof-measure.ts";
+import { measureSheetViaVision } from "./vision-takeoff.ts";
 import type { ProgressFn } from "./run.ts";
 
 interface Calibration {
@@ -52,6 +54,7 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
   const siblings = sheets.filter((s) => s.storage_path === sheet.storage_path).sort((a, b) => a.page_number - b.page_number);
   const pageNo = siblings.findIndex((s) => s.id === sheetId) + 1;
   const label = `${sheet.file_name} p${pageNo}`;
+  const visionBudget = { remainingSheets: 1 };
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   await progress("reading", `Re-reading ${label}`);
@@ -88,7 +91,16 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
       snap_index: buildSnapIndex(extracted.segments),
       error: calibration ? null : "No reliable scale — set one by typing it or drawing a known dimension",
     });
-    if (!calibration || kind !== "floor-plan") return [];
+    if (kind === SHEET_KIND.ROOF_PLAN) {
+      const visionItems = await measureSheetViaVision(
+        { storagePath: sheet.storage_path, pageNumber: pageNo, globalPage: sheet.page_number, sheetLabel: label, focus: "roof" },
+        visionBudget,
+      );
+      return visionItems?.filter((item) => item.elementGroup === "Roof")
+        ?? (calibration ? measureRoofPlan(extracted, calibration.mmPerPt, calibration.confidence, sheet.page_number, label) : []);
+    }
+    if (!calibration) return [];
+    if (kind !== SHEET_KIND.FLOOR_PLAN) return [];
     const measured = measureSheetRegions(
       extracted,
       calibration.mmPerPt,

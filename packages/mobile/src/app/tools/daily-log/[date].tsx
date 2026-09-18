@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -15,7 +16,6 @@ import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useAddDailyLogEntry, useDailyLogDay, useSaveDailyLog } from "@/hooks/use-daily-logs";
 import { useProjectBuilding } from "@/hooks/use-project-building";
-import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { useSession } from "@/lib/auth-client";
 import { formatLongDayLabel } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
@@ -41,18 +41,10 @@ function weatherFromLabel(label: string): WeatherCondition | null {
   return WEATHER_CONDITIONS.find((condition) => WEATHER_CONDITION_LABELS[condition] === label) ?? null;
 }
 
-function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logDate: string }) {
-  const { day, entries, isPending } = useDailyLogDay(db, projectId, logDate);
+function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: string; logDate: string; buildingId: string }) {
+  const { day, entries, activities, isPending } = useDailyLogDay(db, projectId, logDate, buildingId);
   const save = useSaveDailyLog(db, projectId);
   const addEntry = useAddDailyLogEntry(db, projectId);
-  const { buildingId, buildings, needsChoice, selectBuilding } = useProjectBuilding();
-
-  // A multi-building project cannot take an entry until the block is known, so
-  // the sheet opens itself rather than letting the write fail on submit. Open
-  // is derived: it shows while a choice is outstanding and has not been waved
-  // away, so no effect has to push it open once the buildings load.
-  const [pickerDismissed, setPickerDismissed] = useState(false);
-  const buildingPickerOpen = needsChoice && !pickerDismissed;
   const { data: session } = useSession();
 
   // Untouched fields (`undefined` for weather, whose `null` means "no weather";
@@ -79,21 +71,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
 
   const isVoided = day?.isVoided ?? false;
 
-  // A write with no building is refused by the API on a multi-building
-  // project, and the queued row would fail for good. Ask now, or explain
-  // that the building list has not loaded yet, instead of queuing it.
-  function requireBuilding(): boolean {
-    if (buildingId) return true;
-    if (buildings.length > 1) {
-      setPickerDismissed(false);
-      return false;
-    }
-    setError("This project's buildings haven't loaded yet. Connect once so they can, then try again.");
-    return false;
-  }
-
   async function handleSave() {
-    if (!requireBuilding()) return;
     setSaving(true);
     setError(null);
     try {
@@ -117,7 +95,6 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
     const text = htmlToText(entryHtml);
     if (!text) return;
     setError(null);
-    if (!requireBuilding()) return;
     try {
       await addEntry(logDate, text, session?.user.name ?? "You", entryHtml.trim() || null, buildingId);
       setEntryHtml("");
@@ -225,6 +202,18 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
           ) : null}
         </View>
 
+        {activities.length > 0 ? (
+          <Card>
+            {activities.map((activity) => (
+              <View key={activity.id} className="min-h-14 flex-row items-center gap-3 border-b border-hairline px-4 py-3">
+                <Text className="flex-1">{activity.activityName}</Text>
+                <Text weight="semibold">{activity.hoursLogged}h</Text>
+                {activity.isPendingSync ? <PendingBadge /> : null}
+              </View>
+            ))}
+          </Card>
+        ) : null}
+
         <Text weight="bold" className="text-base">
           Entries
         </Text>
@@ -271,17 +260,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
         ) : null}
       </View>
 
-      <WorkspaceSheet
-        title="Choose a building"
-        visible={buildingPickerOpen}
-        workspaces={buildings.map((building) => ({
-          id: building.id,
-          name: building.code ? `${building.name} (${building.code})` : building.name,
-        }))}
-        activeId={buildingId}
-        onSelect={selectBuilding}
-        onClose={() => setPickerDismissed(true)}
-      />
+
     </View>
   );
 }
@@ -289,14 +268,15 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
 export default function DailyLogDay() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const { projectId } = useFieldSession();
+  const { buildingId } = useProjectBuilding();
   const { db, ready } = useLocalDb();
 
   const label = date ? formatLongDayLabel(date) || date : undefined;
 
   return (
-    <Page title="Daily log" description={label} onBack={() => router.back()}>
-      {ready && db && projectId && date ? (
-        <DayEditor db={db} projectId={projectId} logDate={date} />
+    <Page buildingScope title="Daily log" description={label} onBack={() => goBack()}>
+      {ready && db && projectId && date && buildingId ? (
+        <DayEditor key={`${projectId}:${buildingId}:${date}`} db={db} projectId={projectId} logDate={date} buildingId={buildingId} />
       ) : (
         <View className="items-center py-12">
           <Spinner size="md" />

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ReactSVG } from "react-svg";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -15,6 +16,7 @@ import {
   useProjectDocumentCategories,
   useProjectDocuments,
 } from "@/hooks/use-documents";
+import api from "@/api/client";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { formatShortDate } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
@@ -41,6 +43,10 @@ export default function ProjectMediaLibrary() {
   const canManage = Boolean(access && canResourceAction(access, "documents", "upload"));
   const { data: categories = [] } = useProjectDocumentCategories(project.id);
   const { data: documents = [] } = useProjectDocuments(project.id);
+  const { data: capturedMedia = [] } = useQuery({
+    queryKey: ["projects", project.id, "media"],
+    queryFn: () => api.get<CapturedMedia[]>(`/projects/${project.id}/media`).then((response) => response.data),
+  });
   const uploader = useDocumentUpload(project.id, "Media uploaded");
   const deleteDocument = useDeleteDocument();
 
@@ -56,6 +62,7 @@ export default function ProjectMediaLibrary() {
       : allMediaDocuments.filter((d) => d.categoryId === categoryFilter);
 
   const viewingUrl = viewing ? mediaViewUrl(project.id, viewing) : null;
+
 
   function handleDelete(): void {
     if (!deleting) return;
@@ -145,6 +152,20 @@ export default function ProjectMediaLibrary() {
         )}
       </section>
 
+      {capturedMedia.length > 0 && (
+        <section className="mt-10">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-gray-900">Site updates and daily logs</h2>
+            <p className="mt-1 text-sm text-gray-500">Photos shared in field updates and daily logs.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {capturedMedia.map((item) => (
+              <CapturedMediaTile key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {viewing && viewingUrl && (
         <FileViewerDialog
           open
@@ -170,6 +191,33 @@ export default function ProjectMediaLibrary() {
         variant="danger"
       />
     </div>
+  );
+}
+
+interface CapturedMedia {
+  id: string;
+  url: string;
+  title: string;
+  source: string;
+  createdAt: string;
+  type: "photo" | "video";
+}
+
+function CapturedMediaTile({ item }: { item: CapturedMedia }) {
+  return (
+    <a href={item.url} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-lg border border-line-hair bg-white">
+      <div className="aspect-square overflow-hidden bg-surface-alt">
+        {item.type === "video" ? (
+          <video src={item.url} aria-label={item.title} muted preload="metadata" className="size-full object-cover" />
+        ) : (
+          <img src={item.url} alt={item.title} loading="lazy" className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.03]" />
+        )}
+      </div>
+      <div className="px-3 py-2.5">
+        <p className="truncate text-xs font-medium text-gray-900">{item.source}</p>
+        <p className="truncate text-xs text-gray-500">{formatShortDate(item.createdAt) || item.createdAt}</p>
+      </div>
+    </a>
   );
 }
 

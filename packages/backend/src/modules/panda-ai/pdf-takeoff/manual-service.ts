@@ -2,7 +2,7 @@ import { generateId } from "../../../lib/ids.ts";
 import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
 import type { PreconRepository } from "./repository.ts";
 import { nextRevision } from "./revisions.ts";
-import { PICTURE_PLAN } from "./types.ts";
+import { PICTURE_PLAN, SHEET_KIND } from "./types.ts";
 import { buildTakeoffCsv, csvFileName } from "./export-csv.ts";
 import { manualBasis, measureVertices, netQuantity, normaliseTypical, quantityFromStated } from "./measurements.ts";
 import { scaleAt, scaleClause } from "./viewports.ts";
@@ -172,7 +172,7 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
           page_number: 1,
           code: isDwg ? "DWG-01" : isPicture ? "IMG-01" : null,
           title: isDwg || isPicture ? file.fileName : null,
-          kind: isDwg ? "floor-plan" : "unknown",
+          kind: isDwg ? SHEET_KIND.FLOOR_PLAN : SHEET_KIND.UNKNOWN,
           status: isPicture ? "measured" : "pending",
           scale_mm_per_pt: null,
           scale_confidence: null,

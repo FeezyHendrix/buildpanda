@@ -39,10 +39,9 @@ const registerFields = {
 
 const createDocumentBody = {
   type: "object",
-  required: ["categoryId"],
   additionalProperties: false,
   properties: {
-    categoryId: { type: "string", minLength: 1, maxLength: 100 },
+    categoryId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     fileId: { type: "string", minLength: 1, maxLength: 100 },
     fileName: { type: "string", minLength: 1, maxLength: 255 },
     size: { type: "string", minLength: 1, maxLength: 50 },
@@ -108,6 +107,15 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "documents", "view");
       return service.categoriesForProject(project.id);
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/media",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "documents", "view");
+      return service.listProjectMedia(project.id);
     },
   );
 

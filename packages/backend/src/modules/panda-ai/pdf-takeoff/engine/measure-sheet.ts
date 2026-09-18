@@ -6,7 +6,7 @@ import { pipeline } from "node:stream/promises";
 import { createWriteStream } from "node:fs";
 import { openStoredFile } from "../../../../lib/file-storage.ts";
 import { generateId } from "../../../../lib/ids.ts";
-import type { DimUnit, MeasuredBoqItem, Segment, SheetKind } from "../types.ts";
+import { SHEET_KIND, type DimUnit, type MeasuredBoqItem, type Segment, type SheetKind } from "../types.ts";
 import type { extractSheet } from "./pdf-extract.ts";
 import { clusterRegions } from "./cluster.ts";
 import { ASSUMED_CONTEXT, type DocumentContext } from "./document-context.ts";
@@ -29,11 +29,12 @@ export async function withTempFile<T>(storagePath: string, ext: string, fn: (fil
 }
 
 const SHEET_TITLE_KINDS: [RegExp, SheetKind][] = [
-  [/floor\s*plan|ground\s*floor|first\s*floor|typical\s*floor/i, "floor-plan"],
-  [/elevation/i, "elevation"],
-  [/section/i, "section"],
-  [/schedule/i, "schedule"],
-  [/detail/i, "detail"],
+  [/roof\s*plan/i, SHEET_KIND.ROOF_PLAN],
+  [/floor\s*plan|ground\s*floor|first\s*floor|typical\s*floor/i, SHEET_KIND.FLOOR_PLAN],
+  [/elevation/i, SHEET_KIND.ELEVATION],
+  [/section/i, SHEET_KIND.SECTION],
+  [/schedule/i, SHEET_KIND.SCHEDULE],
+  [/detail/i, SHEET_KIND.DETAIL],
 ];
 // "+3450 FIRST FLOOR SLAB" is a level mark, not a title; an elevation is
 // full of them and must not read as a floor plan.
@@ -45,7 +46,7 @@ export function classifySheet(texts: { str: string }[], hasDoorArcs: boolean, ha
 } {
   const joined = texts.map((t) => t.str).filter((s) => s.length < 80 && !LEVEL_MARK_TEXT.test(s));
   let title: string | null = null;
-  let kind: SheetKind = "unknown";
+  let kind: SheetKind = SHEET_KIND.UNKNOWN;
   for (const [pattern, k] of SHEET_TITLE_KINDS) {
     const hit = joined.find((s) => pattern.test(s));
     if (hit) {
@@ -54,7 +55,7 @@ export function classifySheet(texts: { str: string }[], hasDoorArcs: boolean, ha
       break;
     }
   }
-  if (kind === "unknown" && (hasDoorArcs || hasRoomLabels)) kind = "floor-plan";
+  if (kind === SHEET_KIND.UNKNOWN && (hasDoorArcs || hasRoomLabels)) kind = SHEET_KIND.FLOOR_PLAN;
   return { kind, title };
 }
 

@@ -21,7 +21,7 @@ import type {
   UpdateSheetBody,
   UpdateStructureBody,
 } from "./types.ts";
-import { DIM_UNITS, FULL_TAKEOFF_SCOPE, SHEET_KINDS } from "./types.ts";
+import { DIM_UNITS, FULL_TAKEOFF_SCOPE, SHEET_KIND, SHEET_KINDS } from "./types.ts";
 import { normaliseViewports } from "./viewports.ts";
 
 type Audit = (
@@ -88,7 +88,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
           page_number: 1,
           code: "DWG-01",
           title: file.fileName,
-          kind: "floor-plan",
+          kind: SHEET_KIND.FLOOR_PLAN,
           status: "pending",
           scale_mm_per_pt: null,
           scale_confidence: null,
@@ -134,7 +134,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
         handover.sheets.map((s, i) => {
           const id = generateId("pcsh");
           sheetIds.set(s.id, id);
-          const drawable = sheetsOnly || s.kind === "floor-plan";
+          const drawable = sheetsOnly || s.kind === SHEET_KIND.FLOOR_PLAN || s.kind === SHEET_KIND.ROOF_PLAN;
           return {
             id,
             session_id: session.id,

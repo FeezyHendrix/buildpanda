@@ -134,6 +134,20 @@
       "when": 1789152655456,
       "tag": "0018_field_close_the_loop",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1789478759744,
+      "tag": "0019_building_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1789490833913,
+      "tag": "0020_project_document_folders",
+      "breakpoints": true
     }
   ]
 }
