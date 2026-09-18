@@ -215,11 +215,19 @@ async function promoteIfAdminEmail(userId: string): Promise<void> {
 }
 
 /**
- * Internal notice that a new account exists. Off when SIGNUP_NOTIFY_EMAIL is
- * empty, and silent on failure: the caller is inside the sign-up path and a
- * bounced internal email is not the new user's problem.
+ * Internal notice that a new account exists.
+ *
+ * Production only. Staging shares this code and its own mail credentials, and
+ * every throwaway account made while testing there would otherwise land in a
+ * real person's inbox — which teaches them to ignore the alert, and the alert
+ * is only worth having if it is read.
+ *
+ * Off when SIGNUP_NOTIFY_EMAIL is empty, and silent on failure: the caller is
+ * inside the sign-up path and a bounced internal email is not the new user's
+ * problem.
  */
 async function notifyOfSignup(signup: NewSignup): Promise<void> {
+  if (!config.isProduction) return;
   const recipients = config.mail.signupNotifyAddresses;
   if (recipients.length === 0) return;
   try {
