@@ -1,5 +1,6 @@
 import { Button } from "@/components/atoms/button";
 import type { SheetViewport } from "@/api/precon";
+import type { RegionEdit } from "./viewport-edit-layer";
 import { mmPerPtForRatio } from "@/lib/precon-meta";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
@@ -88,3 +89,31 @@ export function ViewportPromptBanner({ draft, saving, onChange, onSave, onDiscar
   );
 }
 ViewportPromptBanner.displayName = "ViewportPromptBanner";
+
+interface RegionEditProps {
+  edit: RegionEdit;
+  saving: boolean;
+  onPatch: (changes: Partial<RegionEdit>) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+/** An existing region under edit: label, ratio, and draggable bounds on the sheet. Save runs the impact preview first. */
+export function RegionEditBanner({ edit, saving, onPatch, onSave, onCancel }: RegionEditProps) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-amber-100 bg-amber-50 px-3 py-1.5 text-xs text-amber-900" data-region-edit-banner>
+      <span>Editing region</span>
+      <input className={cn(INPUT, "w-28")} value={edit.label} onChange={(e) => onPatch({ label: e.target.value })} aria-label="Region label" />
+      <span>at 1:</span>
+      <input className={cn(INPUT, "w-16")} inputMode="numeric" value={edit.ratio} onChange={(e) => onPatch({ ratio: e.target.value })} aria-label="Region scale ratio" />
+      <span>— drag the frame to move it, a corner to resize</span>
+      <Button size="sm" loading={saving} onClick={onSave}>
+        Preview change
+      </Button>
+      <button type="button" className="underline" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+RegionEditBanner.displayName = "RegionEditBanner";

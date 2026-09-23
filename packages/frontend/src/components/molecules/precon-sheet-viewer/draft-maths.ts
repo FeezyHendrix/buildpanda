@@ -77,6 +77,8 @@ export function scaleForDraft(sheetMmPerPt: number | null, viewports: readonly S
   return viewportAt(viewports, draft[0])?.scaleMmPerPt ?? sheetMmPerPt;
 }
 
+import type { PathSegment } from "@/api/precon-row-types";
+
 /** What the drawing tools accumulate: the vertices to send, the clicked points to mark, a pending arc middle. */
 export interface DraftState {
   vertices: number[][];
@@ -84,9 +86,11 @@ export interface DraftState {
   anchors: number[][];
   /** Alt-clicked: the next click closes an arc through this point. */
   arcMid: number[] | null;
+  /** The LOGICAL outline, one entry per gesture — what `create-geometry` sends as `shape` when any side curves. */
+  segments: PathSegment[];
 }
 
-export const EMPTY_DRAFT: DraftState = { vertices: [], anchors: [], arcMid: null };
+export const EMPTY_DRAFT: DraftState = { vertices: [], anchors: [], arcMid: null, segments: [] };
 
 /**
  * One click on the sheet. Alt-click with a point already down marks the arc's
@@ -97,13 +101,24 @@ export function addDraftPoint(state: DraftState, pt: number[], alt: boolean): Dr
   const last = state.vertices[state.vertices.length - 1];
   if (state.arcMid && last) {
     const arc = arcThroughPoints(last, state.arcMid, pt);
-    return { vertices: [...state.vertices, ...arc.slice(1)], anchors: [...state.anchors, pt], arcMid: null };
+    return {
+      vertices: [...state.vertices, ...arc.slice(1)],
+      anchors: [...state.anchors, pt],
+      arcMid: null,
+      segments: [...state.segments, { kind: "arc", mid: [state.arcMid[0]!, state.arcMid[1]!], end: [pt[0]!, pt[1]!] }],
+    };
   }
   if (alt && last) return { ...state, arcMid: pt };
-  return { vertices: [...state.vertices, pt], anchors: [...state.anchors, pt], arcMid: null };
+  return {
+    vertices: [...state.vertices, pt],
+    anchors: [...state.anchors, pt],
+    arcMid: null,
+    // the first click is the path's start, not a side
+    segments: last ? [...state.segments, { kind: "line", end: [pt[0]!, pt[1]!] }] : state.segments,
+  };
 }
 
 /** A ready-made shape (a rectangle, a found room) replaces whatever was being drawn. */
 export function draftFromVertices(vertices: number[][]): DraftState {
-  return { vertices, anchors: vertices, arcMid: null };
+  return { vertices, anchors: vertices, arcMid: null, segments: vertices.slice(1).map((v) => ({ kind: "line", end: [v[0]!, v[1]!] })) };
 }

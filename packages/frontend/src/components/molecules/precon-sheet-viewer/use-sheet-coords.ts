@@ -71,22 +71,28 @@ export function useSheetCoords({ page, view, containerRef, snapPoints }: Args) {
     [screenToCanvas, toPt],
   );
 
-  /** Snap to the nearest indexed point within ten screen pixels; Shift keeps the segment from `prev` orthogonal. */
+  /**
+   * Snap to the nearest indexed point within ten screen pixels; Shift keeps the
+   * segment from `prev` orthogonal; Ctrl/Cmd (`bypassSnap`) places the raw
+   * point exactly where clicked (contract 16's snap override).
+   */
   const snapAndOrtho = useCallback(
-    (pt: [number, number], shift: boolean, prev: number[] | null): [number, number] => {
+    (pt: [number, number], shift: boolean, prev: number[] | null, bypassSnap = false): [number, number] => {
       let [x, y] = pt;
-      const ptPerCanvasPx = page?.frame ? page.frame.w / page.widthPx : 1 / (page?.rasterScale ?? BASE_RASTER);
-      const thresholdPt = (SNAP_PX / cssZoom) * ptPerCanvasPx;
-      let best: number[] | null = null;
-      let bestDist = thresholdPt;
-      for (const p of snapPoints) {
-        const d = Math.hypot(p[0]! - x, p[1]! - y);
-        if (d < bestDist) {
-          bestDist = d;
-          best = p;
+      if (!bypassSnap) {
+        const ptPerCanvasPx = page?.frame ? page.frame.w / page.widthPx : 1 / (page?.rasterScale ?? BASE_RASTER);
+        const thresholdPt = (SNAP_PX / cssZoom) * ptPerCanvasPx;
+        let best: number[] | null = null;
+        let bestDist = thresholdPt;
+        for (const p of snapPoints) {
+          const d = Math.hypot(p[0]! - x, p[1]! - y);
+          if (d < bestDist) {
+            bestDist = d;
+            best = p;
+          }
         }
+        if (best) [x, y] = [best[0]!, best[1]!];
       }
-      if (best) [x, y] = [best[0]!, best[1]!];
       if (shift && prev) {
         if (Math.abs(x - prev[0]!) > Math.abs(y - prev[1]!)) y = prev[1]!;
         else x = prev[0]!;
@@ -96,5 +102,13 @@ export function useSheetCoords({ page, view, containerRef, snapPoints }: Args) {
     [page, cssZoom, snapPoints],
   );
 
-  return { cssZoom, toPx, toPt, screenToCanvas, screenToPt, snapAndOrtho };
+  const screenPxToPt = useCallback(
+    (px: number): number => {
+      const ptPerCanvasPx = page?.frame ? page.frame.w / page.widthPx : 1 / (page?.rasterScale ?? BASE_RASTER);
+      return (px / cssZoom) * ptPerCanvasPx;
+    },
+    [page, cssZoom],
+  );
+
+  return { cssZoom, toPx, toPt, screenToCanvas, screenToPt, snapAndOrtho, screenPxToPt };
 }

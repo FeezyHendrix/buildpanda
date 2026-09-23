@@ -11,6 +11,11 @@ interface Props {
   /** The current sheet's canvas size; the previous revision is stretched to it (frame / page size alignment). */
   widthPx: number;
   heightPx: number;
+  /** CSS transform aligning the source onto this sheet (persisted overlay). */
+  transform?: string;
+  opacity?: number;
+  /** False during the blink's off phase. */
+  visible?: boolean;
   onError?: (message: string) => void;
 }
 
@@ -19,7 +24,7 @@ interface Props {
  * linework tinted red. Multiply blending drops the paper so only the lines
  * show: what has moved reads as a red ghost beside the current black line.
  */
-export function OverlayLayer({ sheet, sheets, widthPx, heightPx, onError }: Props) {
+export function OverlayLayer({ sheet, sheets, widthPx, heightPx, transform, opacity = OPACITY, visible = true, onError }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
 
@@ -51,6 +56,6 @@ export function OverlayLayer({ sheet, sheets, widthPx, heightPx, onError }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.id, widthPx, heightPx]);
 
-  return <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none absolute left-0 top-0" style={{ mixBlendMode: "multiply", opacity: ready ? OPACITY : 0, width: widthPx, height: heightPx }} />;
+  return <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none absolute left-0 top-0" style={{ mixBlendMode: "multiply", opacity: ready && visible ? opacity : 0, width: widthPx, height: heightPx, transform, transformOrigin: "0 0" }} />;
 }
 OverlayLayer.displayName = "OverlayLayer";
