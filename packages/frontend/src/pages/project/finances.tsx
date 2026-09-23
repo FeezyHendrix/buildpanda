@@ -87,6 +87,7 @@ export default function ProjectFinances() {
               projectId={project.id}
               currency={summary.currency}
               points={snapshot.data?.finance.cashFlow.points ?? EMPTY_POINTS}
+              budgetCurve={snapshot.data?.schedule.programmeCostCurve}
               budgetTotal={snapshot.data?.finance.budget.totalPlanned ?? 0}
               spentTotal={snapshot.data?.finance.budget.totalActual ?? 0}
               isLoading={snapshot.isPending}

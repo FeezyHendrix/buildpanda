@@ -31,16 +31,46 @@ export function formatPeriod(period: string): string {
   return `${MONTHS[index]} '${year.slice(2)}`;
 }
 
+export interface SpendPoint {
+  period: string;
+  /** Cumulative cost logged by the end of this month. */
+  spent: number;
+  /** Cumulative cost the programme says should have been spent by then. */
+  budgeted: number;
+}
+
+/**
+ * Spend comes from the expense ledger, budget from the programme's own cost
+ * phasing. They are kept apart on purpose: the schedule of values is a BILLING
+ * schedule, what the employer is certified, and plotting it against cost would
+ * compare revenue to spend and quietly overstate the budget by the margin.
+ */
+export function mergeSeries(spend: CashFlowPoint[], budget: CashFlowPoint[] | null | undefined): SpendPoint[] {
+  const byPeriod = new Map<string, SpendPoint>();
+  const at = (period: string): SpendPoint => {
+    let row = byPeriod.get(period);
+    if (!row) {
+      row = { period, spent: 0, budgeted: 0 };
+      byPeriod.set(period, row);
+    }
+    return row;
+  };
+  for (const point of spend) at(point.period).spent = point.cumulativeActual;
+  // Without a phased cost budget the curve's own planned figures stand in.
+  const budgetSource = budget && budget.length > 0 ? budget : spend;
+  for (const point of budgetSource) at(point.period).budgeted = point.cumulativePlanned;
+  return [...byPeriod.values()].sort((a, b) => a.period.localeCompare(b.period));
+}
+
 /** The last N months of the curve, or all of it. */
-export function windowPoints(points: CashFlowPoint[], range: Range): CashFlowPoint[] {
-  const sorted = [...points].sort((a, b) => a.period.localeCompare(b.period));
-  if (range === "all") return sorted;
-  return sorted.slice(-Number(range));
+export function windowPoints(points: SpendPoint[], range: Range): SpendPoint[] {
+  if (range === "all") return points;
+  return points.slice(-Number(range));
 }
 
 const SERIES = [
-  { key: "cumulativeActual", label: "Spent", swatch: "bg-primary-500", stroke: "var(--color-primary-500)", dash: undefined },
-  { key: "cumulativePlanned", label: "Budgeted", swatch: "border border-dashed border-ink-muted", stroke: "var(--color-ink-muted)", dash: "4 4" },
+  { key: "spent", label: "Spent", swatch: "bg-primary-500", stroke: "var(--color-primary-500)", dash: undefined },
+  { key: "budgeted", label: "Budgeted", swatch: "border border-dashed border-ink-muted", stroke: "var(--color-ink-muted)", dash: "4 4" },
 ] as const;
 
 function Legend() {
@@ -84,18 +114,22 @@ SpendTooltip.displayName = "SpendTooltip";
 interface SpendVsBudgetCardProps {
   projectId: string;
   currency: string;
+  /** Cash-flow points from the reporting snapshot; supplies the spend line. */
   points: CashFlowPoint[];
+  /** The programme's phased cost budget; supplies the budget line. */
+  budgetCurve?: CashFlowPoint[] | null;
   budgetTotal: number;
   spentTotal: number;
   isLoading?: boolean;
   className?: string;
 }
 
-export function SpendVsBudgetCard({ projectId, currency, points, budgetTotal, spentTotal, isLoading, className }: SpendVsBudgetCardProps) {
+export function SpendVsBudgetCard({ projectId, currency, points, budgetCurve, budgetTotal, spentTotal, isLoading, className }: SpendVsBudgetCardProps) {
   const [range, setRange] = useState<Range>("12");
+  const merged = useMemo(() => mergeSeries(points, budgetCurve), [points, budgetCurve]);
   const data = useMemo(
-    () => windowPoints(points, range).map((point) => ({ ...point, label: formatPeriod(point.period) })),
-    [points, range],
+    () => windowPoints(merged, range).map((point) => ({ ...point, label: formatPeriod(point.period) })),
+    [merged, range],
   );
 
   return (
