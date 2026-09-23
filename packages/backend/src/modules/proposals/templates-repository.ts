@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { estimatesRepository } from "./estimates-repository.ts";
 import type {
   JobProfile,
   ProposalTemplateRow,
@@ -133,6 +134,10 @@ export function proposalTemplatesRepository(db: Knex) {
       const scheduleHasKind = await hasColumn("estimate_payment_schedule", "kind");
       const packTable = await hasTable("proposal_pack_sections");
       await db.transaction(async (trx) => {
+        // Applying a template rewrites the estimate's meta and its whole
+        // payment schedule, so it takes the same row lock as any other
+        // estimate writer before the first of those writes.
+        await estimatesRepository(trx).lockEstimate(estimateId);
         await trx("estimates").where({ id: estimateId }).update(patch);
         await trx("estimate_payment_schedule").where({ estimate_id: estimateId }).delete();
         if (tpl.payment_schedule.length) {

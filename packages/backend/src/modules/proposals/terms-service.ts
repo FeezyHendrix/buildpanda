@@ -1,6 +1,7 @@
-import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import type { EstimateItemsService } from "./estimate-items-service.ts";
 import type { ProposalsRepository } from "./repository.ts";
-import type { ProposalTermsRepository } from "./terms-repository.ts";
+import { proposalTermsRepository } from "./terms-repository.ts";
 import type {
   CreatePaymentScheduleInput,
   Estimate,
@@ -54,29 +55,22 @@ export function sendBlocker(estimate: Pick<Estimate, "status">, schedule: Paymen
   return validateSchedule(schedule);
 }
 
-export function proposalTermsService(repo: ProposalsRepository, terms: ProposalTermsRepository) {
-  async function loadDraft(estimateId: string, proposalId: string, orgId: string) {
-    const proposal = await repo.getById(proposalId, orgId);
-    if (!proposal) throw new ForbiddenError("No access to this proposal");
-    const estimate = await repo.getEstimate(estimateId);
-    if (!estimate || estimate.proposalId !== proposalId) throw new NotFoundError("Estimate");
-    if (estimate.status !== "Draft") {
-      throw new BadRequestError("Only Draft estimates can be edited. Create a new revision to make changes.");
-    }
-    return { proposal, estimate };
-  }
-
+// Terms and the payment schedule are estimate state, so they take the same
+// row lock as an item replacement: `estimates.withOwnedDraftEstimate` is the
+// single entry point that checks ownership, locks and enforces the Draft rule.
+export function proposalTermsService(repo: ProposalsRepository, estimates: EstimateItemsService) {
   return {
     async updateTerms(estimateId: string, proposalId: string, orgId: string, patch: UpdateEstimateTermsInput) {
-      await loadDraft(estimateId, proposalId, orgId);
-      const problem = validateTerms(patch);
-      if (problem) throw new BadRequestError(problem);
-      const { validUntil, ...estimatePatch } = patch;
-      await terms.updateTerms(estimateId, estimatePatch);
-      if (validUntil !== undefined) await repo.updateProposal(proposalId, orgId, { validUntil });
-      const updated = await repo.getEstimate(estimateId);
-      if (!updated) throw new NotFoundError("Estimate");
-      return updated;
+      return estimates.withOwnedDraftEstimate(estimateId, proposalId, orgId, async (ctx) => {
+        const problem = validateTerms(patch);
+        if (problem) throw new BadRequestError(problem);
+        const { validUntil, ...estimatePatch } = patch;
+        await proposalTermsRepository(ctx.trx).updateTerms(estimateId, estimatePatch);
+        if (validUntil !== undefined) await ctx.proposals.updateProposal(proposalId, orgId, { validUntil });
+        const updated = await ctx.estimates.getEstimate(estimateId);
+        if (!updated) throw new NotFoundError("Estimate");
+        return updated;
+      });
     },
 
     async savePaymentSchedule(
@@ -85,11 +79,12 @@ export function proposalTermsService(repo: ProposalsRepository, terms: ProposalT
       orgId: string,
       schedule: CreatePaymentScheduleInput[],
     ) {
-      await loadDraft(estimateId, proposalId, orgId);
-      const problem = validateSchedule(schedule);
-      if (problem) throw new BadRequestError(problem);
-      const ids = schedule.map((_, i) => `sched_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2, 6)}`);
-      return repo.replaceSchedule(estimateId, schedule, ids);
+      return estimates.withOwnedDraftEstimate(estimateId, proposalId, orgId, async (ctx) => {
+        const problem = validateSchedule(schedule);
+        if (problem) throw new BadRequestError(problem);
+        const ids = schedule.map((_, i) => `sched_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2, 6)}`);
+        return ctx.items.replaceSchedule(estimateId, schedule, ids);
+      });
     },
 
     async assertSendable(estimate: Estimate) {

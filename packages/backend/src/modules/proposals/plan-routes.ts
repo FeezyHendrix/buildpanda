@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { estimateItemsService } from "./estimate-items-service.ts";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
 import { PLAN_DISCIPLINES } from "./types.ts";
@@ -44,7 +45,7 @@ const updatePlanBody = {
 
 const planRoutes: FastifyPluginAsync = async (fastify) => {
   const repo = proposalsRepository(fastify.db);
-  const service = proposalsService(repo);
+  const service = proposalsService(repo, estimateItemsService(fastify.db));
 
   // --- Plans ---
 
