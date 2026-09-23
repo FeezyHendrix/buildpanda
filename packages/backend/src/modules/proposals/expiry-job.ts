@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import type { QueueManager } from "../../lib/queue/index.ts";
+import { estimatesRepository } from "./estimates-repository.ts";
 import { proposalsRepository } from "./repository.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import {
@@ -26,7 +27,7 @@ export async function runExpirySweep(db: Knex): Promise<void> {
   const now = new Date().toISOString();
 
   // 1. Expire overdue estimates/proposals
-  const expired = await repo.expireOverdueEstimates(now);
+  const expired = await db.transaction((trx) => estimatesRepository(trx).expireOverdueEstimates(now));
   if (expired.length > 0) {
     // Fetch proposal details to send expiry notification emails
     for (const { proposalId } of expired) {

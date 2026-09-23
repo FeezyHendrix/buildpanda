@@ -1,11 +1,14 @@
 import { BadRequestError } from "../../../lib/errors.ts";
+import { arcLengthPt, arcSignedAreaPt, type ArcPoints } from "./measurement-arcs.ts";
+import { basisFor } from "./measurement-basis.ts";
+import { isSelfIntersecting } from "./measurement-topology.ts";
 import type { GeometryKind, ManualQuantity, MeasureFactor, MeasureTool } from "./types.ts";
 
 // Quantity maths for lines drawn by hand. Vertices are sheet points; the
 // sheet's mm-per-point scale turns them into metres. Every figure is rounded
 // to 2 dp, and the basis sentence names every factor that reached the number.
 
-const round2 = (v: number): number => Math.round(v * 100) / 100;
+export const round2 = (v: number): number => Math.round(v * 100) / 100;
 
 export const DEFAULT_UNITS: Record<MeasureTool, string> = {
   length: "m",
@@ -54,6 +57,50 @@ export function polygonAreaM2(vertices: number[][], mmPerPt: number): number {
   return Math.abs(doubled / 2) * toM * toM;
 }
 
+// ---------- curved runs ----------
+//
+// `arcMids` keys a segment by the index of the vertex it starts at: an entry at
+// 0 curves the run from vertices[0] to vertices[1] through the point given.
+// Segments with no entry stay straight, so the arc-aware functions below return
+// exactly what their straight-line siblings do when the map is empty.
+
+export type ArcMids = Map<number, [number, number]>;
+
+function arcAt(arcMids: ArcMids, index: number, from: number[], to: number[]): ArcPoints | null {
+  const mid = arcMids.get(index);
+  if (!mid) return null;
+  return { start: [from[0]!, from[1]!], mid, end: [to[0]!, to[1]!] };
+}
+
+/** `polylineLengthM`, but a curved segment contributes its arc length, not its chord. */
+export function arcPolylineLengthM(vertices: number[][], arcMids: ArcMids, mmPerPt: number): number {
+  let len = 0;
+  for (let i = 1; i < vertices.length; i++) {
+    const from = vertices[i - 1]!;
+    const to = vertices[i]!;
+    const arc = arcAt(arcMids, i - 1, from, to);
+    const curved = arc ? arcLengthPt(arc) : Number.NaN;
+    // a collinear "arc" is a straight line; fall back to the chord rather than poison the total
+    len += Number.isFinite(curved) ? curved : Math.hypot(to[0]! - from[0]!, to[1]! - from[1]!);
+  }
+  return (len * mmPerPt) / 1000;
+}
+
+/** `polygonAreaM2`, corrected by each curved side's circular segment so a bay window bills its bulge. */
+export function arcPolygonAreaM2(vertices: number[][], arcMids: ArcMids, mmPerPt: number): number {
+  let doubled = 0;
+  let arcArea = 0;
+  for (let i = 0; i < vertices.length; i++) {
+    const from = vertices[i]!;
+    const to = vertices[(i + 1) % vertices.length]!;
+    doubled += from[0]! * to[1]! - to[0]! * from[1]!;
+    const arc = arcAt(arcMids, i, from, to);
+    if (arc) arcArea += arcSignedAreaPt(arc);
+  }
+  const toM = mmPerPt / 1000;
+  return Math.abs(doubled / 2 + arcArea) * toM * toM;
+}
+
 /** Rejects a drawing the tool cannot turn into a number, with the reason a person can act on. */
 export function assertMeasurable(tool: MeasureTool, vertices: number[][], factor: MeasureFactor | undefined): void {
   if (vertices.length < MIN_VERTICES[tool]) {
@@ -67,6 +114,42 @@ export function assertMeasurable(tool: MeasureTool, vertices: number[][], factor
   }
   if (tool === "volume" && !(factor?.depthM && factor.depthM > 0)) {
     throw new BadRequestError("Volume needs a depth in metres");
+  }
+}
+
+const POLYGON_TOOLS: readonly string[] = ["area", "volume", "room_fill"];
+
+function toolWords(tool: MeasureTool): string {
+  return tool.replace("_", " ");
+}
+
+/** Drops the closing repeat of the first point, so a closed outline is not read as a duplicate side. */
+function withoutClosingPoint(vertices: number[][]): number[][] {
+  const first = vertices[0];
+  const last = vertices[vertices.length - 1];
+  if (vertices.length > 1 && first && last && first[0] === last[0] && first[1] === last[1]) return vertices.slice(0, -1);
+  return vertices;
+}
+
+/**
+ * Everything `assertMeasurable` refuses, plus the two shapes that measure a
+ * plausible number while meaning nothing: a side of zero length, and a polygon
+ * that crosses itself (shoelace nets a bow-tie's lobes against each other, so
+ * a mis-drawn slab returns a defensible-looking figure nobody can stand behind).
+ */
+export function validateGeometry(tool: MeasureTool, vertices: number[][], factor: MeasureFactor | undefined): void {
+  assertMeasurable(tool, vertices, factor);
+  // a count is marks on a sheet, not a path: two marks in one place is a tally, not a zero-length side
+  const outline = tool === "count" ? [] : POLYGON_TOOLS.includes(tool) ? withoutClosingPoint(vertices) : vertices;
+  for (let i = 1; i < outline.length; i++) {
+    const from = outline[i - 1]!;
+    const to = outline[i]!;
+    if (from[0] === to[0] && from[1] === to[1]) {
+      throw new BadRequestError(`A ${toolWords(tool)} cannot have duplicate adjacent points`);
+    }
+  }
+  if (POLYGON_TOOLS.includes(tool) && isSelfIntersecting(vertices)) {
+    throw new BadRequestError(`A ${toolWords(tool)} polygon cannot self-intersect`);
   }
 }
 
@@ -137,7 +220,8 @@ const TOOL_WORD: Record<MeasureTool, string> = {
 /**
  * "12.4 m polyline on DWG-01 × 2.7 m height × 4 typical floors = 133.92 m2":
  * the drawn figure, where it came from ("on DWG-01", "stated in prompt"), and
- * every factor in the order applied.
+ * every factor in the order applied. Builds only the head — the clauses that
+ * follow it belong to `basisFor`, which composes the whole sentence.
  */
 export function manualBasis(
   tool: MeasureTool,
@@ -147,12 +231,18 @@ export function manualBasis(
   typical: number,
   unit: string,
 ): string {
-  const parts = [`${q.base} ${q.baseUnit} ${TOOL_WORD[tool]} ${source}`];
-  if (tool === "wall_area") parts.push(`× ${factor?.heightM} m height`);
-  if (tool === "volume") parts.push(`× ${factor?.depthM} m depth`);
-  if (typical > 1) parts.push(`× ${typical} typical floors`);
-  const total = applyTypical(q.gross, typical);
-  return parts.length > 1 || total !== q.base ? `${parts.join(" ")} = ${total} ${unit}` : parts[0]!;
+  const head = [`${q.base} ${q.baseUnit} ${TOOL_WORD[tool]} ${source}`];
+  if (tool === "wall_area") head.push(`× ${factor?.heightM} m height`);
+  if (tool === "volume") head.push(`× ${factor?.depthM} m depth`);
+  // A line being drawn carries no openings yet; they arrive through the deduction writers.
+  return basisFor({
+    basis: head.join(" "),
+    gross: q.gross,
+    deductions: [],
+    typical,
+    net: applyTypical(q.gross, typical),
+    unit,
+  })!;
 }
 
 // ---------- typical on an existing row ----------
@@ -163,22 +253,4 @@ export function netQuantity(gross: number, deductions: { qty: number }[], typica
   return round2(Math.max(0, gross - deducted) * typical);
 }
 
-const TYPICAL_CLAUSE = /\s×\s\d+\stypical\s(?:floors|areas)/;
-const TOTAL_TAIL = /\s=\s[\d.]+\s\S+$/;
 
-/**
- * Rewrites the typical clause of a basis sentence when the multiplier changes:
- * "12.4 m polyline on DWG-01 × 4 typical floors = 49.6 m" keeps its drawn
- * figure and factors; only the "× N typical floors" and the total move.
- */
-export function basisWithTypical(basis: string | null, gross: number | null, net: number, typical: number, unit: string | null): string | null {
-  const core = basis === null ? null : basis.replace(TOTAL_TAIL, "").replace(TYPICAL_CLAUSE, "");
-  const tail = ` = ${net} ${unit ?? ""}`.trimEnd();
-  if (typical > 1) {
-    const head = core && core.trim() ? core : `${gross ?? net} ${unit ?? ""}`.trimEnd();
-    return `${head} × ${typical} typical floors${tail}`;
-  }
-  if (core === null) return null;
-  // a total is only worth stating when a factor (height, depth) still applies
-  return /\s×\s/.test(core) ? `${core}${tail}` : core;
-}

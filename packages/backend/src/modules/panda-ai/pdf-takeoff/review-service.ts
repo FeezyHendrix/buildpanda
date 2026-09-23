@@ -1,14 +1,10 @@
 import { generateId } from "../../../lib/ids.ts";
 import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
-import type { PreconRepository } from "./repository.ts";
+import { preconRepository, type PreconRepository, type RerunToken } from "./repository.ts";
+import { fillDwgIn } from "./dwg-fill.ts";
 import { nextRevision } from "./revisions.ts";
-import { dwgRow } from "./dwg-row.ts";
-import { dwgGeometryRows } from "./dwg-geometry.ts";
 import type {
   DwgTakeoffHandover,
-  DwgTakeoffLine,
-  PreconBoqRowRow,
-  PreconGeometryRow,
   PreconSession,
   PreconSessionRow,
   PreconSheet,
@@ -21,7 +17,8 @@ import type {
   UpdateSheetBody,
   UpdateStructureBody,
 } from "./types.ts";
-import { DIM_UNITS, FULL_TAKEOFF_SCOPE, SHEET_KINDS } from "./types.ts";
+import { FULL_TAKEOFF_SCOPE, SHEET_KIND } from "./types.ts";
+import { assertDimensionChangeIsSafe } from "./sheet-dimension-guard.ts";
 import { normaliseViewports } from "./viewports.ts";
 
 type Audit = (
@@ -88,7 +85,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
           page_number: 1,
           code: "DWG-01",
           title: file.fileName,
-          kind: "floor-plan",
+          kind: SHEET_KIND.FLOOR_PLAN,
           status: "pending",
           scale_mm_per_pt: null,
           scale_confidence: null,
@@ -111,125 +108,24 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
     // engine's unverified rows and the register; verified and hand-entered
     // rows stay. In sheets-only mode (a take-off measured by hand) the
     // register lands with every drawing open for measuring and no rows at all.
+    // The reading is already in hand when this is called — the DWG parse and
+    // any vision call happened in the job, deliberately OUTSIDE the lock. What
+    // is left is destructive and fast, so all of it commits as one unit against
+    // the session lock, and only if the re-run it belongs to is still the
+    // current one. A straggler from a superseded request, or a redelivery of a
+    // result that already landed, is refused here before a single row moves —
+    // which is what stops the same drafted lines being inserted twice.
     async fillDwgSession(
       sessionId: string,
       file: { fileName: string },
       handover: DwgTakeoffHandover,
-      opts: { sheetsOnly?: boolean } = {},
+      opts: { sheetsOnly?: boolean; token?: RerunToken } = {},
     ): Promise<PreconSession> {
-      const session = await repo.sessionById(sessionId);
-      if (!session) throw new NotFoundError("Preconstruction session");
-      const storagePath = (await repo.sheetsBySession(session.id))[0]?.storage_path ?? "";
-      const existing = await repo.rowsBySession(session.id);
-      await repo.deleteRows(existing.filter((r) => r.origin === "ai" && r.status !== "verified").map((r) => r.id));
-      // the engine's annotations go with its rows: a re-run draws the sheet
-      // again from scratch, and what a person drew by hand is untouched
-      await repo.deleteAiGeometriesBySession(session.id);
-      await repo.deleteSheetsBySession(session.id);
-
-      const sheetIds = new Map<number, string>();
-      const unit = handover.units.unit;
-      const sheetsOnly = Boolean(opts.sheetsOnly);
-      await repo.insertSheets(
-        handover.sheets.map((s, i) => {
-          const id = generateId("pcsh");
-          sheetIds.set(s.id, id);
-          const drawable = sheetsOnly || s.kind === "floor-plan";
-          return {
-            id,
-            session_id: session.id,
-            geo_summary: null,
-            file_name: file.fileName,
-            storage_path: storagePath,
-            page_number: i + 1,
-            code: s.code,
-            title: s.title,
-            kind: (SHEET_KINDS as readonly string[]).includes(s.kind) ? (s.kind as PreconSheet["kind"]) : "unknown",
-            status: drawable ? "measured" : "unmeasurable",
-            scale_mm_per_pt: handover.units.scaleToMm,
-            scale_confidence: Math.max(0, 1 - handover.units.errorPct),
-            dim_unit: (DIM_UNITS as readonly string[]).includes(unit) ? (unit as PreconSheet["dimUnit"]) : null,
-            snap_index: null,
-            bounds: s.bounds,
-            error: drawable ? null : `${s.kind}: read for context, not measured`,
-          };
-        }),
+      const token = opts.token ?? (await repo.beginRerun(sessionId));
+      const filled = await repo.applyRerun(token, (trx) =>
+        fillDwgIn(preconRepository(trx), sessionId, file, handover, opts),
       );
-      await repo.updateSessionLayerMap(session.id, handover.layerMap);
-
-      if (sheetsOnly) {
-        await repo.appendSessionProgress(session.id, {
-          at: new Date().toISOString(),
-          phase: "draft",
-          message: `Read ${handover.sheets.length} drawings from ${file.fileName} (${handover.units.note}) — ready to measure by hand`,
-        });
-        await repo.updateSessionStatus(session.id, "reviewing");
-        const ready = await repo.sessionById(session.id);
-        return toSession(ready ?? { ...session, status: "reviewing" });
-      }
-
-      const bills = await repo.billsBySession(session.id);
-      const bill =
-        bills[0] ??
-        (await repo.insertBill({ id: generateId("pbl"), session_id: session.id, title: "Bill No. 1 — Automated take-off (DWG)", sort: 0 }));
-      const rows: Omit<PreconBoqRowRow, "created_at" | "updated_at">[] = [];
-      const geometries: Omit<PreconGeometryRow, "created_at">[] = [];
-      const byTrade = new Map<string, DwgTakeoffLine[]>();
-      for (const line of handover.items) {
-        const list = byTrade.get(line.trade);
-        if (list) list.push(line);
-        else byTrade.set(line.trade, [line]);
-      }
-      const codeOf = (line: DwgTakeoffLine) => handover.sheets.find((s) => s.id === line.sheetId)?.code ?? null;
-      for (const [trade, tradeLines] of byTrade) {
-        rows.push(dwgRow(bill.id, rows.length, { row_type: "heading", element_group: trade, description: trade.toUpperCase() }));
-        for (const line of tradeLines) {
-          const low = line.confidence !== "high";
-          const code = codeOf(line);
-          const row = dwgRow(bill.id, rows.length, {
-            // a note-only line is evidence for a priced line, never a quantity of its own
-            row_type: line.noteOnly ? "spec_note" : "item",
-            element_group: trade,
-            code,
-            description: line.noteOnly ? `${line.description} (cross-check only: ${line.quantity} ${line.unit})` : line.description,
-            unit: line.unit,
-            qty_gross: line.noteOnly ? null : line.quantity,
-            qty: line.noteOnly ? null : line.quantity,
-            confidence: low ? "low" : "high",
-            status: low ? "needs_review" : "ai_generated",
-            measurement_basis: line.basis,
-            // the row's confidence enum has no "medium", so the reason keeps that word
-            confidence_reason: [line.confidence === "medium" ? "medium confidence" : null, line.reason, line.crossCheck]
-              .filter(Boolean)
-              .join(" · "),
-            provenance: `Read from ${file.fileName}${code ? ` (${code})` : ""} by the automated take-off: ${line.basis}`,
-            evidence: line.evidence ?? [],
-          });
-          rows.push(row);
-          // what the line looks like on the drawing: a note-only line is
-          // evidence for another line and marks nothing of its own
-          const sheetId = line.sheetId === undefined ? undefined : sheetIds.get(line.sheetId);
-          if (!line.noteOnly && sheetId) {
-            geometries.push(...dwgGeometryRows(row.id, sheetId, line.shapes, handover.units.scaleToMm));
-          }
-        }
-      }
-      if (handover.notes.length) {
-        rows.push(dwgRow(bill.id, rows.length, { row_type: "heading", element_group: "notes", description: "ENGINE NOTES" }));
-        for (const note of handover.notes) {
-          rows.push(dwgRow(bill.id, rows.length, { row_type: "spec_note", element_group: "notes", description: note, status: "needs_review", confidence: "low" }));
-        }
-      }
-      await repo.insertBoqRows(rows);
-      await repo.insertGeometries(geometries);
-      await repo.appendSessionProgress(session.id, {
-        at: new Date().toISOString(),
-        phase: "draft",
-        message: `Read ${handover.sheets.length} drawings and ${handover.items.length} lines from ${file.fileName} (${handover.units.note})`,
-      });
-      await repo.updateSessionStatus(session.id, "reviewing");
-      const updated = await repo.sessionById(session.id);
-      return toSession(updated ?? { ...session, status: "reviewing" });
+      return toSession(filled);
     },
 
     async failDwgSession(sessionId: string, message: string): Promise<void> {
@@ -296,6 +192,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
     async updateSheet(sheetId: string, body: UpdateSheetBody, actor: string): Promise<PreconSheet> {
       const sheet = await repo.sheetById(sheetId);
       if (!sheet) throw new NotFoundError("Sheet");
+      await assertDimensionChangeIsSafe(repo, sheet, body);
       const patch: Parameters<PreconRepository["updateSheet"]>[1] = {};
       if (body.kind !== undefined) patch.kind = body.kind;
       if (body.title !== undefined) patch.title = body.title;

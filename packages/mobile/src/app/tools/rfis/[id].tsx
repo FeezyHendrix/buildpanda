@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -153,7 +154,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
   return (
     <Page
       title="RFI"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         <HeaderIconButton
           icon="create-outline"
@@ -241,7 +242,7 @@ export default function RfiDetail() {
 
   if (!(ready && db && projectId && id)) {
     return (
-      <Page title="RFI" onBack={() => router.back()}>
+      <Page title="RFI" onBack={() => goBack()}>
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>

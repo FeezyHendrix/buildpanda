@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import {
@@ -148,15 +148,13 @@ export default function ProjectTeam() {
               access.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => setCreateOpen(true)}
-            className="self-end lg:self-start sm:self-auto order-1 lg:order-2"
-          >
-            <PlusIcon className="size-4" />
+          <CreateButton
+      variant="secondary"
+      onClick={() => setCreateOpen(true)}
+      className="self-end lg:self-start sm:self-auto order-1 lg:order-2"
+     >
             Add Contact
-          </Button>
+     </CreateButton>
         </div>
 
         <UpsertTeamMemberDialog
@@ -173,7 +171,7 @@ export default function ProjectTeam() {
             icon={<ContractorsIcon />}
             title="No contacts yet"
             description="Add the engineers, contractors and managers working on this project."
-            action={{ label: "Add contact", onClick: () => setCreateOpen(true), icon: <PlusIcon /> }}
+            action={{ label: "Add contact", onClick: () => setCreateOpen(true) }}
           />
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

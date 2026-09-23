@@ -1,214 +1,93 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { useState } from "react";
-import { Pressable, View, useWindowDimensions } from "react-native";
-import { Button, Card, Spinner, Text } from "@/components/atoms";
-import { CategoryCard } from "@/components/molecules/category-card";
+import { useCallback, useState } from "react";
+import { View } from "react-native";
+import { Spinner, Text } from "@/components/atoms";
 import { DocumentFileRow } from "@/components/molecules/document-file-row";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
+import { OfflinePlansStatus } from "@/components/molecules/offline-plans-status";
 import { Page } from "@/components/molecules/page";
-import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
-import { ICON_BRAND } from "@/constants/colors";
-import { TabletMinWidth } from "@/constants/theme";
+import { SearchableList } from "@/components/molecules/searchable-list";
 import type { Db } from "@/db/client";
-import { DOCUMENT_GROUP, documentsRepository, type DocumentGroup } from "@/db/documents-repository";
+import { documentsRepository, type LocalDocument } from "@/db/documents-repository";
 import { useLocalDb } from "@/db/provider";
-import { useDocumentCategories, useLocalDocuments, useRecentDocuments } from "@/hooks/use-local-documents";
+import { useLocalDocuments } from "@/hooks/use-local-documents";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { useProject } from "@/hooks/use-projects";
 import { cacheDocument } from "@/lib/download-file";
 import { useFieldSession } from "@/lib/field-session";
 
-// The web's Plans and Documents pages, as two tabs. Media has its own library
-// on the web and is not shown here at all — never folded into Documents.
-const GROUPS: readonly SegmentedTab<DocumentGroup>[] = [
-  { key: DOCUMENT_GROUP.PLAN, label: "Plans" },
-  { key: DOCUMENT_GROUP.DOCUMENT, label: "Documents" },
-] as const;
+const searchFields = (file: LocalDocument) => [file.fileName, file.status];
 
-interface Folder {
-  id: string;
-  name: string;
-}
-
-function RecentDocs({ db, projectId, onOpen }: { db: Db; projectId: string; onOpen: (id: string) => Promise<void> }) {
-  const { data, isPending } = useRecentDocuments(db, projectId);
-  if (isPending || data.length === 0) return null;
-
-  return (
-    <View className="mb-4">
-      <Text weight="bold" className="pb-2 text-base">
-        Recently opened
-      </Text>
-      <Card>
-        {data.map((doc) => (
-          <DocumentFileRow key={doc.id} doc={doc} onOpen={onOpen} />
-        ))}
-      </Card>
-    </View>
-  );
-}
-
-function Browser({ db, projectId, group }: { db: Db; projectId: string; group: DocumentGroup }) {
-  const { width } = useWindowDimensions();
-  const isWide = width >= TabletMinWidth;
-  const [folder, setFolder] = useState<Folder | null>(null);
-
-  const categories = useDocumentCategories(db, projectId, group);
-  // filtered by category id: two folders in different groups may share a name
-  const files = useLocalDocuments(db, projectId, group, folder?.id);
+function FileList({ db, projectId }: { db: Db; projectId: string }) {
+  const files = useLocalDocuments(db, projectId);
   const [error, setError] = useState<string | null>(null);
-
-  if (categories.isPending) {
-    return (
-      <View className="items-center py-12">
-        <Spinner size="md" />
-      </View>
-    );
-  }
-
-  const openDoc = async (id: string) => {
-    setError(null);
-    await documentsRepository.trackAccess(db, id);
-    try {
-      await cacheDocument(db, projectId, id);
-    } catch (err) {
-      console.error("document download failed", err);
-      setError(
-        err instanceof Error && err.message
-          ? `Couldn't download that file: ${err.message}`
-          : "Couldn't download that file. Try again when you have signal.",
-      );
-    }
-  };
-
-  // Drilled into a folder: show its files with a way back out.
-  if (folder) {
-    return (
-      <>
-        <Pressable
-          onPress={() => setFolder(null)}
-          accessibilityRole="button"
-          className="mb-3 min-h-11 flex-row items-center gap-1 self-start"
-        >
-          <Ionicons name="chevron-back" size={18} color={ICON_BRAND} />
-          <Text weight="semibold" tone="brand" className="text-sm">
-            All folders
-          </Text>
-        </Pressable>
-
-        <Text weight="bold" className="pb-2 text-base">
-          {folder.name}
-        </Text>
-
-        {error ? (
-          <View className="mb-3 rounded-xl bg-error-50 px-4 py-3">
-            <Text tone="danger" className="text-sm">
-              {error}
-            </Text>
-          </View>
-        ) : null}
-
-        {files.data.length === 0 ? (
-          <View className="items-center py-12">
-            <Text weight="semibold" className="text-center text-base">
-              This folder is empty
-            </Text>
-            <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-              {group === DOCUMENT_GROUP.PLAN
-                ? "Upload a drawing with the cloud button above and it is filed here."
-                : "Upload a document with the cloud button above and it is filed here."}
-            </Text>
-          </View>
-        ) : (
-          <Card>
-            {files.data.map((doc) => (
-              <DocumentFileRow key={doc.id} doc={doc} onOpen={openDoc} />
-            ))}
-          </Card>
-        )}
-      </>
-    );
-  }
-
+  const openFile = useCallback(
+    async (id: string) => {
+      setError(null);
+      try {
+        await cacheDocument(db, projectId, id);
+        await documentsRepository.trackAccess(db, id);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Couldn't open this file. Try again.");
+        throw cause;
+      }
+    },
+    [db, projectId],
+  );
   return (
-    <>
-      {error ? (
-        <View className="mb-3 rounded-xl bg-error-50 px-4 py-3">
-          <Text tone="danger" className="text-sm">
-            {error}
-          </Text>
-        </View>
-      ) : null}
-
-      <RecentDocs db={db} projectId={projectId} onOpen={openDoc} />
-
-      {categories.data.length === 0 ? (
-        <View className="items-center py-12">
-          <Text weight="semibold" className="text-center text-base">
-            {group === DOCUMENT_GROUP.PLAN ? "No plans yet" : "No documents yet"}
-          </Text>
-          <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-            {group === DOCUMENT_GROUP.PLAN
-              ? "Upload a drawing with the cloud button above, or open this project once with signal to fetch its folders."
-              : "Upload a document with the cloud button above, or open this project once with signal to fetch its folders."}
-          </Text>
-        </View>
-      ) : (
-        <View className="flex-row flex-wrap gap-3">
-          {categories.data.map((category) => (
-            <CategoryCard
-              key={category.id}
-              category={category}
-              isWide={isWide}
-              onPress={() => setFolder({ id: category.id, name: category.name })}
-            />
-          ))}
-        </View>
-      )}
-    </>
+    <SearchableList
+      data={files.data}
+      fields={searchFields}
+      loading={files.isPending}
+      placeholder="Search files"
+      emptyTitle="No files yet"
+      emptyBody="Add a file with the + button. Your project's files appear here."
+      renderItem={(file) => <DocumentFileRow doc={file} onOpen={openFile} />}
+      header={
+        <>
+          {error || files.error ? (
+            <Text tone="danger" className="pb-3 text-sm">
+              {error ?? files.error?.message}
+            </Text>
+          ) : null}
+          <OfflinePlansStatus />
+        </>
+      }
+    />
   );
 }
 
-export default function Plans() {
+export default function Files() {
   const { projectId, organizationId } = useFieldSession();
   const { db, ready } = useLocalDb();
   const { data: organizations } = useOrganizations();
   const { data: project } = useProject(projectId);
-
-  const [group, setGroup] = useState<DocumentGroup>(DOCUMENT_GROUP.PLAN);
-  const isPlans = group === DOCUMENT_GROUP.PLAN;
-
   return (
     <Page
-      title={isPlans ? "Plans" : "Documents"}
-      workspaceName={(organizations ?? []).find((o) => o.id === organizationId)?.name}
+      title="Files"
+      scroll={false}
+      workspaceName={
+        (organizations ?? []).find((organization) => organization.id === organizationId)?.name
+      }
       projectName={project?.name}
       projectPending={Boolean(projectId) && !project}
       onPressProject={() => router.push("/select-project")}
+      rightButtons={
+        <HeaderIconButton
+          icon="add"
+          label="Add file"
+          disabled={!ready || !projectId}
+          onPress={() => router.push("/tools/documents/upload")}
+        />
+      }
     >
-      <View className="pb-3">
-        <SegmentedTabs tabs={GROUPS} active={group} onChange={setGroup} />
-      </View>
-
       {ready && db && projectId ? (
-        <>
-          <Browser db={db} projectId={projectId} group={group} />
-          <View className="pt-4">
-            <Button
-              variant="secondary"
-              onPress={() => router.push(`/tools/documents/upload?group=${group}` as never)}
-              accessibilityLabel={isPlans ? "Upload a plan" : "Upload a document"}
-            >
-              {isPlans ? "Upload a plan" : "Upload a document"}
-            </Button>
-          </View>
-        </>
+        <FileList key={projectId} db={db} projectId={projectId} />
       ) : (
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>
       )}
-
     </Page>
   );
 }

@@ -30,6 +30,15 @@ export interface PreconAssistDeps {
   preconRepo: Pick<PreconRepository, "insertAuditEvent">;
   llm?: DraftLlm;
   llmConfigured?: () => boolean;
+  /**
+   * Runs a change set's writes against a session-locked, transaction-bound
+   * take-off service. Applying a set is several writes across several lines, so
+   * without this an editor save can land in the middle of one and leave the
+   * bill in a state neither the assistant nor the editor intended. The LLM call
+   * that produced the set happened in `propose`, long before this — no network
+   * work ever runs inside the lock.
+   */
+  withLockedPrecon?: <T>(sessionId: string, fn: (precon: PreconService) => Promise<T>) => Promise<T>;
 }
 
 function toChangeSet(r: ChangeSetRow): ChangeSet {
@@ -53,10 +62,26 @@ export function preconAssistService(repo: PreconAssistRepository, deps: PreconAs
   const llm = deps.llm ?? defaultDraftLlm;
   const configured = deps.llmConfigured ?? isLlmConfigured;
 
+  // Falls back to the pooled service when no runner is supplied, so the unit
+  // tests that stand this factory up without a database keep working.
+  function inSession<T>(sessionId: string, fn: (precon: PreconService) => Promise<T>): Promise<T> {
+    return deps.withLockedPrecon ? deps.withLockedPrecon(sessionId, fn) : fn(deps.precon);
+  }
+
   async function loadContext(surface: AssistSurface, sessionId: string, viewer?: AssistViewerContext): Promise<BillContext | ProgrammeContext> {
     if (surface === "bill") {
       const snapshot = await deps.precon.getSnapshot(sessionId);
-      return { bills: snapshot.bills, rows: snapshot.rows, sheets: snapshot.sheets, viewer };
+      // The drawings and the session come along so a line's basis can name
+      // every scale it was taken at and the revision it was measured on —
+      // neither of which the row alone records.
+      return {
+        bills: snapshot.bills,
+        rows: snapshot.rows,
+        sheets: snapshot.sheets,
+        geometries: snapshot.geometries,
+        session: snapshot.session,
+        viewer,
+      };
     }
     const programme = await deps.precon.getProgramme(sessionId);
     return { tasks: programme.tasks };
@@ -155,10 +180,13 @@ export function preconAssistService(repo: PreconAssistRepository, deps: PreconAs
         if (!can(resource, action)) throw new ForbiddenError(`Your role does not allow you to ${action} ${resource}`);
       }
       const live = await loadLive(set.surface, set.session_id!);
-      const results: AppliedChange[] = [];
-      for (let i = 0; i < set.changes.length; i++) {
-        results.push(await applyChange(i, set.changes[i]!, live, deps.precon, actor));
-      }
+      const results = await inSession(set.session_id!, async (precon) => {
+        const out: AppliedChange[] = [];
+        for (let i = 0; i < set.changes.length; i++) {
+          out.push(await applyChange(i, set.changes[i]!, live, precon, actor));
+        }
+        return out;
+      });
       const result: AppliedResult = {
         applied: results.filter((r) => r.outcome === "applied").length,
         skipped: results.filter((r) => r.outcome === "skipped").length,
@@ -183,12 +211,15 @@ export function preconAssistService(repo: PreconAssistRepository, deps: PreconAs
       }
       const live = await loadLive(set.surface, set.session_id!);
       const entity = set.surface === "bill" ? "boq_row" : "programme_task";
-      let restored = 0;
-      // reverse order so a delete-then-create pair unwinds cleanly
-      for (const applied of [...set.applied_result.changes].reverse()) {
-        if (applied.outcome !== "applied" || !applied.undo) continue;
-        if ((await undoChange(applied.undo, entity, live, deps.precon, actor)) === "applied") restored++;
-      }
+      const restored = await inSession(set.session_id!, async (precon) => {
+        let count = 0;
+        // reverse order so a delete-then-restore pair unwinds cleanly
+        for (const applied of [...set.applied_result!.changes].reverse()) {
+          if (applied.outcome !== "applied" || !applied.undo) continue;
+          if ((await undoChange(applied.undo, entity, live, precon, actor)) === "applied") count++;
+        }
+        return count;
+      });
       await repo.setStatus(set.id, "undone", { ...set.applied_result, applied: restored });
       await audit(set, actor, "assist.undone", { restored });
       return toChangeSet({ ...set, status: "undone" });

@@ -2,9 +2,8 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import { MessageCircleQuestion } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Spinner } from "@/components/atoms/spinner";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -101,10 +100,9 @@ export default function ProjectRfis() {
         title="RFIs"
         actions={
           canRaise ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               Raise RFI
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

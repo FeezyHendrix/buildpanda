@@ -33,6 +33,7 @@ function toLookAhead(row: LookAheadRow, activities: LookAheadActivityRow[]): Loo
   return {
     id: row.id,
     projectId: row.project_id,
+    buildingId: row.building_id,
     name: row.name,
     description: row.description,
     status: row.status,

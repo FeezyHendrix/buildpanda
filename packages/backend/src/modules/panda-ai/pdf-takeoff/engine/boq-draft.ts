@@ -178,7 +178,9 @@ export function draftBoq(
           description: item.description,
           unit: item.unit,
           qty_gross: item.provisional ? null : item.qtyGross,
-          deductions: item.deductions.map((d) => ({ ...d, geometryId: null })),
+          // A deduction is netted straight off the gross, so it is stated in
+          // the line's own unit — inferred by the engine, never yet confirmed.
+          deductions: item.deductions.map((d) => ({ ...d, geometryId: null, unit: item.unit, unitConfirmed: false })),
           qty: item.provisional ? null : item.qty,
           confidence: item.confidence,
           status: item.confidence === "high" ? "ai_generated" : "needs_review",

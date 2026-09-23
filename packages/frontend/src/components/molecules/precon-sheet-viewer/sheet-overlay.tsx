@@ -8,6 +8,13 @@ interface Props {
   rowById: Map<string, PreconBoqRow>;
   selectedRowId: string | null;
   onSelectRow: (rowId: string | null) => void;
+  /** Multi-selected shapes (batch); ringed and offered to the batch bar. */
+  batchIds?: ReadonlySet<string>;
+  onPickGeometry?: (geometry: PreconGeometry, e: React.MouseEvent) => void;
+  /** Press on a SELECTED shape: whole-selection drag (batch move on release). */
+  onGeometryPointerDown?: (geometry: PreconGeometry, e: React.PointerEvent) => void;
+  /** Canvas-px ghost offset of the selection while it is being dragged. */
+  dragDeltaPx?: [number, number] | null;
   draft: number[][];
   draftColor?: string;
   /** An area in progress or awaiting its name: drawn closed and filled. */
@@ -16,6 +23,8 @@ interface Props {
   draftMarkers?: number[][];
   /** An Alt-clicked arc middle waiting for its end point. */
   arcMid?: number[] | null;
+  /** The first anchor of a closable polygon: clicking it closes the shape. */
+  closeHint?: number[] | null;
   toPx: (pt: number[]) => [number, number];
   /** When set, only these rows draw at full strength; the rest are dimmed. */
   emphasisRowIds?: ReadonlySet<string> | null;
@@ -99,7 +108,7 @@ function GeometryShape({
 GeometryShape.displayName = "GeometryShape";
 
 /** The measurement overlay drawn over the rasterised sheet, in canvas pixels. */
-export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedRowId, onSelectRow, draft, draftColor = "#004DE7", draftClosed = false, draftMarkers, arcMid = null, toPx, emphasisRowIds = null }: Props) {
+export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedRowId, onSelectRow, batchIds, onPickGeometry, onGeometryPointerDown, dragDeltaPx = null, draft, draftColor = "#004DE7", draftClosed = false, draftMarkers, arcMid = null, closeHint = null, toPx, emphasisRowIds = null }: Props) {
   const markers = draftMarkers ?? draft;
   const mid = arcMid ? toPx(arcMid) : null;
   return (
@@ -107,19 +116,34 @@ export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedR
       {geometries.map((g) => {
         const row = rowById.get(g.rowId);
         if (!row || row.status === "rejected") return null;
+        const batchSelected = batchIds?.has(g.id) ?? false;
+        // the whole selection ghosts along while it is dragged; the receipt lands on release
+        const dragTransform = batchSelected && dragDeltaPx ? `translate(${dragDeltaPx[0]}, ${dragDeltaPx[1]})` : undefined;
         return (
-          <GeometryShape
+          <g
             key={g.id}
-            geometry={g}
-            row={row}
-            selected={g.rowId === selectedRowId}
-            dimmed={emphasisRowIds !== null && !emphasisRowIds.has(g.rowId)}
-            toPx={toPx}
-            onPick={(e) => {
-              e.stopPropagation();
-              onSelectRow(g.rowId);
-            }}
-          />
+            data-geometry-id={g.id}
+            data-row-id={g.rowId}
+            data-batch-selected={batchSelected || undefined}
+            transform={dragTransform}
+            onPointerDown={batchSelected && onGeometryPointerDown ? (e) => onGeometryPointerDown(g, e) : undefined}
+          >
+            {batchSelected && g.vertices.length > 0 ? (
+              <polygon points={g.vertices.map((v) => toPx(v).join(",")).join(" ")} fill="none" stroke="#7C3AED" strokeWidth={5} strokeOpacity={0.5} strokeDasharray="8 5" />
+            ) : null}
+            <GeometryShape
+              geometry={g}
+              row={row}
+              selected={g.rowId === selectedRowId}
+              dimmed={emphasisRowIds !== null && !emphasisRowIds.has(g.rowId)}
+              toPx={toPx}
+              onPick={(e) => {
+                e.stopPropagation();
+                if (onPickGeometry) return onPickGeometry(g, e);
+                onSelectRow(g.rowId);
+              }}
+            />
+          </g>
         );
       })}
       {draft.length > 0 && draftClosed && draft.length >= 3 ? (
@@ -132,6 +156,7 @@ export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedR
         return <circle key={i} cx={x} cy={y} r={4} fill={draftColor} />;
       })}
       {mid ? <circle cx={mid[0]} cy={mid[1]} r={4} fill="none" stroke={draftColor} strokeWidth={1.5} strokeDasharray="2 2" /> : null}
+      {closeHint ? <circle data-close-hint cx={toPx(closeHint)[0]} cy={toPx(closeHint)[1]} r={9} fill="none" stroke={draftColor} strokeWidth={2} /> : null}
     </svg>
   );
 }

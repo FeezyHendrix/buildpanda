@@ -6,17 +6,22 @@ import type {
   useDrawingMarkups,
 } from "@/hooks/use-drawing-markup";
 import { generateId, type Pt, type Sheet } from "./plan-review-data";
-import { hitTestMarkup, normalizedRect, type Markup } from "./plan-review-markup";
-import { SELECTION_KIND, TOOL, type Note, type Pin, type Selection, type Tool } from "./plan-review-types";
+import { hitTestMarkup, type Markup } from "./plan-review-markup";
+import { SELECTION_KIND, TOOL, type Pin, type Selection, type Tool } from "./plan-review-types";
 import { usePersistedMarkup } from "./use-persisted-markup";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
+import type { ReviewTools } from "./use-review-tools";
 
-const DEFAULT_MARKUP_COLOR = "#004DE7";
+
 /** Pen samples closer than this (in sheet percent) are dropped, so a stroke stays a light polyline. */
 const PEN_MIN_STEP_PCT = 0.4;
-/** A cloud smaller than this in either axis is treated as a stray click, not a markup. */
-const CLOUD_MIN_SIZE_PCT = 1;
 /** Vertical offset from the click so the comment popover clears the pointer. */
 const COMMENT_ANCHOR_OFFSET_PX = 14;
+
+function reportSaveError(error: unknown): void {
+  toast(getApiErrorMessage(error, "Could not save this annotation"), "error");
+}
 
 /** Where a comment popover is anchored: viewport position plus the sheet point it marks. */
 export interface CommentAnchor {
@@ -37,6 +42,7 @@ export type PersistMarkup = (
 ) => Promise<string | null>;
 
 interface MarkupToolsArgs {
+  tools: ReviewTools;
   sheet: Sheet | null;
   projectId: string | undefined;
   /** PDF page the markup belongs to; image sheets stay on page 1. */
@@ -44,16 +50,11 @@ interface MarkupToolsArgs {
   drawingRef: React.RefObject<HTMLDivElement | null>;
   /** Locate a pointer event in sheet-percentage space; null when the canvas is not mounted. */
   pointFromEvent: (e: { clientX: number; clientY: number }) => Pt | null;
-  /** Walkthrough recorder hook-in, sampled on every pointer move over the sheet. */
-  captureTrace: (e: { clientX: number; clientY: number }) => void;
   markupQuery: ReturnType<typeof useDrawingMarkups>;
   createMarkup: ReturnType<typeof useCreateDrawingMarkup>;
   deleteMarkup: ReturnType<typeof useDeleteDrawingMarkup>;
   pins: Pin[];
   setPins: React.Dispatch<React.SetStateAction<Pin[]>>;
-  setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
-  pendingPinId: string | null;
-  setPendingPinId: React.Dispatch<React.SetStateAction<string | null>>;
   setCommentAnchor: React.Dispatch<React.SetStateAction<CommentAnchor | null>>;
   /** Open (or close, with null) the thread of a persisted markup. */
   setThreadTarget: (target: ThreadTarget | null) => void;
@@ -101,8 +102,7 @@ export interface MarkupToolsController {
  * The drawing engine for the review workspace: the active tool, the markup a
  * reviewer draws, and every pointer gesture over the sheet. Server markup is the
  * source of truth; local state only holds the in-progress draft and any markup on
- * a demo sheet that has no document behind it. Pins and notes are owned by the
- * page because the comment composer and notes panel share them.
+ * a demo sheet that has no document behind it. The page owns local demo pins; persisted comments use the shared thread UI.
  */
 export function useMarkupTools({
   sheet,
@@ -110,21 +110,16 @@ export function useMarkupTools({
   pageNo,
   drawingRef,
   pointFromEvent,
-  captureTrace,
   markupQuery,
   createMarkup,
   deleteMarkup,
   pins,
   setPins,
-  setNotes,
-  pendingPinId,
-  setPendingPinId,
   setCommentAnchor,
   setThreadTarget,
+  tools,
 }: MarkupToolsArgs): MarkupToolsController {
-  const [activeTool, setActiveTool] = useState<Tool>(TOOL.SELECT);
-  const [markupColor, setMarkupColor] = useState(DEFAULT_MARKUP_COLOR);
-  const [markupVisible, setMarkupVisible] = useState(true);
+  const { activeTool, setActiveTool, markupColor, setMarkupColor, markupVisible, setMarkupVisible } = tools;
   const [markups, setMarkups] = useState<Markup[]>([]);
   const [draft, setDraft] = useState<Markup | null>(null);
   const [measureStart, setMeasureStart] = useState<Pt | null>(null);
@@ -135,7 +130,6 @@ export function useMarkupTools({
   const canvasRef = useRef<HTMLDivElement>(null);
   const panStart = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const penPoints = useRef<Pt[]>([]);
-  const cloudOrigin = useRef<Pt | null>(null);
   const draggingPin = useRef<string | null>(null);
   const suppressNextClick = useRef(false);
 
@@ -152,16 +146,18 @@ export function useMarkupTools({
     setThreadTarget(null);
     setMeasureStart(null);
     setDraft(null);
+    setMeasureCursor(null);
+    setCommentAnchor(null);
+    penPoints.current = [];
+    panStart.current = null;
+    draggingPin.current = null;
+    suppressNextClick.current = false;
+    setIsPanning(false);
   }
 
   function selectTool(tool: Tool): void {
+    resetTransient();
     setActiveTool(tool);
-    setMeasureStart(null);
-    setDraft(null);
-    if (tool !== TOOL.SELECT) {
-      setSelection(null);
-      setThreadTarget(null);
-    }
   }
 
   function openThread(id: string, anchor: { x: number; y: number }): void {
@@ -179,8 +175,6 @@ export function useMarkupTools({
       deleteMarkup.mutate(selection.id);
     } else if (selection.kind === SELECTION_KIND.PIN) {
       setPins((p) => p.filter((pin) => pin.id !== selection.id));
-      setNotes((n) => n.map((note) => (note.pinId === selection.id ? { ...note, pinId: null } : note)));
-      if (pendingPinId === selection.id) setPendingPinId(null);
     } else {
       setMarkups((m) => m.filter((markup) => markup.id !== selection.id));
     }
@@ -235,7 +229,9 @@ export function useMarkupTools({
         setMeasureStart(point);
         setMeasureCursor(point);
       } else {
-        void persistMarkup("measure", { kind: "measure", a: measureStart, b: point });
+        if (Math.hypot(point.x - measureStart.x, point.y - measureStart.y) > 0) {
+          void persistMarkup("measure", { kind: "measure", a: measureStart, b: point }).catch(reportSaveError);
+        }
         setMeasureStart(null);
         setMeasureCursor(null);
       }
@@ -272,16 +268,9 @@ export function useMarkupTools({
       drawingRef.current?.setPointerCapture(e.pointerId);
       return;
     }
-    if (activeTool === TOOL.CLOUD) {
-      cloudOrigin.current = point;
-      setDraft({ id: "draft", sheetId: sheet.id, tool: "cloud", color: markupColor, rect: { ...point, w: 0, h: 0 } });
-      drawingRef.current?.setPointerCapture(e.pointerId);
-    }
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>): void {
-    captureTrace(e);
-
     if (activeTool === TOOL.PAN && panStart.current) {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -309,15 +298,6 @@ export function useMarkupTools({
       setDraft({ id: "draft", sheetId: sheet.id, tool: "pen", color: markupColor, points: penPoints.current });
       return;
     }
-    if (activeTool === TOOL.CLOUD && cloudOrigin.current) {
-      setDraft({
-        id: "draft",
-        sheetId: sheet.id,
-        tool: "cloud",
-        color: markupColor,
-        rect: normalizedRect(cloudOrigin.current, point),
-      });
-    }
   }
 
   function handlePointerUp(): void {
@@ -333,18 +313,9 @@ export function useMarkupTools({
     }
     if (!sheet) return;
     if (activeTool === TOOL.PEN && penPoints.current.length > 1) {
-      void persistMarkup("pen", { kind: "pen", points: penPoints.current });
-    }
-    if (
-      activeTool === TOOL.CLOUD &&
-      draft?.tool === MARKUP_KIND.CLOUD &&
-      draft.rect.w > CLOUD_MIN_SIZE_PCT &&
-      draft.rect.h > CLOUD_MIN_SIZE_PCT
-    ) {
-      void persistMarkup("cloud", { kind: "cloud", rect: draft.rect });
+      void persistMarkup("pen", { kind: "pen", points: penPoints.current }).catch(reportSaveError);
     }
     penPoints.current = [];
-    cloudOrigin.current = null;
     setDraft(null);
   }
 

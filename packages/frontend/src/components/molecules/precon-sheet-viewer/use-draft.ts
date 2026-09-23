@@ -1,24 +1,57 @@
 import { useRef, useState } from "react";
-import { DRAG_THRESHOLD_PX, EMPTY_DRAFT, addDraftPoint, draftFromVertices, type DraftState } from "./draft-maths";
+import { DRAG_THRESHOLD_PX, addDraftPoint, draftFromVertices, type DraftState } from "./draft-maths";
+import { EMPTY_DRAFT_HISTORY, canRedoDraft, canUndoDraft, pushDraft, redoDraft, undoDraft } from "./draft-history";
+
+export interface DraftApi {
+  draft: number[][];
+  anchors: number[][];
+  arcMid: number[] | null;
+  /** Logical sides so far; any `arc` entry means Finish sends a `shape`. */
+  segments: import("@/api/precon-row-types").PathSegment[];
+  canUndo: boolean;
+  canRedo: boolean;
+  addPoint: (pt: number[], alt: boolean) => DraftState;
+  replace: (vertices: number[][]) => void;
+  /** Backspace / Ctrl+Z: steps one logical gesture back (a whole arc, not one tessellation vertex). */
+  undo: () => void;
+  redo: () => void;
+  clear: () => void;
+}
 
 /**
  * The shape being drawn: clicked points, Alt-click arcs densified as they
  * close, and ready-made shapes (a dragged rectangle, a found room) dropped in
- * whole. Vertices are sheet points, the space the backend stores.
+ * whole. Vertices are sheet points, the space the backend stores. Every
+ * gesture is one entry in a local undo/redo history that only Finish, Cancel
+ * or a sheet change discards.
  */
-export function useDraft() {
-  const [state, setState] = useState<DraftState>(EMPTY_DRAFT);
+export function useDraft(): DraftApi {
+  const [history, setHistory] = useState(EMPTY_DRAFT_HISTORY);
 
   /** One click; returns the new state so the caller can finish a length on its second anchor. */
   const addPoint = (pt: number[], alt: boolean): DraftState => {
-    const next = addDraftPoint(state, pt, alt);
-    setState(next);
+    const next = addDraftPoint(history.present, pt, alt);
+    setHistory(pushDraft(history, next));
     return next;
   };
-  const replace = (vertices: number[][]) => setState(draftFromVertices(vertices));
-  const clear = () => setState(EMPTY_DRAFT);
+  const replace = (vertices: number[][]) => setHistory((h) => pushDraft(h, draftFromVertices(vertices)));
+  const undo = () => setHistory(undoDraft);
+  const redo = () => setHistory(redoDraft);
+  const clear = () => setHistory(EMPTY_DRAFT_HISTORY);
 
-  return { draft: state.vertices, anchors: state.anchors, arcMid: state.arcMid, addPoint, replace, clear };
+  return {
+    draft: history.present.vertices,
+    anchors: history.present.anchors,
+    arcMid: history.present.arcMid,
+    segments: history.present.segments,
+    canUndo: canUndoDraft(history),
+    canRedo: canRedoDraft(history),
+    addPoint,
+    replace,
+    undo,
+    redo,
+    clear,
+  };
 }
 
 /** Two opposite corners in sheet points while the mouse is down and moving. */

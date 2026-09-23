@@ -46,6 +46,17 @@ export class ConflictError extends AppError {
   }
 }
 
+/**
+ * Well-formed but too big to run. Not a 400: no field is wrong, so the client
+ * must split the work rather than fix one. Raised before any write, so a
+ * request that hits a bound changes nothing.
+ */
+export class PayloadTooLargeError extends AppError {
+  constructor(message = "Request too large", details?: unknown) {
+    super(message, { statusCode: 413, code: "payload_too_large", details });
+  }
+}
+
 export class ValidationError extends AppError {
   constructor(message = "Validation failed", details?: unknown) {
     super(message, { statusCode: 422, code: "validation_failed", details });

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -89,10 +89,9 @@ export default function ProjectBuildings() {
         title="Buildings"
         actions={
           canManage && (
-            <Button onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="-ml-1 mr-1.5 size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               Add building
-            </Button>
+      </CreateButton>
           )
         }
       />
@@ -162,10 +161,9 @@ export default function ProjectBuildings() {
             </p>
             {canManage && (
               <div className="mt-6">
-                <Button onClick={() => setCreateOpen(true)}>
-                  <PlusIcon className="-ml-1 mr-1.5 size-4" />
+                <CreateButton onClick={() => setCreateOpen(true)}>
                   Add building
-                </Button>
+        </CreateButton>
               </div>
             )}
           </div>

@@ -4,7 +4,8 @@ import { ExtractionSummary } from "@/components/molecules/precon-session/extract
 import type { PreconSheet, PreconSheetKind } from "@/api/precon";
 import { useRemeasurePreconSheet, useUpdatePreconSheet } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { SHEET_KIND_OPTIONS, mmPerPtForRatio, scaleRatioOf } from "@/lib/precon-meta";
+import { SHEET_KIND_OPTIONS, scaleRatioOf } from "@/lib/precon-meta";
+import { useRatioScale } from "@/components/molecules/precon-sheet-viewer/use-ratio-scale";
 import { toast } from "@/lib/toast";
 import { LayerMapTable } from "./layer-map-table";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
@@ -32,28 +33,28 @@ export function SheetSettings({ sessionId, sheet, onDrawScale, onClose }: Props)
   const [ratio, setRatio] = useState(sheet.scaleMmPerPt ? String(scaleRatioOf(sheet.scaleMmPerPt)) : "");
   const [dimUnit, setDimUnit] = useState<(typeof DIM_UNITS)[number]>(sheet.dimUnit ?? "mm");
   const isPdf = /\.pdf$/i.test(sheet.fileName);
+  const scale = useRatioScale(sessionId, sheet);
+  const currentRatio = sheet.scaleMmPerPt ? String(scaleRatioOf(sheet.scaleMmPerPt)) : "";
+  const ratioChanged = ratio.trim() !== currentRatio;
 
   const save = () => {
-    const parsed = ratio.trim() === "" ? null : Number(ratio);
-    if (parsed !== null && (!Number.isFinite(parsed) || parsed <= 0)) {
-      toast("Scale must be a positive ratio, e.g. 100 for 1:100.", "error");
-      return;
-    }
+    // Non-dimensional fields keep the plain PATCH; the SCALE only ever moves
+    // through preview -> token-pinned apply (contract 12) — no direct write.
     update.mutate(
+      { sheetId: sheet.id, input: { kind, title: title.trim() === "" ? null : title.trim(), dimUnit } },
       {
-        sheetId: sheet.id,
-        input: {
-          kind,
-          title: title.trim() === "" ? null : title.trim(),
-          scaleMmPerPt: parsed === null ? null : mmPerPtForRatio(parsed),
-          dimUnit,
-        },
-      },
-      {
-        onSuccess: () => toast("Sheet updated. Re-measure to redraw its lines.", "success"),
+        onSuccess: () => toast("Sheet updated.", "success"),
         onError: (e) => toast(getApiErrorMessage(e, "Could not update the sheet."), "error"),
       },
     );
+    if (ratioChanged) {
+      const parsed = Number(ratio);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        toast("Scale must be a positive ratio, e.g. 100 for 1:100.", "error");
+        return;
+      }
+      void scale.runPreview(parsed);
+    }
   };
 
   return (
@@ -112,8 +113,26 @@ export function SheetSettings({ sessionId, sheet, onDrawScale, onClose }: Props)
         Or draw a known dimension on the sheet
       </button>
 
+      {scale.preview ? (
+        <div className="rounded-md border border-primary-100 bg-primary-50 p-2" data-settings-scale-preview>
+          <p className="text-xs font-semibold text-primary-800">
+            1:{scaleRatioOf(scale.preview.newScaleMmPerPt)} would restate {scale.preview.affectedRows.length} line{scale.preview.affectedRows.length === 1 ? "" : "s"}
+            {scale.preview.unresolvedRowIds.length > 0 ? ` — blocked by ${scale.preview.unresolvedRowIds.length} unconfirmed legacy line(s)` : ""}.
+          </p>
+          <div className="mt-1.5 flex gap-2">
+            <Button size="sm" loading={scale.applying} disabled={scale.preview.blocked} onClick={() => scale.apply(() => toast("Scale applied; every affected line was restated.", "success"))}>
+              Apply previewed scale
+            </Button>
+            <Button size="sm" variant="secondary" onClick={scale.clear}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {scale.error ? <p className="text-xs text-red-600" data-settings-scale-error>{scale.error}</p> : null}
+
       <div className="flex gap-2 border-t border-line-hair pt-3">
-        <Button size="sm" loading={update.isPending} onClick={save}>
+        <Button size="sm" loading={update.isPending || scale.previewing} onClick={save}>
           Save
         </Button>
         <Button

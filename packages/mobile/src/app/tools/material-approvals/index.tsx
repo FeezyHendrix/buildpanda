@@ -1,13 +1,15 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import type { ApprovalStatus } from "@/api/material-approvals";
-import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_FAINT, ICON_MUTED } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { MaterialApprovalStatusBadge } from "@/components/molecules/material-approval-status";
 import { Page } from "@/components/molecules/page";
+import { SearchableList } from "@/components/molecules/searchable-list";
 import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
 import type { Db } from "@/db/client";
 import type { LocalMaterialApproval } from "@/db/material-approvals-repository";
@@ -73,7 +75,11 @@ function ApprovalRow({ approval }: { approval: LocalMaterialApproval }) {
         <Text weight="semibold" className="min-w-0 flex-1 text-[15px]" numberOfLines={1}>
           {approval.title}
         </Text>
-        {approval.isPendingSync ? <PendingBadge /> : <MaterialApprovalStatusBadge status={approval.status} />}
+        {approval.isPendingSync ? (
+          <PendingBadge />
+        ) : (
+          <MaterialApprovalStatusBadge status={approval.status} />
+        )}
         <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
       </View>
       <Text weight="medium" tone="secondary" className="text-[13px]" numberOfLines={1}>
@@ -103,33 +109,16 @@ function ApprovalList({ db, projectId, filter }: { db: Db; projectId: string; fi
     [data, filter],
   );
 
-  if (isPending) {
-    return (
-      <View className="items-center py-12">
-        <Spinner size="md" />
-      </View>
-    );
-  }
-
-  if (rows.length === 0) {
-    return (
-      <View className="items-center py-12">
-        <Text weight="semibold" className="text-center text-base">
-          {EMPTY_COPY[filter].title}
-        </Text>
-        <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-          {EMPTY_COPY[filter].body}
-        </Text>
-      </View>
-    );
-  }
-
   return (
-    <Card>
-      {rows.map((approval) => (
-        <ApprovalRow key={approval.id} approval={approval} />
-      ))}
-    </Card>
+    <SearchableList
+      data={rows}
+      loading={isPending}
+      fields={(row) => [row.title, row.materialName, row.supplier, row.phaseName, row.status]}
+      placeholder="Search material approvals"
+      emptyTitle={EMPTY_COPY[filter].title}
+      emptyBody={EMPTY_COPY[filter].body}
+      renderItem={(approval) => <ApprovalRow approval={approval} />}
+    />
   );
 }
 
@@ -140,8 +129,9 @@ export default function MaterialApprovals() {
 
   return (
     <Page
+      scroll={false}
       title="Material approvals"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         <HeaderIconButton
           icon="add"
@@ -155,7 +145,7 @@ export default function MaterialApprovals() {
       </View>
 
       {ready && db && projectId ? (
-        <ApprovalList db={db} projectId={projectId} filter={filter} />
+        <ApprovalList key={projectId} db={db} projectId={projectId} filter={filter} />
       ) : (
         <View className="items-center py-12">
           <Spinner size="md" />

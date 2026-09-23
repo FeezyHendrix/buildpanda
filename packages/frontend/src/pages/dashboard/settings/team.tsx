@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -124,7 +125,7 @@ export default function TeamSettings() {
         title="Team settings"
         actions={
           canManage && (
-            <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+            <CreateButton onClick={() => setInviteOpen(true)}>Invite member</CreateButton>
           )
         }
       />

@@ -1,10 +1,11 @@
-import { router } from "expo-router";
+import { isIsoDate, localIsoDate } from "@/lib/dates";
+import { goBack } from "@/lib/navigation";
+
 import { useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Text } from "@/components/atoms";
 import { ActivityChecklist } from "@/components/molecules/activity-checklist";
 import { Page } from "@/components/molecules/page";
-import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { todayIso } from "@/db/daily-logs-repository";
 import { useLocalDb } from "@/db/provider";
 import { useActivities } from "@/hooks/use-activities";
@@ -16,10 +17,10 @@ import { useSyncState } from "@/lib/sync-provider";
 function plusDays(iso: string, days: number): string {
   const date = new Date(`${iso}T00:00:00`);
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return localIsoDate(date);
 }
 
-export default function NewLookAhead() {
+function NewLookAheadForm() {
   const { projectId } = useFieldSession();
   const { db } = useLocalDb();
   const create = useCreateLookAhead(db, projectId);
@@ -33,15 +34,12 @@ export default function NewLookAhead() {
   const [activityIds, setActivityIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { buildingId, buildings, needsChoice, selectBuilding } = useProjectBuilding();
-  // The API refuses a look ahead without a block on a multi-building project,
-  // so ask before the crew member fills the form rather than on submit. Open
-  // is derived: the sheet shows while a choice is outstanding and has not been
-  // waved away, so no effect has to push it open once the buildings load.
-  const [pickerDismissed, setPickerDismissed] = useState(false);
-  const buildingPickerOpen = needsChoice && !pickerDismissed;
+  const { buildingId } = useProjectBuilding();
 
-  const canSubmit = name.trim().length > 0 && !saving;
+  const workersNumber = workers.trim() === "" ? null : Number(workers);
+  const workersValid = workersNumber === null || (Number.isInteger(workersNumber) && workersNumber >= 0);
+  const datesValid = isIsoDate(startDate.trim()) && isIsoDate(endDate.trim()) && endDate.trim() >= startDate.trim();
+  const canSubmit = Boolean(buildingId) && name.trim().length > 0 && workersValid && datesValid && !saving;
 
   function toggleActivity(activityId: string) {
     setActivityIds((prev) =>
@@ -51,26 +49,18 @@ export default function NewLookAhead() {
 
   async function submit() {
     if (!canSubmit) return;
-    if (!buildingId && buildings.length > 1) {
-      setPickerDismissed(false);
-      return;
-    }
-    if (!buildingId && buildings.length === 0) {
-      setError("This project's buildings haven't loaded yet. Connect once so they can, then try again.");
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
       await create({
         name: name.trim(),
-        startDate,
-        endDate,
-        totalWorkers: Number.parseInt(workers, 10) || null,
+        startDate: startDate.trim(),
+        endDate: endDate.trim(),
+        totalWorkers: workersNumber,
         buildingId,
         activityIds,
       });
-      router.back();
+      goBack();
     } catch (err) {
       setSaving(false);
       setError(err instanceof Error ? err.message : "Could not save this look ahead.");
@@ -79,8 +69,9 @@ export default function NewLookAhead() {
 
   return (
     <Page
+      buildingScope
       title="New look ahead"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={submit} disabled={!canSubmit} loading={saving}>
           Create look ahead
@@ -109,6 +100,8 @@ export default function NewLookAhead() {
           <Field label="Start" value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" className="flex-1" />
           <Field label="End" value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" autoCapitalize="none" className="flex-1" />
         </View>
+        {!datesValid ? <Text tone="danger" className="text-sm">Use YYYY-MM-DD dates, with the end on or after the start.</Text> : null}
+        {!workersValid ? <Text tone="danger" className="text-sm">Enter a whole number of crew members, zero or more.</Text> : null}
         <Field label="Total crew" value={workers} onChangeText={setWorkers} keyboardType="number-pad" />
         <ActivityChecklist
           activities={activities.data ?? []}
@@ -118,17 +111,13 @@ export default function NewLookAhead() {
         />
       </View>
 
-      <WorkspaceSheet
-        title="Choose a building"
-        visible={buildingPickerOpen}
-        workspaces={buildings.map((building) => ({
-          id: building.id,
-          name: building.code ? `${building.name} (${building.code})` : building.name,
-        }))}
-        activeId={buildingId}
-        onSelect={selectBuilding}
-        onClose={() => setPickerDismissed(true)}
-      />
+
     </Page>
   );
+}
+
+export default function NewLookAhead() {
+  const { projectId } = useFieldSession();
+  const { buildingId } = useProjectBuilding();
+  return <NewLookAheadForm key={`${projectId}:${buildingId}`} />;
 }

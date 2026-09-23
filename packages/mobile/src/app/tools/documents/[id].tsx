@@ -1,9 +1,11 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { documentsApi, type DocumentVersion } from "@/api/documents";
-import { Card, Spinner, Text } from "@/components/atoms";
+import { Button, Card, Spinner, Text } from "@/components/atoms";
+import { documentsRepository } from "@/db/documents-repository";
 import { ICON_BRAND } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
@@ -89,10 +91,22 @@ export default function DocumentDetail() {
   const [historyUnavailable, setHistoryUnavailable] = useState(false);
   const [caching, setCaching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedCopy, setSavedCopy] = useState<{ uri: string; name: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSavedCopy(null);
+    if (db && id) void documentsRepository.findById(db, id).then((row) => {
+      if (!cancelled && row?.localUri) setSavedCopy({ uri: row.localUri, name: row.fileName });
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [db, id, caching]);
 
   useEffect(() => {
     if (!projectId || !id) return;
     let cancelled = false;
+    setVersions([]);
+    setLoading(true);
     setHistoryUnavailable(false);
     documentsApi
       .versions(projectId, id)
@@ -128,11 +142,18 @@ export default function DocumentDetail() {
   return (
     <Page
       title="Document"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         <HeaderIconButton icon="cloud-download-outline" label="Save for offline" onPress={handleCacheForOffline} busy={caching} />
       }
     >
+      {savedCopy ? (
+        <View className="pb-4">
+          <Button variant="secondary" onPress={() => router.push(`/tools/documents/view?uri=${encodeURIComponent(savedCopy.uri)}&name=${encodeURIComponent(savedCopy.name)}` as never)}>
+            Open saved copy
+          </Button>
+        </View>
+      ) : null}
       {error ? (
         <View className="mb-4 rounded-xl bg-error-50 px-4 py-3">
           <Text tone="danger" className="text-sm">{error}</Text>

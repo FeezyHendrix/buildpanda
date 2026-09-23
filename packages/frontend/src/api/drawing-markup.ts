@@ -50,6 +50,8 @@ export type MarkupGeometry = MarkupShape & { space?: GeometrySpace };
 export interface DrawingMarkupComment {
   id: string;
   markupId: string;
+  /** Optimistic-concurrency version for edit-comment (contract 12). */
+  version?: number;
   body: string;
   bodyHtml: string | null;
   mediaKind: MediaKind | null;
@@ -86,6 +88,9 @@ export interface DrawingMarkup {
   comments: DrawingMarkupComment[];
   linkedRfiId: string | null;
   linkedApprovalId: string | null;
+  /** Optimistic-concurrency version for edit/delete-markup (contract 12). */
+  version?: number;
+  style?: { color?: string; strokeWidthPx?: number } | null;
 }
 
 export interface CreateMarkupInput {
@@ -148,6 +153,7 @@ export interface CreatePreconMarkupInput {
   kind: MarkupKind;
   geometry: MarkupGeometry;
   color?: string;
+  style?: { color?: string; strokeWidthPx?: number };
 }
 
 export const preconMarkupApi = {

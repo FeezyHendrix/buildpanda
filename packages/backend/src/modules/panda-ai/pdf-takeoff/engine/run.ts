@@ -1,10 +1,11 @@
 import type { Knex } from "knex";
 import { generateId } from "../../../../lib/ids.ts";
 import { preconRepository } from "../repository.ts";
-import type { MeasuredBoqItem, PreconSheetRow, Segment, SheetKind, TextRun, PreconPhase, TakeoffScope } from "../types.ts";
+import { SHEET_KIND, type MeasuredBoqItem, type PreconSheetRow, type Segment, type SheetKind, type TextRun, type PreconPhase, type TakeoffScope } from "../types.ts";
 import { classifySheet, measureSheetRegions, regionShareOfSheet, withTempFile } from "./measure-sheet.ts";
 
 export { regionShareOfSheet };
+import { applyScheduleSheets, mergeAcrossSheets } from "./run-schedules.ts";
 import { FULL_TAKEOFF_SCOPE, MEASURED_AREAS_GROUP } from "../types.ts";
 import { buildSnapIndex } from "./pdf-extract.ts";
 import { contextFromPages, extractAllPages, rasterNote } from "./measure-file.ts";
@@ -20,12 +21,12 @@ import { buildUpBill } from "./enrich.ts";
 import { briefsFor } from "./besmm-reference.ts";
 import { besmmResolverFor } from "./besmm-resolver.ts";
 import { classifyStructure } from "./classify.ts";
-import { readBbs, bbsToItems, provisionalRebarItem, readPileSchedule, pileScheduleToItems } from "./structural-schedule.ts";
 import { measureCivil, civilToItems } from "./civil-measure.ts";
-import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
+import { looksLikeScheduleSheet, readingOrderLines } from "./schedule.ts";
 import { isLlmConfigured } from "../../../../lib/llm.ts";
 import { chatLongJsonValidated } from "../../../../lib/llm-long-text.ts";
 import { priceRow } from "./price.ts";
+import { measureRoofPlan } from "./roof-measure.ts";
 
 // PDF take-off. The sibling dwg-takeoff module reads DWG vectors natively and
 // stays fully deterministic; PDFs lose that fidelity, so this pipeline adds a
@@ -90,7 +91,7 @@ export async function generateForSession(
                   page_number: globalPage,
                   code: null,
                   title: null,
-                  kind: "unknown",
+                  kind: SHEET_KIND.UNKNOWN,
                   status: "pending",
                   scale_mm_per_pt: null,
                   scale_confidence: null,
@@ -109,6 +110,12 @@ export async function generateForSession(
             const sheetReport = buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never));
             extractionBySheet[sheetId] = sheetReport;
             await repo.updateSheetGeoSummary(sheetId, summarise(sheetReport));
+            const textForClassification = extracted.texts.map((t) => t.str).join(" ");
+            const earlyClassification = classifySheet(
+              extracted.texts,
+              false,
+              /bed\s*room|kitchen|living|lounge/i.test(textForClassification),
+            );
             // a scanned plan on a vector sheet has a title block's worth of lines and an image: still not measurable
             if (extracted.segments.length < 100 || rasterNote(extracted)) {
               const visionItems = await measureSheetViaVision(
@@ -117,6 +124,7 @@ export async function generateForSession(
                   pageNumber: pageNo,
                   globalPage,
                   sheetLabel: `${placeholder.file_name} p${pageNo}`,
+                  focus: earlyClassification.kind === SHEET_KIND.ROOF_PLAN ? "roof" : undefined,
                 },
                 visionBudget,
               );
@@ -126,7 +134,7 @@ export async function generateForSession(
                 await repo.updateSheet(sheetId, {
                   code: `SHT-${String(globalPage).padStart(2, "0")}`,
                   title: placeholder.file_name,
-                  kind: "floor-plan",
+                  kind: earlyClassification.kind === SHEET_KIND.UNKNOWN ? SHEET_KIND.FLOOR_PLAN : earlyClassification.kind,
                   status: "measured",
                   page_number: globalPage,
                 });
@@ -174,7 +182,24 @@ export async function generateForSession(
             if (calibration && extracted.segments.length >= 20) {
               civilSheets.push({ segments: extracted.segments, mmPerPt: calibration.mmPerPt, pageNumber: globalPage });
             }
-            if (calibration && kind === "floor-plan") {
+            if (kind === SHEET_KIND.ROOF_PLAN) {
+              const visionItems = await measureSheetViaVision(
+                {
+                  storagePath: placeholder.storage_path,
+                  pageNumber: pageNo,
+                  globalPage,
+                  sheetLabel,
+                  focus: "roof",
+                },
+                visionBudget,
+              );
+              const roofItems = visionItems?.filter((item) => item.elementGroup === "Roof")
+                ?? (calibration
+                  ? measureRoofPlan(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel)
+                  : []);
+              allItems.push(...roofItems);
+              await progress("reading", `Measured ${sheetLabel}: ${roofItems.length} roof items${visionItems ? " with vision" : " from vector fallback"}`, { sheetId, items: roofItems.length });
+            } else if (calibration && kind === SHEET_KIND.FLOOR_PLAN) {
               const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel, areasOnly, {
                 calibrationMatches: calibration.matches,
                 dimUnit: calibration.dimUnit,
@@ -225,88 +250,15 @@ export async function generateForSession(
   // Duplicate item descriptions across floor-plan sheets collapse into one row
   // per description with quantities summed — separate floors add up; repeated
   // views of the same floor are avoided upstream by measuring one region/sheet.
-  const merged = new Map<string, MeasuredBoqItem>();
-  for (const item of dedupedItems) {
-    const key = `${item.code}|${item.description}`;
-    const existing = merged.get(key);
-    if (!existing) {
-      merged.set(key, { ...item, mergedPages: [item.pageNumber] } as MeasuredBoqItem & { mergedPages: number[] });
-    } else {
-      existing.qtyGross = Math.round((existing.qtyGross + item.qtyGross) * 100) / 100;
-      existing.qty = Math.round((existing.qty + item.qty) * 100) / 100;
-      (existing as MeasuredBoqItem & { mergedPages: number[] }).mergedPages.push(item.pageNumber);
-      existing.geometries.push(...item.geometries.map((g) => ({ ...g, pageNumber: g.pageNumber ?? item.pageNumber })));
-      if (item.confidence === "low") existing.confidence = "low";
-    }
-  }
-  for (const item of merged.values()) {
-    const pages = (item as MeasuredBoqItem & { mergedPages: number[] }).mergedPages;
-    if (pages.length > 1) {
-      item.measurementBasis = `${item.measurementBasis.split(" (")[0]} — summed across ${pages.length} sheets (pages ${pages.join(", ")}); repeated floor views may double-count, review per sheet`;
-      item.confidence = "low";
-      item.confidenceReason = "two sheets summed";
-    }
-  }
+  const merged = mergeAcrossSheets(dedupedItems);
 
   let billItems: MeasuredBoqItem[] = [...merged.values()];
   // An areas-only run stops here: no schedules, no build-up, no pricing.
   if (areasOnly) billItems = billItems.filter((item) => item.elementGroup === MEASURED_AREAS_GROUP);
 
-  for (const sheet of areasOnly ? [] : scheduleSheets) {
-    const reading = readBbs(sheet.lines);
-    if (reading) {
-      if (reading.unreadable) {
-        billItems.push(provisionalRebarItem(sheet.pageNumber));
-        await progress("schedules", `Bar bending schedule on page ${sheet.pageNumber} could not be read reliably — rebar left provisional`);
-      } else {
-        const rebarItems = bbsToItems(reading, sheet.pageNumber);
-        if (rebarItems.length > 0) {
-          billItems.push(...rebarItems);
-          await progress("schedules", `Read bar bending schedule on page ${sheet.pageNumber}: ${reading.totalTonnes.toFixed(2)} t reinforcement`);
-        }
-      }
-    }
-    const piles = readPileSchedule(sheet.lines);
-    if (piles) {
-      const pileItems = pileScheduleToItems(piles, sheet.pageNumber);
-      if (pileItems.length > 0) {
-        billItems.push(...pileItems);
-        const totalPiles = Object.values(piles.byDiameter).reduce((s, d) => s + d.number, 0);
-        await progress("schedules", `Read pile schedule on page ${sheet.pageNumber}: ${totalPiles} piles`);
-      }
-    }
-  }
-
-  // Schedule pass: the architect's door/window schedule tables are the
-  // authoritative counts and carry sizes/materials; the tag census becomes
-  // the cross-check and disagreements are flagged for review.
-  let scheduleSummary = "";
-  if (!areasOnly && isLlmConfigured() && scheduleSheets.length > 0) {
-    await progress("schedules", `Reading ${scheduleSheets.length} schedule sheet(s)`);
-    try {
-      let schedules = await readSchedules(scheduleSheets, async (messages, schema) =>
-        chatLongJsonValidated(messages, schema),
-      );
-      if (schedules) {
-        // deterministic diagram dimensions beat transcribed table cells
-        const diagramSizes = measureDiagramSizes(scheduleTexts);
-        if (diagramSizes.size > 0) {
-          schedules = mergeDiagramSizes(schedules, diagramSizes);
-          await progress("schedules", `Measured ${diagramSizes.size} type elevations on the schedule sheet`);
-        }
-        billItems = applySchedules(billItems, schedules);
-        billItems = applyOpeningDeductions(billItems, schedules);
-        const specs = [...schedules.windows, ...schedules.doors]
-          .filter((e) => e.material || e.remarks)
-          .map((e) => `${e.type}: ${[e.material, e.remarks].filter(Boolean).join(", ")}`)
-          .slice(0, 20);
-        scheduleSummary = specs.length > 0 ? ` Schedule specs: ${specs.join("; ")}.` : "";
-        await progress("schedules", `Applied schedules: ${schedules.windows.length} window types, ${schedules.doors.length} door types`);
-      }
-    } catch {
-      await progress("schedules", "Schedule sheets found but could not be read; tag census stands");
-    }
-  }
+  const scheduled = await applyScheduleSheets({ billItems, areasOnly, scheduleSheets, scheduleTexts, progress });
+  billItems = scheduled.billItems;
+  const scheduleSummary = scheduled.summary;
 
   const structure = classifyStructure({ sheetTitles: classifyTitles, sheets: classifySheets, text: classifyText.join(" \n ") });
   await repo.updateSessionStructure(sessionId, structure);
@@ -337,7 +289,8 @@ export async function generateForSession(
         ? `Building up ${scope.elements.join(", ")} with QS agents`
         : "Building up the bill with parallel QS agents",
     );
-    const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans only (no structural, roof or MEP drawings).${scheduleSummary}`;
+    const hasRoofPlan = classifySheets.some((sheet) => sheet.kind === SHEET_KIND.ROOF_PLAN);
+    const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans${hasRoofPlan ? " and a roof plan" : ""} (no structural or MEP drawings).${scheduleSummary}`;
     const resolveBesmm = besmmResolverFor(db);
     const outcome = await buildUpBill(
       billItems,

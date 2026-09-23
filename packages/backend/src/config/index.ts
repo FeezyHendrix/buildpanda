@@ -127,6 +127,12 @@ export const config = {
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean),
+    // Inboxes told about every new account. Comma-separated; set it empty to
+    // switch the notification off rather than editing code.
+    signupNotifyAddresses: optional("SIGNUP_NOTIFY_EMAIL", "michael@buildpanda.io")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
   },
 
   uploads: {
