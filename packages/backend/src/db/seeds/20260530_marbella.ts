@@ -386,19 +386,40 @@ export async function seed(knex: Knex): Promise<void> {
   if (updateMedia.length) await knex("update_media").insert(updateMedia);
 
   // Categories are reference data owned by the migrations: 20260608 adds the
-  // plan disciplines and 20260923 the construction document set, together 26
-  // rows covering every group. This seed used to insert five `cat-*` rows of
-  // its own, which collided with that set on the unique `name` constraint
-  // ("Contracts & Agreements") and aborted the entire seed run on any migrated
-  // database — nothing after this line had been seeding at all. The sample
-  // documents below now reference the migration's ids instead.
+  // plan disciplines and 20260923 the construction document set. This seed
+  // used to insert five `cat-*` rows of its own, which collided with that set
+  // on the unique `name` constraint ("Contracts & Agreements") and aborted the
+  // entire seed run on any migrated database — nothing after this line had
+  // been seeding at all.
+  //
+  // Which ids exist varies with how old the database is: a database migrated
+  // today carries 26 categories, one that has been through the whole history
+  // carries 17 and has no "Architectural" at all. So they are resolved by name
+  // at run time, never hardcoded, and a document that finds no home keeps a
+  // null category rather than failing the insert — the column is nullable and
+  // the register shows it as uncategorised.
+  const categoryRows = await knex("document_categories").select("id", "name", "group");
+  const categoryByName = new Map(
+    categoryRows.map((row) => [String(row.name).trim().toLowerCase(), String(row.id)]),
+  );
+  const firstOfGroup = (group: string): string | null =>
+    categoryRows.find((row) => row.group === group)?.id ?? null;
+
+  /** First category matching one of these names, else any category in `group`, else null. */
+  const category = (names: string[], group: string): string | null => {
+    for (const name of names) {
+      const id = categoryByName.get(name.trim().toLowerCase());
+      if (id) return id;
+    }
+    return firstOfGroup(group);
+  };
 
   const documents = [
-    { id: "d1", category_id: "cat_doc_contracts", file_name: "C_of_O_Lagos_Villa.pdf", size: "4.2 MB", status: "Verified", uploaded_at: "Oct 24, 2023" },
-    { id: "d2", category_id: "cat_plan_architectural", file_name: "Main_Structure_RevB.dwg", size: "4.2 MB", status: "Pending", uploaded_at: "Oct 24, 2023" },
-    { id: "d3", category_id: "cat_doc_permits", file_name: "Env_Impact_Permit_2023.jpg", size: "4.2 MB", status: "Verified", uploaded_at: "Oct 24, 2023" },
-    { id: "d4", category_id: "cat_doc_qa", file_name: "Site_Inspection_Q4.pdf", size: "4.2 MB", status: "Pending", uploaded_at: "Oct 24, 2023" },
-    { id: "d5", category_id: "cat_doc_permits", file_name: "Env_Impact_Permit_2023.pdf", size: "4.2 MB", status: "Expired", uploaded_at: "Oct 24, 2023" },
+    { id: "d1", category_id: category(["Contracts & Agreements", "Land Documents", "Correspondence"], "document"), file_name: "C_of_O_Lagos_Villa.pdf", size: "4.2 MB", status: "Verified", uploaded_at: "Oct 24, 2023" },
+    { id: "d2", category_id: category(["Architectural", "Structural"], "plan"), file_name: "Main_Structure_RevB.dwg", size: "4.2 MB", status: "Pending", uploaded_at: "Oct 24, 2023" },
+    { id: "d3", category_id: category(["Permits & approvals", "Permits & Approvals", "Government Approvals"], "document"), file_name: "Env_Impact_Permit_2023.jpg", size: "4.2 MB", status: "Verified", uploaded_at: "Oct 24, 2023" },
+    { id: "d4", category_id: category(["QA & test certificates", "Inspection Certs", "Reports"], "document"), file_name: "Site_Inspection_Q4.pdf", size: "4.2 MB", status: "Pending", uploaded_at: "Oct 24, 2023" },
+    { id: "d5", category_id: category(["Permits & approvals", "Permits & Approvals", "Government Approvals"], "document"), file_name: "Env_Impact_Permit_2023.pdf", size: "4.2 MB", status: "Expired", uploaded_at: "Oct 24, 2023" },
   ];
   await knex("project_documents").insert(
     documents.map((d) => ({ ...d, project_id: PROJECT_ID })),
