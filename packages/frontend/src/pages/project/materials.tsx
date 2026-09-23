@@ -2,8 +2,9 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
-import { ChevronRightIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
 import { ImportBoqDialog } from "@/components/molecules/import-boq-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
@@ -116,10 +117,9 @@ export default function ProjectMaterials() {
               </Button>
             ) : null}
             {canRequest ? (
-              <Button variant="primary" size="md" onClick={() => setDialog({ kind: "create" })}>
-                <PlusIcon className="size-4" />
+              <CreateButton onClick={() => setDialog({ kind: "create" })}>
                 New material order
-              </Button>
+       </CreateButton>
             ) : null}
           </div>
         }

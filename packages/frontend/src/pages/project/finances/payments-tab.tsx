@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button } from "@/components/atoms/button";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { QueryError } from "@/components/molecules/query-error";
@@ -78,10 +77,9 @@ export function PaymentsTab() {
             />
           </div>
           {canRecordPayment ? (
-            <Button variant="primary" size="md" onClick={() => setAddOpen(true)} disabled={!invoiceQuery.isSuccess || invoices.length === 0}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setAddOpen(true)} disabled={!invoiceQuery.isSuccess || invoices.length === 0}>
               Add payment
-            </Button>
+      </CreateButton>
           ) : null}
         </div>
 

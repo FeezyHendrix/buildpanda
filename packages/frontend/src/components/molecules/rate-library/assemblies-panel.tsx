@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
@@ -72,10 +72,7 @@ export function AssembliesPanel({ cards, canManage }: Props) {
           An assembly is measured once and billed as every item it carries: draw a wall, get the blockwork, the plaster and the paint.
         </p>
         {canManage ? (
-          <Button size="sm" onClick={() => setEditing({ initial: null })}>
-            <Plus className="mr-1.5 size-3.5" aria-hidden="true" />
-            New assembly
-          </Button>
+          <CreateButton size="sm" onClick={() => setEditing({ initial: null })}>New assembly</CreateButton>
         ) : null}
       </div>
 

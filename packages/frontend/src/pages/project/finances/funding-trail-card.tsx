@@ -41,12 +41,10 @@ export function FundingTrailCard({
   const { data: events, isPending } = useFinanceEvents(projectId);
 
   return (
-    <Card className="p-6" padding="none">
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-ink">Funding Trail</h3>
-        <p className="mt-1 text-sm text-ink-muted">
-          A log of every recorded funding action on this project.
-        </p>
+    <Card padding="md">
+      <div className="mb-3">
+        <h3 className="text-[13px] font-semibold text-black-300">Funding trail</h3>
+        <p className="mt-0.5 text-xs text-ink-muted">Every recorded funding action on this project.</p>
       </div>
 
       <div className="relative">
@@ -62,7 +60,7 @@ export function FundingTrailCard({
           <div className="relative">
             <div className="absolute bottom-0 left-4 top-0 w-px bg-line-hair" />
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               {events.map((event) => (
                 <div key={event.id} className="relative flex items-start gap-4">
                   <EventIcon type={event.type} />

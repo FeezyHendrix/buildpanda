@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { ClipboardIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { ClipboardIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs, VIEW_MODE_ITEMS } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -155,10 +155,9 @@ export default function ProjectChangeRequests() {
         title="Change orders"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               New change order
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

@@ -1,11 +1,7 @@
 import { Link } from "react-router-dom";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import type { FinanceSummary } from "@/hooks/use-finances";
-import {
-  BUDGET_INVOICES_PATH,
-  CONTRACTS_PHASES_PATH,
-  financeTabPath,
-} from "@/lib/finance-routes";
+import { BUDGET_INVOICES_PATH, CONTRACTS_PHASES_PATH, financeTabPath } from "@/lib/finance-routes";
 import { formatCurrency } from "@/lib/formatters";
 
 /**
@@ -18,28 +14,10 @@ interface MoneyStripProps {
   summary: FinanceSummary;
 }
 
-function LinkedKpi({
-  to,
-  label,
-  value,
-  helper,
-  tone,
-}: {
-  to: string;
-  label: string;
-  value: string;
-  helper: string;
-  tone?: "default" | "danger";
-}) {
+function LinkedKpi({ to, label, value, helper }: { to: string; label: string; value: string; helper: string }) {
   return (
     <Link to={to} className="block rounded-[16px] focus-visible:shadow-focus focus-visible:outline-none">
-      <KpiCard
-        label={label}
-        value={value}
-        helper={helper}
-        tone={tone}
-        className="h-full transition-shadow hover:shadow-md"
-      />
+      <KpiCard label={label} value={value} helper={helper} className="h-full transition-shadow hover:shadow-md" />
     </Link>
   );
 }
@@ -47,39 +25,17 @@ function LinkedKpi({
 LinkedKpi.displayName = "LinkedKpi";
 
 export function MoneyStrip({ projectId, summary }: MoneyStripProps) {
-  const currency = summary.currency;
-  const money = (value: number) => formatCurrency(value, currency);
+  const money = (value: number) => formatCurrency(value, summary.currency);
   const base = `/project/${projectId}/`;
   const invoicesHref = base + financeTabPath(BUDGET_INVOICES_PATH, "invoices");
   const paymentsHref = base + financeTabPath(BUDGET_INVOICES_PATH, "payments");
 
   return (
-    <section aria-label="Money position" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <LinkedKpi
-        to={invoicesHref}
-        label="Certified to date"
-        value={money(summary.certifiedGrossToDate)}
-        helper="Approved certificates, gross"
-      />
-      <LinkedKpi
-        to={paymentsHref}
-        label="Paid to date"
-        value={money(summary.amountPaidToDate)}
-        helper="Receipts recorded on those certificates"
-      />
-      <LinkedKpi
-        to={paymentsHref}
-        label="Unpaid certified"
-        value={money(summary.unpaidCertified)}
-        helper="Certified but not yet received"
-        tone={summary.unpaidCertified > 0 ? "danger" : "default"}
-      />
-      <LinkedKpi
-        to={base + CONTRACTS_PHASES_PATH}
-        label="Still to certify"
-        value={money(summary.outstanding)}
-        helper="Adjusted contract less certified"
-      />
+    <section aria-label="Money position" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <LinkedKpi to={invoicesHref} label="Certified to date" value={money(summary.certifiedGrossToDate)} helper="Approved certificates, gross" />
+      <LinkedKpi to={paymentsHref} label="Paid to date" value={money(summary.amountPaidToDate)} helper="Receipts recorded on those certificates" />
+      <LinkedKpi to={paymentsHref} label="Unpaid certified" value={money(summary.unpaidCertified)} helper="Certified but not yet received" />
+      <LinkedKpi to={base + CONTRACTS_PHASES_PATH} label="Still to certify" value={money(summary.outstanding)} helper="Adjusted contract less certified" />
     </section>
   );
 }

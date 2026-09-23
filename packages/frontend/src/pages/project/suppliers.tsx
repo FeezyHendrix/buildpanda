@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { PageHeader } from "@/components/molecules/page-header";
 import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
@@ -115,10 +114,9 @@ export default function ProjectSuppliers() {
         title="Suppliers"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={openCreate}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={openCreate}>
               Add supplier
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />
