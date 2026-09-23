@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { takeoffAgentRepository } from "./takeoff-repository.ts";
 
 interface DeliveryRow {
   order_id: string;
@@ -11,6 +12,10 @@ interface DeliveryRow {
 
 export function agentRepository(db: Knex) {
   return {
+    // The take-off reads live in their own module; spread here so the public
+    // repository a tool calls is still one object.
+    ...takeoffAgentRepository(db),
+
     projectInfo(projectId: string) {
       return db("projects")
         .where({ id: projectId })
@@ -355,33 +360,6 @@ export function agentRepository(db: Knex) {
           "expected_delivery_at",
           "estimated_cost",
           "currency",
-        );
-    },
-
-    preconBoqRows(projectId: string) {
-      return db("precon_boq_rows as row")
-        .join("precon_bills as bill", "bill.id", "row.bill_id")
-        .join("precon_sessions as session", "session.id", "bill.session_id")
-        .where("session.project_id", projectId)
-        .whereIn("row.row_type", ["item", "provisional_sum"])
-        .where((q) => q.whereNot("row.status", "rejected").orWhereNull("row.status"))
-        .orderBy([
-          { column: "session.created_at", order: "asc" },
-          { column: "row.sort", order: "asc" },
-        ])
-        .select(
-          "session.id as session_id",
-          "session.title as session_title",
-          "session.status as session_status",
-          "row.element_group",
-          "row.code",
-          "row.description",
-          "row.qty",
-          "row.unit",
-          "row.rate",
-          "row.amount",
-          "row.status",
-          "row.confidence",
         );
     },
 
