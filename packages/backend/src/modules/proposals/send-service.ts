@@ -4,8 +4,9 @@ import type { Knex } from "knex";
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { saveStream } from "../../lib/file-storage.ts";
 import { generateId } from "../../lib/ids.ts";
+import type { EstimateItemsService } from "./estimate-items-service.ts";
 import type { ProposalsRepository } from "./repository.ts";
-import type { ProposalTermsRepository } from "./terms-repository.ts";
+import { proposalTermsRepository, type ProposalTermsRepository } from "./terms-repository.ts";
 import type { ProposalTermsService } from "./terms-service.ts";
 import { renderProposalSnapshot } from "./snapshot-pdf.ts";
 
@@ -33,6 +34,7 @@ export function proposalSendService(
   repo: ProposalsRepository,
   terms: ProposalTermsRepository,
   termsService: ProposalTermsService,
+  estimates: EstimateItemsService,
 ) {
   async function companyIdentity(orgId: string): Promise<CompanyIdentity> {
     const org = await db("organization").where({ id: orgId }).select("name", "address", "phone", "contact_email").first();
@@ -88,15 +90,23 @@ export function proposalSendService(
         : new Date(Date.now() + SHARE_LINK_DAYS * 24 * 60 * 60 * 1000).toISOString();
       const now = new Date().toISOString();
 
-      await repo.setShareToken(estimateId, token, expiresAt);
-      await terms.setSnapshot(estimateId, snapshotFileId, pdfHash);
-      await repo.updateEstimateMeta(estimateId, { status: "Sent", sentAt: now });
-      await repo.updateProposal(proposalId, orgId, { status: "Sent" });
-      await repo.logEvent(proposalId, "estimate_sent", userId, {
-        estimateId,
-        revisionNo: estimate.revisionNo,
-        snapshotFileId,
-        pdfHash,
+      // Rendering and storing the PDF happen above, off the lock: they are slow
+      // and involve object storage, and holding an estimate row for their
+      // duration would stall every editor on it. Only the transition itself is
+      // serialized — and the Draft rule is checked again inside, because the
+      // estimate may have been sent or superseded while the PDF was rendering.
+      await estimates.withEstimateLock(estimateId, async (ctx) => {
+        if (ctx.estimate.status !== "Draft") throw new ForbiddenError("Only Draft estimates can be sent.");
+        await ctx.estimates.setShareToken(estimateId, token, expiresAt);
+        await proposalTermsRepository(ctx.trx).setSnapshot(estimateId, snapshotFileId, pdfHash);
+        await ctx.estimates.updateEstimateMeta(estimateId, { status: "Sent", sentAt: now });
+        await ctx.proposals.updateProposal(proposalId, orgId, { status: "Sent" });
+        await ctx.proposals.logEvent(proposalId, "estimate_sent", userId, {
+          estimateId,
+          revisionNo: estimate.revisionNo,
+          snapshotFileId,
+          pdfHash,
+        });
       });
 
       return { token, expiresAt, snapshotFileId, pdfHash };
