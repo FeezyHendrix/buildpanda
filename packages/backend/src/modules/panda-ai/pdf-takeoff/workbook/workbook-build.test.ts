@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
-import { basename, dirname, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { workerEntryUrl } from "./worker-client.ts";
@@ -56,6 +58,74 @@ test("the build still emits the two server entries at their existing paths", () 
   assert.match(config, /cluster:\s*"src\/cluster\.ts"/);
   assert.match(config, /server:\s*"src\/server\.ts"/);
   assert.match(config, /format:\s*\["esm"\]/, "a CJS build would have no import.meta.url to resolve from");
+});
+
+// Asserting on `tsup.config.ts` alone was not enough: the config was correct
+// and the deployment still shipped without a worker, because the Dockerfile ran
+// its own entry list and a positional argument REPLACES the config's `entry`
+// map. `--config <file>` names the config rather than an entry, so its value is
+// dropped here rather than mistaken for one.
+function dockerTsupArgs(): string[] {
+  const dockerfile = readFileSync(packageRoot("Dockerfile"), "utf8");
+  const runs = dockerfile.split("\n").filter((line) => /^\s*RUN\b/.test(line) && /\btsup\b/.test(line));
+  const [build, ...extra] = runs;
+  assert.ok(build, "the image must build with tsup");
+  assert.deepEqual(extra, [], "and must do so exactly once");
+
+  const tokens = build.trim().split(/\s+/);
+  const args = tokens.slice(tokens.indexOf("tsup") + 1);
+  return args.filter((_, index) => args[index - 1] !== "--config");
+}
+
+test("the deployed image builds from the config, not its own entry list", () => {
+  const args = dockerTsupArgs();
+
+  const entries = args.filter((arg) => !arg.startsWith("-") && /\.(ts|tsx|js|mjs)$/.test(arg));
+  assert.deepEqual(
+    entries,
+    [],
+    `packages/backend/Dockerfile passes ${entries.join(", ")} to tsup. A positional entry REPLACES the ` +
+      "`entry` map in tsup.config.ts, so the worker is never emitted and the deployed process fails at " +
+      "dist/worker-entry.js. The image must invoke tsup with no entry of its own.",
+  );
+  assert.ok(
+    !args.some((arg) => arg === "--entry" || arg.startsWith("--entry.")),
+    "--entry overrides the config's entry map for the same reason",
+  );
+});
+
+// The image's own artifact guard, lifted out of its `RUN node -e "..."` and run
+// here against dist layouts this test builds. Executing it is the only way to
+// know it still catches the regression; reading it back would prove nothing.
+function dockerArtifactGuard(): string {
+  const line = readFileSync(packageRoot("Dockerfile"), "utf8")
+    .split("\n")
+    .find((candidate) => /^\s*RUN\s+node\s+-e\b/.test(candidate) && candidate.includes("worker-entry.js"));
+  assert.ok(line, "the build stage must verify the emitted entries before the image is published");
+  return line.slice(line.indexOf('"') + 1, line.lastIndexOf('"'));
+}
+
+function guardExitCode(emitted: readonly string[]): number {
+  const root = mkdtempSync(join(tmpdir(), "workbook-build-guard-"));
+  try {
+    mkdirSync(join(root, "dist"));
+    for (const name of emitted) writeFileSync(join(root, "dist", name), "");
+    const result = spawnSync(process.execPath, ["-e", dockerArtifactGuard()], { cwd: root, encoding: "utf8" });
+    return result.status ?? -1;
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+test("the image refuses to ship a build that is missing the worker", () => {
+  const ALL = ["cluster.js", "server.js", "worker-entry.js", "workbook-engine.js"];
+
+  assert.equal(guardExitCode(ALL), 0, "a complete build passes the image's own guard");
+  assert.notEqual(
+    guardExitCode(ALL.filter((name) => name !== "worker-entry.js")),
+    0,
+    "a build without the worker must fail the image, not a user's first save",
+  );
 });
 
 test("the build script uses the config rather than its own entry list", () => {
