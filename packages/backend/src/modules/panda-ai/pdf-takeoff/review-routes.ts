@@ -8,6 +8,7 @@ import { parseDwgToJson } from "../dwg-takeoff/dwg.ts";
 import { renderDwgSvg } from "../dwg-takeoff/svg.ts";
 import { LAYER_ELEMENTS } from "../dwg-takeoff/types.ts";
 import { PRECON_GENERATE_QUEUE, type PreconGenerateJobData } from "./job.ts";
+import { beginRerun } from "./rerun-apply.ts";
 import type { preconService } from "./service.ts";
 import { DIM_UNITS, FOUNDATION_TYPES, SHEET_KINDS, STRUCTURAL_SYSTEMS, STRUCTURE_CLASSES } from "./types.ts";
 import type { UpdateLayerMapBody, UpdateSheetBody, UpdateStructureBody } from "./types.ts";
@@ -138,7 +139,16 @@ export const reviewRoutes: FastifyPluginAsync<ReviewRoutesOptions> = async (fast
       const orgId = request.requireOrgPermission("takeoffs", "measure");
       await service.assertSheetOrg(request.params.sheetId, orgId);
       const sessionId = await service.assertRemeasurable(request.params.sheetId);
-      const jobData: PreconGenerateJobData = { sessionId, orgId, mode: "remeasure", sheetId: request.params.sheetId };
+      // The re-run is claimed HERE, where it is asked for. Correcting the scale
+      // twice queues two readings; only the later one may land.
+      const token = await beginRerun(fastify.db, sessionId);
+      const jobData: PreconGenerateJobData = {
+        sessionId,
+        orgId,
+        mode: "remeasure",
+        sheetId: request.params.sheetId,
+        rerunGeneration: token.generation,
+      };
       await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "remeasure", jobData);
       return reply.status(202).send({ status: "queued" });
     },
@@ -165,7 +175,8 @@ export const reviewRoutes: FastifyPluginAsync<ReviewRoutesOptions> = async (fast
       const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       const session = await service.updateLayerMap(request.params.sessionId, request.body, user.id);
-      const jobData: TakeoffJobData = { sessionId: session.id, orgId, rerun: true };
+      const token = await beginRerun(fastify.db, session.id);
+      const jobData: TakeoffJobData = { sessionId: session.id, orgId, rerun: true, rerunGeneration: token.generation };
       await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", jobData);
       return reply.status(202).send(session);
     },
@@ -179,7 +190,13 @@ export const reviewRoutes: FastifyPluginAsync<ReviewRoutesOptions> = async (fast
       const orgId = request.requireOrgPermission("takeoffs", "measure");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       await service.assertRedraftable(request.params.sessionId);
-      const jobData: PreconGenerateJobData = { sessionId: request.params.sessionId, orgId, mode: "redraft" };
+      const token = await beginRerun(fastify.db, request.params.sessionId);
+      const jobData: PreconGenerateJobData = {
+        sessionId: request.params.sessionId,
+        orgId,
+        mode: "redraft",
+        rerunGeneration: token.generation,
+      };
       await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "redraft", jobData);
       return reply.status(202).send({ status: "queued" });
     },
