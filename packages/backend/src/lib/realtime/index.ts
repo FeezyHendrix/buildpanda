@@ -20,6 +20,7 @@ export type RealtimeEvent =
   | "row.rejected"
   | "row.deleted"
   | "geometry.updated"
+  | "workbook.updated"
   | "precon.progress"
   | "precon.presence"
   | "access.updated";

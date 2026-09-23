@@ -80,8 +80,20 @@ export interface DrawingMarkupRow {
   created_by_id: string | null;
   resolved_at: Date | string | null;
   resolved_by_id: string | null;
+  // Two people redlining the same sheet must collide loudly; a redline an RFI
+  // was raised off is hidden, not erased.
+  version?: number;
+  deleted_at?: Date | string | null;
+  // pen colour and stroke width as drawn, jsonb
+  style?: MarkupStyle | null;
   created_at: Date | string;
   updated_at: Date | string;
+}
+
+/** Ink beyond the single `color` swatch, so a stroke redraws as it was drawn. */
+export interface MarkupStyle {
+  color?: string;
+  strokeWidthPx?: number;
 }
 
 export interface DrawingMarkupCommentRow {
@@ -94,6 +106,10 @@ export interface DrawingMarkupCommentRow {
   media_duration_seconds: number | null;
   assignee_id: string | null;
   created_by_id: string | null;
+  // A comment is evidence of what someone said: only its author may reword it,
+  // only against the revision they were shown, and it is hidden, never erased.
+  version?: number;
+  deleted_at?: Date | string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -110,6 +126,7 @@ export interface DrawingMarkupComment {
   assigneeName: string | null;
   authorId: string | null;
   authorName: string | null;
+  version: number;
   createdAt: string;
 }
 
@@ -129,9 +146,13 @@ export interface DrawingMarkup {
   kind: MarkupKind;
   geometry: MarkupGeometry;
   color: string;
+  style: MarkupStyle | null;
   authorId: string | null;
   authorName: string | null;
   resolvedAt: string | null;
+  /** The number an edit must quote to win; a stale one is rejected, not merged. */
+  version: number;
+  deletedAt: string | null;
   createdAt: string;
   comments: DrawingMarkupComment[];
   linkedRfiId: string | null;
@@ -159,6 +180,13 @@ export interface CreatePreconMarkupInput {
   kind: MarkupKind;
   geometry: MarkupGeometry;
   color?: string;
+  /**
+   * The pen as it was drawn with. Stated at creation, not restated after it: a
+   * stroke that needed a follow-up `edit-markup` to record its own width read
+   * back as a redline someone changed their mind about seconds later, which on
+   * a contractual record is a different event from drawing it that way.
+   */
+  style?: MarkupStyle;
 }
 
 /**
@@ -178,6 +206,76 @@ export interface CreateCommentInput {
   fileId?: string | null;
   mediaDurationSeconds?: number | null;
   assigneeId?: string | null;
+}
+
+/**
+ * Moving a pin, redrawing a stroke or recolouring it. `version` is the one the
+ * editor was shown: two people redlining the same sheet must collide loudly.
+ */
+export interface EditMarkupInput {
+  version: number;
+  geometry?: MarkupGeometry;
+  color?: string;
+  style?: MarkupStyle;
+}
+
+export interface EditCommentInput {
+  version: number;
+  body: string;
+  bodyHtml?: string | null;
+}
+
+/**
+ * The slice of the take-off audit trail this module writes to. Narrow on
+ * purpose: `preconAuditRepository` satisfies it as-is, and a test passes an
+ * array-backed fake without a database.
+ */
+export interface MarkupAuditSink {
+  insertAuditEvent(row: {
+    id: string;
+    session_id: string;
+    row_id: string | null;
+    actor: string;
+    action: string;
+    before: Record<string, unknown> | null;
+    after: Record<string, unknown> | null;
+  }): PromiseLike<unknown>;
+}
+
+export interface MarkupPatch {
+  version: number;
+  geometry?: MarkupGeometry;
+  color?: string;
+  style?: MarkupStyle;
+}
+
+export interface CommentPatch {
+  version: number;
+  body: string;
+  body_html: string | null;
+}
+
+export interface CommentAuthorRow {
+  id: string;
+  created_by_id: string | null;
+}
+
+/**
+ * The slice of the repository the editing methods write through. Narrow for the
+ * same reason `PreconAnchorGuard` is: the real repository satisfies it as-is,
+ * and a guard test supplies these nine calls without a database.
+ */
+export interface MarkupEditingStore {
+  updateMarkup(id: string, patch: MarkupPatch): Promise<DrawingMarkupRow | null>;
+  updateComment(id: string, patch: CommentPatch): Promise<DrawingMarkupCommentRow | null>;
+  softDeleteMarkup(id: string, deletedAt: Date, version: number): Promise<DrawingMarkupRow | null>;
+  restoreMarkup(id: string, version: number): Promise<DrawingMarkupRow | null>;
+  softDeleteCommentsForMarkup(markupId: string, deletedAt: Date): PromiseLike<unknown>;
+  restoreCommentsForMarkup(markupId: string, deletedAt: Date): PromiseLike<unknown>;
+  commentsForMarkupIncludeDeleted(markupId: string): PromiseLike<DrawingMarkupCommentRow[]>;
+  commentById(id: string): PromiseLike<DrawingMarkupCommentRow | undefined>;
+  commentAuthorsForMarkup(markupId: string): Promise<CommentAuthorRow[]>;
+  usersByIds(userIds: readonly string[]): PromiseLike<MarkupAuthorRow[]>;
 }
 
 export interface MarkupAuthorRow {
