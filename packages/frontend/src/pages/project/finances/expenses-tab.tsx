@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
@@ -70,7 +71,7 @@ export function ExpensesTab() {
         <Button variant="secondary" onClick={() => setManageCategoriesOpen(true)}>
           Manage categories
         </Button>
-        <Button onClick={() => setUpsertTarget("new")}>Record expense</Button>
+        <CreateButton onClick={() => setUpsertTarget("new")}>Record expense</CreateButton>
       </TabActions>
 
       <div className="space-y-6">

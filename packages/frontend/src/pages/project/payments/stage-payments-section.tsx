@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
@@ -48,17 +47,14 @@ export function StagePaymentsSection() {
   if (!finances) return null;
 
   const newButton = canManage ? (
-    <Button
-      variant="primary"
-      size="md"
-      onClick={() => {
-        setEditingTarget(null);
-        setUpsertOpen(true);
-      }}
-    >
-      <PlusIcon className="size-4" />
+    <CreateButton
+   onClick={() => {
+    setEditingTarget(null);
+    setUpsertOpen(true);
+   }}
+  >
       New stage payment
-    </Button>
+  </CreateButton>
   ) : undefined;
 
   return (

@@ -2,9 +2,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { QueryError } from "@/components/molecules/query-error";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ReactSVG } from "react-svg";
-import { Button } from "@/components/atoms/button";
-import { icons } from "@/assets/icons/icons";
+import { CreateButton } from "@/components/molecules/create-button";
 import { PageHeader } from "@/components/molecules/page-header";
 import { UploadDocumentDialog } from "@/components/molecules/upload-document-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -41,15 +39,7 @@ export default function ProjectPlans() {
         title="Plans"
         actions={
           canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => uploader.handleOpenChange(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-sm font-semibold px-[20px] py-[12px]"
-            >
-              <ReactSVG src={icons.upload} />
-              Upload plan
-            </Button>
+            <CreateButton onClick={() => uploader.handleOpenChange(true)}>Upload plan</CreateButton>
           ) : undefined
         }
       />

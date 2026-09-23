@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { ShieldAlert } from "lucide-react";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
@@ -115,10 +114,9 @@ export default function ProjectRisks() {
         title="Risk register"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               Add risk
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

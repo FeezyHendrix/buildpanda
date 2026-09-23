@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { ChevronRightIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { KpiCard } from "@/components/molecules/kpi-card";
@@ -117,10 +118,9 @@ export default function ProjectEquipmentRequests() {
               <ChevronRightIcon className="size-4" />
             </Button>
             {canRequest ? (
-              <Button variant="primary" size="md" onClick={() => setDialog({ kind: "create" })}>
-                <PlusIcon className="size-4" />
+              <CreateButton onClick={() => setDialog({ kind: "create" })}>
                 New equipment request
-              </Button>
+       </CreateButton>
             ) : null}
           </div>
         }
