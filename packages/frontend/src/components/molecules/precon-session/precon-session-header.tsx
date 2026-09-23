@@ -33,14 +33,14 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
   const nextAfterFirst: PreconStepKey = session.scope.kind === "areas" ? "output" : "programme";
 
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <div className="min-w-0">
         <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:underline">
           <ArrowLeft className="size-3.5" aria-hidden="true" />
           Back to proposal
         </Link>
-        <div className="mt-0.5 flex items-center gap-2">
-          <h1 className="truncate text-lg font-semibold text-gray-900">{session.title}</h1>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <h1 className="min-w-0 truncate text-lg font-semibold text-gray-900">{session.title}</h1>
           <Badge tone={PRECON_STATUS_TONE[session.status]} dot={running}>
             {manual && running ? "Rendering sheets" : PRECON_STATUS_LABEL[session.status]}
           </Badge>
@@ -55,7 +55,7 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
             </Link>
           </p>
         ) : null}
-        <p className="text-xs text-gray-500">
+        <p className="text-xs leading-relaxed text-gray-500">
           {describeScope(session.scope)}
           {reviewing && manual ? ` · ${progress.total} line${progress.total === 1 ? "" : "s"} measured by hand` : null}
           {reviewing && !manual ? ` · ${progress.verified} of ${progress.total} lines verified` : null}
@@ -69,7 +69,7 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
         </p>
       </div>
       {reviewing ? (
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
           <PresenceAvatars users={presence} currentUserId={currentUserId} />
           {step === firstStep ? (
             <Button size="sm" onClick={() => onSelectStep(nextAfterFirst)}>

@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PreconApplyDialog } from "@/components/molecules/precon-apply-dialog";
 import { preconApi, preconManualApi, type PreconSnapshot, type PreconSummarySettings } from "@/api/precon";
 import { useApplyPreconToProposal, useUpdatePreconSettings } from "@/hooks/use-precon";
+import { useAbility } from "@/contexts/ability-context";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
@@ -131,6 +132,7 @@ AreasSummaryCard.displayName = "AreasSummaryCard";
 export function PreconOutputPanel({ snapshot }: OutputProps) {
   const navigate = useNavigate();
   const { session, progress } = snapshot;
+  const canApply = useAbility().can("apply", "takeoffs");
   const applyToProposal = useApplyPreconToProposal(session.id);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
@@ -193,9 +195,15 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
             <Download className="mr-1.5 size-3.5" aria-hidden="true" />
             Export CSV
           </Button>
-          <Button variant="secondary" className="w-full" onClick={() => (linked ? setApplyOpen(true) : setConfirmOpen(true))}>
-            {applyLabel}
-          </Button>
+          {canApply ? (
+            <Button variant="secondary" className="w-full" onClick={() => (linked ? setApplyOpen(true) : setConfirmOpen(true))}>
+              {applyLabel}
+            </Button>
+          ) : (
+            <p className="text-xs text-gray-500" data-no-apply-permission>
+              Recording this bill on a proposal or estimate needs the take-off apply permission.
+            </p>
+          )}
           {progress.total > 0 && progress.verified < progress.total ? (
             <p className="text-xs text-amber-700">
               {progress.total - progress.verified} line{progress.total - progress.verified === 1 ? "" : "s"} still
