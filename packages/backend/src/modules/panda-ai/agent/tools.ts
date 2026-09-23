@@ -20,6 +20,8 @@ import { stageCostsService } from "../../finances/stage-costs.ts";
 import { purchaseOrdersRepository } from "../../purchase-orders/repository.ts";
 import { transactionsRepository } from "../../transactions/repository.ts";
 import { financeTools } from "./finance-tools.ts";
+import { GET_PRECON_BOQ_DESCRIPTION, preconBoqLines } from "./precon-boq.ts";
+import { preconWorkbookNotes } from "./precon-workbook.ts";
 import { agentRepository } from "./repository.ts";
 import { workRecordsRepository } from "./work-records.ts";
 import { fn, round2, tool, type AgentTool } from "./tool-helpers.ts";
@@ -668,24 +670,13 @@ export function buildTools(): AgentTool[] {
       } };
     }),
 
-    tool(fn("get_precon_boq", "Get the draft preconstruction Bill of Quantities rows measured by Panda AI from uploaded drawings, including element group, code, description, quantity, unit, rate, amount, review status (ai_generated/needs_review/verified/rejected) and confidence. Use for questions about the draft/AI-measured BOQ, takeoff quantities from drawings, review progress, or draft bid totals. The accepted contractual BoQ lives in get_boq_items."), async (ctx) => {
+    tool(fn("get_precon_boq", GET_PRECON_BOQ_DESCRIPTION), async (ctx) => {
       const repo = agentRepository(ctx.db);
-      const rows = await repo.preconBoqRows(ctx.projectId);
-      return {
-        output: rows.map((row) => ({
-          sessionTitle: row.session_title,
-          sessionStatus: row.session_status,
-          elementGroup: row.element_group,
-          code: row.code,
-          description: row.description,
-          quantity: row.qty === null ? null : Number(row.qty),
-          unit: row.unit,
-          rate: row.rate === null ? null : Number(row.rate),
-          amount: row.amount === null ? null : Number(row.amount),
-          reviewStatus: row.status,
-          confidence: row.confidence,
-        })),
-      };
+      const [lines, workbooks] = await Promise.all([
+        preconBoqLines(repo, ctx.projectId),
+        preconWorkbookNotes(repo, ctx.db, ctx.projectId),
+      ]);
+      return { output: { lines, ...workbooks } };
     }),
 
     tool(fn("get_boq_items", "Get Bill of Quantities (BoQ) line items from the accepted/converted proposal for this project, including description, group, quantity and unit. Use for BoQ quantity questions such as total doors, blocks, tiles, fixtures, or any 'how many/how much is in the BoQ' question. This is the planned BoQ, not procurement orders or live stock."), async (ctx) => {
