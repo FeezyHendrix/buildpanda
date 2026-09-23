@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { SearchInput } from "@/components/atoms/search-input";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -162,9 +162,7 @@ export default function ProjectMaterialApprovals() {
         title="Material Approvals"
         actions={
           canRequest ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              Request approval
-            </Button>
+            <CreateButton onClick={() => setCreateOpen(true)}>Request approval</CreateButton>
           ) : undefined
         }
       />

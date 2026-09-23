@@ -1,8 +1,7 @@
 import { useUrlState } from "@/hooks/use-url-state";
 import { useState } from "react";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { QueryError } from "@/components/molecules/query-error";
 import { UnavailableRecord } from "@/components/molecules/unavailable-record";
@@ -148,10 +147,9 @@ export function PurchaseOrdersTab() {
     <section aria-label="Purchase orders">
       <TabActions>
         {canManage ? (
-          <Button variant="primary" size="md" onClick={() => setDialog({ kind: "create" })}>
-            <PlusIcon className="size-4" />
+          <CreateButton onClick={() => setDialog({ kind: "create" })}>
             New purchase order
-          </Button>
+     </CreateButton>
         ) : null}
       </TabActions>
 

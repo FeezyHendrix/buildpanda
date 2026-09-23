@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ReactSVG } from "react-svg";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { icons } from "@/assets/icons/icons";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -88,15 +88,7 @@ export default function ProjectMediaLibrary() {
         title="Media Library"
         actions={
           canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => uploader.handleOpenChange(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-sm font-semibold px-[20px] py-[12px]"
-            >
-              <ReactSVG src={icons.upload} />
-              Upload media
-            </Button>
+            <CreateButton onClick={() => uploader.handleOpenChange(true)}>Upload media</CreateButton>
           ) : undefined
         }
       />
