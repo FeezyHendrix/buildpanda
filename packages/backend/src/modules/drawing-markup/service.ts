@@ -1,8 +1,9 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
-import { toIso, toIsoOrNull } from "../../lib/dates.ts";
 import { generateId } from "../../lib/ids.ts";
+import { drawingMarkupEditing } from "./editing.ts";
+import { toComment, toMarkup, type MarkupContext } from "./mappers.ts";
 import type { DrawingMarkupRepository } from "./repository.ts";
-import { GEOMETRY_SPACE, MARKUP_KIND } from "./types.ts";
+import { MARKUP_KIND } from "./types.ts";
 import type {
   CreateCommentInput,
   CreateMarkupInput,
@@ -11,6 +12,7 @@ import type {
   DrawingMarkupComment,
   DrawingMarkupCommentRow,
   DrawingMarkupRow,
+  MarkupAuditSink,
   MarkupGeometry,
   MarkupKind,
   PreconAnchorGuard,
@@ -35,17 +37,6 @@ export function anchorOf(
   throw new BadRequestError("A markup must anchor to exactly one of a project drawing revision or a take-off sheet");
 }
 
-/**
- * A markup written before spaces existed carries none, so its space comes from
- * where it is anchored: a take-off pin has always been in sheet points, which
- * is what keeps it with the measurements at any raster scale, while a project
- * drawing's markup has always been in percent of the rendered sheet.
- */
-function withSpace(geometry: MarkupGeometry, onProjectDrawing: boolean): MarkupGeometry {
-  if (geometry.space) return geometry;
-  return { ...geometry, space: onProjectDrawing ? GEOMETRY_SPACE.PERCENT : GEOMETRY_SPACE.POINTS };
-}
-
 function assertGeometryMatchesKind(kind: MarkupKind, geometry: MarkupGeometry): void {
   if (geometry.kind !== kind) {
     throw new BadRequestError(`Geometry kind "${geometry.kind}" does not match markup kind "${kind}"`);
@@ -56,65 +47,6 @@ function assertGeometryMatchesKind(kind: MarkupKind, geometry: MarkupGeometry): 
   if (invalid) throw new BadRequestError(`Incomplete geometry for a ${kind} markup`);
 }
 
-function toComment(
-  row: DrawingMarkupCommentRow,
-  names: ReadonlyMap<string, string | null>,
-): DrawingMarkupComment {
-  return {
-    id: row.id,
-    markupId: row.markup_id,
-    body: row.body,
-    bodyHtml: row.body_html,
-    mediaKind: row.media_kind,
-    fileId: row.file_id,
-    mediaDurationSeconds: row.media_duration_seconds,
-    assigneeId: row.assignee_id,
-    assigneeName: row.assignee_id ? (names.get(row.assignee_id) ?? null) : null,
-    authorId: row.created_by_id,
-    authorName: row.created_by_id ? (names.get(row.created_by_id) ?? null) : null,
-    createdAt: toIso(row.created_at),
-  };
-}
-
-interface MarkupContext {
-  comments: ReadonlyMap<string, DrawingMarkupComment[]>;
-  names: ReadonlyMap<string, string | null>;
-  rfiByMarkup: ReadonlyMap<string, string>;
-  approvalByMarkup: ReadonlyMap<string, string>;
-  currentVersionByDocument: ReadonlyMap<string, string | null>;
-  revisionByVersion: ReadonlyMap<string, string | null>;
-}
-
-function toMarkup(row: DrawingMarkupRow, ctx: MarkupContext): DrawingMarkup {
-  // A take-off pin lives on the session it was raised in; that session is the
-  // revision, so it is always "current" from the markup's own point of view.
-  const onProjectDrawing = row.document_id !== null && row.document_version_id !== null;
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    documentId: row.document_id,
-    documentVersionId: row.document_version_id,
-    revisionLabel: onProjectDrawing ? (ctx.revisionByVersion.get(row.document_version_id!) ?? null) : null,
-    isCurrentRevision: onProjectDrawing
-      ? ctx.currentVersionByDocument.get(row.document_id!) === row.document_version_id
-      : true,
-    pageNo: row.page_no,
-    preconSessionId: row.precon_session_id,
-    preconSheetId: row.precon_sheet_id,
-    preconRowId: row.precon_row_id,
-    kind: row.kind,
-    geometry: withSpace(row.geometry, onProjectDrawing),
-    color: row.color,
-    authorId: row.created_by_id,
-    authorName: row.created_by_id ? (ctx.names.get(row.created_by_id) ?? null) : null,
-    resolvedAt: toIsoOrNull(row.resolved_at),
-    createdAt: toIso(row.created_at),
-    comments: ctx.comments.get(row.id) ?? [],
-    linkedRfiId: ctx.rfiByMarkup.get(row.id) ?? null,
-    linkedApprovalId: ctx.approvalByMarkup.get(row.id) ?? null,
-  };
-}
-
 function nonNull(values: (string | null)[]): string[] {
   return [...new Set(values.filter((v): v is string => v !== null))];
 }
@@ -122,8 +54,13 @@ function nonNull(values: (string | null)[]): string[] {
 /**
  * @param precon the pdf-takeoff service (or a fake in tests); only needed by
  * the take-off methods, which prove every anchor belongs to the caller's org.
+ * @param audit the take-off audit trail an edit, withdrawal or restore is filed on.
  */
-export function drawingMarkupService(repo: DrawingMarkupRepository, precon?: PreconAnchorGuard) {
+export function drawingMarkupService(
+  repo: DrawingMarkupRepository,
+  precon?: PreconAnchorGuard,
+  audit?: MarkupAuditSink,
+) {
   function requirePrecon(): PreconAnchorGuard {
     if (!precon) throw new Error("drawingMarkupService: take-off anchors need the precon service");
     return precon;
@@ -185,7 +122,7 @@ export function drawingMarkupService(repo: DrawingMarkupRepository, precon?: Pre
     return row;
   }
 
-  return {
+  const base = {
     async listForVersion(documentVersionId: string, pageNo?: number): Promise<DrawingMarkup[]> {
       const rows = await repo.listByVersion(documentVersionId, pageNo);
       const ctx = await buildContext(rows);
@@ -290,8 +227,14 @@ export function drawingMarkupService(repo: DrawingMarkupRepository, precon?: Pre
       return requirePrecon().assertSessionOrg(sessionId, orgId);
     },
 
-    async listForSession(sessionId: string, sheetId?: string): Promise<DrawingMarkup[]> {
-      const rows = await repo.listBySession(sessionId, sheetId);
+    async listForSession(
+      sessionId: string,
+      sheetId?: string,
+      includeDeleted = false,
+    ): Promise<DrawingMarkup[]> {
+      const rows = includeDeleted
+        ? await repo.listBySessionIncludeDeleted(sessionId, sheetId)
+        : await repo.listBySession(sessionId, sheetId);
       const ctx = await buildContext(rows);
       return rows.map((row) => toMarkup(row, ctx));
     },
@@ -325,6 +268,7 @@ export function drawingMarkupService(repo: DrawingMarkupRepository, precon?: Pre
         kind: input.kind,
         geometry: input.geometry,
         color: input.color ?? "#004DE7",
+        style: input.style ?? null,
         created_by_id: userId,
         resolved_at: null,
         resolved_by_id: null,
@@ -347,6 +291,11 @@ export function drawingMarkupService(repo: DrawingMarkupRepository, precon?: Pre
       await requirePrecon().assertSessionOrg(row.precon_session_id, orgId);
       return row.precon_session_id;
     },
+  };
+
+  return {
+    ...base,
+    ...drawingMarkupEditing({ repo, audit, loadMarkup, getMarkup: (id) => base.get(id) }),
   };
 }
 
