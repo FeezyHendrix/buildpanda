@@ -1,218 +1,30 @@
-import { ConflictError, NotFoundError, BadRequestError } from "../../../lib/errors.ts";
+// Composition facade for the take-off service. The behaviour lives in
+// domain-scoped siblings (session, row, geometry, programme, review, manual);
+// this file owns the shared helpers they all need — the audit trail, the row
+// lookup, the anchor recompute and the measurement sheet resolution — and
+// spreads the slices into the one flat object every caller already uses.
+import { NotFoundError, BadRequestError } from "../../../lib/errors.ts";
 import { generateId } from "../../../lib/ids.ts";
 import { DERIVED_BASIS_PATTERN, anchorsFromRows, evaluateFormula } from "./engine/enrich.ts";
+import { assertAuditPayloadWithinCap, assertDerivedFanout, derivedRowsIn } from "./editor-limits.ts";
 import type { PreconRepository } from "./repository.ts";
-import type {
-  AddDeductionBody,
-  CreateRowBody,
-  Deduction,
-  PreconAuditEventRow,
-  PreconBill,
-  PreconBillRow,
-  PreconBoqRowDto,
-  PreconBoqRowRow,
-  PreconGeometry,
-  PreconGeometryRow,
-  PreconProgramme,
-  PreconProgrammeTaskBase,
-  PreconProgrammeTaskRow,
-  PreconSession,
-  PreconSessionRow,
-  PreconSheet,
-  PreconSheetRow,
-  PreconSnapshot,
-  PreconSummary,
-  PreconSummarySettings,
-  ProgrammeDependency,
-  TakeoffKind,
-  TakeoffScope,
-  UpdateGeometryBody,
-  UpdateRowBody,
-} from "./types.ts";
-import { FULL_TAKEOFF_SCOPE } from "./types.ts";
-import type { CreateProgrammeTaskBody, ProgrammeTaskOrigin, UpdateProgrammeTaskBody } from "./types.ts";
-import { scheduleProgramme } from "./programme-schedule.ts";
+import type { PreconAuditEventRow, PreconBoqRowRow, PreconSheetRow, PreconSnapshot } from "./types.ts";
+import { num, toGeometry, toRow, toSession, toSheet } from "./dto.ts";
 import { programmeEditor } from "./programme-editor.ts";
+import { geometryService } from "./geometry-service.ts";
+import { programmeService } from "./programme-service.ts";
+import { rowService } from "./row-service.ts";
+import { sessionService } from "./session-service.ts";
 import { reviewService } from "./review-service.ts";
 import { manualService } from "./manual-service.ts";
-import { lineageKindOf, nextRevision } from "./revisions.ts";
-import { basisWithTypical, netQuantity, normaliseTypical } from "./measurements.ts";
-import { scaleAt, scaleClause } from "./viewports.ts";
-import { noStaleLookup, withStale, type StaleLookup } from "./stale.ts";
+import { noStaleLookup, type StaleLookup } from "./stale.ts";
+import type { WorkbookChangeEvent } from "./workbook/types.ts";
 
-const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
-// pg serialises a plain object into jsonb; typed as the row field so the
-// repository insert stays honest about what it stores.
-const db_json = (scope: TakeoffScope): TakeoffScope => ({ kind: scope.kind, elements: [...scope.elements] });
-
-function toSession(r: PreconSessionRow): PreconSession {
-  return {
-    id: r.id,
-    orgId: r.org_id,
-    projectId: r.project_id,
-    proposalId: r.proposal_id,
-    status: r.status,
-    title: r.title,
-    error: r.error,
-    phase: r.phase ?? null,
-    progressLog: r.progress_log ?? [],
-    scope: r.scope ?? FULL_TAKEOFF_SCOPE,
-    planId: r.plan_id ?? null,
-    takeoffKind: r.takeoff_kind ?? "pdf",
-    extraction: r.extraction ?? null,
-    structureContext: r.structure_context ?? null,
-    layerMap: r.layer_map ?? null,
-    revision: r.revision ?? 1,
-    supersededBy: r.superseded_by ?? null,
-    createdBy: r.created_by,
-    createdAt: new Date(r.created_at).toISOString(),
-  };
-}
-
-
-function toSheet(r: PreconSheetRow): PreconSheet {
-  return {
-    id: r.id,
-    sessionId: r.session_id,
-    fileName: r.file_name,
-    pageNumber: r.page_number,
-    code: r.code,
-    title: r.title,
-    kind: r.kind,
-    status: r.status,
-    scaleMmPerPt: r.scale_mm_per_pt,
-    scaleConfidence: r.scale_confidence,
-    dimUnit: r.dim_unit,
-    geoSummary: r.geo_summary ?? null,
-    bounds: r.bounds ?? null,
-    viewports: r.viewports ?? [],
-    error: r.error,
-  };
-}
-
-function toBill(r: PreconBillRow): PreconBill {
-  return { id: r.id, title: r.title, sort: r.sort };
-}
-
-function toProgrammeTask(r: PreconProgrammeTaskRow): PreconProgrammeTaskBase {
-  return {
-    id: r.id,
-    sessionId: r.session_id,
-    sort: r.sort,
-    name: r.name,
-    elementGroup: r.element_group,
-    wbsCode: r.wbs_code,
-    outlineLevel: r.outline_level,
-    parentTaskId: r.parent_task_id,
-    durationDays: Number(r.duration_days),
-    predecessors:
-      typeof r.predecessors === "string"
-        ? (JSON.parse(r.predecessors) as ProgrammeDependency[])
-        : r.predecessors,
-    isMilestone: r.is_milestone,
-    totalFloatDays: r.total_float_days ?? null,
-    isCritical: Boolean(r.is_critical),
-    origin: r.origin ?? "ai",
-    basis: r.basis,
-    confidence: r.confidence,
-    status: r.status,
-    version: r.version,
-    verifiedBy: r.verified_by,
-    verifiedAt: r.verified_at ? new Date(r.verified_at).toISOString() : null,
-  };
-}
-
-function toRow(r: PreconBoqRowRow): PreconBoqRowDto {
-  return {
-    id: r.id,
-    billId: r.bill_id,
-    sort: r.sort,
-    rowType: r.row_type,
-    elementGroup: r.element_group,
-    code: r.code,
-    description: r.description,
-    unit: r.unit,
-    qtyGross: num(r.qty_gross),
-    deductions: r.deductions ?? [],
-    typical: r.typical ?? 1,
-    qty: num(r.qty),
-    rate: num(r.rate),
-    amount: num(r.amount),
-    rateSource: r.rate_source,
-    confidence: r.confidence,
-    status: r.status,
-    version: r.version,
-    measurementBasis: r.measurement_basis,
-    confidenceReason: r.confidence_reason ?? null,
-    provenance: r.provenance ?? null,
-    evidence: r.evidence ?? [],
-    origin: r.origin ?? "ai",
-    editedAt: r.edited_at ? new Date(r.edited_at).toISOString() : null,
-    editedBy: r.edited_by ?? null,
-    verifiedBy: r.verified_by,
-    verifiedAt: r.verified_at ? new Date(r.verified_at).toISOString() : null,
-  };
-}
-
-function toGeometry(r: PreconGeometryRow): PreconGeometry {
-  return {
-    id: r.id,
-    rowId: r.row_id,
-    sheetId: r.sheet_id,
-    kind: r.kind,
-    vertices: r.vertices ?? [],
-    source: r.source,
-    quantity: num(r.quantity),
-    unit: r.unit,
-  };
-}
-
-export function computeSummary(rows: PreconBoqRowDto[], settings: PreconSummarySettings): PreconSummary {
-  const measuredTotal = rows
-    .filter((r) => (r.rowType === "item" || r.rowType === "provisional_sum") && r.status !== "rejected")
-    .reduce((sum, r) => sum + (r.amount ?? 0), 0);
-  const prelims = measuredTotal * (settings.prelimsPct / 100);
-  const constructionSum = measuredTotal + prelims;
-  const contingency = constructionSum * (settings.contingencyPct / 100);
-  const subTotal = constructionSum + contingency;
-  const vat = subTotal * (settings.vatPct / 100);
-  const round = (v: number) => Math.round(v * 100) / 100;
-  return {
-    measuredTotal: round(measuredTotal),
-    prelims: round(prelims),
-    constructionSum: round(constructionSum),
-    contingency: round(contingency),
-    subTotal: round(subTotal),
-    vat: round(vat),
-    grandTotal: round(subTotal + vat),
-  };
-}
-
-// Geometry math: vertices are sheet coordinates (pt); scale converts to metres.
-export function quantityFromVertices(
-  kind: "area" | "linear" | "count" | "deduction",
-  vertices: number[][],
-  mmPerPt: number,
-): { quantity: number; unit: string } {
-  const toM = mmPerPt / 1000;
-  if (kind === "count") return { quantity: vertices.length, unit: "nr" };
-  if (kind === "linear") {
-    let len = 0;
-    for (let i = 1; i < vertices.length; i++) {
-      len += Math.hypot(vertices[i]![0]! - vertices[i - 1]![0]!, vertices[i]![1]! - vertices[i - 1]![1]!);
-    }
-    return { quantity: Math.round(len * toM * 100) / 100, unit: "m" };
-  }
-  // area & deduction: shoelace over the closed polygon
-  let doubled = 0;
-  for (let i = 0; i < vertices.length; i++) {
-    const [x1, y1] = vertices[i]!;
-    const [x2, y2] = vertices[(i + 1) % vertices.length]!;
-    doubled += x1! * y2! - x2! * y1!;
-  }
-  const area = Math.abs(doubled / 2) * toM * toM;
-  return { quantity: Math.round(area * 100) / 100, unit: "m2" };
-}
+export { computeSummary, quantityFromVertices, toBill, toGeometry, toProgrammeTask, toRow, toSession, toSheet } from "./dto.ts";
+export { geometryService } from "./geometry-service.ts";
+export { programmeService } from "./programme-service.ts";
+export { rowService } from "./row-service.ts";
+export { sessionService } from "./session-service.ts";
 
 export interface RowChangeEvent {
   type:
@@ -229,7 +41,27 @@ export interface RowChangeEvent {
   changes: Record<string, unknown>;
 }
 
-export type PublishFn = (sessionId: string, event: RowChangeEvent) => void;
+/**
+ * Everything published on a `precon:<sessionId>` channel, as a closed union.
+ *
+ * A workbook change is genuinely not row-shaped — it names a document version,
+ * and names bill lines only when a rate or description moved — so it is a
+ * second member here rather than a `RowChangeEvent` with invented `rowId` and
+ * `changes` fields that no subscriber could trust.
+ */
+export type PreconChangeEvent = RowChangeEvent | WorkbookChangeEvent;
+
+export type PublishFn = (sessionId: string, event: PreconChangeEvent) => void;
+
+/**
+ * What makes an audit entry reversible: the operation it belongs to, and — when
+ * it is itself an undo — the entry it compensates for. Both stay null for the
+ * ambient writes (recomputes, AI runs) nobody undoes by hand.
+ */
+export interface AuditIdentity {
+  operationId?: string | null;
+  reversesEventId?: string | null;
+}
 
 export function preconService(repo: PreconRepository, publish: PublishFn = () => {}, staleLookup: StaleLookup = noStaleLookup) {
   async function audit(
@@ -239,7 +71,9 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     action: string,
     before: Record<string, unknown> | null,
     after: Record<string, unknown> | null,
+    identity: AuditIdentity = {},
   ): Promise<void> {
+    assertAuditPayloadWithinCap(before, after);
     await repo.insertAuditEvent({
       id: generateId("pae"),
       session_id: sessionId,
@@ -248,10 +82,18 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       action,
       before,
       after,
+      operation_id: identity.operationId ?? null,
+      reverses_event_id: identity.reversesEventId ?? null,
     } as Omit<PreconAuditEventRow, "created_at">);
   }
 
   const editor = programmeEditor(repo, audit);
+
+  // Checked against the rows the recompute WOULD touch, before the edit that
+  // triggers it is written: over the cap, nothing is written at all.
+  async function assertDerivedFanoutWithinCap(sessionId: string): Promise<void> {
+    assertDerivedFanout(derivedRowsIn(await repo.rowsBySession(sessionId)).length);
+  }
 
   function isAnchorRow(row: PreconBoqRowRow): boolean {
     if (row.code === "F10/125" || row.code === "M10") return true;
@@ -312,649 +154,27 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
   const snapshot = (sessionId: string): Promise<PreconSnapshot> => api.getSnapshot(sessionId);
 
   const api = {
-    async createSession(
-      orgId: string,
-      title: string,
-      userId: string,
-      files: { fileName: string; storagePath: string }[],
-      proposalId: string | null = null,
-      scope: TakeoffScope = FULL_TAKEOFF_SCOPE,
-      origin: { planId?: string | null; takeoffKind?: TakeoffKind } = {},
-    ) {
-      if (scope.kind === "sections" && scope.elements.length === 0) {
-        throw new BadRequestError("Pick at least one section to measure");
-      }
-      const lineage = await nextRevision(repo, origin.planId ?? null, scope, lineageKindOf(origin.takeoffKind));
-      const session = await repo.insertSession({
-        id: generateId("pcs"),
-        org_id: orgId,
-        project_id: null,
-        proposal_id: proposalId,
-        status: "uploading",
-        title,
-        error: null,
-        phase: null,
-        progress_log: null,
-        scope: db_json(scope),
-        plan_id: origin.planId ?? null,
-        takeoff_kind: origin.takeoffKind ?? "pdf",
-        revision: lineage.revision,
-        superseded_by: null,
-        created_by: userId,
-      });
-      await repo.supersedeSessions(lineage.supersedes, session.id);
-      // One placeholder sheet per file; the generate job expands PDFs into per-page sheets.
-      await repo.insertSheets(
-        files.map((f, i) => ({
-          id: generateId("pcsh"),
-          session_id: session.id,
-          file_name: f.fileName,
-          storage_path: f.storagePath,
-          page_number: i + 1,
-          code: null,
-          title: null,
-          kind: "unknown" as const,
-          status: "pending" as const,
-          scale_mm_per_pt: null,
-          scale_confidence: null,
-          dim_unit: null,
-          snap_index: null,
-          geo_summary: null,
-          error: null,
-        })),
-      );
-      await repo.upsertSettings({ session_id: session.id, prelims_pct: 5, contingency_pct: 5, vat_pct: 7.5 });
-      await audit(session.id, null, userId, "session_created", null, { title, scope });
-      return toSession(session);
-    },
-
-    // Priced by hand: with no drawings there is nothing to upload or generate,
-    // so the session opens directly in review.
-    async createBlankSession(orgId: string, title: string, userId: string, proposalId: string | null = null) {
-      const session = await repo.insertSession({
-        id: generateId("pcs"),
-        org_id: orgId,
-        project_id: null,
-        proposal_id: proposalId,
-        status: "reviewing",
-        title,
-        error: null,
-        phase: null,
-        progress_log: null,
-        scope: db_json(FULL_TAKEOFF_SCOPE),
-        plan_id: null,
-        takeoff_kind: "manual",
-        created_by: userId,
-      });
-      await repo.insertBill({
-        id: generateId("pcb"),
-        session_id: session.id,
-        title: "Bill No. 1",
-        sort: 0,
-      });
-      await repo.upsertSettings({ session_id: session.id, prelims_pct: 5, contingency_pct: 5, vat_pct: 7.5 });
-      await audit(session.id, null, userId, "session_created", null, { title, origin: "manual" });
-      return toSession(session);
-    },
-
-    async listSessions(orgId: string, proposalId?: string) {
-      const rows = await repo.sessionsByOrg(orgId, proposalId);
-      const counts = await repo.lineCountsForSessions(rows.map((r: PreconSessionRow) => r.id));
-      const sessions = rows.map((r: PreconSessionRow): PreconSession => ({ ...toSession(r), lines: counts.get(r.id) ?? { total: 0, verified: 0, attention: 0 } }));
-      return withStale(sessions, staleLookup);
-    },
+    // The repository this service is bound to. A cross-domain composer (the
+    // assembly measure) needs the SAME handle, or its writes land outside
+    // whatever transaction this service is running in.
+    boundRepository: repo,
+    ...sessionService({ repo, audit, staleLookup }),
 
     ...reviewService({ repo, audit, toSession, toSheet }),
     ...manualService({ repo, audit, publish, toSession, toRow, toGeometry, snapshot }),
 
-    // Every sales-suite access path must prove the session belongs to the
-    // caller's active organization before touching its data.
-    async assertSessionOrg(sessionId: string, orgId: string) {
-      const session = await repo.sessionById(sessionId);
-      if (!session || session.org_id !== orgId) throw new NotFoundError("Preconstruction session");
-      return toSession(session);
-    },
-
-    async assertRowOrg(rowId: string, orgId: string) {
-      const sessionId = await repo.sessionIdForRow(rowId);
-      if (!sessionId) throw new NotFoundError("BOQ row");
-      const session = await repo.sessionById(sessionId);
-      if (!session || session.org_id !== orgId) throw new NotFoundError("BOQ row");
-      return sessionId;
-    },
-
-    async assertSheetOrg(sheetId: string, orgId: string) {
-      const sheet = await repo.sheetById(sheetId);
-      if (!sheet) throw new NotFoundError("Sheet");
-      const session = await repo.sessionById(sheet.session_id);
-      if (!session || session.org_id !== orgId) throw new NotFoundError("Sheet");
-      return sheet.session_id;
-    },
-
-    async assertBillOrg(billId: string, orgId: string) {
-      const bill = await repo.billById(billId);
-      if (!bill) throw new NotFoundError("Bill");
-      const session = await repo.sessionById(bill.session_id);
-      if (!session || session.org_id !== orgId) throw new NotFoundError("Bill");
-      return bill.session_id;
-    },
-
-    async assertProgrammeTaskOrg(taskId: string, orgId: string) {
-      const task = await repo.programmeTaskById(taskId);
-      if (!task) throw new NotFoundError("Programme task");
-      const session = await repo.sessionById(task.session_id);
-      if (!session || session.org_id !== orgId) throw new NotFoundError("Programme task");
-      return task.session_id;
-    },
-
-    async getSnapshot(sessionId: string): Promise<PreconSnapshot> {
-      const session = await repo.sessionById(sessionId);
-      if (!session) throw new NotFoundError("Preconstruction session");
-      const [sheets, bills, rowRows, geometries, settingsRow, statusCounts] = await Promise.all([
-        repo.sheetsBySession(sessionId),
-        repo.billsBySession(sessionId),
-        repo.rowsBySession(sessionId),
-        repo.geometriesBySession(sessionId),
-        repo.settingsForSession(sessionId),
-        repo.rowStatusCounts(sessionId),
-      ]);
-      const settings: PreconSummarySettings = {
-        prelimsPct: Number(settingsRow?.prelims_pct ?? 5),
-        contingencyPct: Number(settingsRow?.contingency_pct ?? 5),
-        vatPct: Number(settingsRow?.vat_pct ?? 7.5),
-      };
-      const rows = rowRows.map(toRow);
-      const total = statusCounts.reduce((s, c) => s + c.count, 0);
-      const verified = statusCounts.find((c) => c.status === "verified")?.count ?? 0;
-      return {
-        session: (await withStale([toSession(session)], staleLookup))[0]!,
-        sheets: sheets.map(toSheet),
-        bills: bills.map(toBill),
-        rows,
-        geometries: geometries.map(toGeometry),
-        settings,
-        summary: computeSummary(rows, settings),
-        progress: { total, verified },
-      };
-    },
-
-    async createBill(sessionId: string, title: string, actor: string): Promise<PreconBill> {
-      const bill = await repo.insertBill({
-        id: generateId("pcb"),
-        session_id: sessionId,
-        title,
-        sort: await repo.nextBillSort(sessionId),
-      });
-      await audit(sessionId, null, actor, "bill_created", null, { billId: bill.id, title });
-      return toBill(bill);
-    },
-
-    async renameBill(billId: string, title: string, actor: string): Promise<PreconBill> {
-      const existing = await repo.billById(billId);
-      if (!existing) throw new NotFoundError("Bill");
-      const updated = await repo.updateBill(billId, { title });
-      if (!updated) throw new NotFoundError("Bill");
-      await audit(existing.session_id, null, actor, "bill_renamed", { title: existing.title }, { title });
-      return toBill(updated);
-    },
-
-    async removeBill(billId: string, actor: string): Promise<{ ok: true }> {
-      const existing = await repo.billById(billId);
-      if (!existing) throw new NotFoundError("Bill");
-      const bills = await repo.billsBySession(existing.session_id);
-      if (bills.length <= 1) throw new BadRequestError("A pricing sheet needs at least one bill");
-      await repo.deleteBill(billId);
-      await audit(existing.session_id, null, actor, "bill_deleted", { title: existing.title }, null);
-      return { ok: true };
-    },
-
-    // Authored by a person, so it needs no AI review: it lands verified, and
-    // its rate is manual rather than sourced from a rate card.
-    async createRow(billId: string, body: CreateRowBody, actor: string): Promise<PreconBoqRowDto> {
-      const bill = await repo.billById(billId);
-      if (!bill) throw new NotFoundError("Bill");
-      const rowType = body.rowType ?? "item";
-      const priced = rowType === "item" || rowType === "provisional_sum";
-      if (!priced && (body.qty !== undefined || body.rate !== undefined)) {
-        throw new BadRequestError("Only priced rows carry quantities");
-      }
-      const qty = priced ? (body.qty ?? null) : null;
-      const rate = priced ? (body.rate ?? null) : null;
-      const row = await repo.insertBoqRow({
-        id: generateId("pbr"),
-        bill_id: billId,
-        sort: await repo.nextRowSort(billId),
-        row_type: rowType,
-        element_group: body.elementGroup ?? null,
-        code: body.code ?? null,
-        description: body.description,
-        unit: priced ? (body.unit ?? null) : null,
-        qty_gross: qty,
-        deductions: [],
-        qty,
-        rate,
-        amount: qty !== null && rate !== null ? Math.round(qty * rate * 100) / 100 : null,
-        rate_source: rate === null ? null : "manual",
-        confidence: null,
-        status: priced ? "verified" : null,
-        version: 1,
-        measurement_basis: priced ? "Entered manually" : null,
-        confidence_reason: null,
-        provenance: priced ? "Entered by hand in review" : null,
-        origin: "manual",
-        edited_at: null,
-        edited_by: null,
-        verified_by: priced ? actor : null,
-        verified_at: priced ? new Date() : null,
-      });
-      await audit(bill.session_id, row.id, actor, "created", null, {
-        description: body.description,
-        qty,
-        rate,
-      });
-      publish(bill.session_id, {
-        type: "row.created",
-        sessionId: bill.session_id,
-        rowId: row.id,
-        version: row.version,
-        actor,
-        changes: { billId, description: body.description, qty, rate },
-      });
-      return toRow(row);
-    },
-
-    // A hard delete, unlike `rejectRow`: rejection keeps an AI proposal visible
-    // as declined, while a row typed in error should simply go.
-    async removeRow(rowId: string, actor: string): Promise<{ ok: true }> {
-      const { row, sessionId } = await requireRow(rowId);
-      await repo.deleteRow(rowId);
-      await audit(sessionId, rowId, actor, "deleted", { ...toRow(row) }, null);
-      publish(sessionId, {
-        type: "row.deleted",
-        sessionId,
-        rowId,
-        version: row.version,
-        actor,
-        changes: {},
-      });
-      return { ok: true };
-    },
-
-    async updateRow(rowId: string, body: UpdateRowBody, actor: string): Promise<PreconBoqRowDto> {
-      const { row, sessionId } = await requireRow(rowId);
-      if (row.row_type !== "item" && row.row_type !== "provisional_sum" && body.changes.qty !== undefined) {
-        throw new BadRequestError("Only priced rows carry quantities");
-      }
-      const patch: Parameters<PreconRepository["updateRowVersioned"]>[2] = {};
-      if (body.changes.description !== undefined) patch.description = body.changes.description;
-      if (body.changes.unit !== undefined) patch.unit = body.changes.unit;
-      // typical re-derives qty from the drawn figure; an explicit qty still wins
-      if (body.changes.typical !== undefined) {
-        if (row.row_type !== "item" && row.row_type !== "provisional_sum") throw new BadRequestError("Only priced rows repeat on typical floors");
-        const typical = normaliseTypical(body.changes.typical);
-        const gross = num(row.qty_gross) ?? num(row.qty) ?? 0;
-        const net = netQuantity(gross, row.deductions ?? [], typical);
-        patch.typical = typical;
-        patch.qty = net;
-        patch.measurement_basis = basisWithTypical(row.measurement_basis, gross, net, typical, body.changes.unit ?? row.unit);
-      }
-      if (body.changes.qty !== undefined) patch.qty = body.changes.qty;
-      if (body.changes.rate !== undefined) {
-        patch.rate = body.changes.rate;
-        patch.rate_source = "manual";
-      }
-      const qty = patch.qty !== undefined ? num(patch.qty) : num(row.qty);
-      const rate = body.changes.rate ?? num(row.rate);
-      if (qty !== null && rate !== null) patch.amount = Math.round(qty * rate * 100) / 100;
-      patch.edited_at = new Date();
-      patch.edited_by = actor;
-      // An edited AI measurement needs re-checking; a hand-entered row's author
-      // is already its verifier, so it stays verified.
-      if (row.status === "verified") {
-        const measuredByAi = row.confidence !== null;
-        patch.status = measuredByAi ? "needs_review" : "verified";
-        patch.verified_by = measuredByAi ? null : actor;
-        patch.verified_at = measuredByAi ? null : new Date();
-      }
-      const updated = await repo.updateRowVersioned(rowId, body.version, patch);
-      if (!updated) {
-        const current = await repo.rowById(rowId);
-        throw new ConflictError(
-          `Row was updated by someone else (current version ${current?.version ?? "?"}); refresh and reapply`,
-        );
-      }
-      await audit(sessionId, rowId, actor, "adjusted", { qty: num(row.qty), rate: num(row.rate) }, body.changes);
-      publish(sessionId, {
-        type: "row.updated",
-        sessionId,
-        rowId,
-        version: updated.version,
-        actor,
-        changes: body.changes,
-      });
-      if (body.changes.qty !== undefined && isAnchorRow(updated)) {
-        await recomputeDerivedRows(sessionId, actor);
-      }
-      return toRow(updated);
-    },
-
-    async verifyRow(rowId: string, version: number, actor: string): Promise<PreconBoqRowDto> {
-      const { row, sessionId } = await requireRow(rowId);
-      if (row.status === "verified") return toRow(row);
-      if (row.status === null) throw new BadRequestError("Row is not a reviewable item");
-      const updated = await repo.updateRowVersioned(rowId, version, {
-        status: "verified",
-        verified_by: actor,
-        verified_at: new Date(),
-      });
-      if (!updated) throw new ConflictError("Row changed since you loaded it; refresh and re-verify");
-      await audit(sessionId, rowId, actor, "verified", { status: row.status }, { status: "verified" });
-      publish(sessionId, {
-        type: "row.verified",
-        sessionId,
-        rowId,
-        version: updated.version,
-        actor,
-        changes: { status: "verified" },
-      });
-      return toRow(updated);
-    },
-
-    async rejectRow(rowId: string, version: number, actor: string): Promise<PreconBoqRowDto> {
-      const { row, sessionId } = await requireRow(rowId);
-      if (row.status === null) throw new BadRequestError("Row is not a reviewable item");
-      const updated = await repo.updateRowVersioned(rowId, version, {
-        status: "rejected",
-        verified_by: actor,
-        verified_at: new Date(),
-      });
-      if (!updated) throw new ConflictError("Row changed since you loaded it; refresh and retry");
-      await audit(sessionId, rowId, actor, "rejected", { status: row.status }, { status: "rejected" });
-      publish(sessionId, {
-        type: "row.rejected",
-        sessionId,
-        rowId,
-        version: updated.version,
-        actor,
-        changes: { status: "rejected" },
-      });
-      return toRow(updated);
-    },
-
-    // Server-side quantity recompute: the client sends vertices, never quantities.
-    async updateGeometry(rowId: string, body: UpdateGeometryBody, actor: string): Promise<PreconBoqRowDto> {
-      const { row, sessionId } = await requireRow(rowId);
-      const sheet = await resolveMeasurementSheet(rowId, sessionId, body.sheetId);
-      const sheetId = sheet.id;
-      const pick = scaleAt(sheet, body.vertices);
-      const { quantity, unit } = quantityFromVertices(body.kind, body.vertices, pick.mmPerPt);
-      const typical = row.typical ?? 1;
-      const net = netQuantity(quantity, row.deductions ?? [], typical);
-      const updated = await repo.updateRowVersioned(rowId, body.version, {
-        qty_gross: quantity,
-        qty: net,
-        unit,
-        status: "needs_review",
-        measurement_basis: basisWithTypical(`Manually re-measured (${body.kind}); gross ${quantity} ${unit}${scaleClause(sheet, pick)}`, quantity, net, typical, unit),
-        verified_by: null,
-        verified_at: null,
-        amount: row.rate !== null ? Math.round(net * Number(row.rate) * 100) / 100 : null,
-      });
-      if (!updated) throw new ConflictError("Row changed since you loaded it; refresh and redraw");
-      await repo.replaceRowGeometry(rowId, {
-        id: generateId("pgeo"),
-        row_id: rowId,
-        sheet_id: sheetId,
-        kind: body.kind,
-        vertices: body.vertices,
-        source: "manual",
-        quantity,
-        unit,
-      });
-      await audit(sessionId, rowId, actor, "measured", { qty: num(row.qty) }, { qty: net, gross: quantity });
-      publish(sessionId, {
-        type: "geometry.updated",
-        sessionId,
-        rowId,
-        version: updated.version,
-        actor,
-        changes: { qty: net, qtyGross: quantity },
-      });
-      if (isAnchorRow(updated)) await recomputeDerivedRows(sessionId, actor);
-      return toRow(updated);
-    },
-
-    async addDeduction(rowId: string, body: AddDeductionBody, actor: string): Promise<PreconBoqRowDto> {
-      const { row, sessionId } = await requireRow(rowId);
-      const sheet = await resolveMeasurementSheet(rowId, sessionId, body.sheetId);
-      const sheetId = sheet.id;
-      const pick = scaleAt(sheet, body.vertices);
-      const { quantity } = quantityFromVertices("deduction", body.vertices, pick.mmPerPt);
-      const geometryId = generateId("pgeo");
-      const label = `${body.label}${scaleClause(sheet, pick)}`;
-      const deductions: Deduction[] = [...(row.deductions ?? []), { label, qty: quantity, geometryId }];
-      const gross = num(row.qty_gross) ?? num(row.qty) ?? 0;
-      const net = netQuantity(gross, deductions, row.typical ?? 1);
-      const updated = await repo.updateRowVersioned(rowId, body.version, {
-        deductions,
-        qty: net,
-        status: "needs_review",
-        verified_by: null,
-        verified_at: null,
-        amount: row.rate !== null ? Math.round(net * Number(row.rate) * 100) / 100 : null,
-      });
-      if (!updated) throw new ConflictError("Row changed since you loaded it; refresh and retry");
-      await repo.insertGeometries([
-        {
-          id: geometryId,
-          row_id: rowId,
-          sheet_id: sheetId,
-          kind: "deduction",
-          vertices: body.vertices,
-          source: "manual",
-          quantity,
-          unit: "m2",
-        },
-      ]);
-      await audit(sessionId, rowId, actor, "deduction_added", { qty: num(row.qty) }, { label: body.label, qty: quantity });
-      publish(sessionId, {
-        type: "geometry.updated",
-        sessionId,
-        rowId,
-        version: updated.version,
-        actor,
-        changes: { qty: net, deductions },
-      });
-      return toRow(updated);
-    },
-
-    async exportWorkbook(sessionId: string): Promise<{ fileName: string; buffer: Buffer }> {
-      const [snapshot, projectName] = await Promise.all([
-        this.getSnapshot(sessionId),
-        repo.projectNameForSession(sessionId),
-      ]);
-      const { buildBoqWorkbookBuffer } = await import("./export.ts");
-      const buffer = await buildBoqWorkbookBuffer(snapshot, projectName ?? snapshot.session.title);
-      const safeTitle = snapshot.session.title.replace(/[^a-z0-9]+/gi, "-").slice(0, 60);
-      return { fileName: `BOQ-${safeTitle}.xlsx`, buffer };
-    },
-
-    async getProgramme(sessionId: string): Promise<PreconProgramme> {
-      const session = await repo.sessionById(sessionId);
-      if (!session) throw new NotFoundError("Preconstruction session");
-      const [rows, statusCounts] = await Promise.all([
-        repo.programmeTasksBySession(sessionId),
-        repo.programmeStatusCounts(sessionId),
-      ]);
-
-      const startDate = session.programme_start_date
-        ? new Date(`${String(session.programme_start_date).slice(0, 10)}T00:00:00Z`)
-        : new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
-
-      const tasks = rows.map(toProgrammeTask);
-      const dates = scheduleProgramme(
-        tasks.map((t) => ({
-          id: t.id,
-          durationDays: t.durationDays,
-          predecessors: t.predecessors,
-          outlineLevel: t.outlineLevel,
-          parentTaskId: t.parentTaskId,
-        })),
-        startDate,
-      );
-
-      const scheduled = tasks.map((task) => {
-        const window = dates.get(task.id);
-        return {
-          ...task,
-          totalFloatDays: window?.totalFloatDays ?? null,
-          isCritical: window?.isCritical ?? false,
-          startAt: (window?.start ?? startDate).toISOString(),
-          finishAt: (window?.finish ?? startDate).toISOString(),
-        };
-      });
-
-      // Persist the analysis so the handoff and the assistant can read float
-      // and critical flags straight off the rows without re-running the pass.
-      await Promise.all(
-        rows.flatMap((row) => {
-          const window = dates.get(row.id);
-          if (!window) return [];
-          const unchanged =
-            (row.total_float_days ?? null) === window.totalFloatDays && Boolean(row.is_critical) === window.isCritical;
-          return unchanged
-            ? []
-            : [repo.updateProgrammeTaskDerived(row.id, { total_float_days: window.totalFloatDays, is_critical: window.isCritical })];
-        }),
-      );
-
-      const total = statusCounts.reduce((sum, c) => sum + c.count, 0);
-      const verified = statusCounts.find((c) => c.status === "verified")?.count ?? 0;
-      const finish = scheduled.reduce<string | null>(
-        (max, t) => (!max || t.finishAt > max ? t.finishAt : max),
-        null,
-      );
-
-      return {
-        sessionId,
-        startDate: startDate.toISOString(),
-        finishDate: finish,
-        tasks: scheduled,
-        progress: { total, verified },
-      };
-    },
-
-    async setProgrammeStart(sessionId: string, startDate: string): Promise<PreconProgramme> {
-      await repo.setProgrammeStartDate(sessionId, startDate);
-      return this.getProgramme(sessionId);
-    },
-
-    async updateProgrammeTask(
-      taskId: string,
-      version: number,
-      patch: Omit<UpdateProgrammeTaskBody, "version">,
-      actor: string,
-      origin: ProgrammeTaskOrigin = "manual",
-    ): Promise<PreconProgrammeTaskBase> {
-      return toProgrammeTask(await editor.updateTask(taskId, version, patch, actor, origin));
-    },
-
-    async createProgrammeTask(
-      sessionId: string,
-      body: CreateProgrammeTaskBody,
-      actor: string,
-      origin: ProgrammeTaskOrigin = "manual",
-    ): Promise<PreconProgrammeTaskBase> {
-      return toProgrammeTask(await editor.createTask(sessionId, body, actor, origin));
-    },
-
-    async deleteProgrammeTask(taskId: string, actor: string): Promise<{ ok: true }> {
-      return editor.deleteTask(taskId, actor);
-    },
-
-    async setProgrammeTaskStatus(
-      taskId: string,
-      version: number,
-      status: "verified" | "rejected",
-      actor: string,
-    ): Promise<PreconProgrammeTaskBase> {
-      const existing = await repo.programmeTaskById(taskId);
-      if (!existing) throw new NotFoundError("Programme task");
-      const updated = await repo.updateProgrammeTaskVersioned(taskId, version, {
-        status,
-        verified_by: status === "verified" ? actor : null,
-        verified_at: status === "verified" ? new Date() : null,
-      });
-      if (!updated) {
-        throw new ConflictError("Task changed since you loaded it; refresh and retry");
-      }
-      await audit(
-        existing.session_id,
-        taskId,
-        actor,
-        `programme.${status}`,
-        { status: existing.status },
-        { status },
-      );
-      return toProgrammeTask(updated);
-    },
-
-    async exportProgrammeXml(sessionId: string): Promise<{ fileName: string; xml: string }> {
-      const [programme, session] = await Promise.all([
-        this.getProgramme(sessionId),
-        repo.sessionById(sessionId),
-      ]);
-      if (programme.tasks.length === 0) {
-        throw new BadRequestError("Generate the programme before exporting it.");
-      }
-      const title = session?.title ?? "Programme";
-
-      // MS Project keys tasks by integer UID; a rejected task is left out
-      // entirely, so links pointing at one are dropped rather than dangling.
-      const included = programme.tasks.filter((t) => t.status !== "rejected");
-      const uidById = new Map(included.map((t, index) => [t.id, index + 1]));
-
-      const { buildMspdiXml } = await import("../programme/mspdi-writer.ts");
-      const xml = buildMspdiXml({
-        name: title,
-        start: new Date(programme.startDate),
-        finish: programme.finishDate ? new Date(programme.finishDate) : null,
-        tasks: included.map((task) => ({
-          uid: uidById.get(task.id)!,
-          name: task.name,
-          outlineLevel: task.outlineLevel,
-          outlineNumber: task.wbsCode,
-          start: new Date(task.startAt),
-          finish: new Date(task.finishAt),
-          durationDays: task.durationDays,
-          percentComplete: 0,
-          isMilestone: task.isMilestone,
-          isSummary: task.outlineLevel === 1,
-          predecessors: task.predecessors.flatMap((link) => {
-            const uid = uidById.get(link.taskId);
-            return uid === undefined ? [] : [{ uid, type: link.type, lagDays: link.lagDays }];
-          }),
-        })),
-      });
-
-      const safeTitle = title.replace(/[^a-z0-9]+/gi, "-").slice(0, 60);
-      return { fileName: `Programme-${safeTitle}.xml`, xml };
-    },
-
-    async updateSettings(sessionId: string, patch: Partial<PreconSummarySettings>, actor: string) {
-      const session = await repo.sessionById(sessionId);
-      if (!session) throw new NotFoundError("Preconstruction session");
-      const current = await repo.settingsForSession(sessionId);
-      const next = {
-        session_id: sessionId,
-        prelims_pct: patch.prelimsPct ?? Number(current?.prelims_pct ?? 5),
-        contingency_pct: patch.contingencyPct ?? Number(current?.contingency_pct ?? 5),
-        vat_pct: patch.vatPct ?? Number(current?.vat_pct ?? 7.5),
-      };
-      await repo.upsertSettings(next);
-      await audit(sessionId, null, actor, "settings_updated", null, { ...patch });
-      return { prelimsPct: next.prelims_pct, contingencyPct: next.contingency_pct, vatPct: next.vat_pct };
-    },
+    ...rowService({ repo, audit, publish, requireRow, isAnchorRow, recomputeDerivedRows, assertDerivedFanoutWithinCap }),
+    ...geometryService({
+      repo,
+      audit,
+      publish,
+      requireRow,
+      resolveMeasurementSheet,
+      isAnchorRow,
+      recomputeDerivedRows,
+      assertDerivedFanoutWithinCap,
+    }),
+    ...programmeService({ repo, audit, editor }),
   };
   return api;
 }
