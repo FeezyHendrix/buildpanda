@@ -3,10 +3,7 @@ import { openStoredFile, streamToBuffer } from "../../../lib/file-storage.ts";
 import { extractDocumentText } from "../../../lib/document-text.ts";
 import { renderPdfPagesToPng, pngToDataUrl } from "../../../lib/document-render.ts";
 import { chatVision } from "../../../lib/llm-vision.ts";
-import {
-  assertProjectPermission,
-  type ProjectSectionPermissions,
-} from "../../../lib/authorization.ts";
+import type { ProjectSectionPermissions } from "../../../lib/authorization.ts";
 import type { PermissionMap } from "../../../lib/permissions.ts";
 import type { QueueManager } from "../../../lib/queue/index.ts";
 import { tasksRepository } from "../../tasks/repository.ts";
@@ -25,7 +22,9 @@ import { preconWorkbookNotes } from "./precon-workbook.ts";
 import { agentRepository } from "./repository.ts";
 import { workRecordsRepository } from "./work-records.ts";
 import { fn, round2, tool, type AgentTool } from "./tool-helpers.ts";
+import { canRead, readableSections } from "./tool-permissions.ts";
 import { diaryDates, shapeDiary } from "./diary.ts";
+import { shapeLedger } from "./material-ledger.ts";
 
 export interface ToolResult {
   output: unknown;
@@ -55,16 +54,26 @@ export interface ToolContext {
   queue?: QueueManager;
 }
 
-function callerAccessContext(ctx: ToolContext) {
-  return {
-    userId: ctx.caller.user.id,
-    orgRoles: ctx.caller.orgRoles,
-    projectRoles: ctx.caller.projectRoles,
-    orgPermissions: ctx.caller.orgPermissions,
-    projectSectionPermissions: ctx.caller.projectSectionPermissions,
-    projectGrants: ctx.caller.projectGrants,
-  };
-}
+/**
+ * The domains find_work_records sweeps, each with the permission its own route
+ * enforces. A caller who may not read RFIs must not get RFIs back just because
+ * they asked about "culvert 1".
+ */
+const WORK_RECORD_SECTIONS = [
+  { key: "activity", resource: "schedule", action: "view" },
+  { key: "delay", resource: "schedule", action: "view" },
+  { key: "rfi", resource: "rfis", action: "view" },
+  { key: "change_request", resource: "change-requests", action: "view" },
+  { key: "risk", resource: "risks", action: "view" },
+  { key: "inspection", resource: "inspections", action: "view" },
+  { key: "material_order", resource: "materials", action: "view" },
+] as const;
+
+const OPEN_ITEM_SECTIONS = [
+  { key: "rfis", resource: "rfis", action: "view" },
+  { key: "approvals", resource: "approvals", action: "view" },
+  { key: "materialApprovals", resource: "materials", action: "view" },
+] as const;
 
 const NAV_TARGETS: Record<string, string> = {
   overview: "overview",
@@ -128,18 +137,22 @@ export function buildTools(): AgentTool[] {
     }, ["term"]), async (ctx, args) => {
       const repo = workRecordsRepository(ctx.db);
       const term = requiredString(args.term, 120, "term");
+      // Only the domains this caller could fetch through the API are swept, so
+      // the sweep can never be a side door onto records they may not read.
+      const { allowed, withheld } = readableSections(ctx, WORK_RECORD_SECTIONS);
       // The phrase first, so "culvert 1" beats a loose word match; only if the
       // phrase finds nothing do the words go in separately.
-      let hits = await repo.workRecords(ctx.projectId, [term]);
+      let hits = await repo.workRecords(ctx.projectId, [term], allowed);
       const words = term.split(/\s+/).filter((w) => w.length > 0);
       if (hits.length === 0 && words.length > 1) {
-        hits = await repo.workRecords(ctx.projectId, words);
+        hits = await repo.workRecords(ctx.projectId, words, allowed);
       }
       return {
         output: {
           term,
           matchCount: hits.length,
-          searched: ["activities", "delays", "rfis", "change requests", "risks", "inspections", "material orders"],
+          searched: allowed,
+          notPermitted: withheld,
           records: hits,
         },
       };
@@ -261,15 +274,21 @@ export function buildTools(): AgentTool[] {
 
     tool(fn("get_finances", "Get the project budget, spend, escrow, milestone payments and cost-to-stage (what each build stage has cost: committed = issued purchase orders, actual = logged expenses). Use for questions about money, budget, cashflow, payments, or what a stage has cost."), async (ctx) => {
       const repo = agentRepository(ctx.db);
+      // Cost-to-stage is the contractor's own position — GET
+      // /projects/:id/finances/stage-costs takes finances:viewCosts, not the
+      // plain finances:view that opens the rest of this tool.
+      const maySeeCosts = canRead(ctx, "finances", "viewCosts");
       const [fin, milestones, stageCosts, stages] = await Promise.all([
         repo.finances(ctx.projectId),
         repo.milestonePayments(ctx.projectId),
-        stageCostsService({
-          finances: financesRepository(ctx.db),
-          transactions: transactionsRepository(ctx.db),
-          purchaseOrders: purchaseOrdersRepository(ctx.db),
-        }).byProject(ctx.projectId).catch(() => ({ stages: [] })),
-        repo.stageNames(ctx.projectId),
+        maySeeCosts
+          ? stageCostsService({
+              finances: financesRepository(ctx.db),
+              transactions: transactionsRepository(ctx.db),
+              purchaseOrders: purchaseOrdersRepository(ctx.db),
+            }).byProject(ctx.projectId).catch(() => ({ stages: [] }))
+          : Promise.resolve({ stages: [] }),
+        maySeeCosts ? repo.stageNames(ctx.projectId) : Promise.resolve([]),
       ]);
       const stageName = new Map(stages.map((s) => [s.id, s.name]));
       return {
@@ -288,6 +307,7 @@ export function buildTools(): AgentTool[] {
             actual: c.actual,
             currency: c.currency,
           })),
+          notPermitted: maySeeCosts ? [] : ["costToStage"],
         },
       };
     }),
@@ -745,19 +765,46 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_material_stock", "Get the live on-hand stock for each material from the materials ledger (received IN minus used). Use this for any question about how much of a material is currently available, in stock, remaining, received, or running low."), async (ctx) => {
+    tool(fn("get_material_stock", "Get the live on-hand stock for each material from the materials ledger, with the received and used totals behind it — the same figures the Material log page shows. Voided entries and entries still awaiting approval are EXCLUDED from received/used and from on-hand, so received minus used equals on hand; voidedReceived/voidedUsed report separately how much was logged and then voided. Use this for any question about how much of a material is currently available, in stock, remaining, received, or running low. For the individual movements, the voids and who voided them, use get_material_ledger."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const stock = await repo.materialStock(ctx.projectId);
       return {
-        output: stock.map((s) => ({
-          material: s.material_name,
-          unit: s.unit,
-          location: s.location_key,
-          onHand: Number(s.on_hand_qty),
-          lowStockThreshold: s.low_stock_threshold === null ? null : Number(s.low_stock_threshold),
-          lowStock: s.low_stock_threshold !== null && Number(s.on_hand_qty) <= Number(s.low_stock_threshold),
-        })),
+        output: {
+          materials: stock.map((s) => ({
+            material: s.material_name,
+            unit: s.unit,
+            location: s.location_key,
+            onHand: Number(s.on_hand_qty),
+            totalReceived: Number(s.total_received ?? 0),
+            totalUsed: Number(s.total_used ?? 0),
+            voidedEntryCount: Number(s.voided_entry_count ?? 0),
+            voidedReceived: Number(s.voided_received ?? 0),
+            voidedUsed: Number(s.voided_used ?? 0),
+            lowStockThreshold: s.low_stock_threshold === null ? null : Number(s.low_stock_threshold),
+            lowStock: s.low_stock_threshold !== null && Number(s.on_hand_qty) <= Number(s.low_stock_threshold),
+          })),
+          // Only when there is stock to explain: an unconditional note would
+          // make an empty result look like data to the grounding gate.
+          ...(stock.length > 0
+            ? {
+                note: "totalReceived and totalUsed exclude voided and not-yet-approved entries, so onHand = totalReceived - totalUsed. A non-zero voidedEntryCount means movements were logged and then voided; say so and use get_material_ledger for the reason and who voided them.",
+              }
+            : {}),
+        },
       };
+    }),
+
+    tool(fn("get_material_ledger", "Get the material log itself — every stock movement on the project newest first: receipts (IN), issues to site (USED) and VOIDS, each with its quantity, unit, location, supplier, delivery-note number, who logged it, its approval state and any flags. A VOIDED entry is still on the ledger: it comes back with voided=true, the void reason, who voided it and when, and countsTowardStock=false, and the VOID entry that reversed it appears as its own row. Use this for 'what was voided and why', 'who voided that delivery', 'what has been received or used recently', 'what is awaiting approval', or to explain a stock figure movement by movement. Never treat a voided entry as if it had not happened — report it as a void with its reason; never count it toward stock.", {
+      limit: { type: "integer", minimum: 1, maximum: 200, description: "How many recent entries (default 50)." },
+    }), async (ctx, args) => {
+      const repo = agentRepository(ctx.db);
+      const limit = typeof args.limit === "number"
+        ? Math.max(1, Math.min(200, Math.trunc(args.limit)))
+        : 50;
+      const rows = await repo.materialLedgerEntries(ctx.projectId, limit);
+      const voidedIds = rows.filter((r) => r.status === "Voided").map((r) => r.id);
+      const reversals = await repo.materialLedgerReversalsFor(voidedIds);
+      return { output: shapeLedger(rows, reversals) };
     }),
 
     tool(fn("get_suppliers", "Get the project's supplier directory (name, contact person, email, phone, address). Use for questions about who supplies materials, supplier contact details, or which vendors are on file."), async (ctx) => {
@@ -826,15 +873,21 @@ export function buildTools(): AgentTool[] {
       const repo = agentRepository(ctx.db);
       const now = Date.now();
       const overdue = (d: unknown): boolean => Boolean(d) && new Date(d as string).getTime() < now;
+      // Three registers behind three different permissions; the caller gets
+      // only the ones their role opens, and is told which were withheld.
+      const { allowed, withheld } = readableSections(ctx, OPEN_ITEM_SECTIONS);
+      const may = (key: (typeof OPEN_ITEM_SECTIONS)[number]["key"]): boolean => allowed.includes(key);
+      const needsApprovals = may("approvals") || may("materialApprovals");
       const [rfis, approvals] = await Promise.all([
-        repo.rfisOpen(ctx.projectId),
-        repo.approvalsOpen(ctx.projectId),
+        may("rfis") ? repo.rfisOpen(ctx.projectId) : Promise.resolve([]),
+        needsApprovals ? repo.approvalsOpen(ctx.projectId) : Promise.resolve([]),
       ]);
       return {
         output: {
           rfis: rfis.map((r) => ({ title: r.title, status: r.status, priority: r.priority, dueDate: r.due_date, overdue: overdue(r.due_date) })),
-          approvals: approvals.filter((a) => a.kind !== "material").map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
-          materialApprovals: approvals.filter((a) => a.kind === "material").map((a) => ({ title: a.title, material: a.materialName, quantity: a.materialQuantity, unit: a.materialUnit, supplier: a.materialSupplier, neededBy: a.materialNeededBy, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
+          approvals: may("approvals") ? approvals.filter((a) => a.kind !== "material").map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })) : [],
+          materialApprovals: may("materialApprovals") ? approvals.filter((a) => a.kind === "material").map((a) => ({ title: a.title, material: a.materialName, quantity: a.materialQuantity, unit: a.materialUnit, supplier: a.materialSupplier, neededBy: a.materialNeededBy, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })) : [],
+          notPermitted: withheld,
         },
       };
     }),
@@ -1008,8 +1061,8 @@ export function buildTools(): AgentTool[] {
       assigneeId: { type: "string", description: "Optional user id to assign — only if a user id is known; do not guess" },
       dueDate: { type: "string", description: "Optional due date, YYYY-MM-DD" },
     }, ["title"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/tasks (tasks:add).
-      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "tasks", "add");
+      // tasks:add — the same check POST /projects/:id/tasks runs — is applied
+      // by toolsForCaller before this body is reached (see tool-permissions.ts).
       const service = tasksService(tasksRepository(ctx.db), {
         notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
       });
@@ -1039,8 +1092,7 @@ export function buildTools(): AgentTool[] {
       subject: { type: "string", description: "Short RFI subject (required)" },
       question: { type: "string", description: "The full question being asked (required)" },
     }, ["subject", "question"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/rfis (rfis:create).
-      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "rfis", "create");
+      // rfis:create is enforced by toolsForCaller (see tool-permissions.ts).
       const service = rfisService(rfisRepository(ctx.db), {
         notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
       });

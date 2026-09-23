@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import {
@@ -157,10 +157,9 @@ export default function ProjectKeyDates() {
         title="Key dates"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               Add key date
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

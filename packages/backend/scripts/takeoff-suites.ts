@@ -111,6 +111,11 @@ const BACKEND_SUITES: readonly string[] = [
   // And what they may say about a saved workbook: formulas and sources, never a
   // figure from the last save, and never another project's take-off.
   "src/modules/panda-ai/agent/precon-workbook-read.test.ts",
+  // Whether they are handed the take-off tool at all. The bill and the workbook
+  // both reach the model through `get_precon_boq`, so the grant that opens it is
+  // the whole of the read gate — and a tool shipped without a policy must be
+  // dropped rather than offered to everyone.
+  "src/modules/panda-ai/agent/tool-permissions-gate.test.ts",
   "src/modules/panda-ai/precon-assist/context-basis.test.ts",
   "src/modules/drawing-markup/precon-editor.test.ts",
   "src/modules/drawing-markup/precon-editor-db.test.ts",

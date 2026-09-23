@@ -111,9 +111,10 @@ coverage/
 !/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-lifecycle.test.ts
 !/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-protection.test.ts
 
-# packages/backend/src/modules/panda-ai/agent — 2
+# packages/backend/src/modules/panda-ai/agent — 3
 !/packages/backend/src/modules/panda-ai/agent/precon-boq-basis.test.ts
 !/packages/backend/src/modules/panda-ai/agent/precon-workbook-read.test.ts
+!/packages/backend/src/modules/panda-ai/agent/tool-permissions-gate.test.ts
 
 # packages/backend/src/modules/panda-ai/precon-assist — 1
 !/packages/backend/src/modules/panda-ai/precon-assist/context-basis.test.ts

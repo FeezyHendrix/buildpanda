@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
@@ -116,9 +117,7 @@ export default function ProjectUpdates() {
                 <ReactSVG src={icons.report} />
                 Today's team digest
               </Button>
-              <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                New update
-              </Button>
+              <CreateButton onClick={() => setCreateOpen(true)}>New update</CreateButton>
             </>
           ) : null
         }

@@ -170,6 +170,12 @@ export function materialsLedgerRepository(db: Knex) {
           // Received/used totals count accepted movements only, matching
           // on_hand_qty, which approve() is the only thing that moves.
           .where({ project_id: projectId, approval_status: "Approved" })
+          // A voided movement was undone by its reversal, so on_hand_qty no
+          // longer carries it. Leaving it in the totals made "Received" claim
+          // stock the project does not have and broke
+          // received - used = on hand. The entry itself stays on the ledger —
+          // a void is a record, not a deletion — it just stops counting.
+          .whereNot("status", "Voided")
           .groupBy("material_id");
 
       return db("materials_stock as s")

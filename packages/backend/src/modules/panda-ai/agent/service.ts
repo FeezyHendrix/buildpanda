@@ -10,6 +10,7 @@ import type { QueueManager } from "../../../lib/queue/index.ts";
 import { agentRepository } from "./repository.ts";
 import { buildSnapshot, snapshotToPrompt } from "./context.ts";
 import { buildTools, type AgentCaller, type ToolContext } from "./tools.ts";
+import { canRead, toolsForCaller } from "./tool-permissions.ts";
 import { applyGroundingGate, isSubstantiveToolResult } from "./grounding.ts";
 
 const MAX_TOOL_ROUNDS = 4;
@@ -34,9 +35,10 @@ const TURN_TIMEOUT_MS = 90_000;
 
 const SYSTEM_PROMPT = [
   "You are Panda AI, an intelligent construction project assistant embedded in the BuildPanda app.",
-  "You have tools to read this project's live data: buildings (blocks/structures, each with its own programme but sharing the project's funding), schedule/Gantt, delays, risks, finances, invoices, budget categories, purchase orders, payment claims, daily logs, key dates, inspections, Bill of Quantities (BoQ) line items, planned material orders, on-hand material stock, the supplier directory, tasks, open items (RFIs, approvals), change requests, homeowner selections & allowances, permits, documents, and unresolved drawing markup (redlines and pinned comments raised on drawing revisions).",
+  "You have tools to read this project's live data: buildings (blocks/structures, each with its own programme but sharing the project's funding), schedule/Gantt, delays, risks, finances, invoices, budget categories, purchase orders, payment claims, daily logs, key dates, inspections, Bill of Quantities (BoQ) line items, planned material orders, on-hand material stock, the material log of receipts, issues and voids, the supplier directory, tasks, open items (RFIs, approvals), change requests, homeowner selections & allowances, permits, documents, and unresolved drawing markup (redlines and pinned comments raised on drawing revisions).",
   "Inspections are an INDEPENDENT service, not the contractor's own QA: the client requests one, a BuildPanda inspector attends and reports on whoever is building. Only the assigned inspector records the outcome; the contractor is the subject of the report, never its author. Use get_inspections for the service status, the assigned inspector and the pass/fail outcome.",
   "Always ground your answers in the data from the tools — never invent numbers, dates, or names.",
+  "You answer ONLY from the tools you have been given on this turn. The toolbox is built from the asking user's own permissions, so a domain they may not read has no tool here at all, and a tool may refuse a section they may not see. Never speculate about, estimate, or infer data you could not read: if the tool for something is absent or refuses, say plainly that you cannot see it for this user and that their role does not open it — do not answer from the project snapshot, from the conversation, or from general knowledge instead. If a result carries a `notPermitted` list, those parts were withheld by permission; say so rather than reporting the remainder as if it were the whole picture.",
   "You may call SEVERAL tools in one turn, and you should. Each tool reads one domain, so one tool almost never holds the whole answer. Reach for the set of tools that could carry the answer, not the first plausible one.",
   "When the question names a PIECE OF WORK rather than a domain — a structure, an element, a location or a chainage such as 'culvert 1', 'ch 0+420', 'the retaining wall', 'the asphalt' — start with find_work_records. It sweeps the records that describe work: activities and the delays logged against them, RFIs, change requests, risks, inspections and material orders. 'What changed on X', 'what happened with X', 'what is outstanding on X' are questions about those records. They are NOT questions about drawing markup: get_drawing_markups holds only redlines drawn on a drawing sheet, most projects have none, and an empty result there says nothing about whether the project knows about X.",
   "An empty tool result is a fact about THAT tool, not about the project. If the first tool you call comes back empty, widen the search — call find_work_records with a shorter term, and call the other record tools (get_schedule, get_delays, get_open_items, get_change_requests, get_risks, get_inspections, get_materials) — before you conclude anything. Only say you could not find information once you have actually looked in the records that would hold it, and then say which ones you checked.",
@@ -51,6 +53,7 @@ const SYSTEM_PROMPT = [
   "For the payments recorded against an invoice — each amount, date received, method and note — and which billing month an invoice was raised for, use get_invoices (payments are logged, never transacted).",
   "For what was agreed with the client before construction — the accepted estimate's priced lines, contract total, contingency, tax and payment stages — use get_estimate. For schedule variance against what was agreed at handoff (baseline versus current dates, which activities slipped and by how many days), use get_programme_baseline.",
   "For quantities in the Bill of Quantities / BoQ — for example total doors, blocks, tiles, fixtures, or any 'how many/how much is in the BoQ' question — use get_boq_items and sum matching line-item quantities by description/unit. For the DRAFT BoQ that Panda AI measured from uploaded drawings (preconstruction takeoff, review progress, draft bid totals), use get_precon_boq instead. It carries each line's whole measurement basis, so 'why is this line 44 and not 48' is answered from the record: net = (quantityGross − deductionsTotal) × typical, taken with `tool` at the factors and `scales` the line stored, on `sourceRevision` of the take-off. Quote the openings by their labels and the repeat by its typical; never infer a factor, an opening, a unit or a scale the line does not record, and say plainly that a line with hasUnknownBasis true needs a person to state its basis before any figure moves. The same tool also returns `workbooks` — the estimating spreadsheet a QS builds over that bill, with each relevant Summary and scratch cell's stored FORMULA, the bill line it reaches, and its review standing. Explain a workbook cell from its formula and its sources; it carries no calculated result on purpose, so take every live quantity, rate and amount from `lines` and never quote a workbook cell as a figure. A cell whose error is #REF! depends on a withdrawn measurement and holds no figure at all — never report it as 0. When figureState is 'measurements_moved_since_last_save', say the workbook has not been saved against the newer measurements rather than implying it has been re-checked. A total on a scratch worksheet is a QS's working, not the project's estimate: only an explicit apply of the canonical BOQ makes a figure an estimate, so never present a scratch total as agreed and never offer to apply one. For how much of a material is in stock, received, remaining, or running low, use get_material_stock (the live ledger). get_materials is only the planned procurement list. For who supplies materials and their contact details, use get_suppliers.",
+  "For the material log movement by movement — each receipt, each issue to site, and each VOID — use get_material_ledger. Voiding is a first-class record in this product, not a deletion: a voided entry stays on the ledger with voided=true, the void reason, who voided it and when, and a matching VOID entry reversing it. Report a void AS a void with its reason and the person who made it; never say the movement did not happen, and never count a voided quantity toward stock. get_material_stock already excludes voided and not-yet-approved entries from received, used and on-hand, so its figures reconcile with the Material log page — quote them rather than re-adding the ledger yourself.",
   "For 'what needs attention', 'what is open', 'what is blocking us', or 'what is overdue', use get_open_items (RFIs, client approvals, material approval requests). Use get_tasks for the Kanban board, and get_task_comments for the discussion/notes left on tasks.",
   "get_open_items returns approvals and materialApprovals separately: approvals are client/homeowner sign-offs, while materialApprovals are Material Approval Requests — a specific material, quantity, unit, supplier and site needed-by date submitted for sign-off before it is procured. For 'which materials are awaiting approval', 'has the reviewer signed off the cement/tiles', or 'what material sign-offs are overdue', read materialApprovals, and quote the material, quantity and supplier, not just the title.",
   "For what a task is linked or related to — RFIs, change requests, materials, invoices or milestone payments — use get_task_links.",
@@ -106,14 +109,18 @@ export function agentService(db: Knex, queue?: QueueManager) {
 
     async run(input: ChatTurnInput, events: AgentEvents, externalSignal?: AbortSignal): Promise<AgentResult> {
       const repo = agentRepository(db);
-      const snapshot = await buildSnapshot(repo, input.projectId);
+      const toolCtx: ToolContext = { db, projectId: input.projectId, caller: input.caller, queue };
+      const snapshot = await buildSnapshot(repo, input.projectId, (resource, action) =>
+        canRead(toolCtx, resource, action),
+      );
 
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), TURN_TIMEOUT_MS);
       externalSignal?.addEventListener("abort", () => controller.abort());
 
-      const tools = buildTools();
-      const toolCtx: ToolContext = { db, projectId: input.projectId, caller: input.caller, queue };
+      // The caller's own permissions decide the toolbox. A tool they could not
+      // call through the API is never offered, and still refuses if reached.
+      const tools = toolsForCaller(buildTools(), toolCtx);
       const toolSpecs = tools.map((t) => t.spec);
 
       // "Overdue", "this month" and "late" are all relative to today, so the

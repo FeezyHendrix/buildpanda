@@ -1,4 +1,4 @@
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 
@@ -13,7 +13,7 @@ interface Props {
 
 export function TaskBoardHeader({ onCreate, scope, onScopeChange }: Props) {
   return <>
-    <PageHeader title="Tasks" actions={onCreate ? <Button onClick={onCreate}>New task</Button> : undefined} />
+    <PageHeader title="Tasks" actions={onCreate ? <CreateButton onClick={onCreate}>New task</CreateButton> : undefined} />
     {onScopeChange ? <FilterTabs items={SCOPES} value={scope} onChange={onScopeChange} ariaLabel="Task board scope" className="mt-6" /> : null}
   </>;
 }

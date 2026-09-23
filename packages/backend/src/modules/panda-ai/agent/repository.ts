@@ -443,9 +443,38 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    /**
+     * On-hand stock with the received/used totals behind it, mirroring the
+     * Material log page's stock cards (materialsLedgerRepository.listStock).
+     *
+     * Only accepted, un-voided movements count: a pending entry is a claim that
+     * never moved stock, and a voided one was undone by its reversal — counting
+     * either would make received minus used disagree with on_hand_qty.
+     */
     materialStock(projectId: string) {
+      const movements = db("material_ledger_entries")
+        .select("material_id")
+        .select(
+          db.raw("COALESCE(SUM(CASE WHEN entry_type = 'IN' THEN quantity ELSE 0 END), 0) as total_received"),
+        )
+        .select(
+          db.raw("COALESCE(SUM(CASE WHEN entry_type = 'USED' THEN quantity ELSE 0 END), 0) as total_used"),
+        )
+        .select(
+          db.raw("COUNT(*) FILTER (WHERE status = 'Voided') as voided_count"),
+        )
+        .select(
+          db.raw("COALESCE(SUM(CASE WHEN status = 'Voided' AND entry_type = 'IN' THEN quantity ELSE 0 END), 0) as voided_received"),
+        )
+        .select(
+          db.raw("COALESCE(SUM(CASE WHEN status = 'Voided' AND entry_type = 'USED' THEN quantity ELSE 0 END), 0) as voided_used"),
+        )
+        .where({ project_id: projectId, approval_status: "Approved" })
+        .groupBy("material_id");
+
       return db("materials_stock as s")
         .join("materials_catalog as c", "c.id", "s.material_id")
+        .leftJoin(movements.as("m"), "m.material_id", "s.material_id")
         .where("s.project_id", projectId)
         .orderBy("c.name", "asc")
         .select(
@@ -454,6 +483,81 @@ export function agentRepository(db: Knex) {
           "s.location_key",
           "s.on_hand_qty",
           "c.low_stock_threshold",
+          db.raw("COALESCE(m.total_received, 0) - COALESCE(m.voided_received, 0) as total_received"),
+          db.raw("COALESCE(m.total_used, 0) - COALESCE(m.voided_used, 0) as total_used"),
+          db.raw("COALESCE(m.voided_count, 0) as voided_entry_count"),
+          db.raw("COALESCE(m.voided_received, 0) as voided_received"),
+          db.raw("COALESCE(m.voided_used, 0) as voided_used"),
+        );
+    },
+
+    /**
+     * The material ledger itself — every receipt, issue and void, newest first.
+     *
+     * A void is a record, not a deletion: the original entry stays with
+     * status 'Voided' and a VOID entry is posted against it carrying the reason
+     * and the person who voided it. Both rows come back so the assistant can
+     * report the void as a void instead of losing the movement entirely.
+     */
+    materialLedgerEntries(projectId: string, limit: number) {
+      return db("material_ledger_entries as e")
+        .leftJoin("user as u", "u.id", "e.logged_by_id")
+        .leftJoin("user as au", "au.id", "e.approved_by_id")
+        .where("e.project_id", projectId)
+        .orderBy("e.occurred_at", "desc")
+        .limit(limit)
+        .select(
+          "e.id",
+          "e.entry_type",
+          "e.status",
+          "e.material_name_snapshot as material_name",
+          "e.unit_snapshot as unit",
+          "e.location_key",
+          "e.quantity",
+          "e.stock_delta",
+          "e.occurred_at",
+          "e.approval_status",
+          "e.reversal_for_entry_id",
+          "e.reason",
+          "e.supplier",
+          "e.delivery_note",
+          "e.negative_stock",
+          "e.timestamp_suspect",
+          "e.self_approved",
+          "u.name as logged_by_name",
+          "au.name as approved_by_name",
+        );
+    },
+
+    /**
+     * The VOID entries that reverse the given entries. A void is posted after
+     * the movement it undoes, so the reversal can sit outside a page of the
+     * ledger while the entry it voided is inside it; one batched read stitches
+     * the reason and the actor back on rather than a query per row.
+     */
+    materialLedgerReversalsFor(entryIds: string[]) {
+      if (entryIds.length === 0) {
+        return Promise.resolve([] as Array<{
+          reversal_for_entry_id: string;
+          reason: string | null;
+          occurred_at: string;
+          logged_by_name: string | null;
+        }>);
+      }
+      return db("material_ledger_entries as e")
+        .leftJoin("user as u", "u.id", "e.logged_by_id")
+        .where("e.entry_type", "VOID")
+        .whereIn("e.reversal_for_entry_id", entryIds)
+        .select<Array<{
+          reversal_for_entry_id: string;
+          reason: string | null;
+          occurred_at: string;
+          logged_by_name: string | null;
+        }>>(
+          "e.reversal_for_entry_id",
+          "e.reason",
+          "e.occurred_at",
+          "u.name as logged_by_name",
         );
     },
 

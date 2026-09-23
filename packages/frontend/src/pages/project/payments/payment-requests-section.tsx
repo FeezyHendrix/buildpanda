@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
-import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { FinancesIcon } from "@/components/atoms/project-nav-icons";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -230,10 +231,9 @@ export function PaymentRequestsSection() {
     <section aria-label="Payment requests">
       <TabActions>
         {canManage ? (
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" />
+          <CreateButton onClick={() => setCreateOpen(true)}>
             New request
-          </Button>
+     </CreateButton>
         ) : null}
       </TabActions>
 
@@ -263,7 +263,7 @@ export function PaymentRequestsSection() {
             icon={<FinancesIcon />}
             title="No payment requests yet"
             description="Record contractor payment requests to track approvals and paid amounts."
-            action={canManage ? { label: "New request", onClick: () => setCreateOpen(true), icon: <PlusIcon /> } : undefined}
+            action={canManage ? { label: "New request", onClick: () => setCreateOpen(true) } : undefined}
           />
         ) : (
           <div className="flex flex-col gap-4">
