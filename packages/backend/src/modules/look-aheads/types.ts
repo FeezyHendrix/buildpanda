@@ -14,6 +14,10 @@ export interface LookAheadRow {
   end_date: string;
   total_workers: number | null;
   created_by_id: string | null;
+  approved_by_id: string | null;
+  approved_by_name: string | null;
+  approved_at: Date | string | null;
+  approval_note: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +43,7 @@ export interface LookAheadActivitySummary {
 }
 
 export interface LookAhead {
+  buildingId: string;
   id: string;
   projectId: string;
   name: string;
@@ -48,8 +53,16 @@ export interface LookAhead {
   endDate: string;
   totalWorkers: number | null;
   activities: LookAheadActivitySummary[];
+  approvedById: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
+  approvalNote: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ApproveLookAheadInput {
+  note?: string | null;
 }
 
 export interface CreateLookAheadInput {

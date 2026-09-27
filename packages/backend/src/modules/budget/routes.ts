@@ -104,7 +104,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/budget",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
+      const project = await request.requireProjectPermission(request.params.id, "finances", "viewCosts");
       return service.getByProject(project.id);
     },
   );

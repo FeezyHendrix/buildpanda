@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
+import {
+  ActivityPredecessorsField,
+  type PredecessorChoice,
+} from "./activity-predecessors-field";
 import { Label } from "@/components/atoms/label";
-import type { Activity, ProjectPhase } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
+import { errorFieldName } from "@/lib/api-error";
+import { workingDaysLabel } from "@/lib/delay-meta";
+import type { Activity, ActivityDependency, ProjectPhase } from "@/lib/project-types";
 
 export interface CreateActivityValues {
   name: string;
@@ -15,6 +23,8 @@ export interface CreateActivityValues {
   workerCountPlanned: number;
   notes: string;
   assigneeId: string | null;
+  percentComplete: number;
+  predecessors: ActivityDependency[];
 }
 
 export interface AssigneeOption {
@@ -34,9 +44,13 @@ interface CreateActivityDialogProps {
   initial?: Activity | null;
   prefill?: ActivityPrefill | null;
   assigneeOptions?: AssigneeOption[];
+  /** Every other activity on the programme, as candidate predecessors. */
+  predecessorOptions?: PredecessorChoice[];
   onSubmit: (values: CreateActivityValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  /** The raw mutation error, so a 400 can be shown beside the field it names. */
+  errorSource?: unknown;
 }
 
 function toLocalInput(date: Date): string {
@@ -67,9 +81,11 @@ function CreateActivityDialog({
   initial,
   prefill,
   assigneeOptions = [],
+  predecessorOptions = [],
   onSubmit,
   isSubmitting = false,
   error,
+  errorSource,
 }: CreateActivityDialogProps) {
   const [name, setName] = useState("");
   const [activityType, setActivityType] = useState("");
@@ -82,6 +98,8 @@ function CreateActivityDialog({
   const [workerCountPlanned, setWorkerCountPlanned] = useState("8");
   const [notes, setNotes] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
+  const [percentComplete, setPercentComplete] = useState("0");
+  const [predecessors, setPredecessors] = useState<ActivityDependency[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -100,10 +118,19 @@ function CreateActivityDialog({
     setWorkerCountPlanned(String(initial?.workerCountPlanned ?? 8));
     setNotes(initial?.notes ?? "");
     setAssigneeId(initial?.assigneeId ?? "");
+    setPercentComplete(String(Math.round(initial?.percentComplete ?? 0)));
+    setPredecessors(initial?.predecessors ?? []);
   }, [open, initial, prefill]);
 
   const actualRangeValid =
     !actualStartAt || !actualEndAt || new Date(actualStartAt) <= new Date(actualEndAt);
+  // Say why the button is grey. A silently-disabled Create is the same thing as
+  // a broken form to the PM (findings #34, #43).
+  const plannedRangeValid =
+    !plannedStartAt || !plannedEndAt || new Date(plannedStartAt) <= new Date(plannedEndAt);
+  const typeMissing = activityType.trim().length === 0;
+  // When the server blames a field, show the message beside that field.
+  const locationRejected = errorFieldName(errorSource) === "location";
   const isValid =
     name.trim().length > 0 &&
     activityType.trim().length > 0 &&
@@ -126,6 +153,8 @@ function CreateActivityDialog({
       workerCountPlanned: Math.max(0, Number(workerCountPlanned) || 0),
       notes: notes.trim(),
       assigneeId: assigneeId || null,
+      percentComplete: Math.max(0, Math.min(100, Math.round(Number(percentComplete) || 0))),
+      predecessors,
     });
   }
 
@@ -147,21 +176,25 @@ function CreateActivityDialog({
         placeholder="e.g. Slab pour, Floor 2"
         maxLength={200}
         autoFocus
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       />
     </div>
     
     <div className="grid grid-cols-2 gap-3">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="activity-type">Type</Label>
+        <Label htmlFor="activity-type">Type (required)</Label>
         <input
           id="activity-type"
           value={activityType}
           onChange={(e) => setActivityType(e.target.value)}
-          placeholder="concrete_pour"
+          placeholder="e.g. concrete_pour, earthworks, drainage"
           maxLength={100}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          aria-invalid={typeMissing || undefined}
+          className={INPUT_CLASS}
         />
+        {typeMissing ? (
+          <p className="text-xs text-negative-600">A type is required — a short slug for the kind of work.</p>
+        ) : null}
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="activity-phase">Milestone (optional)</Label>
@@ -169,7 +202,7 @@ function CreateActivityDialog({
           id="activity-phase"
           value={phaseId}
           onChange={(e) => setPhaseId(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         >
           <option value="">Unassigned milestone</option>
           {phases.map((p) => (
@@ -187,7 +220,7 @@ function CreateActivityDialog({
         id="activity-assignee"
         value={assigneeId}
         onChange={(e) => setAssigneeId(e.target.value)}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       >
         <option value="">Unassigned</option>
         {assigneeOptions.map((a) => (
@@ -204,10 +237,12 @@ function CreateActivityDialog({
         id="activity-location"
         value={location}
         onChange={(e) => setLocation(e.target.value)}
-        placeholder="e.g. Block A · Floor 2"
+        placeholder="e.g. Block A · Floor 2, or ch 0+420"
         maxLength={200}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        aria-invalid={locationRejected || undefined}
+        className={INPUT_CLASS}
       />
+      {locationRejected ? <p className="text-xs text-negative-600">{error}</p> : null}
     </div>
     
     <div className="grid grid-cols-2 gap-3">
@@ -218,7 +253,7 @@ function CreateActivityDialog({
           type="datetime-local"
           value={plannedStartAt}
           onChange={(e) => setPlannedStartAt(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -228,10 +263,51 @@ function CreateActivityDialog({
           type="datetime-local"
           value={plannedEndAt}
           onChange={(e) => setPlannedEndAt(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          aria-invalid={!plannedRangeValid || undefined}
+          className={INPUT_CLASS}
+        />
+        {!plannedRangeValid ? (
+          <p className="text-xs text-negative-600">Planned end must be after planned start.</p>
+        ) : null}
+      </div>
+      {initial ? (
+        <p className="col-span-2 text-xs text-ink-muted">
+          Currently {workingDaysLabel(initial.durationWorkingDays)} on the project calendar.
+        </p>
+      ) : null}
+    </div>
+
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="activity-progress">Progress ({percentComplete}%)</Label>
+      <div className="flex items-center gap-3">
+        <input
+          id="activity-progress"
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={percentComplete}
+          onChange={(e) => setPercentComplete(e.target.value)}
+          className="flex-1 accent-primary-500"
+        />
+        <input
+          aria-label="Percent complete"
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          value={percentComplete}
+          onChange={(e) => setPercentComplete(e.target.value)}
+          className={cn(INPUT_CLASS, "w-20 tabular-nums")}
         />
       </div>
     </div>
+
+    <ActivityPredecessorsField
+      value={predecessors}
+      options={predecessorOptions}
+      onChange={setPredecessors}
+    />
 
     {initial && (
       <div className="grid grid-cols-2 gap-3">
@@ -242,7 +318,7 @@ function CreateActivityDialog({
             type="datetime-local"
             value={actualStartAt}
             onChange={(e) => setActualStartAt(e.target.value)}
-            className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={INPUT_CLASS}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -252,11 +328,11 @@ function CreateActivityDialog({
             type="datetime-local"
             value={actualEndAt}
             onChange={(e) => setActualEndAt(e.target.value)}
-            className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={INPUT_CLASS}
           />
         </div>
         {!actualRangeValid && (
-          <p className="col-span-2 text-xs text-red-500">Actual end must be after actual start.</p>
+          <p className="col-span-2 text-xs text-negative-500">Actual end must be after actual start.</p>
         )}
       </div>
     )}
@@ -270,7 +346,7 @@ function CreateActivityDialog({
           min={0}
           value={workerCountPlanned}
           onChange={(e) => setWorkerCountPlanned(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
     </div>
@@ -283,7 +359,7 @@ function CreateActivityDialog({
         onChange={(e) => setNotes(e.target.value)}
         rows={2}
         maxLength={2000}
-        className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={cn(INPUT_CLASS, "min-h-24 resize-none py-3")}
       />
     </div></FormDrawer>
   );

@@ -15,6 +15,8 @@ import {
   AiOpsIcon,
   MaintenanceIcon,
   FlagIcon,
+  ClipboardCheckIcon,
+  CatalogueIcon,
 } from "@/components/icons";
 
 const nav = [
@@ -26,6 +28,8 @@ const nav = [
   { to: "/organizations", label: "Organizations", icon: OrgIcon, end: false },
   { to: "/projects", label: "Projects", icon: ProjectIcon, end: false },
   { to: "/leads", label: "Leads", icon: LeadsIcon, end: false },
+  { to: "/inspections", label: "Inspections", icon: ClipboardCheckIcon, end: false },
+  { to: "/inspection-catalogue", label: "Inspection catalogue", icon: CatalogueIcon, end: false },
   { to: "/jobs", label: "Import jobs", icon: JobsIcon, end: false },
   { to: "/maintenance", label: "Maintenance", icon: MaintenanceIcon, end: false },
   { to: "/feature-flags", label: "Feature flags", icon: FlagIcon, end: false },

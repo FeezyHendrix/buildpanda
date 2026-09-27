@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { currencySymbol } from "@/lib/formatters";
 import { FormDrawer } from "./form-drawer";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface SelectionOptionValues {
   name: string;
@@ -37,8 +39,7 @@ interface Props {
 
 const EMPTY_OPTION: OptionDraft = { name: "", description: "", price: "" };
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
 function toDrafts(options: SelectionOptionValues[] | undefined): OptionDraft[] {
   if (!options || options.length === 0) return [{ ...EMPTY_OPTION }];
@@ -182,21 +183,21 @@ function UpsertSelectionDialog({
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           placeholder="What is being selected, and anything the homeowner should know"
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
         />
       </div>
 
       <div className="flex flex-col gap-2">
         <Label>Options</Label>
         {options.map((option, index) => (
-          <div key={index} className="flex flex-col gap-2 rounded-lg border border-[#EDEDED] p-3">
+          <div key={index} className="flex flex-col gap-2 rounded-lg border border-line-hair p-3">
             <div className="flex items-center gap-2">
               <input
                 value={option.name}
                 onChange={(e) => setOption(index, { name: e.target.value })}
                 placeholder={`Option ${index + 1} name`}
                 aria-label={`Option ${index + 1} name`}
-                className={`${field} min-w-0 flex-1`}
+                className={cn(field, "min-w-0 flex-1")}
               />
               <input
                 type="number"
@@ -206,7 +207,7 @@ function UpsertSelectionDialog({
                 onChange={(e) => setOption(index, { price: e.target.value })}
                 placeholder={`Price (${symbol})`}
                 aria-label={`Option ${index + 1} price`}
-                className={`${field} w-32`}
+                className={cn(field, "w-32")}
               />
               <button
                 type="button"

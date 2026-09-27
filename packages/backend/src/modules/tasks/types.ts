@@ -62,7 +62,6 @@ export interface TaskLink {
 }
 
 export const TASK_ENTITY_TYPES = [
-  "action_item",
   "rfi",
   "change_request",
   "material",

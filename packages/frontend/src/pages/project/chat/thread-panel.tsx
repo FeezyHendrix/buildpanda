@@ -36,16 +36,16 @@ export function ThreadPanel({
   }, [thread]);
 
   return (
-    <div className="absolute inset-0 z-20 flex w-full flex-col border-l border-gray-200 bg-white lg:relative lg:inset-auto lg:z-10 lg:w-[420px] lg:shrink-0">
-      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-        <h3 className="text-[15px] font-semibold text-black-900">Thread</h3>
-        <button onClick={onClose} className="text-gray-500 transition-colors hover:text-gray-800" aria-label="Close thread">
+    <div className="absolute inset-0 z-20 flex w-full flex-col border-l border-line-hair bg-white lg:relative lg:inset-auto lg:z-10 lg:w-[420px] lg:shrink-0">
+      <div className="flex items-center justify-between border-b border-line-hair px-5 py-4">
+        <h3 className="text-base font-semibold text-ink">Thread</h3>
+        <button type="button" onClick={onClose} className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink" aria-label="Close thread">
           <XIcon />
         </button>
       </div>
       
       <div className="flex-1 overflow-y-auto py-3">
-        <div className="bg-gray-50/70">
+        <div className="bg-surface-alt">
           <MessageGroup
             messages={[rootMessage]}
             currentUserId={currentUserId}
@@ -76,7 +76,7 @@ export function ThreadPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="shrink-0 border-t border-gray-200 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t border-line-hair px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <Composer channelId={rootMessage.channelId} projectId={projectId} parentMessageId={rootMessage.id} isThread />
       </div>
     </div>

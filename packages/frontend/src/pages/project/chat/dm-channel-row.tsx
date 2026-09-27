@@ -26,8 +26,8 @@ export function DmChannelRow({
         "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
         isActive
           ? "bg-primary-50 text-primary-500"
-          : "text-gray-700 hover:bg-gray-100",
-        channel.muted && !isActive && "text-gray-400"
+          : "text-ink hover:bg-black/5",
+        channel.muted && !isActive && "text-ink-muted"
       )}
     >
       <div className="shrink-0 relative">

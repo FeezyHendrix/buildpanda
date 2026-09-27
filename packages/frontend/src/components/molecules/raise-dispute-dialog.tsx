@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 interface RaiseDisputeDialogProps {
   open: boolean;
@@ -52,9 +54,9 @@ function RaiseDisputeDialog({
         autoFocus
         maxLength={2000}
         placeholder="e.g. Roofing material does not match the specification on the BoQ. Colour and gauge differ from sample."
-        className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 resize-none")}
       />
-      <p className="text-[11px] text-gray-400">
+      <p className="text-xs text-gray-400">
         Minimum 10 characters · {trimmed.length}/2000
       </p>
     </div></FormDrawer>

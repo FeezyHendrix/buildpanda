@@ -42,7 +42,7 @@ function SidebarLink({ item }: { item: SidebarItem }) {
         cn(
           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500",
           "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          isActive && "bg-[#EDEDED] text-gray-900",
+          isActive && "bg-gray-100 text-gray-900",
         )
       }
     >
@@ -61,7 +61,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
 
   return (
-    <aside className="flex w-[220px] shrink-0 flex-col bg-[#F8F8F8] px-4 pb-6 pt-8">
+    <aside className="flex w-[220px] shrink-0 flex-col bg-surface-alt px-4 pb-6 pt-8">
       <Link to="/" className="px-3">
         <img src={logo} alt="BuildPanda" className="h-9" />
       </Link>

@@ -12,6 +12,8 @@ interface SearchableSelectProps {
   className?: string;
   disabled?: boolean;
   id?: string;
+  /** `filter` is the compact toolbar use; the v2 field look serves both. */
+  variant?: "form" | "filter";
 }
 
 function ChevronIcon(props: React.ComponentProps<"svg">) {

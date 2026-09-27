@@ -11,13 +11,13 @@ export interface FundingTrailCardProps {
 }
 
 const EVENT_STYLES: Record<FinanceEventType, { dot: string; bg: string }> = {
-  deposit: { dot: "bg-green-500", bg: "bg-green-100" },
-  milestone_released: { dot: "bg-blue-500", bg: "bg-blue-100" },
-  milestone_created: { dot: "bg-gray-400", bg: "bg-gray-100" },
-  milestone_updated: { dot: "bg-gray-400", bg: "bg-gray-100" },
-  milestone_deleted: { dot: "bg-red-500", bg: "bg-red-100" },
-  dispute_raised: { dot: "bg-amber-500", bg: "bg-amber-100" },
-  cash_flow_entry: { dot: "bg-purple-500", bg: "bg-purple-100" },
+  deposit: { dot: "bg-success-500", bg: "bg-success-50" },
+  milestone_released: { dot: "bg-primary-500", bg: "bg-primary-50" },
+  milestone_created: { dot: "bg-neutral-500", bg: "bg-neutral-50" },
+  milestone_updated: { dot: "bg-neutral-500", bg: "bg-neutral-50" },
+  milestone_deleted: { dot: "bg-negative-500", bg: "bg-negative-50" },
+  dispute_raised: { dot: "bg-warning-500", bg: "bg-warning-50" },
+  cash_flow_entry: { dot: "bg-accent-500", bg: "bg-accent-50" },
 };
 
 function EventIcon({ type }: { type: FinanceEventType }) {
@@ -41,12 +41,10 @@ export function FundingTrailCard({
   const { data: events, isPending } = useFinanceEvents(projectId);
 
   return (
-    <Card className="mt-6 p-6" padding="none">
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Funding Trail</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          A log of every recorded funding action on this project.
-        </p>
+    <Card padding="md">
+      <div className="mb-3">
+        <h3 className="text-[13px] font-semibold text-black-300">Funding trail</h3>
+        <p className="mt-0.5 text-xs text-ink-muted">Every recorded funding action on this project.</p>
       </div>
 
       <div className="relative">
@@ -55,34 +53,34 @@ export function FundingTrailCard({
             <Spinner size="md" />
           </div>
         ) : !events || events.length === 0 ? (
-          <div className="flex h-32 items-center justify-center text-sm text-gray-500">
+          <div className="flex h-32 items-center justify-center text-sm text-ink-muted">
             No funding activity logged yet.
           </div>
         ) : (
           <div className="relative">
-            <div className="absolute bottom-0 left-4 top-0 w-px bg-[#EDEDED]" />
+            <div className="absolute bottom-0 left-4 top-0 w-px bg-line-hair" />
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               {events.map((event) => (
                 <div key={event.id} className="relative flex items-start gap-4">
                   <EventIcon type={event.type} />
                   <div className="flex-1 pt-1">
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink">
                           {event.summary}
                         </p>
-                        <p className="mt-0.5 text-xs text-gray-500">
+                        <p className="mt-0.5 text-xs text-ink-muted">
                           by {event.actor.name}
                         </p>
                       </div>
                       <div className="flex flex-col sm:items-end">
                         {event.amount !== null && (
-                          <p className="text-sm font-semibold text-gray-900">
+                          <p className="text-sm font-semibold text-ink">
                             {formatCurrency(event.amount, currency)}
                           </p>
                         )}
-                        <p className="mt-0.5 text-xs text-gray-400">
+                        <p className="mt-0.5 text-xs text-ink-muted">
                           {formatShortDate(event.createdAt)}
                         </p>
                       </div>

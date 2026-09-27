@@ -1,13 +1,35 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { stagesApi, type StageInput } from "@/api/stages";
+import {
+  stagesApi,
+  type ScheduleOfValueLineInput,
+  type StageInput,
+  type StageScheduleOfValue,
+  type StageValueSummary,
+  type UpdateScheduleProgressInput,
+} from "@/api/stages";
 import { stageKeys } from "./query-keys";
 
-export type { StageInput };
+export type {
+  StageInput,
+  ScheduleOfValueLineInput,
+  StageScheduleOfValue,
+  StageValueSummary,
+  UpdateScheduleProgressInput,
+};
 
 export function useStages(projectId: string | undefined, buildingId?: string) {
   return useQuery({
     queryKey: stageKeys.list(projectId ?? "__none__", buildingId),
     queryFn: () => stagesApi.list(projectId!, buildingId),
+    enabled: Boolean(projectId),
+  });
+}
+
+/** Stage values against the contract sum — what is allocated and what is left. */
+export function useStageValueSummary(projectId: string | undefined) {
+  return useQuery({
+    queryKey: stageKeys.valueSummary(projectId ?? "__none__"),
+    queryFn: () => stagesApi.valueSummary(projectId!),
     enabled: Boolean(projectId),
   });
 }
@@ -54,6 +76,55 @@ export function useReorderStages() {
   return useMutation({
     mutationFn: ({ projectId, stageIds }: { projectId: string; stageIds: string[] }) =>
       stagesApi.reorder(projectId, stageIds),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
+    },
+  });
+}
+
+export function useScheduleOfValues(
+  projectId: string | undefined,
+  stageId: string | undefined,
+) {
+  return useQuery({
+    queryKey: stageKeys.scheduleOfValues(projectId ?? "__none__", stageId),
+    queryFn: () => stagesApi.scheduleOfValues(projectId!, stageId!),
+    enabled: Boolean(projectId && stageId),
+  });
+}
+
+/** Every stage's schedule of values in one request — for list views, so a table doesn't fetch per row. */
+export function useProjectScheduleOfValues(projectId: string | undefined) {
+  return useQuery({
+    queryKey: stageKeys.projectScheduleOfValues(projectId ?? "__none__"),
+    queryFn: () => stagesApi.projectScheduleOfValues(projectId!),
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useReplaceScheduleOfValues() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      stageId,
+      lines,
+    }: {
+      projectId: string;
+      stageId: string;
+      lines: ScheduleOfValueLineInput[];
+    }) => stagesApi.replaceScheduleOfValues(projectId, stageId, lines),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
+    },
+  });
+}
+
+export function useUpdateScheduleProgress() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, ...input }: UpdateScheduleProgressInput & { projectId: string }) =>
+      stagesApi.updateScheduleProgress(projectId, input),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
     },

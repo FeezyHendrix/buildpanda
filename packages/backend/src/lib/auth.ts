@@ -1,22 +1,27 @@
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 import { admin, organization } from "better-auth/plugins";
+import { expo } from "@better-auth/expo";
 import { Pool } from "pg";
 import { config } from "../config/index.ts";
 import { sendEmail } from "./mail.ts";
 import { sendWelcomeEmail } from "../modules/lifecycle/index.ts";
 import { getRequestContext } from "./request-context.ts";
+import type { NewSignup } from "./email-templates.ts";
 import {
+  newSignupEmail,
   organizationInviteEmail,
   passwordResetEmail,
   verificationEmail,
 } from "./email-templates.ts";
 import { db } from "../db/connection.ts";
+import { logger } from "./logger.ts";
 import { generateId } from "./ids.ts";
 import { ac, isEmployeeRole, roles } from "./permissions.ts";
 import { captureBug } from "./sentry.ts";
 import { sampleProjectRepository } from "../modules/sample-project/repository.ts";
 import { sampleProjectService } from "../modules/sample-project/service.ts";
+import { invalidateAccessContext } from "../plugins/access-cache.ts";
 
 const pool =
   "connectionString" in config.db
@@ -71,7 +76,7 @@ async function uniqueOrgSlug(base: string): Promise<string> {
  * company becomes its owner. Returns the user's active organization id.
  * Idempotent: if the user already has a membership, that org is returned.
  */
-async function ensureUserOrganization(
+export async function ensureUserOrganization(
   userId: string,
   knownName?: string,
 ): Promise<string> {
@@ -233,12 +238,43 @@ async function promoteIfAdminEmail(userId: string): Promise<void> {
   }
 }
 
+/**
+ * Internal notice that a new account exists.
+ *
+ * Production only. Staging shares this code and its own mail credentials, and
+ * every throwaway account made while testing there would otherwise land in a
+ * real person's inbox — which teaches them to ignore the alert, and the alert
+ * is only worth having if it is read.
+ *
+ * Off when SIGNUP_NOTIFY_EMAIL is empty, and silent on failure: the caller is
+ * inside the sign-up path and a bounced internal email is not the new user's
+ * problem.
+ */
+async function notifyOfSignup(signup: NewSignup): Promise<void> {
+  if (!config.isProduction) return;
+  const recipients = config.mail.signupNotifyAddresses;
+  if (recipients.length === 0) return;
+  try {
+    const { subject, html } = newSignupEmail(signup);
+    await sendEmail({ to: recipients, toName: "BuildPanda Team", subject, html });
+  } catch (error) {
+    logger.error({ err: error, email: signup.email }, "[signup] notification failed");
+  }
+}
+
+
 export const auth = betterAuth({
   database: pool,
   secret: config.auth.secret,
   baseURL: config.auth.baseUrl,
   basePath: "/api/auth",
-  trustedOrigins: config.http.corsOrigins,
+  // The native app has no browser origin, so it identifies itself by URL scheme.
+  // `exp://` covers Expo Go / dev clients on a LAN address and stays out of prod.
+  trustedOrigins: [
+    ...config.http.corsOrigins,
+    "buildpanda://",
+    ...(config.isProduction ? [] : ["exp://", "exp://**"]),
+  ],
 
   // better-auth owns rate limiting for /api/auth/* (the Fastify limiter
   // deliberately skips these to avoid double-counting). Custom rules throttle
@@ -381,6 +417,7 @@ export const auth = betterAuth({
   },
 
   plugins: [
+    expo(),
     organization({
       ac,
       roles,
@@ -394,6 +431,20 @@ export const auth = betterAuth({
           url: appUrlFor(`/accept-invitation/${data.id}`),
         });
         await sendEmail({ to: data.email, subject, html });
+      },
+      organizationHooks: {
+        afterUpdateMemberRole: async ({ member }) => {
+          await invalidateAccessContext(member.userId);
+        },
+        afterAcceptInvitation: async ({ member }) => {
+          if (member) await invalidateAccessContext(member.userId);
+        },
+        afterAddMember: async ({ member }) => {
+          await invalidateAccessContext(member.userId);
+        },
+        afterRemoveMember: async ({ member }) => {
+          await invalidateAccessContext(member.userId);
+        },
       },
     }),
     admin({
@@ -423,6 +474,17 @@ export const auth = betterAuth({
               .update({ signup_ip: ctx.ip, signup_country: ctx.country })
               .catch(() => undefined);
           }
+
+          // Told after the account exists, never before: a failed notification
+          // must not cost somebody their sign-up, so it is fired and forgotten
+          // like the welcome email rather than awaited.
+          void notifyOfSignup({
+            name: user.name,
+            email: user.email,
+            companyName: (user as { companyName?: string | null }).companyName ?? null,
+            country: ctx?.country ?? null,
+            invited,
+          });
         },
       },
     },

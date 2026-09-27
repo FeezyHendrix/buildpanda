@@ -36,9 +36,6 @@ export interface ProjectMetrics {
   recentDailyLogCount: number;
   missedKeyDateCount: number;
   overdueActivityCount: number;
-  dueActionItemCount: number;
-  blockedActionItemCount: number;
-  openQueryCount: number;
   pendingApprovalCount: number;
   expiringPermitCount: number;
   pendingChangeRequestCostImpact: number;

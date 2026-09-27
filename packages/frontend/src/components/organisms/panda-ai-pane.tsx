@@ -51,7 +51,7 @@ export function PandaAiPane({ projectId }: { projectId: string }) {
           data-testid="panda-ai-fab"
           title="Ask Panda AI about this project"
           aria-label="Open Panda AI assistant"
-          className="group fixed bottom-6 right-6 z-50 flex size-14 cursor-pointer items-center justify-center rounded-full bg-[#004DE7] text-white shadow-lg transition-transform hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7] focus-visible:ring-offset-2"
+          className="group fixed bottom-6 right-6 z-50 flex size-14 cursor-pointer items-center justify-center rounded-full bg-primary-500 text-white shadow-lg transition-transform hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
         >
           <PandaMarkIcon className="h-7 w-auto" />
           <span className="pointer-events-none absolute bottom-full right-0 mb-3 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
@@ -63,10 +63,10 @@ export function PandaAiPane({ projectId }: { projectId: string }) {
       <div
         data-testid="panda-ai-pane"
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-[#FCFCFD] shadow-2xl transition-all duration-300",
+          "fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-surface-alt shadow-lg transition-all duration-300",
           "lg:static lg:z-auto lg:h-full lg:shrink-0 lg:overflow-hidden lg:shadow-none lg:transition-[width]",
           open
-            ? "translate-x-0 lg:w-[440px] lg:border-l lg:border-[#EDEDED]"
+            ? "translate-x-0 lg:w-[440px] lg:border-l lg:border-line-hair"
             : "translate-x-full lg:w-0 lg:translate-x-0 lg:border-none",
         )}
       >
@@ -89,14 +89,14 @@ export function PandaAiPane({ projectId }: { projectId: string }) {
                 ))}
 
                 {activeToolLabel && (
-                  <div className="mr-auto flex max-w-[85%] items-center gap-2 rounded-full border border-[#EDEDED] bg-white px-3 py-1.5 text-xs text-gray-500 shadow-sm">
+                  <div className="mr-auto flex max-w-[85%] items-center gap-2 rounded-full border border-line-hair bg-white px-3 py-1.5 text-xs text-gray-500 shadow-sm">
                     <Spinner size="sm" />
                     {activeToolLabel}
                   </div>
                 )}
 
                 {pendingNavigate && (
-                  <div className="mr-auto flex w-full max-w-[85%] flex-col gap-2 rounded-xl border border-[#EDEDED] bg-white p-3 shadow-sm">
+                  <div className="mr-auto flex w-full max-w-[85%] flex-col gap-2 rounded-xl border border-line-hair bg-white p-3 shadow-sm">
                     <p className="text-sm font-medium text-gray-900">
                       I can take you to that page.
                     </p>

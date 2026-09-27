@@ -6,22 +6,16 @@ export const NOTIFICATION_TYPES = [
   { type: "milestone_released", label: "Milestone payment released", group: "Payments" },
   { type: "milestone_disputed", label: "Milestone payment disputed", group: "Payments" },
   { type: "document_uploaded", label: "Document uploaded", group: "Documents" },
-  { type: "action_item_due", label: "Action item due or overdue", group: "Tasks" },
-  { type: "action_item_assigned", label: "Action item assigned to you", group: "Tasks" },
   { type: "task_assigned", label: "Task assigned to you", group: "Tasks" },
   { type: "task_high_priority", label: "A high-priority task needs your attention", group: "Tasks" },
   { type: "rfi_assigned", label: "RFI assigned to you (ball in court)", group: "RFIs" },
   { type: "rfi_answered", label: "RFI answered", group: "RFIs" },
   { type: "rfi_due", label: "RFI due or overdue", group: "RFIs" },
-  { type: "query_assigned", label: "A query was assigned to you", group: "Tasks" },
   { type: "change_request_assigned", label: "A change request was assigned to you", group: "Tasks" },
   { type: "activity_assigned", label: "A site activity was assigned to you", group: "Tasks" },
   { type: "bim_issue_assigned", label: "A coordination issue was assigned to you", group: "Tasks" },
   { type: "chat_mention", label: "You were mentioned in chat", group: "Messages" },
   { type: "chat_dm", label: "New direct message", group: "Messages" },
-  { type: "action_item_blocked", label: "An action item you own is blocked", group: "Tasks" },
-  { type: "action_item_resolved", label: "An action item you raised was resolved", group: "Tasks" },
-  { type: "query_answered", label: "A query you raised was answered", group: "Tasks" },
   { type: "change_request_decided", label: "A change request was approved or rejected", group: "Tasks" },
   { type: "approval_requested", label: "An approval needs your decision", group: "Approvals" },
   { type: "approval_decided", label: "An approval you submitted was decided", group: "Approvals" },
@@ -32,8 +26,22 @@ export const NOTIFICATION_TYPES = [
   { type: "inspection_failed", label: "An inspection requires action", group: "Project" },
   { type: "invoice_submitted", label: "A vendor invoice was submitted", group: "Payments" },
   { type: "invoice_overdue", label: "An invoice is overdue", group: "Payments" },
+  // The certificate lifecycle. A QS gets no signal from the finance module
+  // without these: issuing a certificate, a client query on it, certification,
+  // and the receipt — flagged when it lands after the due date.
+  { type: "invoice_sent", label: "A certificate or invoice was issued", group: "Payments" },
+  { type: "invoice_queried", label: "An invoice was queried by the client", group: "Payments" },
+  { type: "invoice_approved", label: "An invoice was approved / certified", group: "Payments" },
+  { type: "invoice_paid", label: "A payment was recorded against an invoice", group: "Payments" },
+  { type: "invoice_paid_late", label: "A payment was recorded after the due date", group: "Payments" },
+  { type: "invoice_voided", label: "A certificate was voided", group: "Payments" },
+  { type: "change_request_submitted", label: "A change request was submitted for decision", group: "Tasks" },
+  { type: "change_request_approved", label: "A change request was approved", group: "Tasks" },
+  { type: "change_request_rejected", label: "A change request was rejected", group: "Tasks" },
   { type: "permit_expiring", label: "A permit is expiring soon", group: "Project" },
   { type: "permit_expired", label: "A permit has expired", group: "Project" },
+  { type: "compliance_doc_expiring", label: "A compliance document is expiring soon", group: "Project" },
+  { type: "compliance_doc_expired", label: "A compliance document has expired", group: "Project" },
   { type: "key_date_approaching", label: "A key date is approaching", group: "Project" },
   { type: "key_date_missed", label: "A key date was missed", group: "Project" },
   { type: "risk_high_added", label: "A high-severity risk was added", group: "Project" },
@@ -59,6 +67,7 @@ export interface Notification {
   title: string;
   body: string;
   projectId: string | null;
+  ctaUrl?: string | null;
   readAt: string | null;
   createdAt: string;
 }
@@ -70,6 +79,7 @@ export interface NotificationRow {
   title: string;
   body: string;
   project_id: string | null;
+  cta_url?: string | null;
   read_at: Date | string | null;
   created_at: Date | string;
 }

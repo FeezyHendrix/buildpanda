@@ -25,8 +25,9 @@ export interface NewRfiRecord {
   id: string;
   project_id: string;
   subject: string;
-  question: string;
-  status: RfiStatus;
+    question: string;
+    question_html?: string | null;
+    status: RfiStatus;
   priority: RfiPriority;
   visibility: RfiVisibility;
   ball_in_court_id: string | null;
@@ -37,11 +38,15 @@ export interface NewRfiRecord {
   cost_impact: boolean;
   schedule_impact: boolean;
   created_by_id: string | null;
+  document_id: string | null;
+  document_version_id: string | null;
+  source_markup_id: string | null;
 }
 
 export interface RfiUpdatePatch {
   subject?: string;
   question?: string;
+  question_html?: string | null;
   status?: RfiStatus;
   priority?: RfiPriority;
   visibility?: RfiVisibility;
@@ -51,6 +56,7 @@ export interface RfiUpdatePatch {
   assignee_role?: string | null;
   due_date?: string | null;
   official_response?: string | null;
+  official_response_html?: string | null;
   official_responded_by_id?: string | null;
   official_responded_at?: string | null;
   cost_impact?: boolean;
@@ -66,8 +72,9 @@ export function rfisRepository(db: Knex) {
     "r.project_id",
     "r.number",
     "r.subject",
-    "r.question",
-    "r.status",
+      "r.question",
+      "r.question_html",
+      "r.status",
     "r.priority",
     "r.visibility",
     "r.ball_in_court_id",
@@ -76,6 +83,7 @@ export function rfisRepository(db: Knex) {
     "r.assignee_role",
     "r.due_date",
     "r.official_response",
+    "r.official_response_html",
     "r.official_responded_by_id",
     "resp.name as official_responded_by_name",
     "r.official_responded_at",
@@ -134,10 +142,17 @@ export function rfisRepository(db: Knex) {
             .where({ project_id: record.project_id })
             .update({ next_number: number + 1 });
         } else {
-          number = 1;
+          // No counter row yet — seeded, imported or restored projects can
+          // already hold RFIs, so resume from the highest existing number
+          // instead of assuming 1 and colliding with the unique (project, number).
+          const highest = await trx("rfis")
+            .where({ project_id: record.project_id })
+            .max({ max: "number" })
+            .first<{ max: number | string | null }>();
+          number = Number(highest?.max ?? 0) + 1;
           await trx("rfi_counters").insert({
             project_id: record.project_id,
-            next_number: 2,
+            next_number: number + 1,
           });
         }
 

@@ -40,6 +40,8 @@ export interface LinkDailyLogActivityInput {
   logDate: string;
   activityId: string;
   hoursLogged: number;
+  /** Opt-in: also post a client-facing "site work logged" update. */
+  postUpdate?: boolean;
 }
 
 export interface VoidDailyLogInput {
@@ -48,11 +50,35 @@ export interface VoidDailyLogInput {
   reason: string;
 }
 
+/**
+ * How much of the site diary is there, measured on the project's own working
+ * calendar. One figure, served once, so no page has to guess at a second one.
+ */
+export interface DailyLogCoverage {
+  /** First day counted: the works start date, or the first log if work started earlier. */
+  from: string | null;
+  /** Last day counted: yesterday — today is not missed until it is over. */
+  to: string | null;
+  workingDays: number;
+  daysLogged: number;
+  daysMissed: number;
+  missedDates: string[];
+  /** The calendar the count was made on: weekday numbers (0 = Sunday) and holidays. */
+  calendar: { workingDays: number[]; holidays: string[] };
+}
+
 export const dailyLogsApi = {
   list: (projectId: string, range?: { from?: string; to?: string }, buildingId?: string) =>
     api
       .get<DailyLogDay[]>(`/projects/${projectId}/daily-logs`, {
         params: range || buildingId ? { ...range, ...(buildingId ? { buildingId } : {}) } : undefined,
+      })
+      .then((r) => r.data),
+
+  coverage: (projectId: string, buildingId?: string) =>
+    api
+      .get<DailyLogCoverage>(`/projects/${projectId}/daily-logs/coverage`, {
+        params: buildingId ? { buildingId } : undefined,
       })
       .then((r) => r.data),
 
@@ -68,7 +94,11 @@ export const dailyLogsApi = {
   upsert: (projectId: string, logDate: string, body: Omit<UpsertDailyLogInput, "projectId" | "logDate">) =>
     api.put<DailyLog>(`/projects/${projectId}/daily-logs/${logDate}`, body).then((r) => r.data),
 
-  linkActivity: (projectId: string, logDate: string, body: { activityId: string; hoursLogged: number }) =>
+  linkActivity: (
+    projectId: string,
+    logDate: string,
+    body: { activityId: string; hoursLogged: number; postUpdate?: boolean },
+  ) =>
     api.post<{ projectId: string; logDate: string; activityId: string; hoursLogged: number }>(
       `/projects/${projectId}/daily-logs/${logDate}/activities`,
       body,

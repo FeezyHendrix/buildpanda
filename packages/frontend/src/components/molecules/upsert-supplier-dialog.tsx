@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { FormDrawer } from "./form-drawer";
 import { TextArea } from "@/components/atoms/text-area";
 import { TextInput } from "@/components/atoms/text-input";
@@ -13,6 +13,11 @@ interface UpsertSupplierDialogProps {
   isSubmitting?: boolean;
   error?: string | null;
   onDelete?: () => void;
+  /** Rendered above the fields — the duplicate warning lives here. */
+  banner?: ReactNode;
+  /** Sent as `force` so a flagged duplicate can be saved deliberately. */
+  force?: boolean;
+  className?: string;
 }
 
 function UpsertSupplierDialog({
@@ -23,6 +28,9 @@ function UpsertSupplierDialog({
   isSubmitting = false,
   error,
   onDelete,
+  banner,
+  force = false,
+  className,
 }: UpsertSupplierDialogProps) {
   const [name, setName] = useState("");
   const [contactName, setContactName] = useState("");
@@ -52,6 +60,7 @@ function UpsertSupplierDialog({
       phone: phone.trim() || null,
       address: address.trim() || null,
       notes: notes.trim() || null,
+      ...(force ? { force: true } : {}),
     });
   }
 
@@ -60,13 +69,15 @@ function UpsertSupplierDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={initial ? "Edit Supplier" : "Add Supplier"}
-      submitLabel={initial ? "Save changes" : "Add Supplier"}
+      submitLabel={force ? "Add anyway" : initial ? "Save changes" : "Add Supplier"}
       submitDisabled={!isValid}
       submitting={isSubmitting}
       error={error ?? null}
       onSubmit={handleSubmit}
       footerVariant="stacked"
+      className={className}
     >
+      {banner}
       <TextInput
         label="Supplier Name"
         value={name}

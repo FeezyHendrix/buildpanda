@@ -244,6 +244,56 @@ export interface AdminAuditLogRow {
   createdAt: string;
 }
 
+export type InspectionServiceStatus =
+  | "Requested"
+  | "Scheduled"
+  | "Attended"
+  | "Reported"
+  | "Cancelled";
+
+/** A row of BuildPanda's own inspection catalogue. */
+export interface InspectionCategoryRow {
+  id: string;
+  name: string;
+  scope: "global" | "organization" | "project";
+  sortOrder: number;
+  active: boolean;
+  usageCount: number;
+}
+
+/** One inspection request, anywhere on the platform. */
+export interface InspectionRequestRow {
+  id: string;
+  projectId: string;
+  projectName: string | null;
+  organizationId: string | null;
+  organizationName: string | null;
+  title: string;
+  category: string;
+  contractorName: string | null;
+  serviceStatus: InspectionServiceStatus;
+  status: string;
+  outcome: "pass" | "fail" | null;
+  scheduledAt: string;
+  reportIssuedAt: string | null;
+  requestedById: string | null;
+  requestedByName: string | null;
+  requestedBySide: "client" | "contractor";
+  inspectorUserId: string | null;
+  inspectorName: string | null;
+  feeAmount: number | null;
+  feeCurrency: string | null;
+  createdAt: string;
+}
+
+export interface InspectionRequestListArgs {
+  serviceStatus?: InspectionServiceStatus;
+  search?: string;
+  unassigned?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
 export const adminApi = {
   me: () =>
     api.get<{ id: string; name: string; email: string; role: string }>("/admin/me").then((r) => r.data),
@@ -285,6 +335,32 @@ export const adminApi = {
     api.get<FeatureFlagsSettings>("/admin/feature-flags").then((r) => r.data),
   updateFeatureFlags: (flags: Record<string, boolean>) =>
     api.patch<FeatureFlagsSettings>("/admin/feature-flags", { flags }).then((r) => r.data),
+
+  listInspectionCategories: (includeArchived = true) =>
+    api
+      .get<InspectionCategoryRow[]>("/admin/inspection-categories", { params: { includeArchived } })
+      .then((r) => r.data),
+  createInspectionCategory: (body: { name: string; sortOrder?: number }) =>
+    api.post<InspectionCategoryRow>("/admin/inspection-categories", body).then((r) => r.data),
+  updateInspectionCategory: (
+    id: string,
+    body: { name?: string; sortOrder?: number; active?: boolean },
+  ) =>
+    api.patch<InspectionCategoryRow>(`/admin/inspection-categories/${id}`, body).then((r) => r.data),
+  deleteInspectionCategory: (id: string) =>
+    api.delete<{ archived: boolean }>(`/admin/inspection-categories/${id}`).then((r) => r.data),
+
+  listInspectionRequests: (args?: InspectionRequestListArgs) =>
+    api
+      .get<Paginated<InspectionRequestRow>>("/admin/inspections", { params: args })
+      .then((r) => r.data),
+  assignInspector: (
+    inspectionId: string,
+    body: { inspectorUserId: string; role?: string; scheduledAt?: string },
+  ) =>
+    api
+      .post<InspectionRequestRow>(`/admin/inspections/${inspectionId}/inspector`, body)
+      .then((r) => r.data),
 
   metricsOverview: (args?: { from?: string; to?: string }) =>
     api.get<AdminMetricsOverview>("/admin/metrics/overview", { params: args }).then((r) => r.data),

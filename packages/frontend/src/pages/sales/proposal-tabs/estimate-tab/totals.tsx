@@ -39,8 +39,8 @@ export function EstimateTotals({ proposalId, estimate, isDraft, canUpdate, curre
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
+    <div className="rounded-lg border border-line bg-white p-5">
+      <h3 className="mb-4 text-xs font-medium uppercase text-ink-muted">
         Totals
       </h3>
       <div className="flex flex-col gap-4 sm:flex-row sm:gap-8">
@@ -93,7 +93,7 @@ export function EstimateTotals({ proposalId, estimate, isDraft, canUpdate, curre
           )}
         </div>
 
-        <div className="flex-1 rounded-xl bg-gray-50 p-4">
+        <div className="flex-1 rounded-lg bg-gray-50 p-4">
           <dl className="flex flex-col gap-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-gray-500">Subtotal</dt>
@@ -109,7 +109,7 @@ export function EstimateTotals({ proposalId, estimate, isDraft, canUpdate, curre
               <dt className="text-gray-500">{estimate.taxLabel} ({estimate.taxPct}%)</dt>
               <dd className="font-medium">{fmt(estimate.taxAmount, currency)}</dd>
             </div>
-            <div className="mt-1 flex justify-between border-t border-gray-200 pt-2">
+            <div className="mt-1 flex justify-between border-t border-line pt-2">
               <dt className="font-semibold text-gray-900">Total</dt>
               <dd className="font-semibold text-gray-900">{fmt(estimate.total, currency)}</dd>
             </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
 import type { BuildingStatus } from "@/api/buildings";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 export interface UpsertBuildingValues {
   name: string;
@@ -27,8 +28,7 @@ const STATUS_OPTIONS: { value: BuildingStatus; label: string }[] = [
   { value: "on_hold", label: "On Hold" },
 ];
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
 export function UpsertBuildingDialog({
   open,

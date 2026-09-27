@@ -1,0 +1,49 @@
+name: Publish OTA update
+
+# Ships JS and asset changes to installed apps without a new APK. prod publishes
+# to api.buildpanda.io, master (and manual dispatch) to api.staging.buildpanda.io
+# — the same branch mapping release-apk.yml uses.
+#
+# Native changes do NOT travel this way. A new native dependency, an icon or an
+# app.json change needs release-apk.yml, plus a `version` bump in app.json so
+# older installs stop accepting the newer JS.
+on:
+  push:
+    branches: [master, prod]
+    paths:
+      - "packages/mobile/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ota-update-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/mobile
+    env:
+      NPM_CONFIG_LEGACY_PEER_DEPS: "true"
+      EXPO_NO_TELEMETRY: "1"
+      EXPO_PUBLIC_API_URL: ${{ github.ref == 'refs/heads/prod' && 'https://api.buildpanda.io' || 'https://api.staging.buildpanda.io' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/mobile/package-lock.json
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Export the JS bundle
+        run: npx expo export --platform android
+
+      - name: Publish the update
+        env:
+          OTA_PUBLISH_TOKEN: ${{ secrets.OTA_PUBLISH_TOKEN }}
+        run: node scripts/publish-ota.mjs android

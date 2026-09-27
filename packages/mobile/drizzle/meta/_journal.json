@@ -1,0 +1,153 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788124362709,
+      "tag": "0000_chubby_human_cannonball",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788124716440,
+      "tag": "0001_lethal_bastion",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788127334331,
+      "tag": "0002_lonely_cardiac",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788129761555,
+      "tag": "0003_lonely_daredevil",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788131175463,
+      "tag": "0004_common_thor_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788134147091,
+      "tag": "0005_clever_sumo",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788136651061,
+      "tag": "0006_daily_report",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788144293208,
+      "tag": "0007_recent_docs",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788151200000,
+      "tag": "0008_rich_text_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1788343645349,
+      "tag": "0009_look_ahead_building",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1788367461387,
+      "tag": "0010_daily_log_entry_building",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1788367770231,
+      "tag": "0011_daily_log_building",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1788525214901,
+      "tag": "0012_rfi_question_html",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1788541472305,
+      "tag": "0013_material_order_phase",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1788627872305,
+      "tag": "0014_material_approvals",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1788980276076,
+      "tag": "0015_black_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1788987414134,
+      "tag": "0016_strange_mongoose",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1789152061603,
+      "tag": "0017_material_order_needed_by",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1789152655456,
+      "tag": "0018_field_close_the_loop",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1789478759744,
+      "tag": "0019_building_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1789490833913,
+      "tag": "0020_project_document_folders",
+      "breakpoints": true
+    }
+  ]
+}

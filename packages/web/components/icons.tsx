@@ -64,19 +64,6 @@ export function ShieldCheckIcon(props: IconProps) {
   );
 }
 
-export function DroneIcon(props: IconProps) {
-  return (
-    <svg {...base(props)}>
-      <rect x="9" y="9" width="6" height="6" rx="1" />
-      <path d="M9 9 5 5M15 9l4-4M9 15l-4 4M15 15l4 4" />
-      <circle cx="4" cy="4" r="2" />
-      <circle cx="20" cy="4" r="2" />
-      <circle cx="4" cy="20" r="2" />
-      <circle cx="20" cy="20" r="2" />
-    </svg>
-  );
-}
-
 export function ClipboardIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

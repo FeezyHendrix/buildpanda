@@ -1,11 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Spinner } from "@/components/atoms/spinner";
 import { Navbar } from "@/components/organisms/navbar";
 import { UserMenu } from "@/components/molecules/user-menu";
-import { OrgSwitcher } from "@/components/molecules/org-switcher";
 import {
   SuiteSwitcher,
   LAST_SUITE_KEY,
@@ -14,12 +13,20 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { AbilityProvider } from "@/contexts/ability-context";
 import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
+import { useOrgPermissions } from "@/hooks/use-organization";
 import logo from "@/assets/images/logo.svg";
 
 export { LAST_SUITE_KEY, SUITE_SALES };
 export { SUITE_CONSTRUCTION } from "@/components/molecules/suite-switcher";
 
-const salesNav: Array<{ label: string; to: string; flag?: string; icon: ReactNode }> = [
+const salesNav: Array<{
+  label: string;
+  to: string;
+  flag?: string;
+  permission?: { resource: string; action: string };
+  section?: string;
+  icon: ReactNode;
+}> = [
   {
     label: "Dashboard",
     to: "/sales",
@@ -59,8 +66,22 @@ const salesNav: Array<{ label: string; to: string; flag?: string; icon: ReactNod
     ),
   },
   {
+    label: "Team",
+    to: "/sales/team",
+    permission: { resource: "teamMembers", action: "manage" },
+    section: "People & Admin",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <polyline points="16 11 18 13 22 9" />
+      </svg>
+    ),
+  },
+  {
     label: "Settings",
     to: "/sales/settings",
+    section: "People & Admin",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
         <circle cx="12" cy="12" r="3" />
@@ -79,7 +100,7 @@ function SalesNavLink({ item }: { item: (typeof salesNav)[0] }) {
         cn(
           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors",
           "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          isActive && "bg-[#EDEDED] text-gray-900",
+          isActive && "bg-gray-100 text-gray-900",
         )
       }
     >
@@ -125,9 +146,19 @@ function SalesSidebar({
   onOpen: () => void;
 }) {
   const { data: flagsData } = useFeatureFlags();
-  const visibleNav = salesNav.filter(
-    (item) => !item.flag || (flagsData?.flags.find((f) => f.key === item.flag)?.enabled ?? true),
-  );
+  const { data: permissionsData } = useOrgPermissions();
+  // Not cosmetic: OrgPermissionGate redirects to /dashboard, so an unpermitted
+  // link would eject the user out of the sales suite.
+  const visibleNav = salesNav.filter((item) => {
+    const flagOn =
+      !item.flag || (flagsData?.flags.find((f) => f.key === item.flag)?.enabled ?? true);
+    const permitted =
+      !item.permission ||
+      (permissionsData?.permissions?.[item.permission.resource] ?? []).includes(
+        item.permission.action,
+      );
+    return flagOn && permitted;
+  });
 
   return (
     <>
@@ -167,19 +198,18 @@ function SalesSidebar({
           className={cn(
             "absolute right-0 top-1/2 -translate-y-1/2 translate-x-full",
             "flex h-14 w-7 items-center justify-center",
-            "rounded-r-xl border border-l-0 border-[#EFEFEF] bg-[#F8F8F8] shadow-sm",
+            "rounded-r-xl border border-l-0 border-line-disabled bg-surface-alt shadow-sm",
             "lg:hidden",
           )}
         >
           <ChevronRightIcon />
         </button>
 
-        <aside className="flex h-full w-[240px] flex-col border-r border-[#EFEFEF] bg-[#F8F8F8]">
+        <aside className="flex h-full w-[240px] flex-col border-r border-line-disabled bg-surface-alt">
           <div className="flex flex-col gap-3 px-3 pb-4 pt-5">
             <Link to="/sales" className="px-1" aria-label="BuildPanda home">
               <img src={logo} alt="BuildPanda" className="h-8 w-auto" />
             </Link>
-            <OrgSwitcher />
           </div>
 
           <div className="px-3 pb-1">
@@ -187,12 +217,19 @@ function SalesSidebar({
           </div>
 
           <nav className="flex flex-1 flex-col gap-1 px-3 pt-3">
-            {visibleNav.map((item) => (
-              <SalesNavLink key={item.to} item={item} />
+            {visibleNav.map((item, index) => (
+              <Fragment key={item.to}>
+                {item.section && item.section !== visibleNav[index - 1]?.section ? (
+                  <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    {item.section}
+                  </p>
+                ) : null}
+                <SalesNavLink item={item} />
+              </Fragment>
             ))}
           </nav>
 
-          <div className="border-t border-[#EFEFEF] px-3 py-3">
+          <div className="border-t border-line-disabled px-3 py-3">
             <UserMenu
               variant="full"
               name={user.name}

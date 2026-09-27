@@ -27,6 +27,7 @@ interface Props {
   onReady?: (handle: RichTextEditorHandle) => void;
   placeholder?: string;
   disabled?: boolean;
+  ariaLabel?: string;
 }
 
 // Persist only the stable file id on the image node, never the src. The src is
@@ -99,6 +100,7 @@ export function RichTextEditor({
   onReady,
   placeholder,
   disabled,
+  ariaLabel,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -112,6 +114,8 @@ export function RichTextEditor({
     ],
     content: value,
     editable: !disabled,
+    // never undefined: tiptap reads editorProps.dispatchTransaction without a guard
+    editorProps: ariaLabel ? { attributes: { "aria-label": ariaLabel } } : {},
     onUpdate: ({ editor: e }) => onChange(e.getHTML(), e.getText()),
   });
 

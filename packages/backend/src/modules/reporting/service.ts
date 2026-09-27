@@ -1,10 +1,23 @@
 import type { Knex } from "knex";
 import type { Currency } from "../projects/types.ts";
 import { budgetRepository } from "../budget/repository.ts";
+import { financesRepository } from "../finances/repository.ts";
+import { stageBudgetLines } from "../finances/finance-summary.ts";
+import { stageCostsService } from "../finances/stage-costs.ts";
+import { purchaseOrdersRepository } from "../purchase-orders/repository.ts";
+import { stagesRepository } from "../stages/repository.ts";
+import { stagesService } from "../stages/service.ts";
+import { transactionsRepository } from "../transactions/repository.ts";
 import { invoicesRepository } from "../invoices/repository.ts";
 import { invoicesService } from "../invoices/service.ts";
 import { pandaAiRepository } from "../panda-ai/repository.ts";
 import { toInsight } from "../panda-ai/types.ts";
+import {
+  cashFlowCurve,
+  hasStageFigures,
+  stageBudgetPoints,
+  sumByPeriod,
+} from "./finance-position.ts";
 import type {
   BudgetCategoryPoint,
   CashFlowPoint,
@@ -79,6 +92,18 @@ export function reportingService(db: Knex) {
   const invoiceRepo = invoicesRepository(db);
   const invoices = invoicesService(invoiceRepo);
   const pandaAi = pandaAiRepository(db);
+  const stagesRepo = stagesRepository(db);
+  // Only the priced billing-sheet months are wanted here, which is all this
+  // narrow wiring of the stages service can answer.
+  const stages = stagesService(stagesRepo, async () => undefined);
+  const transactionsRepo = transactionsRepository(db);
+  // The overview must answer with the same money the finance pages publish, so
+  // it reads the stage cost model rather than the hand-kept budget sheet.
+  const stageCosts = stageCostsService({
+    finances: financesRepository(db),
+    transactions: transactionsRepo,
+    purchaseOrders: purchaseOrdersRepository(db),
+  });
 
   async function buildSnapshot(
     projectId: string,
@@ -102,9 +127,6 @@ export function reportingService(db: Knex) {
       changeApproved,
       changePending,
       phases,
-      dueActionItems,
-      blockedActionItems,
-      openQueries,
       pendingApprovals,
       expiringPermits,
       overdueActivities,
@@ -118,6 +140,20 @@ export function reportingService(db: Knex) {
       recentUpdates,
       latestUpdate,
       recentDailyLogs,
+      lateMaterialOrders,
+      pendingMaterialApprovals,
+      projectDates,
+      eotPosition,
+      delayedActivities,
+      timelineShift,
+      overdueRfis,
+      overdueTasks,
+      expiredPermits,
+      expiringSoonPermits,
+      stageRows,
+      stageCostRows,
+      monthlyActual,
+      sovLines,
     ] = await Promise.all([
       db<ProjectInfoRow>("projects")
         .select("name", "status", "currency", "progress_percent")
@@ -161,21 +197,8 @@ export function reportingService(db: Knex) {
         .where({ project_id: projectId })
         .select("id", "name", "status", "progress_percent", "sort_order")
         .orderBy("sort_order", "asc"),
-      db("action_items")
-        .where({ project_id: projectId })
-        .whereNot("status", "Resolved")
-        .count<{ count: string }[]>("id as count")
-        .first(),
-      db("action_items")
-        .where({ project_id: projectId, status: "Blocked" })
-        .count<{ count: string }[]>("id as count")
-        .first(),
-      db("queries")
-        .where({ project_id: projectId, status: "Open" })
-        .count<{ count: string }[]>("id as count")
-        .first(),
       db("approvals")
-        .where({ project_id: projectId })
+        .where({ project_id: projectId, kind: "client" })
         .whereIn("status", ["Pending", "Resubmit"])
         .count<{ count: string }[]>("id as count")
         .first(),
@@ -240,6 +263,96 @@ export function reportingService(db: Knex) {
         .where("created_at", ">=", recentCutoff)
         .count<{ count: string }>("* as count")
         .first(),
+      // Late is computed from the dates, never a stored status: wanted before
+      // today and not delivered, or promised after it was wanted.
+      db("material_orders")
+        .where({ project_id: projectId })
+        .whereNotIn("status", ["Delivered", "Cancelled", "Rejected"])
+        .where((q) =>
+          q
+            .where("needed_by", "<", db.raw("to_char(now(), 'YYYY-MM-DD')"))
+            .orWhereRaw("expected_delivery_at IS NOT NULL AND expected_delivery_at > needed_by"),
+        )
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("approvals")
+        .where({ project_id: projectId, kind: "material" })
+        .whereIn("status", ["Pending", "Resubmit"])
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("projects")
+        .where({ id: projectId })
+        .select("completion_date", "revised_completion_date")
+        .first<{ completion_date: string | null; revised_completion_date: string | null } | undefined>(),
+      // A time claim is a change request of type eot_only; the retired EOT
+      // register is no longer read.
+      db("change_requests")
+        .where({ project_id: projectId, type: "eot_only" })
+        .select<Array<{ status: string; time_impact_days: number; days_awarded: number | null }>>(
+          "status",
+          "time_impact_days",
+          "days_awarded",
+        ),
+      // Activities carrying an OPEN delay, with the time booked against them —
+      // "9 delayed activities" meant nothing without the days.
+      db("activity_delays as d")
+        .join("activities as a", "a.id", "d.activity_id")
+        .where("a.project_id", projectId)
+        .whereNull("d.resolved_at")
+        .first<{ activities: string; days: string | null } | undefined>(
+          db.raw("count(DISTINCT d.activity_id) as activities"),
+          db.raw("COALESCE(SUM(d.days_lost), 0) as days"),
+        ),
+      // How far the projected finish has moved from the baseline programme.
+      db("activities")
+        .where({ project_id: projectId })
+        .whereNotNull("baseline_end_at")
+        .first<{ shift: string | null } | undefined>(
+          db.raw(
+            "MAX(EXTRACT(EPOCH FROM (planned_end_at - baseline_end_at)) / 86400) as shift",
+          ),
+        ),
+      db("rfis")
+        .where({ project_id: projectId })
+        .whereNotIn("status", ["Answered", "Closed", "Void", "Draft"])
+        .whereNotNull("due_date")
+        .where("due_date", "<", db.raw("CURRENT_DATE"))
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("tasks as t")
+        .join("task_columns as c", "c.id", "t.column_id")
+        .where("t.project_id", projectId)
+        .whereNot("c.status", "Done")
+        .whereNotNull("t.due_date")
+        .where("t.due_date", "<", db.raw("CURRENT_DATE"))
+        .count<{ count: string }[]>("t.id as count")
+        .first(),
+      db("permits")
+        .where({ project_id: projectId })
+        .where((q) =>
+          q
+            .where("status", "Expired")
+            .orWhere((qq) =>
+              qq
+                .whereNot("status", "Rejected")
+                .whereNotNull("expiry_date")
+                .where("expiry_date", "<", db.raw("CURRENT_DATE")),
+            ),
+        )
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("permits")
+        .where({ project_id: projectId })
+        .whereNotIn("status", ["Expired", "Rejected"])
+        .whereNotNull("expiry_date")
+        .where("expiry_date", ">=", db.raw("CURRENT_DATE"))
+        .where("expiry_date", "<=", db.raw("CURRENT_DATE + 30"))
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      stagesRepo.listByProject(projectId),
+      stageCosts.byProject(projectId).catch(() => ({ stages: [] })),
+      transactionsRepo.sumByMonth(projectId),
+      stages.listScheduleOfValues(projectId).catch(() => []),
     ]);
 
     if (!project) {
@@ -249,7 +362,7 @@ export function reportingService(db: Knex) {
     const deltaByCategory = new Map(
       budgetDeltas.map((d) => [d.budget_category_id, d]),
     );
-    const categoryPoints: BudgetCategoryPoint[] = categories.map((c) => {
+    const sheetPoints: BudgetCategoryPoint[] = categories.map((c) => {
       const delta = deltaByCategory.get(c.id);
       const planned = round2(
         toNumber(c.planned) + (delta?.approved_change ?? 0),
@@ -268,6 +381,51 @@ export function reportingService(db: Knex) {
         variance: round2(planned - actual),
       };
     });
+
+    // Cost is recorded against stages, so the stage lines are the real budget
+    // position. The hand-kept budget sheet is only the fallback, for a project
+    // that keeps its costs there and has no stage figures at all.
+    const stagePoints = stageBudgetPoints(
+      stageBudgetLines(
+        stageRows.map((row) => ({
+          stageId: row.id,
+          name: row.name,
+          scheduledValue: toNumber(row.value),
+          expectedCost: toNumber(row.expected_cost ?? 0),
+        })),
+        new Map(
+          stageCostRows.stages.map((c) => [
+            c.stageId,
+            { committed: c.committed, actual: c.actual },
+          ]),
+        ),
+      ),
+    );
+    const categoryPoints = hasStageFigures(stagePoints) ? stagePoints : sheetPoints;
+
+    /*
+     * The S-curve: what the job is meant to bill each month against what it has
+     * actually cost. Planned comes from the billing sheet the QS keeps (the
+     * priced schedule of values), falling back to the programme's cost phasing
+     * and then to the hand-entered cash-flow periods. Actual is the expense
+     * ledger by month, on the same credit rules as the stage figures — both are
+     * records of money moved off-platform, never movements made here.
+     */
+    const plannedMonths = sumByPeriod(
+      sovLines.length > 0
+        ? sovLines.map((line) => ({ period: line.period, amount: toNumber(line.periodAmount) }))
+        : programmePhasing.length > 0
+          ? programmePhasing.map((p) => ({ period: p.period, amount: toNumber(p.planned_cost) }))
+          : periods.map((row) => ({ period: row.period, amount: toNumber(row.planned) })),
+    );
+    const actualMonths = sumByPeriod([
+      ...monthlyActual.map((row) => ({ period: row.month, amount: toNumber(row.total) })),
+      // A project that keeps its cash flow by hand still gets its actuals drawn.
+      ...(monthlyActual.length === 0
+        ? periods.map((row) => ({ period: row.period, amount: toNumber(row.actual) }))
+        : []),
+    ]);
+    const cashFlow = cashFlowCurve(plannedMonths, actualMonths);
 
     const totalPlanned = round2(
       categoryPoints.reduce((sum, c) => sum + c.planned, 0),
@@ -343,6 +501,17 @@ export function reportingService(db: Knex) {
     const latestUpdateAt = (latestUpdate as { last: string | null } | undefined)
       ?.last;
 
+    // Awarded days survive execution, so an executed claim still counts as time
+    // won; only a claim still awaiting a decision counts as pending.
+    const eotDays = { approved: 0, pending: 0 };
+    for (const claim of eotPosition) {
+      if (claim.status === "Approved" || claim.status === "Executed") {
+        eotDays.approved += toNumber(claim.days_awarded);
+      } else if (claim.status === "Submitted") {
+        eotDays.pending += toNumber(claim.time_impact_days);
+      }
+    }
+
     const insight = latestInsight ? toInsight(latestInsight) : null;
     const trend: HealthPoint[] = trendRows
       .map((row) => ({
@@ -371,7 +540,7 @@ export function reportingService(db: Knex) {
             .length,
           categories: categoryPoints,
         },
-        cashFlow: { points: toCashFlowCurve(periods) },
+        cashFlow: { points: cashFlow },
         invoices: {
           count: invoiceList.length,
           invoicedTotal,
@@ -394,6 +563,18 @@ export function reportingService(db: Knex) {
         },
       },
       schedule: {
+        completionDate: projectDates?.completion_date ?? null,
+        revisedCompletionDate: projectDates?.revised_completion_date ?? null,
+        eotDaysApproved: eotDays.approved,
+        eotDaysPending: eotDays.pending,
+        // Needs the contract's LD rate and cap, which arrive with the contract
+        // terms; a made-up figure here would be a claim, not a report.
+        ldExposure: null,
+        delayedActivities: {
+          count: toNumber(delayedActivities?.activities),
+          daysLost: toNumber(delayedActivities?.days),
+        },
+        timelineShiftDays: Math.round(toNumber(timelineShift?.shift)),
         progressPercent: toNumber(project.progress_percent),
         phasesInProgress,
         phasesUpcoming,
@@ -409,14 +590,17 @@ export function reportingService(db: Knex) {
             : null,
       },
       operations: {
-        dueActionItems: toNumber(dueActionItems?.count),
-        blockedActionItems: toNumber(blockedActionItems?.count),
-        openQueries: toNumber(openQueries?.count),
         pendingApprovals: toNumber(pendingApprovals?.count),
         expiringPermits: toNumber(expiringPermits?.count),
         overdueActivities: toNumber(overdueActivities?.count),
         upcomingKeyDates: toNumber(upcomingKeyDates?.count),
         missedKeyDates: toNumber(missedKeyDates?.count),
+        lateMaterialOrders: toNumber(lateMaterialOrders?.count),
+        pendingMaterialApprovals: toNumber(pendingMaterialApprovals?.count),
+        overdueRfis: toNumber(overdueRfis?.count),
+        overdueTasks: toNumber(overdueTasks?.count),
+        expiredPermits: toNumber(expiredPermits?.count),
+        expiringSoonPermits: toNumber(expiringSoonPermits?.count),
       },
       health: {
         score: insight?.healthScore ?? null,

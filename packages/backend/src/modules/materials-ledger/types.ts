@@ -38,6 +38,12 @@ export interface LedgerEntry {
   materialName: string;
   unit: string;
   locationKey: string;
+  stageId: string | null;
+  stageName: string | null;
+  approvalStatus: string;
+  approvedById: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
   quantity: number;
   stockDelta: number;
   occurredAt: string;
@@ -51,6 +57,12 @@ export interface LedgerEntry {
   reversalForEntryId: string | null;
   reason: string | null;
   notesHtml: string | null;
+  /** Who the goods came from, snapshotted on the receipt. */
+  supplier: string | null;
+  /** Delivery-note number the receipt was signed on. */
+  deliveryNote: string | null;
+  /** Approved by the same person who logged it — maker/checker breached. */
+  selfApproved: boolean;
   files: LedgerEntryFile[];
   createdAt: string;
 }
@@ -95,6 +107,12 @@ export interface LedgerEntryRow {
   material_name_snapshot: string;
   unit_snapshot: string;
   location_key: string;
+  stage_id: string | null;
+  stage_name: string | null;
+  approval_status: string;
+  approved_by_id: string | null;
+  approved_by_name: string | null;
+  approved_at: string | null;
   quantity: string;
   stock_delta: string;
   occurred_at: string;
@@ -108,6 +126,9 @@ export interface LedgerEntryRow {
   reversal_for_entry_id: string | null;
   reason: string | null;
   notes_html: string | null;
+  supplier: string | null;
+  delivery_note: string | null;
+  self_approved: boolean;
   created_at: string;
 }
 
@@ -127,4 +148,51 @@ export interface StockRow {
   low_stock_threshold: string | null;
   total_received: string;
   total_used: string;
+}
+
+export interface PostEntryInput {
+  id: string;
+  projectId: string;
+  idempotencyKey: string;
+  entryType: LedgerEntryType;
+  materialId: string;
+  materialName: string;
+  unit: string;
+  locationKey: string;
+  stageId: string | null;
+  /**
+   * "Pending" is a claim someone still has to accept; "Approved" is a fact
+   * already established elsewhere (a signed delivery note, a void).
+   */
+  approvalStatus: "Pending" | "Approved";
+  supplier: string | null;
+  deliveryNote: string | null;
+  quantity: number;
+  stockDelta: number;
+  occurredAt: string;
+  timestampSuspect: boolean;
+  loggedById: string | null;
+  materialOrderId: string | null;
+  taskId: string | null;
+  activityId: string | null;
+  reversalForEntryId: string | null;
+  reason: string | null;
+  notesHtml: string | null;
+  fileIds: string[];
+  actorId: string | null;
+}
+
+export interface PostEntryResult {
+  entryId: string;
+  duplicate: boolean;
+  negativeStock: boolean;
+  onHandQty: number;
+}
+
+export interface CatalogPolicyPatch {
+  low_stock_threshold?: string | null;
+  reorder_quantity?: string | null;
+  lead_time_days?: number | null;
+  preferred_supplier_id?: string | null;
+  auto_reorder_enabled?: boolean;
 }

@@ -29,6 +29,7 @@ import {
   SITE_CONTROL_ENTRIES,
   FINANCE_ENTRIES,
   CLIENT_ENTRIES,
+  TASKS_ENTRY,
   type ProjectNavItem,
   type GroupNavItem,
 } from "./project-sidebar/constants";
@@ -95,7 +96,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
 
   const items = useMemo<ProjectNavItem[]>(
     () =>
-      NAV_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      NAV_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -103,7 +104,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const progressItems = useMemo<GroupNavItem[]>(
     () =>
-      PROGRESS_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      PROGRESS_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -111,7 +112,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const operationsItems = useMemo<GroupNavItem[]>(
     () =>
-      OPERATIONS_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      OPERATIONS_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -119,7 +120,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const materialsItems = useMemo<GroupNavItem[]>(
     () =>
-      MATERIALS_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      MATERIALS_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -127,7 +128,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const siteControlItems = useMemo<GroupNavItem[]>(
     () =>
-      SITE_CONTROL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      SITE_CONTROL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -135,7 +136,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const financeItems = useMemo<GroupNavItem[]>(
     () =>
-      FINANCE_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      FINANCE_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -143,7 +144,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const clientItems = useMemo<ProjectNavItem[]>(
     () =>
-      CLIENT_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      CLIENT_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -185,7 +186,11 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   // multi-building nav still shows them scoped under the active building.
   const scopedOperationsSlugs = ["schedules/daily-log", "look-aheads"];
   const scopedOperationsItems = operationsItems.filter(item => scopedOperationsSlugs.includes(item.slug));
-  const tasksItem = operationsItems.find(item => item.slug === "tasks") ?? null;
+  // Tasks stands alone, between the top links and the groups.
+  const tasksItem: ProjectNavItem | null =
+    isOn(TASKS_ENTRY.flag) && canViewSection(access, TASKS_ENTRY.flag, TASKS_ENTRY.resource, TASKS_ENTRY.action)
+      ? { ...TASKS_ENTRY, to: `/project/${project.id}/${TASKS_ENTRY.slug}` }
+      : null;
 
   return (
     <>
@@ -437,6 +442,9 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                         onClose={onClose}
                       />
                     ))}
+                    {tasksItem && (
+                      <ProjectNavLink item={tasksItem} onClose={onClose} />
+                    )}
                     {progressItems.length > 0 && (
                       <SidebarNavGroup
                         label="Progress"

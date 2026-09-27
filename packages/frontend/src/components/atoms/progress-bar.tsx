@@ -14,10 +14,10 @@ interface ProgressBarProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const fillStyles: Record<ProgressTone, string> = {
-  brand: "bg-[#004DE7]",
+  brand: "bg-primary-500",
   success: "bg-success-500",
-  warning: "bg-[#C26A00]",
-  danger: "bg-[#C72525]",
+  warning: "bg-warning-500",
+  danger: "bg-negative-500",
   neutral: "bg-gray-700",
 };
 

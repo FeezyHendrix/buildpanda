@@ -1,4 +1,6 @@
-import { type InvoiceStatus, type InvoiceType, type ExtractedInvoice } from "@/hooks/use-invoices";
+import { type InvoiceDirection, type InvoiceType, type ExtractedInvoice } from "@/hooks/use-invoices";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { Money } from "@/lib/money";
 
 export interface UpsertLineItem {
   description: string;
@@ -11,7 +13,13 @@ export interface UpsertInvoiceValues {
   vendorName: string;
   trade: string;
   number: string;
-  status: InvoiceStatus;
+  /**
+   * Which way the certificate points. A client invoice is RECEIVABLE — the
+   * party on it is the employer, never a "vendor"; a supplier bill is PAYABLE.
+   */
+  direction: InvoiceDirection;
+  /** The contract this bills against; the main contract by default. */
+  contractId: string;
   invoiceType: InvoiceType;
   currency: string;
   vatRate: string;
@@ -35,25 +43,30 @@ export interface InvoiceTotals {
   netPayable: number;
 }
 
-export const STATUSES: InvoiceStatus[] = [
-  "Draft",
-  "Sent",
-  "Approved",
-  "PartiallyPaid",
-  "Paid",
-  "Overdue",
+/**
+ * The certificate types we raise to the employer are receivable; a vendor or
+ * material bill is what a supplier sends us. Picking the type therefore picks
+ * the direction, which is what stops the employer being labelled "Vendor".
+ */
+export const TYPES: { value: InvoiceType; label: string; direction: InvoiceDirection }[] = [
+  { value: "progress", label: "Progress / IPC", direction: "receivable" },
+  { value: "advance", label: "Advance / mobilisation", direction: "receivable" },
+  { value: "variation", label: "Variation", direction: "receivable" },
+  { value: "final", label: "Final account", direction: "receivable" },
+  { value: "vendor", label: "Vendor invoice", direction: "payable" },
+  { value: "material", label: "Material", direction: "payable" },
 ];
 
-export const TYPES: { value: InvoiceType; label: string }[] = [
-  { value: "vendor", label: "Vendor invoice" },
-  { value: "progress", label: "Progress / IPC" },
-  { value: "variation", label: "Variation" },
-  { value: "final", label: "Final account" },
-  { value: "material", label: "Material" },
-];
+export function directionForType(type: InvoiceType): InvoiceDirection {
+  return TYPES.find((entry) => entry.value === type)?.direction ?? "payable";
+}
 
-export const inputClass =
-  "h-11 w-full rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-primary-500/20 focus-visible:bg-white transition-colors";
+/** What the other party is called on this invoice. */
+export function partyLabel(direction: InvoiceDirection): string {
+  return direction === "payable" ? "Vendor / payee" : "Client / employer";
+}
+
+export const inputClass = INPUT_CLASS;
 
 export function emptyLine(): UpsertLineItem {
   return { description: "", quantity: "1", unit: "", unitRate: "" };
@@ -63,10 +76,11 @@ export const EMPTY_INVOICE: UpsertInvoiceValues = {
   vendorName: "",
   trade: "",
   number: "",
-  status: "Draft",
+  direction: "payable",
+  contractId: "",
   invoiceType: "vendor",
   currency: "NGN",
-  vatRate: "7.5",
+  vatRate: "0",
   whtRate: "0",
   retentionRate: "0",
   issueDate: "",
@@ -79,25 +93,35 @@ export const EMPTY_INVOICE: UpsertInvoiceValues = {
 };
 
 export function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+  return Money.of(n).round(2).toNumber();
 }
 
 export function lineAmount(line: UpsertLineItem): number {
-  return round2(Number(line.quantity || "0") * Number(line.unitRate || "0"));
+  return Money.of(line.quantity || "0")
+    .mul(line.unitRate || "0")
+    .round(2)
+    .toNumber();
 }
 
 export function computeTotals(values: UpsertInvoiceValues): InvoiceTotals {
-  const subtotal = round2(
-    values.lineItems.reduce((sum, li) => sum + lineAmount(li), 0),
-  );
-  const vat = round2((subtotal * Number(values.vatRate || "0")) / 100);
-  const wht = round2((subtotal * Number(values.whtRate || "0")) / 100);
-  const retention = round2(
-    (subtotal * Number(values.retentionRate || "0")) / 100,
-  );
-  const totalInvoiced = round2(subtotal + vat);
-  const netPayable = round2(totalInvoiced - wht - retention);
-  return { subtotal, vat, wht, retention, totalInvoiced, netPayable };
+  const subtotal = Money.sum(
+    values.lineItems.map((li) =>
+      Money.of(li.quantity || "0").mul(li.unitRate || "0"),
+    ),
+  ).round(2);
+  const vat = subtotal.percent(values.vatRate || "0").round(2);
+  const wht = subtotal.percent(values.whtRate || "0").round(2);
+  const retention = subtotal.percent(values.retentionRate || "0").round(2);
+  const totalInvoiced = subtotal.add(vat).round(2);
+  const netPayable = totalInvoiced.sub(wht).sub(retention).round(2);
+  return {
+    subtotal: subtotal.toNumber(),
+    vat: vat.toNumber(),
+    wht: wht.toNumber(),
+    retention: retention.toNumber(),
+    totalInvoiced: totalInvoiced.toNumber(),
+    netPayable: netPayable.toNumber(),
+  };
 }
 
 export function countValidLines(values: UpsertInvoiceValues): number {
@@ -106,8 +130,17 @@ export function countValidLines(values: UpsertInvoiceValues): number {
   ).length;
 }
 
+/**
+ * Trade is required by the API, and it used to sit inside a collapsed section —
+ * so Save answered 400 with nothing on screen. It is a first-class field now
+ * and the form will not submit without it.
+ */
 export function isInvoiceValid(values: UpsertInvoiceValues): boolean {
-  return values.vendorName.trim().length > 0 && countValidLines(values) > 0;
+  return (
+    values.vendorName.trim().length > 0 &&
+    values.trade.trim().length > 0 &&
+    countValidLines(values) > 0
+  );
 }
 
 export function sanitizeInvoice(

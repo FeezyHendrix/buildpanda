@@ -17,6 +17,7 @@ import logo from "@/assets/images/logo.svg";
 interface ProjectSummaryData {
   projectTitle: string;
   projectType: ProjectType | null;
+  country: string | null;
   locationState: string | null;
   city: string;
   buildingType: string | null;
@@ -48,36 +49,6 @@ function formatBudget(currency: string, range: [number, number]): string {
   return `${formatCurrency(range[0], currency, { whole: true })} – ${formatCurrency(range[1], currency, { whole: true })}`;
 }
 
-const PHASES = [
-  {
-    title: "Site Survey & Soil Testing",
-    duration: "Expected: 2 Weeks",
-    description: "Required for foundation integrity and structural design.",
-  },
-  {
-    title: "Permitting & Approvals",
-    duration: "Expected: 4–6 Weeks",
-    description:
-      "Includes LASBCA documentation and environmental clearance.",
-  },
-  {
-    title: "Foundation & Substructure",
-    duration: "Expected: 8 Weeks",
-    description: "Critical path milestone for structural stability.",
-  },
-  {
-    title: "Superstructure & Finishing",
-    duration: "Expected: 20–24 Weeks",
-    description: "Final architectural and utility installations.",
-  },
-];
-
-const DOCUMENTS = [
-  "Certificate of Ownership",
-  "Environmental Impact Assessment",
-  "Building Plan Approval (LASPPPA)",
-];
-
 const PDF_PAGE_HEIGHT = 842;
 
 function BlueprintPage({
@@ -95,25 +66,25 @@ function BlueprintPage({
     timelineOptions.find((t) => t.id === data.timeline)?.label ??
     TIMELINES.find((t) => t.id === data.timeline)?.label ??
     "-";
-  const locationText = [data.city, data.locationState]
+  const locationText = [data.city.trim(), data.locationState?.trim(), data.country]
     .filter(Boolean)
     .join(", ");
 
   if (pageIndex === 0) {
     return (
       <div className="space-y-0">
-        <div className="flex items-start justify-between border-b border-gray-200 pb-6">
+        <div className="flex items-start justify-between border-b border-line pb-6">
           <img src={logo} alt="BuildPanda" className="h-6 lg:h-8" />
           <div className="flex-1 text-right">
-            <h2 className="text-sm lg:text-xl font-bold text-black-500 text-balance">
+            <h2 className="text-sm lg:text-xl font-medium text-black-500 text-balance">
               Your Project Blueprint
             </h2>
             <p className="mt-1 text-xs text-gray-500 text-pretty">
-              AI-powered analysis and strategic roadmap for
+              A summary of what you entered for
             </p>
             {(data.projectTitle || locationText) && (
               <p className="mt-0.5 text-xs">
-                <span className="font-medium text-[#004DE7]">
+                <span className="font-medium text-primary-500">
                   {data.projectTitle}
                   {locationText ? ` at ${locationText}` : ""}
                 </span>
@@ -122,12 +93,12 @@ function BlueprintPage({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 border-b border-gray-200 py-6 sm:grid-cols-2 sm:gap-6">
+        <div className="grid grid-cols-1 gap-4 border-b border-line py-6 sm:grid-cols-2 sm:gap-6">
           <div>
             <p className="mb-1 text-xs font-medium text-gray-500">
               Estimated Cost Range
             </p>
-            <p className="text-base font-bold text-gray-900 sm:text-lg">
+            <p className="text-base font-medium text-gray-900 sm:text-lg">
               {formatBudget(data.currency, data.budget)}
             </p>
           </div>
@@ -135,54 +106,24 @@ function BlueprintPage({
             <p className="mb-1 text-xs font-medium text-gray-500">
               Estimated Timeline
             </p>
-            <p className="text-base font-bold text-gray-900 sm:text-lg">{timelineLabel}</p>
+            <p className="text-base font-medium text-gray-900 sm:text-lg">{timelineLabel}</p>
           </div>
         </div>
 
-        <div className="border-b border-gray-200 py-6">
-          <h3 className="mb-3 text-sm font-bold text-gray-900">
-            Uploaded Documents
-          </h3>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
-            {DOCUMENTS.map((doc) => (
-              <div key={doc} className="flex items-start gap-2">
-                <span className="mt-0.5 text-xs text-gray-400">•</span>
-                <span className="text-xs text-gray-700">{doc}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="pt-6">
-          <h3 className="mb-4 text-sm font-bold text-gray-900">
-            Project Roadmap
-          </h3>
-          <div className="space-y-4">
-            {PHASES.map((phase, idx) => (
-              <div key={phase.title} className="flex gap-4">
-                <p className="min-w-[50px] text-xs font-semibold text-gray-900">
-                  Phase {idx + 1}
-                </p>
-                <div className="flex-1">
-                  <h4 className="text-xs font-semibold text-gray-900">
-                    {phase.title}
-                  </h4>
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    {phase.duration}
-                  </p>
-                  <p className="text-xs text-gray-500">{phase.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/*
+          A record-of-truth system must not show documents that do not exist.
+          The review step used to list a Certificate of Ownership, an EIA and a
+          LASPPPA approval nobody had uploaded, beside a hard-coded house
+          roadmap labelled "AI-powered" (finding #11). Both are gone; the
+          summary below states only what was actually entered.
+        */}
       </div>
     );
   }
 
   return (
     <div className="space-y-0">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+      <div className="flex items-center justify-between border-b border-line pb-4">
         <img src={logo} alt="BuildPanda" className="h-6" />
         <span className="text-xs text-gray-400">
           {data.projectTitle} (continued)
@@ -190,7 +131,7 @@ function BlueprintPage({
       </div>
 
       <div className="py-6">
-        <h3 className="mb-4 text-sm font-bold text-gray-900">
+        <h3 className="mb-4 text-sm font-medium text-gray-900">
           Project Summary
         </h3>
         <div className="space-y-3">
@@ -244,7 +185,7 @@ function BlueprintPage({
 
 function SummaryLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between border-b border-gray-100 pb-2">
+    <div className="flex items-start justify-between border-b border-line-hair pb-2">
       <span className="text-xs text-gray-500">{label}</span>
       <span className="text-right text-xs font-medium text-gray-900">
         {value}
@@ -300,7 +241,7 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideMan
               className={cn(
                 "block w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors",
                 activePage === pageIdx
-                  ? "bg-[#F6F6F6] text-gray-900"
+                  ? "bg-surface-alt text-gray-900"
                   : "text-gray-500 hover:text-gray-700",
               )}
             >
@@ -310,7 +251,7 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideMan
         </div>
         <button
           type="button"
-          className="flex w-full items-center justify-end gap-1.5 text-sm font-medium text-[#004DE7] hover:opacity-80"
+          className="flex w-full items-center justify-end gap-1.5 text-sm font-medium text-primary-500 hover:opacity-80"
           onClick={() => window.print()}
         >
           <DownloadIcon />
@@ -323,7 +264,7 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideMan
         <div className="overflow-x-auto">
           <div
             ref={contentRef}
-            className="min-w-[300px] rounded-sm border border-gray-200 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] lg:p-8"
+            className="min-w-[300px] rounded-sm border border-line bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] lg:p-8"
             style={{ minHeight: PDF_PAGE_HEIGHT }}
           >
             <BlueprintPage data={data} pageIndex={activePage} hideManagement={hideManagement} />
@@ -345,7 +286,7 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideMan
                   className={cn(
                     "block w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium transition-colors",
                     activePage === pageIdx
-                      ? "bg-[#F6F6F6] text-gray-900"
+                      ? "bg-surface-alt text-gray-900"
                       : "text-gray-500 hover:text-gray-700",
                   )}
                 >
@@ -355,18 +296,18 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideMan
             </div>
             <button
               type="button"
-              className="mb-8 flex w-full items-center justify-end gap-2 text-sm font-medium text-[#004DE7] hover:opacity-80"
+              className="mb-8 flex w-full items-center justify-end gap-2 text-sm font-medium text-primary-500 hover:opacity-80"
               onClick={() => window.print()}
             >
               <DownloadIcon />
               Download PDF
             </button>
-            <hr className="mb-8 border-gray-200" />
+            <hr className="mb-8 border-line" />
           </div>
 
           <div className="space-y-5 lg:space-y-6">
             <div>
-              <h2 className="text-[22px] font-bold text-balance text-gray-900 lg:text-[25px]">
+              <h2 className="text-[22px] font-medium text-balance text-gray-900 lg:text-[25px]">
                 Ready to break ground?
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-pretty text-gray-500 lg:mt-3">
@@ -381,7 +322,7 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideMan
               </Button>
               <Button
                 variant="ghost"
-                className="w-full border border-[#004DE7] text-[#004DE7] hover:bg-[#004DE7]/5"
+                className="w-full border border-primary-500 text-primary-500 hover:bg-primary-500/5"
                 onClick={() => onEdit(1)}
               >
                 Modify Blueprint

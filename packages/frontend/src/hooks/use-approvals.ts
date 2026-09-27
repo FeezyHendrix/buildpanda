@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { approvalKeys } from "./query-keys";
+import { personalWorkKeys } from "./personal-work-keys";
 import { approvalsApi, type ApprovalCreateInput, type ApprovalUpdateInput } from "@/api/approvals";
 import type { ApprovalStatus } from "@/lib/project-types";
 
@@ -23,8 +24,10 @@ export function useCreateApproval() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ projectId, ...body }: ApprovalCreateInput & { projectId: string }) => approvalsApi.create(projectId, body),
-    onSuccess: (_d, { projectId }) =>
+    onSuccess: (_d, { projectId }) => Promise.all([
       qc.invalidateQueries({ queryKey: approvalKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 
@@ -32,8 +35,10 @@ export function useUpdateApproval() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ projectId, approvalId, ...body }: ApprovalUpdateInput & { projectId: string; approvalId: string }) => approvalsApi.update(projectId, approvalId, body),
-    onSuccess: (_d, { projectId }) =>
+    onSuccess: (_d, { projectId }) => Promise.all([
       qc.invalidateQueries({ queryKey: approvalKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 
@@ -41,8 +46,10 @@ export function useDeleteApproval() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ projectId, approvalId }: { projectId: string; approvalId: string }) => approvalsApi.delete(projectId, approvalId),
-    onSuccess: (_d, { projectId }) =>
+    onSuccess: (_d, { projectId }) => Promise.all([
       qc.invalidateQueries({ queryKey: approvalKeys.all(projectId) }),
+      qc.invalidateQueries({ queryKey: personalWorkKeys.all(projectId) }),
+    ]),
   });
 }
 

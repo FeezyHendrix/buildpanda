@@ -9,6 +9,7 @@
 export const PROJECT_TEMPLATES = [
   {
     id: "residential-new-build",
+    projectType: "build",
     name: "New build home",
     description:
       "Ground-up residential build: survey and permits through structure, finishes and handover.",
@@ -52,6 +53,7 @@ export const PROJECT_TEMPLATES = [
   },
   {
     id: "residential-renovation",
+    projectType: "renovate",
     name: "Renovation",
     description:
       "Whole-home renovation: strip-out, structural and services updates, then full refit.",
@@ -90,6 +92,7 @@ export const PROJECT_TEMPLATES = [
   },
   {
     id: "residential-extension",
+    projectType: "renovate",
     name: "Extension",
     description:
       "Single or double-storey extension: groundworks, shell, tie-in to the existing house and finishes.",
@@ -128,6 +131,7 @@ export const PROJECT_TEMPLATES = [
   },
   {
     id: "residential-fit-out",
+    projectType: "renovate",
     name: "Interior fit-out",
     description:
       "Interior-only fit-out of an existing shell: partitions, services, joinery and finishes.",
@@ -172,6 +176,7 @@ export interface ProjectTemplateStage {
 
 export interface ProjectTemplate {
   id: ProjectTemplateId;
+  projectType: "build" | "renovate";
   name: string;
   description: string;
   stages: readonly ProjectTemplateStage[];
@@ -195,6 +200,7 @@ export function stageDateRanges(stages: readonly ProjectTemplateStage[]): string
 
 export interface ProjectTemplateSummary {
   id: ProjectTemplateId;
+  projectType: ProjectTemplate["projectType"];
   name: string;
   description: string;
   stageCount: number;
@@ -207,6 +213,7 @@ export function toTemplateSummary(template: ProjectTemplate): ProjectTemplateSum
   const ranges = stageDateRanges(template.stages);
   return {
     id: template.id,
+    projectType: template.projectType,
     name: template.name,
     description: template.description,
     stageCount: template.stages.length,

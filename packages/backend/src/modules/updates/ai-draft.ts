@@ -34,7 +34,6 @@ export interface WeeklyDraftContext {
   completedActivities: string[];
   upcomingKeyDates: Array<{ label: string; date: string }>;
   pendingApprovals: number;
-  openQueries: number;
   photoUrls: string[];
 }
 
@@ -42,7 +41,7 @@ const SYSTEM_PROMPT = [
   "You are Panda AI, drafting a weekly progress update that a builder will review and send to the homeowner of a residential construction project.",
   "Write in warm, plain English a homeowner understands — no construction jargon, no hype.",
   "Use ONLY the facts in the provided JSON. Never invent work, dates, amounts or people that are not in the data. Repeat any dates and numbers exactly as given.",
-  "Structure the update as short plain-text paragraphs separated by blank lines: first what happened this week, then what is coming next, and — only if there are pending approvals or open questions — a final paragraph about decisions needed from the homeowner.",
+  "Structure the update as short plain-text paragraphs separated by blank lines: first what happened this week, then what is coming next, and — only if there are pending approvals — a final paragraph about decisions needed from the homeowner.",
   "No markdown, no headings, no bullet symbols, no emojis. Keep the whole update under 1800 characters.",
   'Respond with JSON: {"body": "<the update text>"}.',
 ].join(" ");
@@ -70,7 +69,7 @@ async function gatherWeeklyContext(
     .first<{ name: string; progress_percent: number } | undefined>("name", "progress_percent");
   if (!project) throw new NotFoundError("Project");
 
-  const [logs, stage, completed, keyDates, approvalRow, queryRow, photos] = await Promise.all([
+  const [logs, stage, completed, keyDates, approvalRow, photos] = await Promise.all([
     db("daily_logs")
       .where({ project_id: projectId })
       .where("log_date", ">=", isoDate(start))
@@ -101,13 +100,8 @@ async function gatherWeeklyContext(
       .limit(10)
       .select<Array<{ label: string; target_date: Date | string }>>("label", "target_date"),
     db("approvals")
-      .where({ project_id: projectId })
+      .where({ project_id: projectId, kind: "client" })
       .whereIn("status", ["Pending", "Resubmit"])
-      .count({ count: "*" })
-      .first<{ count: string | number } | undefined>(),
-    db("queries")
-      .where({ project_id: projectId })
-      .whereNot("status", "Closed")
       .count({ count: "*" })
       .first<{ count: string | number } | undefined>(),
     db("update_media as m")
@@ -139,7 +133,6 @@ async function gatherWeeklyContext(
       date: isoDate(new Date(keyDate.target_date)),
     })),
     pendingApprovals: Number(approvalRow?.count ?? 0),
-    openQueries: Number(queryRow?.count ?? 0),
     photoUrls: photos.map((photo) => photo.url),
   };
 }
@@ -174,14 +167,9 @@ export function buildFallbackBody(context: WeeklyDraftContext): string {
     lines.push("- No key dates are scheduled in the next two weeks.");
   }
 
-  if (context.pendingApprovals > 0 || context.openQueries > 0) {
+  if (context.pendingApprovals > 0) {
     lines.push("", "Decisions we need from you:");
-    if (context.pendingApprovals > 0) {
-      lines.push(`- ${context.pendingApprovals} approval(s) are waiting for your decision.`);
-    }
-    if (context.openQueries > 0) {
-      lines.push(`- ${context.openQueries} question(s) are still open.`);
-    }
+    lines.push(`- ${context.pendingApprovals} approval(s) are waiting for your decision.`);
   }
 
   return lines.join("\n").slice(0, MAX_BODY_LENGTH);

@@ -45,7 +45,7 @@ function ForecastRow({
     <div
       className={cn(
         "flex items-center justify-between rounded-[10px] px-3 py-2",
-        isToday ? "bg-white/15" : "",
+        isToday ? "bg-[#F6F6F6]" : "",
       )}
     >
       <div className="flex items-center gap-2.5">
@@ -55,7 +55,7 @@ function ForecastRow({
         <span
           className={cn(
             "text-[12px]",
-            isToday ? "font-semibold text-white" : "text-white/85",
+            isToday ? "font-semibold text-black-500" : "text-black-400",
           )}
         >
           {dayLabel(day.date, index)}
@@ -63,14 +63,14 @@ function ForecastRow({
       </div>
       <div className="flex items-center gap-2 tabular-nums">
         {day.precipitationMm > 0 && (
-          <span className="text-[10px] font-medium text-white/60">
+          <span className="text-[10px] font-medium text-black-300">
             {day.precipitationMm}mm
           </span>
         )}
-        <span className="text-[12px] font-bold text-white">
+        <span className="text-[12px] font-bold text-black-500">
           {Math.round(day.temperatureMaxC)}°
         </span>
-        <span className="text-[11px] text-white/60">
+        <span className="text-[11px] text-black-300">
           {Math.round(day.temperatureMinC)}°
         </span>
       </div>
@@ -95,25 +95,21 @@ export function WeatherDashboard({ projectId }: { projectId: string }) {
     >
       <Card
         padding="md"
-        className="overflow-hidden rounded-[16px] border-none bg-primary p-5 text-white lg:col-span-1"
-        style={{
-          backgroundImage:
-            "radial-gradient(130% 130% at 100% 0%, #3371EE 0%, #004DE7 50%, #0046D2 100%)",
-        }}
+        className="overflow-hidden rounded-[16px] p-5 lg:col-span-1"
       >
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-white/70">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-black-300">
               Weather
             </p>
             {forecast.data?.locationName && (
-              <p className="mt-0.5 text-[14px] font-semibold">
+              <p className="mt-0.5 text-[14px] font-semibold text-black-500">
                 {forecast.data.locationName}
               </p>
             )}
           </div>
           {current && (
-            <span className="text-[36px] leading-none drop-shadow-sm">
+            <span className="text-[36px] leading-none">
               {CONDITION_GLYPH[current.condition]}
             </span>
           )}
@@ -121,22 +117,22 @@ export function WeatherDashboard({ projectId }: { projectId: string }) {
 
         {current && (
           <div className="mt-2">
-            <p className="text-[40px] font-bold leading-none tabular-nums">
+            <p className="text-[40px] font-bold leading-none tabular-nums text-black-500">
               {Math.round(current.temperatureC)}°
             </p>
-            <p className="mt-1 text-[12px] text-white/80">
+            <p className="mt-1 text-[12px] text-black-300">
               {current.condition}
             </p>
-            <div className="mt-2 flex gap-4 text-[11px] text-white/70">
+            <div className="mt-2 flex gap-4 text-[11px] text-black-300">
               <span>
                 Wind{" "}
-                <span className="font-semibold text-white">
+                <span className="font-semibold text-black-500">
                   {current.windKph} km/h
                 </span>
               </span>
               <span>
                 Rain{" "}
-                <span className="font-semibold text-white">
+                <span className="font-semibold text-black-500">
                   {current.precipitationMm} mm
                 </span>
               </span>
@@ -149,7 +145,7 @@ export function WeatherDashboard({ projectId }: { projectId: string }) {
             <Spinner size="sm" />
           </div>
         ) : (
-          <div className="mt-4 flex flex-col gap-0.5 border-t border-white/15 pt-3">
+          <div className="mt-4 flex flex-col gap-0.5 border-t border-[#F0F0F0] pt-3">
             {days.slice(0, 5).map((day, index) => (
               <ForecastRow key={day.date} day={day} index={index} />
             ))}
@@ -159,7 +155,7 @@ export function WeatherDashboard({ projectId }: { projectId: string }) {
 
       <Card
         padding="md"
-        className="rounded-[16px] border-none bg-[#F8F8F8] p-5 flex flex-col px-0 py-0 lg:col-span-3"
+        className="rounded-[16px] p-5 flex flex-col px-0 py-0 lg:col-span-3"
       >
         <div className="flex items-center justify-between py-3 px-5">
           <div className="flex gap-2 items-center">
@@ -179,7 +175,7 @@ export function WeatherDashboard({ projectId }: { projectId: string }) {
             </span>
           )}
         </div>
-        <div className="bg-white rounded-[12px] h-full m-1 p-6 flex items-center">
+        <div className="h-full p-6 flex items-center">
           {analysis.isLoading ? (
             <div className="flex min-h-[200px] items-center justify-center w-full">
               <Spinner size="sm" />
@@ -261,10 +257,9 @@ export function WeatherDashboard({ projectId }: { projectId: string }) {
             </div>
           ) : (
             <EmptyState
-              title="No scheduled activities today due to weather"
-              // icon={(<ReactSVG src={icons.riskShield} />)}
-              description="Weather analysis is unavailable right now"
-              className="py-6"
+              title="No weather-affected activities today"
+              description="Weather analysis is unavailable right now."
+              variant="inline"
             />
           )}
         </div>

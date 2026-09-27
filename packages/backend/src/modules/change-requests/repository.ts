@@ -1,8 +1,12 @@
 import type { Knex } from "knex";
+import { generateId } from "../../lib/ids.ts";
 import type {
   ChangeCommentRow,
+  ChangeDelayRow,
   ChangeRequestRow,
   ChangeStatus,
+  ChangeStatusCountRow,
+  ChangeType,
   Currency,
 } from "./types.ts";
 
@@ -13,12 +17,16 @@ export interface NewChangeRequestRecord {
   description: string | null;
   description_html: string | null;
   reason: string | null;
+  reason_html: string | null;
   status: ChangeStatus;
+  type: ChangeType;
   cost_impact: string;
   time_impact_days: number;
   currency: Currency;
   submitted_by_id: string | null;
   assignee_id?: string | null;
+  stage_id?: string | null;
+  rfi_id?: string | null;
 }
 
 export interface ChangeRequestUpdatePatch {
@@ -26,6 +34,7 @@ export interface ChangeRequestUpdatePatch {
   description?: string | null;
   description_html?: string | null;
   reason?: string | null;
+  reason_html?: string | null;
   status?: ChangeStatus;
   cost_impact?: string;
   time_impact_days?: number;
@@ -33,6 +42,15 @@ export interface ChangeRequestUpdatePatch {
   decided_by_id?: string | null;
   decided_at?: string | null;
   assignee_id?: string | null;
+  estimate_id?: string | null;
+  type?: ChangeType;
+  stage_id?: string | null;
+  rfi_id?: string | null;
+  days_awarded?: number | null;
+  days_applied?: number;
+  rejected_reason?: string | null;
+  submitted_at?: string | null;
+  revisions?: string;
   updated_at?: string;
 }
 
@@ -43,7 +61,15 @@ const SELECT = [
   "c.description",
   "c.description_html",
   "c.reason",
+  "c.reason_html",
   "c.status",
+  "c.type",
+  "c.stage_id",
+  "c.rfi_id",
+  "c.days_awarded",
+  "c.rejected_reason",
+  "c.submitted_at",
+  "c.revisions",
   "c.cost_impact",
   "c.time_impact_days",
   "c.currency",
@@ -52,12 +78,17 @@ const SELECT = [
   "u.name as decided_by_name",
   "c.decided_at",
   "c.assignee_id",
+  "c.estimate_id",
   "asg.name as assignee_name",
   "c.created_at",
   "c.updated_at",
 ] as const;
 
 export function changeRequestsRepository(db: Knex) {
+  // projects.estimate_id arrives with the handoff workstream; until then a
+  // variation is recorded without an estimate reference.
+  const hasProjectEstimate = db.schema.hasColumn("projects", "estimate_id").catch(() => false);
+
   function base() {
     return db("change_requests as c")
       .leftJoin("user as u", "u.id", "c.decided_by_id")
@@ -65,6 +96,11 @@ export function changeRequestsRepository(db: Knex) {
   }
 
   return {
+    async projectEstimateId(projectId: string): Promise<string | null> {
+      if (!(await hasProjectEstimate)) return null;
+      const row = await db("projects").where({ id: projectId }).select("estimate_id").first();
+      return (row?.estimate_id as string | null | undefined) ?? null;
+    },
     listByProject(projectId: string, status?: ChangeStatus): Promise<ChangeRequestRow[]> {
       const q = base().where("c.project_id", projectId);
       if (status) q.andWhere("c.status", status);
@@ -73,6 +109,14 @@ export function changeRequestsRepository(db: Knex) {
 
     findById(id: string): Promise<ChangeRequestRow | undefined> {
       return base().where("c.id", id).select(...SELECT).first();
+    },
+
+    countsByStatus(projectId: string): Promise<ChangeStatusCountRow[]> {
+      return db("change_requests")
+        .where({ project_id: projectId })
+        .groupBy("status")
+        .select("status")
+        .count<ChangeStatusCountRow[]>("id as count");
     },
 
     async commentCounts(ids: string[]): Promise<Map<string, number>> {
@@ -99,6 +143,73 @@ export function changeRequestsRepository(db: Knex) {
 
     async remove(id: string): Promise<void> {
       await db("change_requests").where({ id }).del();
+    },
+
+    /** RFIs converted into this change; deleting it would orphan their trail. */
+    async countReferencingRfis(changeRequestId: string): Promise<number> {
+      const rows = await db("rfis")
+        .where({ change_request_id: changeRequestId })
+        .count<{ count: string }[]>("id as count");
+      return Number(rows[0]?.count ?? 0);
+    },
+
+    /**
+     * The delays every one of these claims cites, in one query. Joined to the
+     * activity because a delay id on its own tells a reader nothing.
+     */
+    delaysForChanges(changeRequestIds: string[]): Promise<ChangeDelayRow[]> {
+      if (changeRequestIds.length === 0) return Promise.resolve([]);
+      return db("change_request_delays as l")
+        .join("activity_delays as d", "d.id", "l.delay_id")
+        .join("activities as a", "a.id", "d.activity_id")
+        .whereIn("l.change_request_id", changeRequestIds)
+        .orderBy("d.started_at", "asc")
+        .select<ChangeDelayRow[]>(
+          "d.id",
+          "l.change_request_id",
+          "d.activity_id",
+          "a.name as activity_name",
+          "d.reason_code",
+          "d.days_lost",
+          "d.culpability",
+          "d.eot_claimable",
+          "d.started_at",
+        );
+    },
+
+    /** The cited delays on this project, with the culpability that qualifies them. */
+    delaysByIds(projectId: string, ids: string[]): Promise<ChangeDelayRow[]> {
+      if (ids.length === 0) return Promise.resolve([]);
+      return db("activity_delays as d")
+        .join("activities as a", "a.id", "d.activity_id")
+        .where("a.project_id", projectId)
+        .whereIn("d.id", ids)
+        .select<ChangeDelayRow[]>(
+          "d.id",
+          db.raw("NULL as change_request_id"),
+          "d.activity_id",
+          "a.name as activity_name",
+          "d.reason_code",
+          "d.days_lost",
+          "d.culpability",
+          "d.eot_claimable",
+          "d.started_at",
+        );
+    },
+
+    async replaceDelayLinks(changeRequestId: string, delayIds: string[]): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("change_request_delays").where({ change_request_id: changeRequestId }).delete();
+        if (delayIds.length > 0) {
+          await trx("change_request_delays").insert(
+            delayIds.map((delayId) => ({
+              id: generateId("crd"),
+              change_request_id: changeRequestId,
+              delay_id: delayId,
+            })),
+          );
+        }
+      });
     },
 
     listComments(changeRequestId: string): Promise<ChangeCommentRow[]> {

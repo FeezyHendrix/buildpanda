@@ -5,6 +5,7 @@ interface ToggleSwitchProps {
   onChange: (checked: boolean) => void;
   disabled?: boolean;
   className?: string;
+  ariaLabel?: string;
 }
 
 function ToggleSwitch({
@@ -12,11 +13,13 @@ function ToggleSwitch({
   onChange,
   disabled = false,
   className,
+  ariaLabel,
 }: ToggleSwitchProps) {
   return (
     <button
       type="button"
       role="switch"
+      aria-label={ariaLabel}
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}

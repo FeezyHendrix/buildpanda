@@ -56,7 +56,7 @@ export function ConsultationForm() {
         </span>
         <h3 className="text-xl font-semibold text-ink">Request received</h3>
         <p className="max-w-sm text-sm leading-relaxed text-muted">
-          Thank you. A BuildPanda advisor will reach out within one business day
+          Thank you. Someone from the BuildPanda team will reach out within one business day
           to schedule your consultation and map out the next steps for your
           build.
         </p>
@@ -87,10 +87,10 @@ export function ConsultationForm() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Phone / WhatsApp" htmlFor="phone">
-          <input id="phone" name="phone" required className={fieldClass} placeholder="+234 ..." />
+          <input id="phone" name="phone" type="tel" required className={fieldClass} placeholder="Include country code" />
         </Field>
         <Field label="Build location" htmlFor="location">
-          <input id="location" name="location" required className={fieldClass} placeholder="City / State in Nigeria" />
+          <input id="location" name="location" required className={fieldClass} placeholder="City, region and country" />
         </Field>
       </div>
 
@@ -119,7 +119,7 @@ export function ConsultationForm() {
 
       {status === "error" ? (
         <p className="rounded-lg bg-[#FDECEC] px-4 py-3 text-sm text-danger">
-          Something went wrong. Please try again or email hello@buildpanda.ai.
+          Something went wrong. Please try again or email hello@buildpanda.io.
         </p>
       ) : null}
 

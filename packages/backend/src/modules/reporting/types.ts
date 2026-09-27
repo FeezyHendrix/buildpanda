@@ -80,22 +80,48 @@ export interface PhaseRef {
   progressPercent: number;
 }
 
+/** Activities carrying an unresolved delay, and the time booked against them. */
+export interface DelayedActivitiesSlice {
+  count: number;
+  daysLost: number;
+}
+
 export interface ScheduleReportingSlice {
   progressPercent: number;
   phasesInProgress: PhaseRef[];
   phasesUpcoming: PhaseRef[];
   programmeCostCurve: CashFlowPoint[] | null;
+  /** The completion date in the contract. */
+  completionDate: string | null;
+  /** Where completion stands once awarded extensions of time are applied. */
+  revisedCompletionDate: string | null;
+  eotDaysApproved: number;
+  eotDaysPending: number;
+  /**
+   * Liquidated-damages exposure: days late beyond the revised completion date
+   * times the contract LD rate, capped. Null until the contract carries LD terms.
+   */
+  ldExposure: number | null;
+  delayedActivities: DelayedActivitiesSlice;
+  /** How far the projected finish has moved from the baseline programme, in days. */
+  timelineShiftDays: number;
 }
 
 export interface OperationsReportingSlice {
-  dueActionItems: number;
-  blockedActionItems: number;
-  openQueries: number;
   pendingApprovals: number;
   expiringPermits: number;
   overdueActivities: number;
   upcomingKeyDates: number;
   missedKeyDates: number;
+  /** Orders past their needed-by (or promised late) and not yet delivered. */
+  lateMaterialOrders: number;
+  pendingMaterialApprovals: number;
+  /** RFIs past their reply date and still unanswered. */
+  overdueRfis: number;
+  overdueTasks: number;
+  /** An expired permit is a stop-work risk; an expiring one is a diary note. */
+  expiredPermits: number;
+  expiringSoonPermits: number;
 }
 
 export interface HealthPoint {

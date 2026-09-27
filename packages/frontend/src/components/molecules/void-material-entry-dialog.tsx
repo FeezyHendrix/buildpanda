@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { FormDialog } from "@/components/molecules/form-dialog";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 interface VoidMaterialEntryDialogProps {
   open: boolean;
@@ -49,7 +51,7 @@ export function VoidMaterialEntryDialog({
           rows={3}
           maxLength={1000}
           placeholder="Explain why this entry is being voided…"
-          className="min-h-20 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
         />
       </div>
     </FormDialog>

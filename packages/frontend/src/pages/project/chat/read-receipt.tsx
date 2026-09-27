@@ -20,7 +20,7 @@ export function ReadReceipt({ message }: { message: ChatMessage }) {
 
   return (
     <span
-      className={allRead ? "text-[10px] font-medium text-primary-500" : "text-[10px] text-gray-400"}
+      className={allRead ? "text-[10px] font-medium text-primary-500" : "text-[10px] text-ink-muted"}
       title={message.readAt ? `Read ${new Date(message.readAt).toLocaleString()}` : "Delivered"}
     >
       {allRead ? "✓✓" : "✓"} {label}

@@ -245,6 +245,40 @@ export function UpsertActionItemDialog({ projectId, initial, onClose }: Props) {
 }
 ```
 
+### Record lists are tables, not cards
+
+Anything a PM scans, sorts or compares — material orders, equipment, suppliers,
+approvals, RFIs, invoices, permits — is a **table**, built from the `Table` atom
+family. Cards are for a small set of *unlike* things (a KPI strip, a dashboard
+panel), never for rows of the same record type. Copy `pages/project/daily-log`,
+`pages/project/activities` or `finances/invoices/invoice-table.tsx`; do not
+invent a second list shape.
+
+Every list page has the same chrome, in this order: `PageHeader` → optional
+`KpiCard` strip → a one-row toolbar → the table → an empty state.
+
+```tsx
+// Toolbar: search (never full width), status tabs, filters, count on the right
+<div className="flex flex-wrap items-center gap-3">
+  <div className="w-full max-w-xs"><SearchInput value={q} onChange={...} placeholder="Search by material or supplier" /></div>
+  <FilterTabs items={STATUS_TABS} value={status} onChange={setStatus} />
+  <SimpleDropdown options={SUPPLIERS} value={supplier} onChange={setSupplier} ariaLabel="Supplier" />
+  <p className="ml-auto text-sm text-ink-muted">{shown} of {total} orders</p>
+</div>
+```
+
+Filtering is `useState` in the page applied with `.filter()` / `.toSorted()`
+during render — no new hooks and no server round trip unless the endpoint
+already takes the parameter. Money and quantities are `align="right"` and
+`tabular-nums`; status is a `Badge` with a tone and `dot`, never colour alone; a
+computed warning (late, overdue, over budget) is its own badge, and only a void
+or failed record takes `TableRow tone="danger"`. Secondary identity (a code, a
+supplier, a phase) is a `text-xs text-ink-muted` line under the primary cell.
+Keep columns to what the reader scans — identity, the two or three numbers that
+matter, status, the date that drives action, actions — and put the rest in the
+drawer the row opens. Empty states distinguish "none yet" (offers the create
+action) from "nothing matches these filters" (offers Clear filters).
+
 ### Loading & busy states
 
 One loader for the whole app: the circular `Spinner` atom

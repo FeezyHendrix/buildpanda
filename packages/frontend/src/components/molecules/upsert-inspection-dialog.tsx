@@ -1,185 +1,238 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { useInspectionDraft } from "@/hooks/use-inspection-draft";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
-import type { InspectionCategory } from "@/lib/project-types";
+import { Switcher } from "@/components/atoms/switcher";
+import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
+import { InspectionCategoryPicker } from "@/components/molecules/inspection-category-picker";
+import { useProjectActivities } from "@/hooks/use-activities";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
+
+/**
+ * Editing the service order — what was asked for, of whom, where and when.
+ * Status, risk level and the outcome are deliberately absent: those are the
+ * assigned inspector's acts, recorded through the outcome dialog.
+ */
+const EMPTY_ACTIVITIES: never[] = [];
 
 export interface UpsertInspectionValues {
   title: string;
-  category: Exclude<InspectionCategory, "All Reports">;
+  category: string;
   description: string;
   scheduledAt: string;
-  status: "Scheduled" | "Action Required" | "Completed";
-  riskLevel: "Low" | "Medium" | "High";
+  activityId: string | null;
+  location: string | null;
+  holdPoint: boolean;
+  contractorName: string | null;
+  feeAmount: number | null;
+  feeCurrency: string | null;
 }
 
 interface UpsertInspectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "edit";
+  projectId: string;
+  currency: string;
+  canAddCategory: boolean;
+  inspectionId: string;
   initial?: UpsertInspectionValues;
-  onSubmit: (values: UpsertInspectionValues) => void;
-  isSubmitting?: boolean;
+  onSubmit: (values: UpsertInspectionValues) => Promise<unknown>;
   error?: string | null;
 }
 
-const CATEGORIES: Exclude<InspectionCategory, "All Reports">[] = [
-  "Structural",
-  "Quantity Survey",
-  "General Progress",
-  "Electrical",
-  "Plumbing",
-];
-
-const STATUSES: ("Scheduled" | "Action Required" | "Completed")[] = [
-  "Scheduled",
-  "Action Required",
-  "Completed",
-];
-
-const RISK_LEVELS: ("Low" | "Medium" | "High")[] = ["Low", "Medium", "High"];
-
-const inputClass =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
-
-function UpsertInspectionDialog({
+function InspectionEditForm({
   open,
   onOpenChange,
-  mode,
+  projectId,
+  currency,
+  canAddCategory,
   initial,
+  inspectionId,
   onSubmit,
-  isSubmitting = false,
   error,
 }: UpsertInspectionDialogProps) {
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<Exclude<InspectionCategory, "All Reports">>("Structural");
-  const [description, setDescription] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [status, setStatus] = useState<"Scheduled" | "Action Required" | "Completed">("Scheduled");
-  const [riskLevel, setRiskLevel] = useState<"Low" | "Medium" | "High">("Low");
+  // Stay busy through the successful navigation so the draft exit guard allows it.
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const draft = useInspectionDraft(projectId, inspectionId, initial);
+  const { title, category, description, scheduledAt, activityId, location, holdPoint, feeAmount } = draft.values;
+  const contractorName = draft.values.contractorName ?? "";
 
-  useEffect(() => {
-    if (open) {
-      setTitle(initial?.title ?? "");
-      setCategory(initial?.category ?? "Structural");
-      setDescription(initial?.description ?? "");
-      setScheduledAt(initial?.scheduledAt ?? "");
-      setStatus(initial?.status ?? "Scheduled");
-      setRiskLevel(initial?.riskLevel ?? "Low");
+  const { data: activities = EMPTY_ACTIVITIES } = useProjectActivities(open ? projectId : undefined);
+  const activityItems = useMemo<ComboItem[]>(
+    () => activities.filter((a) => !a.isSummary).map((a) => ({ id: a.id, label: a.name })),
+    [activities],
+  );
+
+  const isValid =
+    title.trim().length > 0 &&
+    category.length > 0 &&
+    description.trim().length > 0 &&
+    scheduledAt.trim().length > 0;
+
+  async function handleSubmit(): Promise<void> {
+    if (!isValid || isSubmitting) return;
+    setIsSubmitting(true);
+    const fee = Number.parseFloat(feeAmount);
+    const hasFee = Number.isFinite(fee) && fee >= 0;
+    try {
+      await onSubmit({
+        title: title.trim(),
+        category,
+        description: description.trim(),
+        scheduledAt: scheduledAt.trim(),
+        activityId,
+        location: location.trim() || null,
+        holdPoint,
+        contractorName: contractorName.trim() || null,
+        feeAmount: hasFee ? fee : null,
+        feeCurrency: hasFee ? (initial?.feeCurrency ?? currency) : null,
+      });
+      draft.clear();
+    } catch {
+      setIsSubmitting(false);
     }
-  }, [open, initial]);
-
-  const isValid = title.trim().length > 0 && description.trim().length > 0 && scheduledAt.trim().length > 0;
-
-  function handleSubmit(): void {
-    if (!isValid) return;
-    onSubmit({
-      title: title.trim(),
-      category,
-      description: description.trim(),
-      scheduledAt: scheduledAt.trim(),
-      status,
-      riskLevel,
-    });
   }
 
   return (
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={mode === "edit" ? "Edit inspection" : "Inspection"}
-      description="Update the details or status of this inspection."
+      title="Edit inspection request"
+      description="What was asked for, of whom and when. The result is recorded by the BuildPanda inspector, not here."
       submitLabel="Save changes"
       submitDisabled={!isValid}
       submitting={isSubmitting}
+      dirty={draft.dirty}
+      onDiscard={draft.clear}
       error={error ?? null}
       onSubmit={handleSubmit}
+      width="lg"
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="inspection-title">Title</Label>
-        <input
-          id="inspection-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Initial site assessment"
-          maxLength={200}
-          autoFocus
-          className={inputClass}
-        />
-      </div>
+      <fieldset disabled={isSubmitting} className="contents">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="edit-inspection-title">Title</Label>
+          <input
+            id="edit-inspection-title"
+            value={title}
+            onChange={(e) => draft.setField("title", e.target.value)}
+            placeholder="e.g. Formation approval proof roll"
+            maxLength={200}
+            autoFocus
+            className={INPUT_CLASS}
+          />
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="inspection-category">Category</Label>
-        <select
-          id="inspection-category"
+        <InspectionCategoryPicker
+          projectId={projectId}
           value={category}
-          onChange={(e) => setCategory(e.target.value as Exclude<InspectionCategory, "All Reports">)}
-          className={inputClass}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="inspection-description">Description</Label>
-        <textarea
-          id="inspection-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe the inspection findings or purpose…"
-          maxLength={2000}
-          rows={4}
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          onChange={(value) => draft.setField("category", value)}
+          canAddCategory={canAddCategory}
+          id="edit-inspection-category"
         />
-      </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="inspection-scheduled">Scheduled Date</Label>
-        <input
-          id="inspection-scheduled"
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
-          placeholder="YYYY-MM-DD"
-          className={inputClass}
-        />
-      </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="edit-inspection-contractor">Contractor being inspected</Label>
+          <input
+            id="edit-inspection-contractor"
+            value={contractorName}
+            onChange={(e) => draft.setField("contractorName", e.target.value)}
+            maxLength={200}
+            placeholder="Name the party whose work is inspected"
+            className={INPUT_CLASS}
+          />
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="inspection-status">Status</Label>
-        <select
-          id="inspection-status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value as "Scheduled" | "Action Required" | "Completed")}
-          className={inputClass}
-        >
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="edit-inspection-description">What needs inspecting?</Label>
+          <textarea
+            id="edit-inspection-description"
+            value={description}
+            onChange={(e) => draft.setField("description", e.target.value)}
+            placeholder="Scope of the inspection, areas to check, any concerns."
+            maxLength={2000}
+            rows={4}
+            className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
+          />
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="inspection-risk">Risk Level</Label>
-        <select
-          id="inspection-risk"
-          value={riskLevel}
-          onChange={(e) => setRiskLevel(e.target.value as "Low" | "Medium" | "High")}
-          className={inputClass}
-        >
-          {RISK_LEVELS.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="edit-inspection-scheduled">Scheduled date</Label>
+            <input
+              id="edit-inspection-scheduled"
+              type="date"
+              value={scheduledAt}
+              onChange={(e) => draft.setField("scheduledAt", e.target.value)}
+              className={INPUT_CLASS}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="edit-inspection-location">Location / chainage</Label>
+            <input
+              id="edit-inspection-location"
+              value={location}
+              onChange={(e) => draft.setField("location", e.target.value)}
+              maxLength={200}
+              placeholder="e.g. ch 0+000 – 0+600"
+              className={INPUT_CLASS}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="inspection-activity">Activity being inspected</Label>
+          <ComboSelect
+            id="inspection-activity"
+            items={activityItems}
+            value={activityId}
+            onChange={(value) => draft.setField("activityId", value)}
+            placeholder="Not linked to an activity"
+            searchPlaceholder="Search activities…"
+            emptyText="No activities match"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="edit-inspection-fee">Fee agreed ({initial?.feeCurrency ?? currency})</Label>
+          <input
+            id="edit-inspection-fee"
+            type="number"
+            min={0}
+            step="0.01"
+            inputMode="decimal"
+            value={feeAmount}
+            onChange={(e) => draft.setField("feeAmount", e.target.value)}
+            placeholder="0.00"
+            className={INPUT_CLASS}
+          />
+          <p className="text-xs text-ink-muted">
+            Recorded against the order, never charged.
+          </p>
+        </div>
+
+        <div className="flex items-start justify-between gap-3 rounded-lg border border-line-hair p-3">
+          <span className="text-sm text-gray-700">
+            <span className="block font-medium text-gray-900">This is a hold point</span>
+            <span className="mt-0.5 block text-xs text-gray-500">
+              Work must not proceed past it until the inspection passes.
+            </span>
+          </span>
+          <Switcher
+            value={holdPoint ? "yes" : "no"}
+            onChange={(next) => draft.setField("holdPoint", next === "yes")}
+          />
+        </div>
+      </fieldset>
     </FormDrawer>
   );
 }
 
-export { UpsertInspectionDialog };
+function UpsertInspectionDialog(props: UpsertInspectionDialogProps) {
+  return props.open ? <InspectionEditForm key={`${props.projectId}:${props.inspectionId}`} {...props} /> : null;
+}
+
+UpsertInspectionDialog.displayName = "UpsertInspectionDialog";
+
+export { UpsertInspectionDialog, type UpsertInspectionDialogProps };

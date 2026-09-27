@@ -10,21 +10,22 @@ import { registerChatEmailWorker } from "../modules/messaging/chat-email-job.ts"
 import { registerInvoiceOverdueWorker } from "../modules/invoices/overdue-job.ts";
 import { registerInvoiceEmailWorker } from "../modules/invoices/invoice-send-job.ts";
 import { registerPermitExpiryWorker } from "../modules/permits/expiry-job.ts";
+import { registerComplianceExpiryWorker } from "../modules/compliance-docs/expiry-job.ts";
 import { registerKeyDateReminderWorker } from "../modules/key-dates/reminder-job.ts";
 import { registerLifecycleEmailWorker } from "../modules/lifecycle/index.ts";
 import { registerDecisionChasingWorker } from "../modules/lifecycle/decision-chasing-job.ts";
 import { registerProposalExpiryWorker } from "../modules/proposals/expiry-job.ts";
-import { registerActionItemReminderWorker } from "../modules/action-items/reminder-job.ts";
 import { registerRfiReminderWorker } from "../modules/rfis/reminder-job.ts";
 import { registerBimProcessingWorker } from "../modules/bim/job.ts";
 import { registerBoqImportWorker } from "../modules/materials-equipment/boq-job.ts";
 import { registerProgrammeImportWorker } from "../modules/panda-ai/programme/job.ts";
-import { registerTakeoffWorker } from "../modules/panda-ai/automated-takeoff/job.ts";
-import { registerPreconWorker } from "../modules/panda-ai/takeoff/job.ts";
+import { registerDwgTakeoffWorker } from "../modules/panda-ai/dwg-takeoff/job.ts";
+import { registerPdfTakeoffWorker } from "../modules/panda-ai/pdf-takeoff/job.ts";
 import { registerProjectFileImportWorker } from "../modules/panda-ai/project-file-job.ts";
 import { registerProgressRecomputeWorker } from "../modules/activities/progress-job.ts";
 import { registerWeatherImpactWorker } from "../modules/weather/impact-job.ts";
 import { registerWeeklyUpdateDraftWorker } from "../modules/updates/weekly-draft-job.ts";
+import { registerDailyDigestWorker } from "../modules/updates/daily-digest-job.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -41,13 +42,12 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
   if (runWorkers) {
     registerPandaAiWorker(fastify.db, manager);
     registerProposalExpiryWorker(fastify.db, manager);
-    registerActionItemReminderWorker(fastify.db, manager);
     registerRfiReminderWorker(fastify.db, manager);
     registerBimProcessingWorker(fastify.db, manager);
     registerBoqImportWorker(fastify.db, manager);
     registerProgrammeImportWorker(fastify.db, manager);
-    registerTakeoffWorker(fastify.db, manager);
-    registerPreconWorker(fastify.db, manager, (payload) => fastify.realtime.publish(payload));
+    registerDwgTakeoffWorker(fastify.db, manager);
+    registerPdfTakeoffWorker(fastify.db, manager, (payload) => fastify.realtime.publish(payload));
     registerProjectFileImportWorker(fastify.db, manager);
     registerProgressRecomputeWorker(fastify.db, manager);
     registerPandaAiPeriodicScheduler(fastify.db, manager, fastify.log);
@@ -57,11 +57,13 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerInvoiceOverdueWorker(fastify.db, manager);
     registerInvoiceEmailWorker(fastify.db, manager);
     registerPermitExpiryWorker(fastify.db, manager);
+    registerComplianceExpiryWorker(fastify.db, manager);
     registerKeyDateReminderWorker(fastify.db, manager);
     registerLifecycleEmailWorker(fastify.db, manager);
     registerDecisionChasingWorker(fastify.db, manager, fastify.log);
     registerWeatherImpactWorker(fastify.db, manager, fastify.log);
     registerWeeklyUpdateDraftWorker(fastify.db, manager, fastify.log);
+    registerDailyDigestWorker(fastify.db, manager, fastify.log);
     manager.startWorkers();
   }
 

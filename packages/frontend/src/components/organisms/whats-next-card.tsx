@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { HealthTrendChart } from "./charts/health-trend-chart";
@@ -27,14 +28,6 @@ function formatSuggestionTitle(title: string): string {
   return title.replace("1 inspection need action", "1 inspection needs action");
 }
 
-function countLabel(count: number, label: string): string {
-  if (count !== 1) return label;
-  if (label === "queries") return "query";
-  if (label === "permits") return "permit";
-  if (label === "key dates") return "key date";
-  if (label === "action items") return "action item";
-  return label;
-}
 
 function HealthGauge({ score }: { score: number | null }) {
   const size = 132;
@@ -75,21 +68,25 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
   const { data, isLoading, isError } = useReportingSnapshot(projectId);
 
   if (isLoading) {
-    return <Card padding="lg" className="h-64 animate-pulse rounded-[16px] border-none bg-[#F8F8F8]" />;
+    return (
+      <Card padding="lg" className="flex h-64 items-center justify-center rounded-[16px]">
+        <Spinner size="md" />
+      </Card>
+    );
   }
 
   if (isError || !data) {
     return (
       <Card
         padding="lg"
-        className="flex h-32 items-center justify-center rounded-[16px] border-none bg-[#F8F8F8] text-sm text-black-300"
+        className="flex h-32 items-center justify-center rounded-[16px] text-sm text-black-300"
       >
         Reporting temporarily unavailable
       </Card>
     );
   }
 
-  const { health, operations } = data;
+  const { health } = data;
   const isEmpty = health.score === null && health.suggestions.length === 0;
 
   const getSuggestionLink = (category: string) => {
@@ -99,7 +96,7 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
       case "Finance":
         return `/project/${projectId}/finances`;
       case "Schedule":
-        return `/project/${projectId}/whats-next`;
+        return `/project/${projectId}/schedules/stages`;
       default:
         return `/project/${projectId}/panda-ai`;
     }
@@ -113,7 +110,7 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
     .slice(0, 3);
 
   return (
-    <Card padding="lg" className="overflow-hidden rounded-[16px] border-none bg-[#F8F8F8] p-0">
+    <Card padding="lg" className="overflow-hidden rounded-[16px] p-0">
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr]">
         <div className="flex flex-col items-center justify-center gap-4 border-b border-[#EDEDED] p-7 lg:border-b-0 lg:border-r">
           <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-black-300">
@@ -168,49 +165,9 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
               No urgent priorities right now.
             </div>
           )}
-
-          <div className="mt-6 border-t border-[#EDEDED] pt-4">
-            <p className="mb-2 text-[12px] font-medium text-black-300">
-              Needs attention
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <ChipLink to={`/project/${projectId}/action-items`} count={operations.dueActionItems} label="action items" />
-              <ChipLink to={`/project/${projectId}/queries`} count={operations.openQueries} label="queries" />
-              <ChipLink to={`/project/${projectId}/approvals`} count={operations.pendingApprovals} label="approvals" />
-              <ChipLink to={`/project/${projectId}/permits`} count={operations.expiringPermits} label="permits" />
-              <ChipLink to={`/project/${projectId}/key-dates`} count={operations.upcomingKeyDates} label="key dates" />
-            </div>
-          </div>
         </div>
-      </div>
-
-      <div className="border-t border-[#EDEDED] px-7 py-3.5">
-        <Link
-          to={`/project/${projectId}/whats-next`}
-          className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:gap-1.5"
-        >
-          View all recommendations
-          <ChevronRightIcon className="size-3.5" />
-        </Link>
       </div>
     </Card>
   );
 }
 
-function ChipLink({ to, count, label }: { to: string; count: number; label: string }) {
-  const isZero = count === 0;
-  return (
-    <Link
-      to={to}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
-        isZero
-          ? "bg-white text-black-200 hover:text-black-300"
-          : "bg-primary/[0.08] text-primary hover:bg-primary/[0.12]",
-      )}
-    >
-      <span className="font-semibold tabular-nums">{count}</span>
-      {countLabel(count, label)}
-    </Link>
-  );
-}

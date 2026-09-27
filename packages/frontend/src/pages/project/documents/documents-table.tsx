@@ -234,11 +234,16 @@ export function DocumentsTable({
   projectId,
   categories,
   canManage,
+  emptyMessage = "No documents found.",
+  onOpenDocument,
 }: {
   documents: ProjectDocument[];
   projectId: string;
   categories: DocumentCategory[];
   canManage: boolean;
+  emptyMessage?: string;
+  /** Replaces the built-in viewer when a page opens documents elsewhere (Plans review). */
+  onOpenDocument?: (doc: ProjectDocument) => void;
 }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -327,7 +332,7 @@ export function DocumentsTable({
               {pageDocs.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-10 text-center text-sm text-[#9CA3AF]">
-                    No documents found.
+                    {emptyMessage}
                   </td>
                 </tr>
               ) : (
@@ -338,6 +343,7 @@ export function DocumentsTable({
                     projectId={projectId}
                     categories={categories}
                     canManage={canManage}
+                    onOpen={onOpenDocument}
                   />
                 ))
               )}
@@ -401,11 +407,13 @@ function DocumentRow({
   projectId,
   categories,
   canManage,
+  onOpen,
 }: {
   doc: ProjectDocument;
   projectId: string;
   categories: DocumentCategory[];
   canManage: boolean;
+  onOpen?: (doc: ProjectDocument) => void;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -513,7 +521,7 @@ function DocumentRow({
             <DropdownMenuContent align="end" className="w-[160px] p-1">
               {doc.currentVersionId && (
                 <DropdownMenuItem
-                  onSelect={() => setViewerOpen(true)}
+                  onSelect={() => (onOpen ? onOpen(doc) : setViewerOpen(true))}
                   className="text-[13px]"
                 >
                   View

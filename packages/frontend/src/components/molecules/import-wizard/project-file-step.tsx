@@ -4,10 +4,10 @@ import {
   useProjectFileImportJob,
   useApplyProjectFile,
 } from "@/hooks/use-project-file-import";
-import {
-  useLinkSessionProject,
-  useAttachSessionDocument,
-} from "@/hooks/use-import-session";
+import { useCompleteImport } from "@/hooks/use-complete-import";
+import { useDraftState } from "@/hooks/use-draft-state";
+import { QueryError } from "@/components/molecules/query-error";
+import { CreatedProjectStep } from "./created-project-step";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Badge } from "@/components/atoms/badge";
@@ -19,30 +19,32 @@ const ACCEPT = ".csv,.xls,.xlsx,.pdf,.docx,.txt,application/vnd.ms-excel,applica
 
 interface ProjectFileStepProps {
   sessionId: string;
+  projectId: string | null;
   onProjectCreated: (id: string) => void;
   onNext: () => void;
 }
 
 export function ProjectFileStep({
   sessionId,
+  projectId,
   onProjectCreated,
   onNext,
 }: ProjectFileStepProps) {
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobId, setJobId] = useDraftState<string | null>(`import:${sessionId}:file:job`, null);
   const startMutation = useStartProjectFileImport();
-  const { data: job } = useProjectFileImportJob(jobId);
+  const { data: job, isPending: loadingJob, error: jobError, refetch } = useProjectFileImportJob(jobId);
   const applyMutation = useApplyProjectFile();
-  const linkSession = useLinkSessionProject();
-  const attachDocument = useAttachSessionDocument();
+  const createdProjectId = projectId ?? (job?.status === "applied" ? job.projectId : null);
+  const completion = useCompleteImport({ sessionId, jobId, kind: "project_file", fileName: job?.fileName, projectId: createdProjectId, onProjectCreated, onNext });
 
   const [errorMsg, setErrorMsg] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [metadataOn, setMetadataOn] = useState(true);
-  const [timelineOn, setTimelineOn] = useState(true);
-  const [budgetOn, setBudgetOn] = useState(true);
-  const [materialsOn, setMaterialsOn] = useState(true);
+  const [metadataOn, setMetadataOn] = useDraftState(`import:${sessionId}:file:metadata`, true);
+  const [timelineOn, setTimelineOn] = useDraftState(`import:${sessionId}:file:timeline`, true);
+  const [budgetOn, setBudgetOn] = useDraftState(`import:${sessionId}:file:budget`, true);
+  const [materialsOn, setMaterialsOn] = useDraftState(`import:${sessionId}:file:materials`, true);
 
   const handleFile = async (file: File) => {
     setErrorMsg("");
@@ -69,8 +71,11 @@ export function ProjectFileStep({
   const handleApply = async () => {
     if (!jobId) return;
     setErrorMsg("");
-    try {
-      const res = await applyMutation.mutateAsync({
+    await completion.complete(async () => {
+      const latest = await refetch();
+      if (latest.error) throw latest.error;
+      if (latest.data?.status === "applied" && latest.data.projectId) return { projectId: latest.data.projectId };
+      return applyMutation.mutateAsync({
         jobId,
         selection: {
           metadata: metadataOn,
@@ -79,33 +84,22 @@ export function ProjectFileStep({
           materials: materialsOn,
         },
       });
-
-      onProjectCreated(res.projectId);
-      await linkSession.mutateAsync({ sessionId, projectId: res.projectId });
-      await attachDocument
-        .mutateAsync({
-          sessionId,
-          kind: "project_file",
-          jobId: jobId!,
-          status: "applied",
-        })
-        .catch(() => undefined);
-
-      onNext();
-    } catch (err) {
-      setErrorMsg(getApiErrorMessage(err, "Failed to apply project file"));
-    }
+    });
   };
 
   const isPending = job?.status === "pending" || job?.status === "processing";
 
+  if (jobId && jobError) return <QueryError error={jobError} retry={refetch} noun="your uploaded file" />;
+  if ((jobId && loadingJob) || startMutation.isPending) return <div className="flex justify-center p-12"><Spinner size="md" /></div>;
+  if (createdProjectId) return <CreatedProjectStep onContinue={handleApply} pending={completion.pending} error={completion.error} />;
+
   return (
     <div className="flex flex-col max-w-2xl mx-auto mt-4 gap-8 pb-12 w-full">
       <div>
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-2xl font-semibold text-ink mb-2">
           Import Project File
         </h2>
-        <p className="text-gray-500">
+        <p className="text-ink-muted">
           Upload any project document: an Excel workbook, PDF, Word doc or
           brief. We will extract project details, timeline, budget, and materials.
         </p>
@@ -118,16 +112,16 @@ export function ProjectFileStep({
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             className={cn(
-              "flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-xl transition-colors bg-gray-50 cursor-pointer",
+              "flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg transition-colors bg-surface-alt cursor-pointer",
               isDragging
-                ? "border-[#004DE7] bg-blue-50"
-                : "border-gray-300 hover:border-gray-400 hover:bg-gray-100",
+                ? "border-primary-500 bg-primary-50"
+                : "border-line hover:border-line-hover hover:bg-surface-alt",
             )}
             onClick={() => fileInputRef.current?.click()}
           >
-            <div className="rounded-full bg-white p-3 shadow-sm mb-4">
+            <div className="rounded-full bg-white p-3 shadow-card mb-4">
               <svg
-                className="h-6 w-6 text-gray-400"
+                className="h-6 w-6 text-ink-muted"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -140,10 +134,10 @@ export function ProjectFileStep({
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-lg font-medium text-ink">
               Click or drag file to this area to upload
             </h3>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-ink-muted text-sm mt-1">
               Supports Excel, PDF, Word, CSV
             </p>
 
@@ -161,17 +155,17 @@ export function ProjectFileStep({
           </div>
         </div>
       ) : isPending ? (
-        <div className="flex flex-col items-center p-12 text-center border border-gray-200 rounded-xl bg-gray-50">
-          <Spinner className="h-10 w-10 text-[#004DE7] mb-4" />
+        <div className="flex flex-col items-center p-12 text-center border border-line-hair rounded-lg bg-surface-alt">
+          <Spinner className="h-10 w-10 text-primary-500 mb-4" />
           <h3 className="text-lg font-medium">Panda AI is reading your file…</h3>
-          <p className="text-gray-500 mt-2">
+          <p className="text-ink-muted mt-2">
             Extracting project details, timeline, and materials.
           </p>
         </div>
       ) : job?.status === "completed" && job.extraction ? (
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-ink">
               Here's what we found in {job.fileName}
             </h3>
             <Button variant="secondary" onClick={() => setJobId(null)}>
@@ -180,37 +174,37 @@ export function ProjectFileStep({
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="p-4 border border-[#004DE7]/20 bg-[#EFF4FF] rounded-xl flex flex-col gap-2 relative">
+            <div className="p-4 border border-primary-500/20 bg-primary-50 rounded-lg flex flex-col gap-2 relative">
               <div className="absolute top-4 right-4">
-                <Badge className="bg-blue-100 text-[#004DE7] border-none font-semibold">
+                <Badge tone="info">
                   Suggested by Panda AI
                 </Badge>
               </div>
-              <h4 className="font-semibold text-gray-900">
+              <h4 className="font-semibold text-ink">
                 {job.extraction.metadata.projectName || "Unnamed Project"}
               </h4>
-              <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-700 mt-2">
+              <div className="grid grid-cols-2 gap-y-2 text-sm text-ink mt-2">
                 <div>
-                  <span className="text-gray-500">Location:</span>{" "}
+                  <span className="text-ink-muted">Location:</span>{" "}
                   {job.extraction.metadata.location || "Not specified"}
                 </div>
                 <div>
-                  <span className="text-gray-500">Client:</span>{" "}
+                  <span className="text-ink-muted">Client:</span>{" "}
                   {job.extraction.metadata.client || "Not specified"}
                 </div>
                 <div>
-                  <span className="text-gray-500">Contractor:</span>{" "}
+                  <span className="text-ink-muted">Contractor:</span>{" "}
                   {job.extraction.metadata.contractor || "Not specified"}
                 </div>
                 <div>
-                  <span className="text-gray-500">Dates:</span>{" "}
+                  <span className="text-ink-muted">Dates:</span>{" "}
                   {job.extraction.metadata.startDate || "Not specified"} to{" "}
                   {job.extraction.metadata.endDate || "Not specified"}
                 </div>
               </div>
               {job.extraction.metadata.description && (
-                <div className="text-sm text-gray-600 mt-2">
-                  <span className="text-gray-500">Description:</span>{" "}
+                <div className="text-sm text-ink-subtle mt-2">
+                  <span className="text-ink-muted">Description:</span>{" "}
                   {job.extraction.metadata.description}
                 </div>
               )}
@@ -253,17 +247,17 @@ export function ProjectFileStep({
 
           <Button
             onClick={handleApply}
-            loading={applyMutation.isPending}
+            loading={completion.pending}
             className="w-full mt-4"
           >
             Create project from this file
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col items-center p-12 text-center border border-gray-200 rounded-xl bg-gray-50">
-          <div className="rounded-full bg-red-100 p-3 mb-4">
+        <div className="flex flex-col items-center p-12 text-center border border-line-hair rounded-lg bg-surface-alt">
+          <div className="rounded-full bg-negative-50 p-3 mb-4">
             <svg
-              className="h-6 w-6 text-red-600"
+              className="h-6 w-6 text-negative-500"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -276,10 +270,10 @@ export function ProjectFileStep({
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900">
+          <h3 className="text-lg font-medium text-ink">
             Failed to parse file
           </h3>
-          <p className="text-gray-500 mt-2">
+          <p className="text-ink-muted mt-2">
             {job?.error || "Could not read data from this file."}
           </p>
           <Button
@@ -292,9 +286,9 @@ export function ProjectFileStep({
         </div>
       )}
 
-      {errorMsg && (
-        <p className="text-sm text-red-600 text-center">{errorMsg}</p>
-      )}
+      {errorMsg || completion.error ? (
+        <p role="alert" className="text-sm text-negative-500 text-center">{errorMsg || completion.error}</p>
+      ) : null}
     </div>
   );
 }

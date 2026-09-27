@@ -217,7 +217,7 @@ export function TourGuide({
             onClick={onSkip}
           />
           <div
-            className="pointer-events-none absolute rounded-xl ring-2 ring-[#004DE7] ring-offset-2 ring-offset-transparent transition-[top,left,width,height] duration-150 ease-out"
+            className="pointer-events-none absolute rounded-lg ring-2 ring-primary-500 ring-offset-2 ring-offset-transparent transition-[top,left,width,height] duration-150 ease-out"
             style={{
               top: hole.top,
               left: hole.left,
@@ -231,11 +231,11 @@ export function TourGuide({
       )}
 
       <div
-        className="absolute w-[320px] rounded-2xl bg-white p-5 shadow-xl"
+        className="absolute w-[320px] rounded-lg border border-line bg-white p-5 shadow-card"
         style={{ top: tip.top, left: tip.left }}
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#004DE7]">
+          <span className="text-xs font-semibold uppercase tracking-wide text-primary-500">
             Step {index + 1} of {total}
           </span>
           <button
@@ -257,7 +257,7 @@ export function TourGuide({
                 key={i}
                 className={cn(
                   "h-1.5 rounded-full transition-all",
-                  i === index ? "w-4 bg-[#004DE7]" : "w-1.5 bg-gray-200",
+                  i === index ? "w-4 bg-primary-500" : "w-1.5 bg-gray-200",
                 )}
               />
             ))}
