@@ -34,7 +34,7 @@ const SYNC_META: Record<SyncState, SyncMeta> = {
   pending: { icon: "cloud-upload-outline", color: ICON_MUTED, label: "Waiting to upload" },
   syncing: { icon: "sync-outline", color: ICON_BRAND, label: "Syncing", spins: true },
   stale: { icon: "cloud-done-outline", color: palette.warning600, label: "Sync conflict needs review" },
-  error: { icon: "cloud-offline-outline", color: ICON_DANGER, label: "Sync failed" },
+  error: { icon: "alert-circle-outline", color: ICON_DANGER, label: "Sync failed" },
 };
 
 function SpinningIcon({ icon, color }: { icon: IoniconName; color: string }) {

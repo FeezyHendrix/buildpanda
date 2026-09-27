@@ -10,6 +10,9 @@ import { ExtractionReportPanel } from "@/components/molecules/precon-session/ext
 import { PreconSessionHeader } from "@/components/molecules/precon-session/precon-session-header";
 import { PreconSessionSkeleton } from "@/components/molecules/precon-session/precon-session-skeleton";
 import { PreconWorkspace, type ZoomRequest } from "@/components/molecules/precon-session/precon-workspace";
+import { SourceChooser } from "@/components/molecules/precon-session/source-chooser";
+import { useSourceNavigation } from "@/components/molecules/precon-session/use-source-navigation";
+import { defaultModeFor, type WorkspaceMode } from "@/components/molecules/precon-session/workspace-mode";
 import { AssistDrawer } from "@/components/molecules/precon-assist/assist-drawer";
 import { Sparkles } from "lucide-react";
 import {
@@ -54,6 +57,9 @@ export default function PreconSessionPage() {
   const [zoomRequest, setZoomRequest] = useState<ZoomRequest | null>(null);
   const [justCompleted, setJustCompleted] = useState(false);
   const [assistOpen, setAssistOpen] = useState(false);
+  // `null` until the user chooses, so the default can follow the take-off's
+  // kind once the snapshot says what kind it is — and stays chosen after.
+  const [mode, setMode] = useState<WorkspaceMode | null>(null);
 
   // Hold the "ready" card briefly when a run finishes in front of the user,
   // then move them into review. A session already reviewing on first load
@@ -72,6 +78,21 @@ export default function PreconSessionPage() {
     }, COMPLETION_HOLD_MS);
     return () => clearTimeout(timer);
   }, [status, kind]);
+
+  // Every hook runs before the loading and error returns below. Calling one
+  // after them changes the hook count between renders, which React refuses.
+  const effectiveMode: WorkspaceMode = mode ?? defaultModeFor(kind ?? "ai");
+
+  const source = useSourceNavigation({
+    snapshot,
+    requestedMode: effectiveMode,
+    selectSheet: setActiveSheetId,
+    selectRow: (rowId, sheetId) => {
+      setSelectedRowId(rowId);
+      if (sheetId) setActiveSheetId(sheetId);
+    },
+    setMode,
+  });
 
   const measurableSheets = useMemo(() => (snapshot?.sheets ?? []).filter((s) => s.status !== "pending"), [snapshot?.sheets]);
   const activeSheet =
@@ -120,17 +141,33 @@ export default function PreconSessionPage() {
       onError: (e) => toast(getApiErrorMessage(e, "Could not retry the take-off."), "error"),
     });
 
+  const selectRow = (rowId: string | null, sheetId?: string | null): void => {
+    setSelectedRowId(rowId);
+    if (sheetId) setActiveSheetId(sheetId);
+  };
+
   const workspace = (
     <PreconWorkspace
       sessionId={sessionId}
       snapshot={snapshot}
-      view={{ sheets: measurableSheets, activeSheet, selectedRowId, tool, zoomRequest }}
-      onSelectSheet={setActiveSheetId}
-      onSelectRow={(rowId, sheetId) => {
-        setSelectedRowId(rowId);
-        if (sheetId) setActiveSheetId(sheetId);
+      view={{
+        sheets: measurableSheets,
+        activeSheet,
+        selectedRowId,
+        tool,
+        zoomRequest,
+        focusGeometry: source.focusGeometry,
+        mode: effectiveMode,
+        collapseTo: source.collapseTo,
       }}
+      onSelectSheet={setActiveSheetId}
+      onSelectRow={selectRow}
       onToolChange={setTool}
+      onModeChange={(next) => {
+        source.returnToWorkbook();
+        setMode(next);
+      }}
+      onSourceAction={source.open}
     />
   );
 
@@ -186,6 +223,18 @@ export default function PreconSessionPage() {
       ) : (
         workspace
       )}
+
+      {source.choice ? (
+        <SourceChooser
+          choice={source.choice}
+          sheetCodeOf={(sheetId) => {
+            const sheet = snapshot.sheets.find((entry) => entry.id === sheetId);
+            return sheet ? `${sheet.code ?? "Sheet"} · ${sheet.title ?? ""}`.trim() : "Drawing";
+          }}
+          onPick={source.chooseGeometry}
+          onClose={source.closeChoice}
+        />
+      ) : null}
     </div>
   );
 }

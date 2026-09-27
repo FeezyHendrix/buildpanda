@@ -1,4 +1,5 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { goBack } from "@/lib/navigation";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Spinner, Text } from "@/components/atoms";
@@ -37,7 +38,7 @@ function Editor({ db, projectId, orderId }: { db: Db; projectId: string; orderId
 
   // Same rules as the new-order form: the API rejects a missing quantity or
   // needed-by date, so an edit that would strip them is refused here.
-  const quantityNumber = Number.parseFloat(quantityValue);
+  const quantityNumber = Number(quantityValue.trim());
   const isQuantityValid = Number.isFinite(quantityNumber) && quantityNumber > 0;
   const isNeededByValid = isIsoDate(neededByValue.trim());
   const canSubmit =
@@ -62,7 +63,7 @@ function Editor({ db, projectId, orderId }: { db: Db; projectId: string; orderId
         neededBy: neededByValue.trim(),
         supplier: supplierValue.trim() || null,
       });
-      router.back();
+      goBack();
     } catch (err) {
       setSaving(false);
       setError(err instanceof Error ? err.message : "Could not save this order.");
@@ -72,7 +73,7 @@ function Editor({ db, projectId, orderId }: { db: Db; projectId: string; orderId
   return (
     <Page
       title={TITLE}
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={submit} disabled={!canSubmit} loading={saving}>
           Save changes
@@ -129,7 +130,7 @@ export default function EditMaterialOrder() {
 
   if (!ready || !db || !projectId || !id) {
     return (
-      <Page title={TITLE} onBack={() => router.back()}>
+      <Page title={TITLE} onBack={() => goBack()}>
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>

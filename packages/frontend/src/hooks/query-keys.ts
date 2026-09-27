@@ -374,32 +374,8 @@ export const materialLedgerKeys = {
   catalog: (projectId: string) => [...materialLedgerKeys.all(projectId), "catalog"] as const,
 };
 
-export const preconKeys = {
-  all: ["precon"] as const,
-  sessions: () => [...preconKeys.all, "sessions"] as const,
-  snapshot: (sessionId: string) => [...preconKeys.all, "snapshot", sessionId] as const,
-  programme: (sessionId: string) => [...preconKeys.all, "programme", sessionId] as const,
-  progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
-  snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
-};
-
-export const preconAssistKeys = {
-  all: ["precon-assist"] as const,
-  forSession: (sessionId: string) => [...preconAssistKeys.all, "session", sessionId] as const,
-};
-
 export const proposalPackKeys = {
   all: (proposalId: string) => ["proposals", "detail", proposalId, "pack"] as const,
-};
-
-export const takeoffLinkKeys = {
-  lineStatuses: (sessionId: string) => ["precon", "line-statuses", sessionId] as const,
-};
-
-export const rateLibraryKeys = {
-  all: ["rate-library"] as const,
-  cards: () => [...rateLibraryKeys.all, "cards"] as const,
-  quotes: () => [...rateLibraryKeys.all, "quotes"] as const,
 };
 
 export const complianceDocKeys = {
@@ -412,27 +388,5 @@ export const proposalTemplateKeys = {
   list: () => [...proposalTemplateKeys.all, "list"] as const,
 };
 
-// WS-9: proposal-scoped safety pack (risk register, method statements, phase plan)
-export const preconSafetyKeys = {
-  all: (proposalId: string) => ["proposals", proposalId, "safety"] as const,
-  risks: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "risks"] as const,
-  statements: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "method-statements"] as const,
-  phasePlan: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "phase-plan"] as const,
-};
-
-// WS-M1D: pinned comments on take-off sheets (drawing-markup register, precon anchor)
-export const preconMarkupKeys = {
-  all: ["precon", "markups"] as const,
-  session: (sessionId: string) => [...preconMarkupKeys.all, sessionId] as const,
-};
-
-// WS-M3B: assemblies in the rate library, and who is on a take-off session
-export const preconAssemblyKeys = {
-  all: ["precon", "assemblies"] as const,
-  list: () => [...preconAssemblyKeys.all, "list"] as const,
-};
-
-export const preconPresenceKeys = {
-  all: ["precon", "presence"] as const,
-  session: (sessionId: string) => [...preconPresenceKeys.all, sessionId] as const,
-};
+// The take-off surface keeps its keys in one module of its own.
+export * from "./query-keys-precon";

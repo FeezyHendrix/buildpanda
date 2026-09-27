@@ -1,4 +1,5 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { goBack } from "@/lib/navigation";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { RFI_PRIORITIES, type RfiPriority } from "@/api/rfis";
@@ -18,7 +19,7 @@ type BallInCourt = { id: string | null; name: string | null };
 
 function LoadingPage() {
   return (
-    <Page title="Edit RFI" onBack={() => router.back()}>
+    <Page title="Edit RFI" onBack={() => goBack()}>
       <View className="items-center py-12">
         <Spinner size="md" />
       </View>
@@ -77,7 +78,7 @@ function Editor({ db, projectId, rfiId }: { db: Db; projectId: string; rfiId: st
         ballInCourtId: ballInCourtValue.id,
         ballInCourtName: ballInCourtValue.name,
       });
-      router.back();
+      goBack();
     } catch (err) {
       setSaving(false);
       setError(err instanceof Error ? err.message : "Could not save this RFI.");
@@ -87,7 +88,7 @@ function Editor({ db, projectId, rfiId }: { db: Db; projectId: string; rfiId: st
   return (
     <Page
       title="Edit RFI"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={submit} disabled={!canSubmit} loading={saving}>
           Save changes

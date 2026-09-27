@@ -19,6 +19,11 @@ export interface PreconGenerateJobData {
   // session.status alone — the session is already in review.
   mode?: PreconJobMode;
   sheetId?: string;
+  // Which re-run this job is the result of. Minted when the re-run was asked
+  // for, checked when the result lands: a job whose number is no longer current
+  // read the take-off before a correction that supersedes it, or is a
+  // redelivery of one that already landed.
+  rerunGeneration?: number;
   // a take-off measured by hand: render the pages with their snap index and
   // scale, draft nothing
   sheetsOnly?: boolean;
@@ -47,8 +52,9 @@ export async function runGenerate(db: Knex, data: PreconGenerateJobData, publish
   const mode: PreconJobMode = data.mode ?? "generate";
   if (mode !== "generate") {
     try {
-      if (mode === "remeasure" && data.sheetId) await remeasureSheet(db, data.sheetId, progress);
-      else if (mode === "redraft") await redraftBill(db, session.id, progress);
+      const token = data.rerunGeneration === undefined ? undefined : { sessionId: session.id, generation: data.rerunGeneration };
+      if (mode === "remeasure" && data.sheetId) await remeasureSheet(db, data.sheetId, progress, token);
+      else if (mode === "redraft") await redraftBill(db, session.id, progress, token);
     } catch (error) {
       const message = error instanceof Error ? error.message : `${mode} failed`;
       await progress("draft", `${mode === "remeasure" ? "Re-measure" : "Redraft"} failed: ${message}`);

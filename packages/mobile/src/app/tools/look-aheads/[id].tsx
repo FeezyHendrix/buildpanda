@@ -1,9 +1,11 @@
+import { goBack } from "@/lib/navigation";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { Alert, View } from "react-native";
 import type { Activity } from "@/api/activities";
 import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
+import { BuildingLabel } from "@/components/molecules/building-label";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
@@ -68,7 +70,7 @@ function AssignedActivities({ activityIds, activities }: { activityIds: string[]
 
 function LookAheadDetail({ db, projectId, lookAheadId }: { db: Db; projectId: string; lookAheadId: string }) {
   const { data: la } = useLocalLookAhead(db, lookAheadId);
-  const activities = useActivities(projectId);
+  const activities = useActivities(projectId, true, null);
 
   if (!la) {
     return (
@@ -89,6 +91,7 @@ function LookAheadDetail({ db, projectId, lookAheadId }: { db: Db; projectId: st
         {la.isPendingSync ? <PendingBadge /> : null}
       </View>
 
+      <BuildingLabel buildingId={la.buildingId} />
       <Text weight="bold" className="text-lg">{la.name}</Text>
 
       {la.description ? (
@@ -135,7 +138,9 @@ export default function LookAheadDetailPage() {
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          void removeRecord(id).then(() => router.back()).catch(() => undefined);
+          void removeRecord(id).then(() => goBack()).catch((error: unknown) => {
+            Alert.alert("Could not delete this record", error instanceof Error ? error.message : "Please try again.");
+          });
         },
       },
     ]);
@@ -144,7 +149,7 @@ export default function LookAheadDetailPage() {
   return (
     <Page
       title="Look ahead"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         id ? (
           <>

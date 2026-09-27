@@ -58,6 +58,7 @@ function buildActivity(
   return {
     id: row.id,
     projectId: row.project_id,
+    buildingId: row.building_id,
     phaseId: row.phase_id,
     phaseName,
     name: row.name,

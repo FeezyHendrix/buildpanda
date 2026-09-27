@@ -9,10 +9,10 @@ import { outboxContextQuery } from "@/db/outbox-context";
  */
 export function useOutboxRows(db: Db) {
   const query = useMemo(() => outboxContextQuery(db), [db]);
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
   const data = useMemo(
     () => [...(live.data ?? [])].sort((a, b) => b.createdAt - a.createdAt),
     [live.data],
   );
-  return { data, isPending: live.data === undefined };
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }

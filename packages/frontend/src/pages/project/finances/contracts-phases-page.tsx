@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useContracts, useDeleteContract, type Contract } from "@/hooks/use-contracts";
@@ -133,10 +132,9 @@ export default function ProjectContractsPhasesPage() {
           />
         </div>
         {tab === "contracts" && canManage ? (
-          <Button variant="primary" size="md" onClick={() => setUpsert({ open: true, initial: null })}>
-            <PlusIcon className="size-4" />
+          <CreateButton onClick={() => setUpsert({ open: true, initial: null })}>
             Add contract
-          </Button>
+     </CreateButton>
         ) : null}
       </div>
 

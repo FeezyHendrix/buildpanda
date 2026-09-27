@@ -34,6 +34,111 @@ coverage/
 /packages/backend/benchmark/
 /packages/backend/src/modules/panda-ai/benchmark/
 
+# Exception: the take-off regression suites must travel with the branch. They
+# are the only proof that a saved measurement keeps its definition, its geometry
+# id, its basis sentence and its undo chain against a real database, and that a
+# line cannot be restated from another organisation's session — so a checkout
+# that lacks them can silently reintroduce the defects they were written to
+# catch. Half of them WERE missing, and a `tsx --test` run skips a named file
+# that is not there without failing, so the gap was invisible until a fresh
+# clone was audited.
+#
+# Every entry below is exactly one file, and the list is closed against the
+# canonical gate from both ends by `packages/backend/scripts/takeoff-suites.ts`:
+#   * a suite named in the manifest but absent on disk  -> the gate exits 1
+#   * a *.test.ts in one of these directories but absent from the manifest
+#     -> the gate exits 1
+# So a suite that is added here and nowhere else, or gated and never un-ignored,
+# fails loudly instead of quietly. Keep it one path per line and keep it in step
+# with that manifest — do NOT widen this to un-ignore tests generally, and do
+# NOT un-ignore a historical worktree to pick a suite up.
+#
+# packages/backend/src/modules/panda-ai/pdf-takeoff — 43
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/apply-to-estimate-locks.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/apply-to-estimate.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-audit-restore.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-batch-edges.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-batch-restructure.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-batch-topology.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-calibration-refusals.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-calibration.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-commands-batch.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-commands.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-concurrency.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-cross-session-rows.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-deduction-blocks.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-deduction-dimensionality.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-deduction-edits.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-deduction-rescale.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-foundation.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-geometry.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-identity-edges.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-input-refusals.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-integration.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-locked-writes.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-logical-shapes.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-markup-receipts.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-measurement-maths.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-merge-multishape.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-merge-union.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-multisheet-batch.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-operation-api.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-operations.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-parameter-edits.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-persistence.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-repeats.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-rerun-atomicity.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-restructure-rerun.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-row-dto.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-sheet-settings.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-stated-deductions.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-tombstones.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-undo-redo.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-viewports.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/measurement-basis.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/validation-scope.test.ts
+
+# packages/backend/src/modules/panda-ai/pdf-takeoff/workbook — 11
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-api.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-bindings.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-bounds.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-build.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-cancel.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-engine.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-export-names.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-export.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-graph.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-lifecycle.test.ts
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/workbook/workbook-protection.test.ts
+
+# packages/backend/src/modules/panda-ai/agent — 3
+!/packages/backend/src/modules/panda-ai/agent/precon-boq-basis.test.ts
+!/packages/backend/src/modules/panda-ai/agent/precon-workbook-read.test.ts
+!/packages/backend/src/modules/panda-ai/agent/tool-permissions-gate.test.ts
+
+# packages/backend/src/modules/panda-ai/precon-assist — 1
+!/packages/backend/src/modules/panda-ai/precon-assist/context-basis.test.ts
+
+# packages/backend/src/modules/drawing-markup — 2
+!/packages/backend/src/modules/drawing-markup/precon-editor-db.test.ts
+!/packages/backend/src/modules/drawing-markup/precon-editor.test.ts
+
+# packages/frontend/src/components/molecules/precon-sheet-viewer — 9
+!/packages/frontend/src/components/molecules/precon-sheet-viewer/detection-model.test.ts
+!/packages/frontend/src/components/molecules/precon-sheet-viewer/draft-history.test.ts
+!/packages/frontend/src/components/molecules/precon-sheet-viewer/editor-state.test.ts
+!/packages/frontend/src/components/molecules/precon-sheet-viewer/overlay-model.test.ts
+!/packages/frontend/src/components/molecules/precon-sheet-viewer/polygon-validity.test.ts
+!/packages/frontend/src/components/molecules/precon-sheet-viewer/saved-edit-model.test.ts
+!/packages/frontend/src/components/molecules/precon-sheet-viewer/saved-edit-open.test.ts
+!/packages/frontend/src/components/molecules/precon-sheet-viewer/shape-edit-model.test.ts
+!/packages/frontend/src/components/molecules/precon-sheet-viewer/stacked-picker.test.ts
+
+# packages/frontend/src/components/molecules/precon-workbook — 3
+!/packages/frontend/src/components/molecules/precon-workbook/workbook-editing.test.ts
+!/packages/frontend/src/components/molecules/precon-workbook/workbook-protection.test.ts
+!/packages/frontend/src/components/molecules/precon-workbook/workbook-serialization.test.ts
+
 # Docker
 postgres_data/
 
@@ -62,3 +167,10 @@ temp_auto_push.bat
 temp_interactive_push.bat
 branch_structure.json
 .worktrees/
+
+# Generated agent/package-manager scratch at the repo root. Ignored, never
+# deleted: /.claude/worktrees holds other workers' live checkouts and
+# /.pnpm-store is the content-addressed package cache. Scoped with a leading
+# slash so a real .claude/skills or a package's own store is unaffected.
+/.claude/worktrees/
+/.pnpm-store/

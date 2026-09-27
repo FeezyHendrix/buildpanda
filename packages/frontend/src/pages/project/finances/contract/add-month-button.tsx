@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import { Popover } from "@base-ui/react/popover";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { currentPeriod, nextPeriod } from "../schedule-of-values-line";
 import { PERIOD_PATTERN, formatPeriodHeading, isForecastPeriod } from "./billing-sheet-model";
 
@@ -45,10 +45,9 @@ export function AddMonthButton({ periods, onAdd }: AddMonthButtonProps) {
     >
       <Popover.Trigger
         render={
-          <Button type="button" variant="secondary" size="md">
-            <PlusIcon className="size-4" />
+          <CreateButton type="button" variant="secondary">
             Add month
-          </Button>
+     </CreateButton>
         }
       />
       <Popover.Portal>

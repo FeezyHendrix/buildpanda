@@ -42,7 +42,7 @@ interface FieldSession {
   storageOwnerId: string | undefined;
   isReady: boolean;
   selectProject: (projectId: string) => void;
-  selectBuilding: (buildingId: string) => void;
+  selectBuilding: (buildingId: string | undefined) => void;
   clearProject: () => void;
 }
 
@@ -100,7 +100,8 @@ export function FieldSessionProvider({ children }: { children: ReactNode }) {
   // Offline the live session is absent, so the persisted workspace stands in.
   // Without this the org reads as `undefined`, the scope looks stale, and the
   // crew member loses their project the moment they lose signal.
-  const organizationId = liveOrganizationId ?? scope?.organizationId;
+  const ownedScope = scope?.userId === user?.id ? scope : null;
+  const organizationId = user ? liveOrganizationId ?? ownedScope?.organizationId : undefined;
 
   // Only a *confirmed* mismatch invalidates the scope — never a missing session.
   const isStale =
@@ -109,8 +110,8 @@ export function FieldSessionProvider({ children }: { children: ReactNode }) {
     (scope.userId !== user.id ||
       (liveOrganizationId !== undefined && scope.organizationId !== liveOrganizationId));
 
-  const projectId = scope !== null && !isStale ? scope.projectId : undefined;
-  const buildingId = scope !== null && !isStale ? scope.buildingId : undefined;
+  const projectId = ownedScope && !isStale ? ownedScope.projectId : undefined;
+  const buildingId = ownedScope && !isStale ? ownedScope.buildingId : undefined;
 
   useEffect(() => {
     if (isStale) {
@@ -135,7 +136,7 @@ export function FieldSessionProvider({ children }: { children: ReactNode }) {
 
   // Buildings belong to a project, so this only ever extends the current scope;
   // selectProject drops it by omission when the project changes.
-  const selectBuilding = useCallback((nextBuildingId: string) => {
+  const selectBuilding = useCallback((nextBuildingId: string | undefined) => {
     setScope((current) => {
       if (!current) return current;
       const next: PersistedScope = { ...current, buildingId: nextBuildingId };
@@ -173,7 +174,12 @@ export function useFieldSession(): FieldSession {
 
 /** The only path that ends a session — everything else keeps the user signed in. */
 export async function signOutAndClearScope(): Promise<void> {
-  writeScope(null);
-  writeCachedUser(null);
-  await authClient.signOut();
+  try {
+    // The Expo auth plugin clears its local cookie and live session before
+    // sending the request. A missing connection must not prevent local logout.
+    await authClient.signOut();
+  } finally {
+    writeScope(null);
+    writeCachedUser(null);
+  }
 }

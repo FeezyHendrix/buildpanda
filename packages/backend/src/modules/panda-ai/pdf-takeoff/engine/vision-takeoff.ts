@@ -16,6 +16,7 @@ export interface VisionTakeoffInput {
   pageNumber: number;
   globalPage: number;
   sheetLabel: string;
+  focus?: "roof";
 }
 
 const UNITS = ["m", "m2", "m3", "nr", "kg", "sum"] as const;
@@ -42,6 +43,8 @@ const VisionItem = z.object({
 
 const VisionResponse = z.object({
   scaleReadable: z.boolean(),
+  roofType: z.enum(["flat", "gable", "hipped", "mansard", "shed", "mixed", "unknown"]).nullable().optional(),
+  pitchDeg: z.number().nonnegative().max(89).nullable().optional(),
   items: z.array(VisionItem).max(200),
   notes: z.string().max(400).optional(),
 });
@@ -58,6 +61,18 @@ Rules:
 - Prefer counting (nr) over measuring when only symbols are visible (doors, WCs, columns).
 - qty is an ESTIMATE — err on the low side; never invent items you cannot see. Empty items is valid.
 - Max 200 items. description one line, <=240 chars.`;
+
+const ROOF_PROMPT = `You are a quantity surveyor reading a roof plan from an architectural drawing.
+Return ONLY JSON (no prose, no code fences) matching:
+{"scaleReadable": boolean, "roofType": "flat|gable|hipped|mansard|shed|mixed|unknown", "pitchDeg": number,
+ "items": [{"elementGroup": "roof", "workSectionCode": string, "workSectionTitle": string, "description": string,
+   "qty": number, "unit": "m|m2|nr", "basis": string}], "notes": string}
+Rules:
+- Identify the roof type from the outline and slope lines, rather than assuming every roof is gabled.
+- Read the roof outline, pitch, covering type, eaves, verges, ridges, hips, valleys, gutters, flashings and rooflights.
+- Return sloping roof covering in m2, eaves/ridges/hips/valleys in m, and countable rooflights in nr.
+- Use the named covering material in the description. If pitch or scale is unreadable, set scaleReadable=false and return no quantities.
+- Every item must use elementGroup=roof. Max 200 items.`;
 
 function stripFences(raw: string): string {
   return raw
@@ -85,7 +100,7 @@ export async function measureSheetViaVision(
 
   budget.remainingSheets -= 1;
 
-  const raw = await chatVision(`${PROMPT}\n\nDrawing: ${input.sheetLabel}`, [pngToDataUrl(png)], {
+  const raw = await chatVision(`${input.focus === "roof" ? ROOF_PROMPT : PROMPT}\n\nDrawing: ${input.sheetLabel}`, [pngToDataUrl(png)], {
     detail: "high",
   });
   if (!raw) return null;
@@ -98,8 +113,11 @@ export async function measureSheetViaVision(
   }
   if (!parsed.scaleReadable || parsed.items.length === 0) return null;
 
+  const roofContext = input.focus === "roof"
+    ? ` Roof type identified as ${parsed.roofType ?? "unknown"}${parsed.pitchDeg == null ? "" : ` at ${parsed.pitchDeg}°`}.`
+    : "";
   return parsed.items.map((it) => ({
-    elementGroup: it.elementGroup,
+    elementGroup: input.focus === "roof" ? "Roof" : it.elementGroup,
     workSection: { code: it.workSectionCode, title: it.workSectionTitle },
     specNote: null,
     code: null,
@@ -109,7 +127,7 @@ export async function measureSheetViaVision(
     deductions: [],
     qty: it.qty,
     confidence: "low",
-    measurementBasis: `Vision estimate (scanned drawing): ${it.basis}`,
+    measurementBasis: `Vision estimate: ${it.basis}.${roofContext}`,
     geometries: [],
     pageNumber: input.globalPage,
     provisional: true,

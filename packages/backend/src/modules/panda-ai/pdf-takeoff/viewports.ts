@@ -62,6 +62,32 @@ export function scaleAt(sheet: ScaledSheet, vertices: number[][]): ScalePick {
   return { mmPerPt: sheet.scale_mm_per_pt, viewport: null };
 }
 
+/**
+ * Tools whose figure is a tally rather than a dimension. Five doors are five
+ * doors at any scale, so asking for one is not merely unnecessary — it invents a
+ * dependency, and `scaleAt` REFUSES an uncalibrated sheet. Counting on a drawing
+ * nobody has calibrated yet is ordinary QS work, so the count path must not
+ * reach that check at all (contracts 18 and 24).
+ */
+const SCALE_FREE_TOOLS: readonly string[] = ["count"];
+
+export function isScaleFree(tool: string): boolean {
+  return SCALE_FREE_TOOLS.includes(tool);
+}
+
+/**
+ * The scale this tool needs, or `null` when it needs none. Returning null rather
+ * than a dummy mmPerPt keeps "no scale was used" expressible all the way into the
+ * stored definition and the basis sentence.
+ */
+export function scaleForTool(sheet: ScaledSheet, tool: string, vertices: number[][]): ScalePick | null {
+  return isScaleFree(tool) ? null : scaleAt(sheet, vertices);
+}
+
+export function mmPerPtOf(pick: ScalePick | null): number {
+  return pick?.mmPerPt ?? 0;
+}
+
 /** "1:20" on a PDF sheet; a DWG or a picture has no paper scale, so the ratio is stated as mm per unit. */
 export function scaleLabel(sheet: { file_name?: string }, mmPerPt: number): string {
   if (sheet.file_name && /\.pdf$/i.test(sheet.file_name)) return `1:${Math.round(mmPerPt / MM_PER_PDF_PT)}`;
@@ -69,6 +95,6 @@ export function scaleLabel(sheet: { file_name?: string }, mmPerPt: number): stri
 }
 
 /** The basis fragment naming the viewport a drawing was measured in, or nothing. */
-export function scaleClause(sheet: { file_name?: string }, pick: ScalePick): string {
-  return pick.viewport ? ` in viewport ${pick.viewport.label} at ${scaleLabel(sheet, pick.mmPerPt)}` : "";
+export function scaleClause(sheet: { file_name?: string }, pick: ScalePick | null): string {
+  return pick?.viewport ? ` in viewport ${pick.viewport.label} at ${scaleLabel(sheet, pick.mmPerPt)}` : "";
 }

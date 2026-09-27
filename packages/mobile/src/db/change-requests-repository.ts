@@ -1,3 +1,4 @@
+import { remapQueuedRecord } from "./sync-write-state";
 import { randomUUID } from "expo-crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import {
@@ -40,8 +41,8 @@ export const changeRequestsRepository = {
 
   async createLocal(db: Db, projectId: string, input: UpsertChangeRequestInput): Promise<string> {
     const id = `local_${randomUUID()}`;
-    await db.transaction(async (tx) => {
-      await tx.insert(changeRequests).values({
+    await db.transaction((tx) => {
+      tx.insert(changeRequests).values({
         id,
         projectId,
         title: input.title,
@@ -54,15 +55,15 @@ export const changeRequestsRepository = {
         currency: input.currency ?? "NGN",
         isPendingSync: true,
         updatedAt: Date.now(),
-      });
-      await tx.insert(outbox).values({
+      }).run();
+      tx.insert(outbox).values({
         id: randomUUID(),
         resource: "change-requests",
         entityId: id,
         projectId,
         operation: "create",
         nextAttemptAt: 0,
-      });
+      }).run();
     });
     return id;
   },
@@ -78,20 +79,20 @@ export const changeRequestsRepository = {
    * left behind would push against an id that no longer exists.
    */
   async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      const orphaned = await tx
+    await db.transaction((tx) => {
+      const orphaned = tx
         .select({ id: changeRequestComments.id })
         .from(changeRequestComments)
-        .where(eq(changeRequestComments.changeRequestId, id));
+        .where(eq(changeRequestComments.changeRequestId, id)).all();
       if (orphaned.length > 0) {
         const ids = orphaned.map((row) => row.id);
-        await tx
+        tx
           .delete(outbox)
-          .where(and(eq(outbox.resource, CHANGE_REQUEST_COMMENTS_RESOURCE), inArray(outbox.entityId, ids)));
-        await tx.delete(changeRequestComments).where(inArray(changeRequestComments.id, ids));
+          .where(and(eq(outbox.resource, CHANGE_REQUEST_COMMENTS_RESOURCE), inArray(outbox.entityId, ids))).run();
+        tx.delete(changeRequestComments).where(inArray(changeRequestComments.id, ids)).run();
       }
-      await tx.delete(changeRequests).where(eq(changeRequests.id, id));
-      await enqueueDelete(tx as never, "change-requests", id, projectId, randomUUID());
+      tx.delete(changeRequests).where(eq(changeRequests.id, id)).run();
+      enqueueDelete(tx, "change-requests", id, projectId, randomUUID());
     });
   },
 
@@ -102,8 +103,8 @@ export const changeRequestsRepository = {
     id: string,
     patch: Partial<UpsertChangeRequestInput>,
   ): Promise<void> {
-    await db.transaction(async (tx) => {
-      await tx
+    await db.transaction((tx) => {
+      tx
         .update(changeRequests)
         .set({
           ...(patch.title !== undefined ? { title: patch.title } : {}),
@@ -117,17 +118,19 @@ export const changeRequestsRepository = {
           isPendingSync: true,
           updatedAt: Date.now(),
         })
-        .where(eq(changeRequests.id, id));
+        .where(eq(changeRequests.id, id)).run();
 
-      await enqueueUpdate(tx as never, "change-requests", id, projectId, randomUUID());
+      enqueueUpdate(tx, "change-requests", id, projectId, randomUUID());
     });
   },
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: ChangeRequest) {
-    await db.transaction(async (tx) => {
-      await tx.delete(changeRequests).where(eq(changeRequests.id, localId));
-      await tx.insert(changeRequests).values({
-        id: server.id,
+    await db.transaction((tx) => {
+      const [local] = tx.select().from(changeRequests).where(eq(changeRequests.id, localId)).limit(1).all();
+      const hasEdits = remapQueuedRecord(tx, "change-requests", localId, server.id);
+      if (!local) return;
+      tx.delete(changeRequests).where(eq(changeRequests.id, localId)).run();
+      const values = {
         projectId,
         title: server.title,
         description: server.description,
@@ -137,15 +140,24 @@ export const changeRequestsRepository = {
         costImpact: server.costImpact,
         timeImpactDays: server.timeImpactDays,
         currency: server.currency,
-        isPendingSync: false,
+        ...(hasEdits ? local : {}),
+        id: server.id,
+        isPendingSync: hasEdits,
         updatedAt: Date.now(),
-      });
+      };
+      // A concurrent pull may already have received the server-assigned ID.
+      // Preserve any later local edit on that row while reconciling the draft.
+      tx.insert(changeRequests).values(values).onConflictDoUpdate({
+        target: changeRequests.id,
+        set: values,
+        where: eq(changeRequests.isPendingSync, false),
+      }).run();
       // Comments written offline point at the local id. Moved here, in the
       // same transaction, so the outbox can push them now the request exists.
-      await tx
+      tx
         .update(changeRequestComments)
         .set({ changeRequestId: server.id })
-        .where(eq(changeRequestComments.changeRequestId, localId));
+        .where(eq(changeRequestComments.changeRequestId, localId)).run();
     });
   },
 
@@ -153,9 +165,9 @@ export const changeRequestsRepository = {
   async upsertFromServer(db: Db, projectId: string, rows: readonly ChangeRequest[]) {
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
       for (const row of rows) {
-        await tx
+        tx
           .insert(changeRequests)
           .values({
             id: row.id,
@@ -185,7 +197,7 @@ export const changeRequestsRepository = {
               updatedAt: now,
             },
             where: eq(changeRequests.isPendingSync, false),
-          });
+          }).run();
       }
     });
   },

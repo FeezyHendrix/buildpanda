@@ -1,11 +1,13 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import { CHANGE_STATUS_LABELS } from "@/api/change-requests";
-import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_FAINT } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
+import { SearchableList } from "@/components/molecules/searchable-list";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useLocalChangeRequests } from "@/hooks/use-local-change-requests";
@@ -13,31 +15,15 @@ import { useFieldSession } from "@/lib/field-session";
 
 function List({ db, projectId }: { db: Db; projectId: string }) {
   const { data, isPending } = useLocalChangeRequests(db, projectId);
-
-  if (isPending) {
-    return (
-      <View className="items-center py-12">
-        <Spinner size="md" />
-      </View>
-    );
-  }
-
-  if (data.length === 0) {
-    return (
-      <View className="items-center py-12">
-        <Text weight="semibold" className="text-center text-base">
-          No change requests yet
-        </Text>
-        <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-          Raise one when scope changes on site.
-        </Text>
-      </View>
-    );
-  }
-
   return (
-    <Card>
-      {data.map((row) => (
+    <SearchableList
+      data={data}
+      loading={isPending}
+      fields={(row) => [row.title, CHANGE_STATUS_LABELS[row.status]]}
+      placeholder="Search change requests"
+      emptyTitle="No change requests yet"
+      emptyBody="Raise one when scope changes on site."
+      renderItem={(row) => (
         <Pressable
           key={row.id}
           onPress={() => router.push(`/tools/change-requests/${row.id}`)}
@@ -57,8 +43,8 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
           {row.isPendingSync ? <PendingBadge /> : null}
           <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
         </Pressable>
-      ))}
-    </Card>
+      )}
+    />
   );
 }
 
@@ -68,14 +54,19 @@ export default function ChangeRequests() {
 
   return (
     <Page
+      scroll={false}
       title="Change requests"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton icon="add" label="New change request" onPress={() => router.push("/tools/change-requests/new")} />
+        <HeaderIconButton
+          icon="add"
+          label="New change request"
+          onPress={() => router.push("/tools/change-requests/new")}
+        />
       }
     >
       {ready && db && projectId ? (
-        <List db={db} projectId={projectId} />
+        <List key={projectId} db={db} projectId={projectId} />
       ) : (
         <View className="items-center py-12">
           <Spinner size="md" />

@@ -6,7 +6,9 @@ import { config } from "../config/index.ts";
 import { sendEmail } from "./mail.ts";
 import { sendWelcomeEmail } from "../modules/lifecycle/index.ts";
 import { getRequestContext } from "./request-context.ts";
+import type { NewSignup } from "./email-templates.ts";
 import {
+  newSignupEmail,
   organizationInviteEmail,
   passwordResetEmail,
   verificationEmail,
@@ -212,6 +214,31 @@ async function promoteIfAdminEmail(userId: string): Promise<void> {
   }
 }
 
+/**
+ * Internal notice that a new account exists.
+ *
+ * Production only. Staging shares this code and its own mail credentials, and
+ * every throwaway account made while testing there would otherwise land in a
+ * real person's inbox — which teaches them to ignore the alert, and the alert
+ * is only worth having if it is read.
+ *
+ * Off when SIGNUP_NOTIFY_EMAIL is empty, and silent on failure: the caller is
+ * inside the sign-up path and a bounced internal email is not the new user's
+ * problem.
+ */
+async function notifyOfSignup(signup: NewSignup): Promise<void> {
+  if (!config.isProduction) return;
+  const recipients = config.mail.signupNotifyAddresses;
+  if (recipients.length === 0) return;
+  try {
+    const { subject, html } = newSignupEmail(signup);
+    await sendEmail({ to: recipients, toName: "BuildPanda Team", subject, html });
+  } catch (error) {
+    logger.error({ err: error, email: signup.email }, "[signup] notification failed");
+  }
+}
+
+
 export const auth = betterAuth({
   database: pool,
   secret: config.auth.secret,
@@ -399,6 +426,17 @@ export const auth = betterAuth({
               .update({ signup_ip: ctx.ip, signup_country: ctx.country })
               .catch(() => undefined);
           }
+
+          // Told after the account exists, never before: a failed notification
+          // must not cost somebody their sign-up, so it is fired and forgotten
+          // like the welcome email rather than awaited.
+          void notifyOfSignup({
+            name: user.name,
+            email: user.email,
+            companyName: (user as { companyName?: string | null }).companyName ?? null,
+            country: ctx?.country ?? null,
+            invited,
+          });
         },
       },
     },

@@ -12,7 +12,7 @@ import {
 } from "./activities/activity-helpers";
 
 import { Button } from "@/components/atoms/button";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
 import {
   CreateActivityDialog,
@@ -114,10 +114,9 @@ export default function ProjectActivities() {
         title="Site activity"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={startNewActivity}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={startNewActivity}>
               Add activity
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

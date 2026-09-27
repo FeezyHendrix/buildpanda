@@ -1,12 +1,10 @@
-import { useState } from "react";
 import type { useAddMarkupComment } from "@/hooks/use-drawing-markup";
 import type { useCreateApproval } from "@/hooks/use-approvals";
 import type { useCreateRfi } from "@/hooks/use-rfis";
 import type { useUploadFile } from "@/hooks/use-files";
 import { toast } from "@/lib/toast";
 import { COMMENT_MODE, FOLLOW_UP, type CommentCapture } from "@/lib/markup-meta";
-import { generateId, type Sheet } from "./plan-review-data";
-import { NOTE_TYPE, type Note, type Pin } from "./plan-review-types";
+import { type Sheet } from "./plan-review-data";
 import type { CommentAnchor, PersistMarkup } from "./use-markup-tools";
 
 /** Longest slice of the comment body reused as an RFI subject / approval title. */
@@ -17,10 +15,6 @@ interface PinCommentsArgs {
   projectId: string | undefined;
   /** Writes the pin markup the comment hangs off; from {@link useMarkupTools}. */
   persistMarkup: PersistMarkup;
-  setPins: React.Dispatch<React.SetStateAction<Pin[]>>;
-  setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
-  pendingPinId: string | null;
-  setPendingPinId: React.Dispatch<React.SetStateAction<string | null>>;
   commentAnchor: CommentAnchor | null;
   setCommentAnchor: React.Dispatch<React.SetStateAction<CommentAnchor | null>>;
   uploadFile: ReturnType<typeof useUploadFile>;
@@ -30,12 +24,8 @@ interface PinCommentsArgs {
 }
 
 export interface PinCommentsController {
-  noteDraft: string;
-  setNoteDraft: React.Dispatch<React.SetStateAction<string>>;
   /** Persist the pin, attach the captured comment, and raise any follow-up on it. */
   submitPinComment: (capture: CommentCapture) => Promise<void>;
-  /** Session-local note from the review-notes composer, optionally tied to a pending pin. */
-  submitComment: () => void;
 }
 
 /**
@@ -47,10 +37,6 @@ export function usePinComments({
   sheet,
   projectId,
   persistMarkup,
-  setPins,
-  setNotes,
-  pendingPinId,
-  setPendingPinId,
   commentAnchor,
   setCommentAnchor,
   uploadFile,
@@ -58,11 +44,9 @@ export function usePinComments({
   createRfi,
   createApproval,
 }: PinCommentsArgs): PinCommentsController {
-  const [noteDraft, setNoteDraft] = useState("");
-
   async function uploadCapturedMedia(capture: CommentCapture): Promise<string | null> {
     if (!capture.mediaBlob || !projectId) return null;
-    const extension = capture.mode === COMMENT_MODE.VIDEO ? "webm" : "webm";
+    const extension = "webm";
     const file = new File([capture.mediaBlob], `${capture.mode}-note-${Date.now()}.${extension}`, {
       type: capture.mediaBlob.type || (capture.mode === COMMENT_MODE.VIDEO ? "video/webm" : "audio/webm"),
     });
@@ -118,30 +102,5 @@ export function usePinComments({
     setCommentAnchor(null);
   }
 
-  function submitComment(): void {
-    const text = noteDraft.trim();
-    if (!text || !sheet) return;
-    const pinId = pendingPinId;
-    const noteId = generateId("note");
-    setNotes((n) => [
-      ...n,
-      {
-        id: noteId,
-        type: NOTE_TYPE.COMMENT,
-        text,
-        author: "You",
-        createdAt: Date.now(),
-        sheetId: sheet.id,
-        pinId,
-        durationSeconds: null,
-      },
-    ]);
-    if (pinId) {
-      setPins((p) => p.map((pin) => (pin.id === pinId ? { ...pin, noteId } : pin)));
-      setPendingPinId(null);
-    }
-    setNoteDraft("");
-  }
-
-  return { noteDraft, setNoteDraft, submitPinComment, submitComment };
+  return { submitPinComment };
 }

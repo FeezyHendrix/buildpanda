@@ -1,3 +1,4 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -133,7 +134,9 @@ export default function ChangeRequestDetail() {
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          void removeRecord(id).then(() => router.back()).catch(() => undefined);
+          void removeRecord(id).then(() => goBack()).catch((error: unknown) => {
+            Alert.alert("Could not delete this record", error instanceof Error ? error.message : "Please try again.");
+          });
         },
       },
     ]);
@@ -163,7 +166,7 @@ export default function ChangeRequestDetail() {
   return (
     <Page
       title="Change request"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         id ? (
           <>

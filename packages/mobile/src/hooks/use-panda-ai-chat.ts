@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { streamChat, type ChatMessage } from "@/api/panda-ai";
 
 export interface PandaAiChat {
@@ -31,10 +31,15 @@ export function usePandaAiChat(projectId: string | undefined): PandaAiChat {
     setError(null);
   }, [stop]);
 
+  useEffect(() => {
+    reset();
+    return () => { abortRef.current?.abort(); abortRef.current = null; };
+  }, [projectId, reset]);
+
   const send = useCallback(
     (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || streaming || !projectId) return;
+      if (!trimmed || streaming || abortRef.current || !projectId) return;
       setError(null);
 
       const history: ChatMessage[] = [...messages, { role: "user", content: trimmed }];
@@ -49,19 +54,24 @@ export function usePandaAiChat(projectId: string | undefined): PandaAiChat {
         history,
         controller.signal,
         (chunk) => {
+          if (abortRef.current !== controller || controller.signal.aborted) return;
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (!last || last.role !== "assistant") return prev;
             return [...prev.slice(0, -1), { ...last, content: last.content + chunk }];
           });
         },
-        setActiveTool,
+        (tool) => {
+          if (abortRef.current === controller && !controller.signal.aborted) setActiveTool(tool);
+        },
         () => {
+          if (abortRef.current !== controller) return;
           setStreaming(false);
           setActiveTool(null);
           abortRef.current = null;
         },
         (err) => {
+          if (abortRef.current !== controller || controller.signal.aborted) return;
           setError(err);
           setStreaming(false);
           setActiveTool(null);

@@ -16,7 +16,7 @@ import {
 } from "@/hooks/use-organization";
 import { toast } from "@/lib/toast";
 
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { MembersSection } from "../team/members-section";
 import { InvitationsSection } from "../team/invitations-section";
 import { RolesSection } from "../team/roles-section";
@@ -105,7 +105,7 @@ export function MembersTab() {
     <div className="flex flex-col gap-8">
       {canManage && (
         <div className="flex justify-end">
-          <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+          <CreateButton onClick={() => setInviteOpen(true)}>Invite member</CreateButton>
         </div>
       )}
 

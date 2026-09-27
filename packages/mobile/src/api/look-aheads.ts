@@ -14,6 +14,7 @@ export interface LookAheadActivitySummary {
 }
 
 export interface LookAhead {
+  buildingId?: string | null;
   id: string;
   name: string;
   description: string | null;

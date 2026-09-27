@@ -56,6 +56,9 @@ interface MarkupThreadPopoverProps {
   /** When given, a reply can be handed to a participant. */
   assignees?: CommentAssignee[];
   links?: MarkupThreadLink[];
+  /** The signed-in user, for author-only comment editing (contract 14). */
+  currentUserId?: string | null;
+  onEditComment?: (comment: DrawingMarkupComment, body: string) => void;
   onClose: () => void;
 }
 
@@ -103,6 +106,8 @@ export function MarkupThreadPopover({
   actions,
   assignees,
   links = NO_LINKS,
+  currentUserId = null,
+  onEditComment,
   onClose,
 }: MarkupThreadPopoverProps) {
   const [reply, setReply] = useState("");
@@ -139,7 +144,9 @@ export function MarkupThreadPopover({
         {markup.comments.length === 0 ? (
           <li className="rounded-lg bg-surface-alt px-2.5 py-2 text-xs text-gray-500">No comments yet.</li>
         ) : (
-          markup.comments.map((c) => <MarkupCommentItem key={c.id} comment={c} />)
+          markup.comments.map((c) => (
+            <MarkupCommentItem key={c.id} comment={c} canEditOwn={Boolean(currentUserId && c.authorId === currentUserId && onEditComment)} onEdit={onEditComment} />
+          ))
         )}
       </ul>
       {canEdit ? (

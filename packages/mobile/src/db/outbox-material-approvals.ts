@@ -1,3 +1,4 @@
+import { settleOutboxItem } from "./sync-write-state";
 import { eq } from "drizzle-orm";
 import { isApprovalStatus, materialApprovalsApi } from "@/api/material-approvals";
 import type { Db } from "./client";
@@ -70,7 +71,7 @@ export async function pushMaterialApprovalOutboxItem(
         }
         throw error;
       }
-      await materialApprovalsRepository.markSynced(db, row.id);
+      settleOutboxItem(db, item);
     } else {
       await materialApprovalsApi.update(item.projectId, row.id, {
         title: row.title,
@@ -82,7 +83,7 @@ export async function pushMaterialApprovalOutboxItem(
         neededBy: row.neededBy,
         description: row.description,
       });
-      await materialApprovalsRepository.markSynced(db, row.id);
+      settleOutboxItem(db, item);
     }
 
     await db.delete(outbox).where(eq(outbox.id, item.id));

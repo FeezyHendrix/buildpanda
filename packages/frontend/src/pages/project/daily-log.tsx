@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { DateRangeFilter, formatDateRangeLabel } from "@/components/molecules/date-range-filter";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { KpiCard } from "@/components/molecules/kpi-card";
@@ -137,10 +137,9 @@ export default function ProjectDailyLog() {
                 </Button>
               ) : null}
               {canCreateEntry ? (
-                <Button variant="primary" size="md" onClick={() => setPickDateOpen(true)}>
-                  <PlusIcon className="size-4" />
+                <CreateButton onClick={() => setPickDateOpen(true)}>
                   Add my log
-                </Button>
+        </CreateButton>
               ) : null}
             </div>
           ) : undefined

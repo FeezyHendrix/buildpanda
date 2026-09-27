@@ -61,6 +61,29 @@ export interface VersionWithFile extends DocumentVersionRow {
 
 export function documentsRepository(db: Knex) {
   return {
+    async listProjectMediaSources(projectId: string) {
+      const result = await db.raw(
+        `SELECT m.id, m.type, m.url, NULL AS storage_path, u.title, u.created_at, 'Site update' AS source
+           FROM update_media m
+           JOIN project_updates u ON u.id = m.update_id
+          WHERE u.project_id = ?
+         UNION ALL
+         SELECT CONCAT('daily-', e.id, '-', refs.ordinality),
+                'photo',
+                NULL,
+                f.storage_path,
+                e.author_name,
+                e.created_at,
+                'Daily log'
+           FROM daily_log_entries e
+           CROSS JOIN LATERAL regexp_matches(e.body_html, 'data-file-id=["'']([^"'']+)["'']', 'gi') WITH ORDINALITY AS refs(match, ordinality)
+           JOIN uploaded_files f ON f.id = refs.match[1]
+          WHERE e.project_id = ?
+          ORDER BY created_at DESC`,
+        [projectId, projectId],
+      );
+      return result.rows;
+    },
     listByProject(projectId: string): Promise<DocumentRow[]> {
       return db<DocumentRow>("project_documents")
         .where({ project_id: projectId })

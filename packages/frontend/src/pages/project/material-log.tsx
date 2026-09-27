@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { SearchInput } from "@/components/atoms/search-input";
@@ -8,7 +9,6 @@ import { ReorderPolicyDialog } from "@/components/molecules/reorder-policy-dialo
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -141,10 +141,9 @@ export default function ProjectMaterialLog() {
               Email me
             </Button>
             {canManage && (
-              <Button variant="primary" size="md" onClick={() => setLogOpen(true)}>
-                <PlusIcon className="size-4" />
+              <CreateButton onClick={() => setLogOpen(true)}>
                 Log material
-              </Button>
+       </CreateButton>
             )}
           </div>
         }
@@ -193,7 +192,7 @@ export default function ProjectMaterialLog() {
               icon={<StackIcon />}
               title="No stock yet"
               description="Log the first delivery and this project's running stock levels will build up here."
-              action={canManage ? { label: "Log material", onClick: () => setLogOpen(true), icon: <PlusIcon /> } : undefined}
+              action={canManage ? { label: "Log material", onClick: () => setLogOpen(true) } : undefined}
               className="px-6"
             />
           </Card>

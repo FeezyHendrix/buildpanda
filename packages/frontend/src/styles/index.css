@@ -274,6 +274,36 @@ input[type="radio"] {
   box-shadow: none !important;
 }
 
+/* The two resets above strip every focus ring in the product, so no keyboard user
+   can see where they are (WCAG 2.4.7). Removing them is the real fix, but it
+   changes every screen at once and needs its own visual pass. The take-off editor
+   is keyboard-driven — shortcuts per tool — so it opts back in here. Scoped to
+   [data-takeoff-focus] and placed after the resets so it wins on source order;
+   nothing outside the sheet viewer changes. Delete this block together with the
+   resets above when focus is restored app-wide. */
+[data-takeoff-focus] :focus-visible {
+  outline: 2px solid var(--color-primary-500) !important;
+  outline-offset: 1px !important;
+}
+
+/* Progressive enhancement ONLY — not the overflow affordance. On macOS Chromium
+   every scroller is an overlay that measures a 0px gutter and paints nothing at
+   rest (verified: a plain overflow-y:auto div measures 0 too), which is how most
+   of the tool rail went unnoticed. The real affordances are the rail's scroll
+   buttons and the "All tools" trigger; this just gives platforms that do render
+   classic scrollbars a tidy one. Do NOT add `scrollbar-width`/`scrollbar-color`:
+   either makes Chromium ignore these pseudo-elements entirely. */
+.tool-rail-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.tool-rail-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-grey-100);
+  border-radius: 3px;
+}
+.tool-rail-scroll::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
 
 .no-scrollbar {
   scrollbar-width: none;

@@ -1,38 +1,58 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/atoms/spinner";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import type { PreconBoqRow, PreconGeometry, PreconSheet } from "@/api/precon";
-import { isVersionConflict, useAddPreconDeduction, usePreconSnapIndex, useUpdatePreconGeometry, useUpdatePreconSheet } from "@/hooks/use-precon";
-import { PRECON_TOOL_BY_KEY, scaleRatioOf, type PreconTool, type PreconToolMeta } from "@/lib/precon-meta";
-import { toast } from "@/lib/toast";
+import { usePreconSnapIndex } from "@/hooks/use-precon";
+import { PRECON_TOOL_BY_KEY, type PreconTool, type PreconToolMeta } from "@/lib/precon-meta";
 import { SheetToolbar } from "./precon-sheet-viewer/sheet-toolbar";
-import { SheetLegend, buildLegendEntries } from "./precon-sheet-viewer/sheet-legend";
-import { NoScaleBanner, ScalePromptBanner, type ScalePrompt } from "./precon-sheet-viewer/sheet-banners";
+import { SheetLegend } from "./precon-sheet-viewer/sheet-legend";
 import { SheetSettings } from "./precon-session/sheet-settings";
-import { FIT_VIEW, useSheetView } from "./precon-sheet-viewer/use-sheet-view";
-import { useSheetLoader } from "./precon-sheet-viewer/use-sheet-loader";
+import { useSheetView, useSpaceHold } from "./precon-sheet-viewer/use-sheet-view";
+import { fitViewFor } from "./precon-sheet-viewer/fit-view";
+import { useSheetLoader, type PageInfo } from "./precon-sheet-viewer/use-sheet-loader";
 import { useSheetCoords } from "./precon-sheet-viewer/use-sheet-coords";
 import { ToolPalette } from "./precon-sheet-viewer/tool-palette";
-import { SheetStatusBar } from "./precon-sheet-viewer/sheet-status-bar";
 import { ZoomControls } from "./precon-sheet-viewer/zoom-controls";
-import { useToolShortcuts } from "./precon-sheet-viewer/use-tool-shortcuts";
+import { useViewerKeyboard } from "./precon-sheet-viewer/use-viewer-keyboard";
 import { MeasurementComposer, type PendingMeasurement } from "./precon-sheet-viewer/measurement-composer";
-import { MEASURE_GEOMETRY_KIND, MEASURE_MAX_VERTICES, MEASURE_MIN_VERTICES } from "./precon-sheet-viewer/measure-maths";
-import { rectOf, rectangleVertices, scaleForDraft, viewportAt } from "./precon-sheet-viewer/draft-maths";
+import { MEASURE_MIN_VERTICES } from "./precon-sheet-viewer/measure-maths";
+import { rectOf, scaleForDraft, viewportAt } from "./precon-sheet-viewer/draft-maths";
+import { segmentReadout } from "./precon-sheet-viewer/saved-edit-model";
+import { polygonSelfIntersects } from "./precon-sheet-viewer/polygon-validity";
+import { MeasurementInspector } from "./precon-sheet-viewer/measurement-inspector";
+import { useSheetChangeReset } from "./precon-sheet-viewer/use-sheet-change-reset";
+import { useSelectInteractions } from "./precon-sheet-viewer/use-select-interactions";
+import { useBatchWiring } from "./precon-sheet-viewer/use-batch-wiring";
+import { BatchActionBar } from "./precon-sheet-viewer/batch-action-bar";
+import { SavedEditOverlays } from "./precon-sheet-viewer/saved-edit-overlays";
+import { useDrawActions } from "./precon-sheet-viewer/use-draw-actions";
+import { useSavedEdit } from "./precon-sheet-viewer/use-saved-edit";
+import { useOpHistory } from "./precon-sheet-viewer/use-op-history";
+import { CanvasControlBars } from "./precon-sheet-viewer/canvas-control-bars";
+import { CanvasBottomDock } from "./precon-sheet-viewer/canvas-bottom-dock";
+import { ViewerPreviewPanels } from "./precon-sheet-viewer/viewer-preview-panels";
+import { curvedShapeResolver, measuringGeometryResolver, savedEditLayerProps } from "./precon-sheet-viewer/viewer-resolvers";
+import { PenPresets } from "./precon-sheet-viewer/pen-presets";
 import { useDraft, useDragRect } from "./precon-sheet-viewer/use-draft";
 import { useViewerTools } from "./precon-sheet-viewer/use-viewer-tools";
 import { blockedReasonFor } from "./precon-sheet-viewer/tool-availability";
-import { ViewportPromptBanner } from "./precon-sheet-viewer/viewport-prompt";
 import { Magnifier, useMagnifierHold } from "./precon-sheet-viewer/magnifier";
 import { TypicalPopover } from "./precon-sheet-viewer/typical-popover";
-import { SymbolMatchesBanner } from "./precon-sheet-viewer/symbol-matches-layer";
 import { SheetLayers } from "./precon-sheet-viewer/sheet-layers";
-import { MARKUP_KIND } from "@/api/drawing-markup";
+import { DiscardDraftDialog, useDiscardGuard } from "./precon-sheet-viewer/discard-guard";
+import { ViewerBanners } from "./precon-sheet-viewer/viewer-banners";
 import { usePreconMarkups } from "@/hooks/use-precon-markups";
+import { useScalePrompt } from "./precon-sheet-viewer/use-scale-prompt";
+import { useSheetDerived } from "./precon-sheet-viewer/use-sheet-derived";
 import { ALL_LAYERS_VISIBLE, LayerToggles, type SheetLayer } from "./precon-sheet-viewer/layer-toggles";
 
 export type { PreconTool };
+
+// Stacked under lg (the bill sits beneath the sheet rather than beside it): the
+// sheet sticks to the top of the scrolling column and keeps a height it can be
+// measured on, so picking a bill line never scrolls away the drawing it marks.
+const VIEWER_SHELL =
+  "flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-white max-lg:sticky max-lg:top-0 max-lg:z-20 max-lg:h-[32rem]";
 
 const FLASH_MS = 1600;
 /** Tools that take a mousedown-drag-mouseup box. */
@@ -52,8 +72,20 @@ export interface PreconSheetViewerProps {
   tool: PreconTool;
   onToolChange: (tool: PreconTool) => void;
   zoomRequest?: { seq: number; kind: "in" | "out" | "fit" } | null;
+  /**
+   * Which annotation to put handles on, when a bill line has more than one and
+   * the person has chosen. `seq` carries by value so choosing the same shape
+   * twice re-frames it, exactly as `zoomRequest` does.
+   */
+  focusGeometry?: { seq: number; geometryId: string } | null;
   /** A line drawn by hand has been added to the bill (it is also selected). */
   onMeasurementCreated?: (row: PreconBoqRow) => void;
+  /**
+   * False while another surface owns the keyboard — the workbook grid, in
+   * split view. Without this, typing `A` into a cell would also switch the
+   * canvas to the Area tool behind it.
+   */
+  shortcutsEnabled?: boolean;
 }
 
 /**
@@ -61,14 +93,26 @@ export interface PreconSheetViewerProps {
  * tools draw a new line (draw first, name after); with one selected they
  * redraw it. Vertices are sheet points in both cases.
  */
-export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectSheet, geometries, rows, selectedRowId, onSelectRow, tool, onToolChange, zoomRequest, onMeasurementCreated }: PreconSheetViewerProps) {
+export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectSheet, geometries, rows, selectedRowId, onSelectRow, tool, onToolChange, zoomRequest, focusGeometry = null, onMeasurementCreated, shortcutsEnabled = true }: PreconSheetViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { view, setView, zoomBy, zoomFit, onMouseDown, onMouseMove, endPan } = useSheetView(containerRef, tool === "select");
-  const fitView = useCallback(() => setView(FIT_VIEW), [setView]);
-  const { page, rendering, loadError } = useSheetLoader({ canvasRef, activeSheet, sheets, userZoom: view.userZoom, onLoaded: fitView });
+  const spaceHeld = useSpaceHold();
+  const { view, setView, zoomBy, onMouseDown, onMouseMove, endPan } = useSheetView(containerRef, tool === "select" || spaceHeld);
+  const pageRef = useRef<PageInfo | null>(null);
+  const fitView = useCallback(() => setView(fitViewFor(pageRef.current, containerRef.current?.getBoundingClientRect() ?? null)), [setView]);
+  const fitLoaded = useCallback(
+    (loaded: PageInfo | null) => {
+      pageRef.current = loaded;
+      fitView();
+    },
+    [fitView],
+  );
+  const { page, rendering, loadError } = useSheetLoader({ canvasRef, activeSheet, sheets, userZoom: view.userZoom, onLoaded: fitLoaded });
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
   const { data: snapPoints = [] } = usePreconSnapIndex(activeSheet?.id ?? null);
-  const { cssZoom, toPx, toPt, screenToCanvas, screenToPt, snapAndOrtho } = useSheetCoords({ page, view, containerRef, snapPoints });
+  const { cssZoom, toPx, toPt, screenToCanvas, screenToPt, snapAndOrtho, screenPxToPt } = useSheetCoords({ page, view, containerRef, snapPoints });
 
   const draftApi = useDraft();
   const { draft, anchors, arcMid } = draftApi;
@@ -77,57 +121,32 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [layers, setLayers] = useState(ALL_LAYERS_VISIBLE);
   const { data: markups } = usePreconMarkups(sessionId);
-  // two drawn points whose real distance the reviewer is about to type
-  const [scalePrompt, setScalePrompt] = useState<ScalePrompt | null>(null);
   // a finished shape waiting for its name
   const [pending, setPending] = useState<PendingMeasurement | null>(null);
-  // Measuring tools draw a new line by default; redrawing the selected line
-  // is an explicit choice from the status bar, never a side effect of having
-  // a line selected (the line just created is selected, for one).
+  // Redrawing the selected line is an explicit status-bar choice, never a side
+  // effect of a selection (the line just created is selected, for one).
   const [redrawTargetId, setRedrawTargetId] = useState<string | null>(null);
-  const [legendOpen, setLegendOpen] = useState(true);
+  // A narrow canvas is mostly legend if it opens expanded, so it starts folded
+  // there; the toggle is unchanged and still reachable at every width.
+  const [legendOpen, setLegendOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 1024);
+  // The blocked tool last tried: the palette refuses and says why, on screen.
+  const [blockedAttempt, setBlockedAttempt] = useState<{ toolLabel: string; reason: string } | null>(null);
   const [legendGroup, setLegendGroup] = useState<string | null>(null);
   const [flashRowId, setFlashRowId] = useState<string | null>(null);
   const [magnifierSticky, setMagnifierSticky] = useState(false);
   const magnifierHeld = useMagnifierHold();
-  const tools = useViewerTools({ sessionId, activeSheet, onToolChange, draft: draftApi, setPending, setNote });
-
-  // A sheet change drops any half-drawn shape, prompt, matches and legend pick.
-  const [draftSheetId, setDraftSheetId] = useState(activeSheet?.id ?? null);
-  if (draftSheetId !== (activeSheet?.id ?? null)) {
-    setDraftSheetId(activeSheet?.id ?? null);
-    draftApi.clear();
-    setScalePrompt(null);
-    setLegendGroup(null);
-    tools.reset();
-  }
-
-  const updateGeometry = useUpdatePreconGeometry(sessionId);
-  const addDeduction = useAddPreconDeduction(sessionId);
-  const updateSheet = useUpdatePreconSheet(sessionId);
-
-  const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
-  const sheetGeometries = useMemo(() => geometries.filter((g) => g.sheetId === activeSheet?.id), [geometries, activeSheet?.id]);
-  const sheetMarkups = useMemo(() => (markups ?? []).filter((m) => m.preconSheetId === activeSheet?.id), [markups, activeSheet?.id]);
-  // what each toggle would hide, so turning a layer off says what went with it
-  const layerCounts = useMemo(
-    () => ({
-      measurements: sheetGeometries.length,
-      ink: sheetMarkups.filter((m) => m.kind === MARKUP_KIND.PEN).length,
-      comments: sheetMarkups.filter((m) => m.kind === MARKUP_KIND.PIN).length,
-    }),
-    [sheetGeometries, sheetMarkups],
-  );
-  const legendEntries = useMemo(() => buildLegendEntries(sheetGeometries, rowById), [sheetGeometries, rowById]);
-  const elementGroups = useMemo(() => [...new Set(rows.flatMap((r) => (r.elementGroup ? [r.elementGroup] : [])))], [rows]);
-  // What reads at full strength: a line just created, a legend group, or the
-  // line being reviewed. Everything else fades so the selection carries.
-  const emphasisRowIds = useMemo(() => {
-    if (flashRowId) return new Set([flashRowId]);
-    if (legendGroup) return new Set(legendEntries.find((entry) => entry.group === legendGroup)?.rowIds ?? []);
-    if (selectedRowId) return new Set([selectedRowId]);
-    return null;
-  }, [flashRowId, legendGroup, legendEntries, selectedRowId]);
+  const tools = useViewerTools({ sessionId, activeSheet, tool, onToolChange, draft: draftApi, geometries, setPending, setNote });
+  const scale = useScalePrompt({ sessionId, activeSheet, onApplied: () => { draftApi.clear(); onToolChange("select"); } }); // drawn reference calibration
+  const scalePrompt = scale.prompt;
+  const { rowById, sheetGeometries, visibleGeometries, layerCounts, legendEntries, elementGroups, emphasisRowIds, hiddenGroups, toggleHiddenGroup } = useSheetDerived({
+    geometries,
+    rows,
+    markups,
+    activeSheetId: activeSheet?.id ?? null,
+    flashRowId,
+    legendGroup,
+    selectedRowId,
+  });
 
   const selectedRow = selectedRowId ? (rowById.get(selectedRowId) ?? null) : null;
   const meta = PRECON_TOOL_BY_KEY[tool];
@@ -135,116 +154,63 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
   const draftViewport = viewportAt(viewports, draft[0]);
   const blockedFor = (m: PreconToolMeta) => blockedReasonFor(m, activeSheet, selectedRow);
   const drawingEnabled = tool !== "select" && !blockedFor(meta);
+  const activeBlockedReason = tool === "select" ? null : blockedFor(meta);
+  const activeBlockedNotice = activeBlockedReason ? { toolLabel: meta.label, reason: activeBlockedReason } : null;
   const calibratingViewport = tools.viewportDraft?.mode === "points" && tools.viewportDraft.ptLength === null;
-  const dragEnabled = drawingEnabled && DRAG_TOOLS.has(tool) && !pending && !scalePrompt && !tools.viewportDraft && !tools.matches;
+  // Half-drawn work a switch would silently destroy — what the discard prompt guards.
+  const dirtyDraft = draft.length > 0 || arcMid !== null;
+  const shapeOf = curvedShapeResolver(rowById, geometries);
+  const savedEdit = useSavedEdit(sessionId, { shapeFor: shapeOf, versionOf: (rowId) => rowById.get(rowId)?.version ?? null });
+  const [areaShape, setAreaShape] = useState<"polygon" | "rectangle">("polygon");
+  const [arcMode, setArcMode] = useState(false);
+  const rectangleMode = tool !== "area" && tool !== "volume" ? true : areaShape === "rectangle";
+  const dragEnabled = drawingEnabled && DRAG_TOOLS.has(tool) && rectangleMode && !pending && !scalePrompt && !tools.viewportDraft && !tools.detectionActive;
+  useSheetChangeReset(activeSheet?.id ?? null, () => {
+    draftApi.clear(); savedEdit.cancel(); scale.clear();
+    setLegendGroup(null); setBlockedAttempt(null); tools.reset();
+  });
+  if (savedEdit.edit && savedEdit.edit.rowId !== selectedRowId) savedEdit.cancel(); // stale-line edit reconcile
+  const dirtyWork = dirtyDraft || savedEdit.dirty;
+
+  const performToolChange = (next: PreconTool) => {
+    draftApi.clear(); savedEdit.cancel(); dragRect.cancel(); setPending(null);
+    scale.clear(); setNote(null); setBlockedAttempt(null); tools.reset();
+    onToolChange(next);
+  };
+
+  const guard = useDiscardGuard({
+    dirty: dirtyWork,
+    activeSheetId: activeSheet?.id ?? null,
+    applyTool: performToolChange,
+    applySheet: (sheetId) => { draftApi.clear(); savedEdit.cancel(); onSelectSheet(sheetId); },
+  });
 
   const changeTool = (next: PreconTool) => {
     if (next === "overlay") return tools.toggleOverlay();
     if (next === "magnifier") return setMagnifierSticky((on) => !on);
-    draftApi.clear();
-    dragRect.cancel();
-    setPending(null);
-    setScalePrompt(null);
-    setNote(null);
-    tools.reset();
-    onToolChange(next);
+    if (next === tool) return performToolChange(next);
+    guard.requestTool(next);
   };
 
-  const finishDraft = (vertices: number[][] = draft) => {
-    if (tool === "scale") {
-      if (vertices.length >= 2) setScalePrompt({ ptLength: Math.hypot(vertices[1]![0]! - vertices[0]![0]!, vertices[1]![1]! - vertices[0]![1]!), mm: "" });
-      return;
-    }
-    if (vertices.length === 0) return;
-    const measure = meta.measure;
-    const redrawing = Boolean(selectedRow && redrawTargetId === selectedRow.id);
-    if (measure && !redrawing) {
-      // draw first, name after: the shape stays on the sheet while the composer names it
-      if (vertices.length >= MEASURE_MIN_VERTICES[measure]) setPending({ tool: measure, vertices });
-      else setNote(`Add at least ${MEASURE_MIN_VERTICES[measure]} points before finishing.`);
-      return;
-    }
-    if (!selectedRow) return draftApi.clear();
-    const onError = (error: unknown) =>
-      setNote(isVersionConflict(error) ? "Row changed elsewhere — refreshed; redraw to apply." : getApiErrorMessage(error, "Measurement failed"));
-    const base = { rowId: selectedRow.id, version: selectedRow.version, sheetId: activeSheet?.id };
-    if (tool === "deduct" && vertices.length >= 3) addDeduction.mutate({ ...base, label: "Opening (manual)", vertices }, { onError });
-    else if (measure && vertices.length >= MEASURE_MIN_VERTICES[measure]) updateGeometry.mutate({ ...base, kind: MEASURE_GEOMETRY_KIND[measure], vertices }, { onError });
-    draftApi.clear();
-  };
+  const opHistory = useOpHistory({ sessionId, sheetId: activeSheet?.id ?? null, rowById });
+  const bw = useBatchWiring({ sessionId, sheetGeometries, rowById, mmPerPt: activeSheet?.scaleMmPerPt ?? null, onSelectRow, setNote, screenToPt, screenPxToPt, cssZoom });
+  const select = useSelectInteractions({ tool, savedEdit, containerRef, selectedRowId, onSelectRow, sheetGeometries, screenToPt, snapAndOrtho, toPx, cssZoom, view, setView });
+  const editGeometry = savedEdit.edit ? (sheetGeometries.find((g) => g.id === savedEdit.edit!.geometryId) ?? null) : null;
+  const editScale = savedEdit.edit ? scaleForDraft(activeSheet?.scaleMmPerPt ?? null, viewports, savedEdit.edit.vertices) : null;
+  const { finishDraft, finishFromDoubleClick, onCanvasClick, onDragEnd } = useDrawActions({
+    sessionId, tool, activeSheet, selectedRow, redrawTargetId, drawingEnabled, calibratingViewport,
+    nonDrawingTools: NON_DRAWING_TOOLS, scalePrompt, pending, draftApi, dragRect, tools,
+    screenToPt, snapAndOrtho, setPending, setNote, startScale: scale.start, areaShape, arcMode, screenPxToPt, measuringGeometryIdFor: measuringGeometryResolver(sheetGeometries),
+  });
 
-  // Esc always returns to Select, dropping whatever was half-drawn.
-  const cancel = () => {
-    draftApi.clear();
-    dragRect.cancel();
-    setScalePrompt(null);
-    setNote(null);
-    setMagnifierSticky(false);
-    tools.reset();
-    if (tool !== "select") onToolChange("select");
-  };
-
-  useToolShortcuts(
-    {
-      onEscape: cancel,
-      onEnter: () => {
-        if (tools.matches) tools.confirmMatches();
-        else if (!scalePrompt && !tools.viewportDraft) finishDraft();
-      },
-      onTool: (next) => {
-        // Z is a hold (useMagnifierHold); the palette button makes it sticky
-        if (next === "magnifier") return;
-        if (!blockedFor(PRECON_TOOL_BY_KEY[next])) changeTool(next);
-      },
-      onToggleLegend: () => setLegendOpen((v) => !v),
-    },
-    !pending,
-  );
-
-  const applyDrawnScale = () => {
-    if (!scalePrompt || !activeSheet) return;
-    const mm = Number(scalePrompt.mm);
-    if (!Number.isFinite(mm) || mm <= 0) return toast("Enter the real distance between the two points in millimetres.", "error");
-    const mmPerPt = mm / scalePrompt.ptLength;
-    updateSheet.mutate(
-      { sheetId: activeSheet.id, input: { scaleMmPerPt: mmPerPt, dimUnit: "mm" } },
-      {
-        onSuccess: () => {
-          toast(`Scale set to 1:${scaleRatioOf(mmPerPt)}. Re-measure the sheet from Sheet settings to redraw its lines.`, "success");
-          setScalePrompt(null);
-          draftApi.clear();
-          onToolChange("select");
-        },
-        onError: (e) => toast(getApiErrorMessage(e, "Could not set the scale."), "error"),
-      },
-    );
-  };
-
-  const onCanvasClick = (e: React.MouseEvent) => {
-    if (dragRect.consumeClick()) return;
-    if (!drawingEnabled || scalePrompt || pending || tools.matches || tools.searching) return;
-    if (NON_DRAWING_TOOLS.has(tool) || (tool === "viewports" && !calibratingViewport)) return;
-    const raw = screenToPt(e.clientX, e.clientY);
-    if (!raw) return;
-    if (tool === "room_fill") return tools.roomFillAt(raw);
-    if (tool === "scale" && anchors.length >= 2) return;
-    const last = draft[draft.length - 1] ?? null;
-    const arcs = tool !== "scale" && tool !== "count" && tool !== "viewports";
-    const next = draftApi.addPoint(snapAndOrtho(raw, e.shiftKey, last), arcs && e.altKey);
-    if (tool === "viewports") return tools.calibrateViewport(next.vertices);
-    // a length (and the scale bar) is two clicks: it finishes itself
-    const max = tool === "scale" ? 2 : meta.measure ? MEASURE_MAX_VERTICES[meta.measure] : undefined;
-    if (max && next.anchors.length >= max && !next.arcMid) finishDraft(next.vertices);
-  };
-
-  const onDragEnd = ({ start, current }: { start: [number, number]; current: [number, number] }) => {
-    if (tool === "area" || tool === "volume") {
-      const vertices = rectangleVertices(start, current);
-      draftApi.replace(vertices);
-      finishDraft(vertices);
-    } else if (tool === "viewports") tools.startViewport(rectOf(start, current));
-    else if (tool === "find_symbol") tools.findSymbolIn(rectOf(start, current));
-  };
+  const cancel = useViewerKeyboard({
+    tool, onToolChange, changeTool, toolBlockedReason: (t) => blockedFor(PRECON_TOOL_BY_KEY[t]),
+    selectedRowId, onSelectRow, guard, scale, tools, draftApi, dragRect, savedEdit, opHistory, batch: bw,
+    dirtyDraft, enabled: shortcutsEnabled && !pending && !guard.pending, finishDraft,
+    clearNote: () => setNote(null),
+    releaseMagnifier: () => setMagnifierSticky(false),
+    onToggleLegend: () => setLegendOpen((v) => !v),
+  });
 
   const onCreated = (row: PreconBoqRow) => {
     draftApi.clear();
@@ -259,59 +225,71 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
     if (!zoomRequest) return;
     if (zoomRequest.kind === "in") zoomBy(1.5);
     else if (zoomRequest.kind === "out") zoomBy(1 / 1.5);
-    else zoomFit();
-  }, [zoomRequest, zoomBy, zoomFit]);
+    else fitView();
+  }, [zoomRequest, zoomBy, fitView]);
 
-  const banner = note ?? loadError;
+  // Frame the chosen annotation once the sheet holding it has rendered. Keyed
+  // on `seq` as well as the id, so picking the same shape twice re-frames it.
+  // `select` is deliberately out of the deps: it is rebuilt every render, so
+  // including it would re-frame continuously and fight the user's own panning.
+  useEffect(() => {
+    if (!focusGeometry) return;
+    if (!sheetGeometries.some((g) => g.id === focusGeometry.geometryId)) return;
+    select.zoomToGeometry(focusGeometry.geometryId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusGeometry?.seq, focusGeometry?.geometryId, sheetGeometries]);
+
   const magnifierOn = (magnifierHeld || magnifierSticky) && Boolean(page);
   const overlaySheet = tools.overlayOn && tools.previous.status === "ready" ? tools.previous.sheet : null;
   // The composer previews with the scale the backend will use: the viewport's when the shape starts in one.
   const composerSheet = activeSheet && pending ? { ...activeSheet, scaleMmPerPt: scaleForDraft(activeSheet.scaleMmPerPt, viewports, pending.vertices) } : activeSheet;
+  const minForTool = tool === "scale" ? 2 : meta.measure ? MEASURE_MIN_VERTICES[meta.measure] : null;
+  const polygonalDraft = (tool === "area" || tool === "volume") && areaShape === "polygon";
+  const selfCrossWarning = polygonalDraft && anchors.length >= 3 && polygonSelfIntersects(draft) ? "The outline crosses itself — move a point before closing." : null;
+  const finishBlockedReason = selfCrossWarning ?? (minForTool !== null && anchors.length < minForTool ? `Add at least ${minForTool} point${minForTool === 1 ? "" : "s"} first` : null);
+  const closeHint = polygonalDraft && anchors.length >= 3 && !selfCrossWarning ? (anchors[0] ?? null) : null;
+  const draftControlsOn = drawingEnabled && (dirtyDraft || tool === "area" || tool === "volume") && !pending && !scalePrompt && !tools.viewportDraft && !tools.detectionActive;
 
   return (
-    <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-white">
-      <SheetToolbar sheets={sheets} activeSheet={activeSheet} onSelectSheet={onSelectSheet} settingsOpen={settingsOpen} onToggleSettings={() => setSettingsOpen((v) => !v)} />
+    <div data-takeoff-focus="true" className={VIEWER_SHELL}>
+      <SheetToolbar sheets={sheets} activeSheet={activeSheet} onSelectSheet={guard.requestSheet} settingsOpen={settingsOpen} onToggleSettings={() => setSettingsOpen((v) => !v)} />
 
-      {activeSheet && !scalePrompt && !tools.viewportDraft && !tools.matches ? (
-        <SheetStatusBar
-          sheet={activeSheet}
-          tool={tool}
-          selectedRow={selectedRow}
-          redrawing={Boolean(selectedRow && redrawTargetId === selectedRow.id)}
-          onToggleRedraw={() => setRedrawTargetId((current) => (selectedRow && current !== selectedRow.id ? selectedRow.id : null))}
-          drawingEnabled={drawingEnabled}
-          draft={draft}
-          viewport={draftViewport}
-        />
-      ) : null}
-      {activeSheet && !activeSheet.scaleMmPerPt && !scalePrompt && !tools.viewportDraft ? (
-        <NoScaleBanner message={activeSheet.error ?? "No calibrated scale on this sheet."} onOpenSettings={() => setSettingsOpen(true)} onDrawScale={() => changeTool("scale")} />
-      ) : null}
-      {scalePrompt ? (
-        <ScalePromptBanner prompt={scalePrompt} saving={updateSheet.isPending} onChange={(mm) => setScalePrompt({ ...scalePrompt, mm })} onApply={applyDrawnScale} onRedraw={() => setScalePrompt(null)} />
-      ) : null}
-      {tools.viewportDraft ? (
-        <ViewportPromptBanner draft={tools.viewportDraft} saving={tools.savingViewport} onChange={(patch) => {
-            if (patch.mode || patch.ptLength === null) draftApi.clear();
-            tools.patchViewport(patch);
-          }} onSave={tools.saveViewport} onDiscard={() => changeTool("select")} />
-      ) : null}
-      {tools.matches ? <SymbolMatchesBanner matches={tools.matches} onConfirm={tools.confirmMatches} onDiscard={() => changeTool("select")} /> : null}
-      {tools.overlayOn && tools.previous.status === "ready" ? (
-        <p className="border-b border-red-100 bg-red-50 px-3 py-1 text-xs text-red-700">
-          Overlay: the previous revision{tools.previous.revision ? ` (rev ${tools.previous.revision})` : ""} in red under this sheet. O to hide.
-        </p>
-      ) : null}
-      {banner ? <p className="border-b border-amber-100 bg-amber-50 px-3 py-1 text-xs text-amber-700">{banner}</p> : null}
+      <ViewerBanners
+        activeSheet={activeSheet}
+        tool={tool}
+        selectedRow={selectedRow}
+        redrawing={Boolean(selectedRow && redrawTargetId === selectedRow.id)}
+        onToggleRedraw={() => setRedrawTargetId((current) => (selectedRow && current !== selectedRow.id ? selectedRow.id : null))}
+        drawingEnabled={drawingEnabled}
+        draft={draft}
+        draftViewport={draftViewport}
+        scale={scale}
+        tools={tools}
+        onClearDraft={draftApi.clear}
+        onBackToSelect={() => changeTool("select")}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onDrawScale={() => changeTool("scale")}
+        notice={blockedAttempt ?? activeBlockedNotice}
+        banner={selfCrossWarning ?? note ?? savedEdit.note ?? opHistory.note ?? loadError}
+      />
 
       <div className="flex min-h-0 flex-1">
-        <ToolPalette tool={tool} onToolChange={changeTool} blockedReasonFor={blockedFor} legendOpen={legendOpen} onToggleLegend={() => setLegendOpen((v) => !v)} toggles={{ overlay: tools.overlayOn, magnifier: magnifierSticky }} />
+        <ToolPalette
+          tool={tool}
+          onToolChange={changeTool}
+          blockedReasonFor={blockedFor}
+          legendOpen={legendOpen}
+          onToggleLegend={() => setLegendOpen((v) => !v)}
+          toggles={{ overlay: tools.overlayOn, magnifier: magnifierSticky }}
+          onBlockedAttempt={(m, reason) => setBlockedAttempt({ toolLabel: m.label, reason })}
+        />
         <div
           ref={containerRef}
           className={cn("relative min-h-0 flex-1 overflow-hidden bg-gray-100", tool === "select" ? "cursor-grab" : magnifierOn ? "cursor-none" : "cursor-crosshair")}
           onMouseDown={(e) => {
+            select.notePress(e);
             onMouseDown(e);
-            if (dragEnabled) dragRect.begin(e);
+            if (dragEnabled || (tool === "select" && e.shiftKey)) dragRect.begin(e);
           }}
           onMouseMove={(e) => {
             onMouseMove(e);
@@ -320,14 +298,19 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
           onMouseUp={() => {
             endPan();
             const box = dragRect.end();
-            if (box) onDragEnd(box);
+            if (box) (tool === "select" ? bw.batch.addRect(rectOf(box.start, box.current)) : onDragEnd(box));
           }}
           onMouseLeave={() => {
             endPan();
             dragRect.cancel();
           }}
-          onClick={onCanvasClick}
-          onDoubleClick={() => finishDraft()}
+          onClick={(e) => {
+            if (spaceHeld) return; // a pan's trailing click must not place a point
+            const raw = screenToPt(e.clientX, e.clientY);
+            if (raw && (tools.ovl.captureClick(raw) || bw.captureCutClick(raw) || tools.detect.captureCanvasClick(raw))) return;
+            if (!select.handleSelectClick(e)) onCanvasClick(e);
+          }}
+          onDoubleClick={finishFromDoubleClick}
         >
           {rendering || tools.searching || (tools.overlayOn && tools.previous.status === "loading") ? (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
@@ -340,22 +323,62 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
               page={page}
               sheet={{ sessionId, sheetId: activeSheet?.id ?? "", toPx, toPt, cssZoom }}
               tool={tool}
+              penStyle={tools.penStyle}
               layers={layers}
-              rows={{ geometries: sheetGeometries, rowById, selectedRowId, emphasisRowIds, onSelectRow }}
-              draft={{ vertices: draft, anchors, arcMid }}
+              rows={{ geometries: visibleGeometries, rowById, selectedRowId, emphasisRowIds, onSelectRow, batchIds: bw.batch.ids, onPickGeometry: tool === "select" ? bw.pickGeometry : undefined, onGeometryPointerDown: tool === "select" ? bw.startSelectionDrag : undefined, dragDeltaPx: bw.dragDeltaPx }}
+              savedEdit={savedEditLayerProps({ active: tool === "select", selectedRowId, focusGeometryId: focusGeometry?.geometryId ?? null, sheetGeometries, savedEdit, select, screenToPt, shapeOf })}
+              draft={{ vertices: draft, anchors, arcMid, closeHint }}
               viewports={viewports}
               dragRect={dragRect.rect}
               overlay={overlaySheet ? { sheet: overlaySheet, sheets: tools.previous.sheets, onError: setNote } : null}
-              matches={tools.matches}
-              onToggleMatch={tools.onToggleMatch}
+              ovl={tools.ovl.render ? { model: tools.ovl.render, onError: setNote } : null}
+              detection={{ room: tools.detect.room, template: tools.detect.template, review: tools.detect.review, screenToPt, onRoomVertex: tools.detect.roomMoveVertex, onToggleMatch: tools.detect.toggleMatch }}
+              scaleEdit={scalePrompt ? { prompt: scalePrompt, screenToPt, onMovePoint: scale.movePoint } : null}
               onRemoveViewport={tools.removeViewport}
+              onEditViewport={tools.startRegionEdit}
+              regionEdit={tools.regionEdit ? { edit: tools.regionEdit, screenToPt, onRect: (rect) => tools.patchRegionEdit({ rect }) } : null}
               onDone={() => onToolChange("select")}
             />
           </div>
           {magnifierOn ? <Magnifier containerRef={containerRef} canvasRef={canvasRef} screenToCanvas={screenToCanvas} cssZoom={cssZoom} /> : null}
-          <SheetLegend entries={legendEntries} open={legendOpen} onToggle={() => setLegendOpen((v) => !v)} activeGroup={legendGroup} onPickGroup={setLegendGroup} />
+          <SheetLegend entries={legendEntries} open={legendOpen} onToggle={() => setLegendOpen((v) => !v)} activeGroup={legendGroup} onPickGroup={setLegendGroup} hiddenGroups={hiddenGroups} onToggleHidden={toggleHiddenGroup} onZoomGroup={select.zoomToRows} allRows={rows} selectionRowIds={new Set([...bw.batch.ids].map((gid) => sheetGeometries.find((g) => g.id === gid)?.rowId ?? "").filter(Boolean).concat(selectedRowId ? [selectedRowId] : []))} />
           <LayerToggles layers={layers} counts={layerCounts} onToggle={(layer: SheetLayer) => setLayers((current) => ({ ...current, [layer]: !current[layer] }))} />
-          <ZoomControls userZoom={view.userZoom} onZoomBy={zoomBy} onFit={zoomFit} />
+          <SavedEditOverlays savedEdit={savedEdit} select={select} editScale={editScale} />
+          <ViewerPreviewPanels scale={scale} tools={tools} onOpenRow={(rowId) => {
+              scale.clear();
+              performToolChange("select");
+              onSelectRow(rowId);
+            }} />
+          {tool === "select" && bw.batch.active ? (
+            <BatchActionBar batch={bw.batch} ops={bw.ops} rows={rows} sheets={sheets} activeSheet={activeSheet} rowById={rowById} onStartCut={bw.startCut} />
+          ) : null}
+          {tool === "select" && selectedRow && !bw.batch.active && !savedEdit.conflict && !savedEdit.edit?.addingAt ? (
+            <MeasurementInspector sessionId={sessionId} row={selectedRow} sheet={activeSheet} rowGeometries={sheetGeometries.filter((g) => g.rowId === selectedRow.id && g.kind !== "deduction")} onLegacyConfirm={savedEdit.setConfirmation} legacyConfirmed={savedEdit.confirmation} />
+          ) : null}
+          <CanvasBottomDock
+            bar={
+              <>
+                <CanvasControlBars
+                  draftApi={draftApi}
+                  savedEdit={savedEdit}
+                  opHistory={opHistory}
+                  draftControlsOn={draftControlsOn}
+                  historyControlsOn={tool === "select" && !dirtyDraft}
+                  finishBlockedReason={finishBlockedReason}
+                  readout={drawingEnabled ? segmentReadout(draft, scaleForDraft(activeSheet?.scaleMmPerPt ?? null, viewports, draft)) : null}
+                  areaShape={tool === "area" || tool === "volume" ? areaShape : null}
+                  onAreaShape={setAreaShape}
+                  arcMode={drawingEnabled && tool !== "scale" && tool !== "count" && tool !== "viewports" ? arcMode : null}
+                  onArcMode={setArcMode}
+                  editGeometry={editGeometry}
+                  onFinish={() => finishDraft()}
+                  onCancel={cancel}
+                />
+                {tool === "pen" ? <PenPresets style={tools.penStyle} onChange={tools.setPenStyle} /> : null}
+              </>
+            }
+            view={<ZoomControls userZoom={view.userZoom} onZoomBy={zoomBy} onFit={fitView} onZoomSelection={tool === "select" && selectedRowId ? select.zoomToSelection : null} />}
+          />
           {settingsOpen && activeSheet ? (
             <SheetSettings key={activeSheet.id} sessionId={sessionId} sheet={activeSheet} onClose={() => setSettingsOpen(false)} onDrawScale={() => {
                 setSettingsOpen(false);
@@ -365,6 +388,8 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
           {tool === "typical" && selectedRow ? <TypicalPopover key={selectedRow.id} sessionId={sessionId} row={selectedRow} onClose={() => onToolChange("select")} /> : null}
         </div>
       </div>
+
+      <DiscardDraftDialog pending={guard.pending} onConfirm={guard.confirm} onDismiss={guard.dismiss} />
 
       {pending && composerSheet ? (
         <MeasurementComposer sessionId={sessionId} sheet={composerSheet} pending={pending} elementGroups={elementGroups} onClose={() => {

@@ -17,6 +17,9 @@ export function blockedReasonFor(meta: PreconToolMeta, activeSheet: PreconSheet 
   if (!activeSheet) return "Open a sheet first";
   if (SCALE_TOOLS.has(meta.key)) return null;
   if (VECTOR_TOOLS.has(meta.key) && PICTURE_PLAN.test(activeSheet.fileName)) return "Needs a vector drawing (PDF or DWG), not a picture";
+  // Counting is a tally, not a measurement against a scale (contract 24): an
+  // uncalibrated sheet can still be counted on, and the backend accepts it.
+  if (meta.key === "count") return null;
   if (!activeSheet.scaleMmPerPt) return "Set this sheet's scale first (S, or Sheet settings)";
   if (meta.needsLine && !selectedRow) return "Select a bill line first";
   return null;

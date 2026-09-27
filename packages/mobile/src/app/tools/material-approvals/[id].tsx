@@ -1,5 +1,6 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, TextInput, View } from "react-native";
 import type { ApprovalStatus } from "@/api/material-approvals";
@@ -222,7 +223,9 @@ function ReadyScreen({
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          void removeRecord(approvalId).then(() => router.back()).catch(() => undefined);
+          void removeRecord(approvalId).then(() => goBack()).catch((error: unknown) => {
+            Alert.alert("Could not delete this record", error instanceof Error ? error.message : "Please try again.");
+          });
         },
       },
     ]);
@@ -231,7 +234,7 @@ function ReadyScreen({
   return (
     <Page
       title={TITLE}
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       rightButtons={
         approval?.status === "Pending" ? (
           <HeaderIconButton icon="trash-outline" label="Delete request" onPress={confirmDelete} />
@@ -270,7 +273,7 @@ export default function MaterialApprovalDetailScreen() {
 
   if (!(ready && db && projectId && id)) {
     return (
-      <Page title={TITLE} onBack={() => router.back()}>
+      <Page title={TITLE} onBack={() => goBack()}>
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>

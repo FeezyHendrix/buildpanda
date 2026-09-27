@@ -46,6 +46,7 @@ export interface ActivityDelay {
 }
 
 export interface Activity {
+  buildingId: string;
   id: string;
   projectId: string;
   phaseId: string | null;

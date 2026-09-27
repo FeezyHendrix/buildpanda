@@ -2,7 +2,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { QueryError } from "@/components/molecules/query-error";
@@ -103,10 +103,9 @@ export function InvoicesTab() {
             <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
               Scan invoice
             </Button>
-            <Button variant="primary" size="md" onClick={openComposer}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={openComposer}>
               Add invoice
-            </Button>
+      </CreateButton>
           </div>
         ) : null}
       </div>

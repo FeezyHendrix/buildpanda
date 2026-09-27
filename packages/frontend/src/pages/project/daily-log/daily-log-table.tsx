@@ -88,7 +88,7 @@ function DailyLogTable({ rows, isPending, hasAnyDays, canCreateEntry, canGenerat
                 }
                 action={
                   !hasAnyDays && canCreateEntry
-                    ? { label: "Add my log", onClick: () => actions.onAddLog(""), icon: <PlusIcon /> }
+                    ? { label: "Add my log", onClick: () => actions.onAddLog("") }
                     : undefined
                 }
               />

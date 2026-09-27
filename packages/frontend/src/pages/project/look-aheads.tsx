@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -134,17 +134,14 @@ export default function ProjectLookAheads() {
         title="Look aheads"
         actions={
           canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                setEditTarget(null);
-                setFormOpen(true);
-              }}
-            >
-              <PlusIcon className="size-4" />
+            <CreateButton
+       onClick={() => {
+        setEditTarget(null);
+        setFormOpen(true);
+       }}
+      >
               Add look ahead
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

@@ -1,4 +1,5 @@
-import { and, eq, ne } from "drizzle-orm";
+import { settleOutboxItem } from "./sync-write-state";
+import { eq } from "drizzle-orm";
 import {
   RFI_STATUS_TRANSITIONS,
   rfisApi,
@@ -9,7 +10,7 @@ import {
 } from "@/api/rfis";
 import type { Db } from "./client";
 import { done, PermanentOutboxError, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { outbox, rfiComments, rfis, type OutboxRow, type RfiRow } from "./schema";
+import { outbox, rfiComments, rfis, type OutboxRow } from "./schema";
 import { rfiCommentsRepository } from "./rfi-comments-repository";
 import { rfisRepository } from "./rfis-repository";
 
@@ -82,30 +83,6 @@ async function pushRfiComment(db: Db, item: OutboxRow): Promise<OutboxHandlerRes
   return done(true);
 }
 
-/**
- * True while another outbox row still targets this RFI. Clearing the pending
- * flag then would let a pull overwrite a status or edit that has not gone yet.
- */
-async function otherWorkQueued(db: Db, item: OutboxRow): Promise<boolean> {
-  const rows = await db
-    .select({ id: outbox.id })
-    .from(outbox)
-    .where(
-      and(eq(outbox.resource, "rfis"), eq(outbox.entityId, item.entityId), ne(outbox.id, item.id)),
-    )
-    .limit(1);
-  return rows.length > 0;
-}
-
-async function settle(db: Db, item: OutboxRow, row: RfiRow): Promise<void> {
-  if (!(await otherWorkQueued(db, item))) {
-    await db
-      .update(rfis)
-      .set({ isPendingSync: false, serverLastSyncedAt: Date.now() })
-      .where(eq(rfis.id, row.id));
-  }
-}
-
 async function pushRfi(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
   const [row] = await db.select().from(rfis).where(eq(rfis.id, item.entityId)).limit(1);
   if (!row) {
@@ -140,7 +117,7 @@ async function pushRfi(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
       );
     }
     await rfisApi.transition(item.projectId, row.id, row.status);
-    await settle(db, item, row);
+    settleOutboxItem(db, item);
   } else {
     // The update endpoint refuses the source-sheet fields, so they stay off.
     await rfisApi.update(item.projectId, row.id, {
@@ -154,7 +131,7 @@ async function pushRfi(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
       costImpact: row.costImpact,
       scheduleImpact: row.scheduleImpact,
     });
-    await settle(db, item, row);
+    settleOutboxItem(db, item);
   }
 
   await db.delete(outbox).where(eq(outbox.id, item.id));

@@ -1,9 +1,10 @@
-import type { CalibrationResult, ExtractedSheet, MeasuredBoqItem, SheetKind } from "../types.ts";
+import { SHEET_KIND, type CalibrationResult, type ExtractedSheet, type MeasuredBoqItem, type SheetKind } from "../types.ts";
 import { calibrate } from "./calibrate.ts";
 import { buildDocumentContext, type DocumentContext } from "./document-context.ts";
 import { countDoorArcs } from "./measure.ts";
 import { classifySheet, measureSheetRegions } from "./measure-sheet.ts";
 import { extractSheet } from "./pdf-extract.ts";
+import { measureRoofPlan } from "./roof-measure.ts";
 
 // The per-sheet measuring path with no database and no queue: open a PDF from
 // disk, and for every page run extraction, calibration, classification and
@@ -95,7 +96,12 @@ export async function measurePdfFile(filePath: string, opts: { roomsAsItems?: bo
         pages.push({ ...base, kind, title, calibration: null, items: [], note: "no reliable scale" });
         continue;
       }
-      if (kind !== "floor-plan") {
+      if (kind === SHEET_KIND.ROOF_PLAN) {
+        const measured = measureRoofPlan(extracted, calibration.mmPerPt, calibration.confidence, pageNo, `page ${pageNo}`);
+        pages.push({ ...base, kind, title, calibration, items: measured, note: measured.length ? null : "roof outline could not be isolated" });
+        continue;
+      }
+      if (kind !== SHEET_KIND.FLOOR_PLAN) {
         pages.push({ ...base, kind, title, calibration, items: [], note: `classified as ${kind}; not measured` });
         continue;
       }

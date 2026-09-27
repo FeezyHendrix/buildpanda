@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/components/atoms/button";
-import { BlocksIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CreateButton } from "@/components/molecules/create-button";
+import { BlocksIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import {
@@ -107,10 +107,9 @@ export default function ProjectStages() {
         title="Build stages"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               Add stage
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

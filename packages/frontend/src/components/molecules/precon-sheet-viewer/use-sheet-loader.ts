@@ -117,8 +117,12 @@ interface Args {
   activeSheet: PreconSheet | null;
   sheets: PreconSheet[];
   userZoom: number;
-  /** Called once a sheet is first drawn, so the view can be fitted. */
-  onLoaded: () => void;
+  /**
+   * Called once a sheet is first drawn, so the view can be fitted. The page is
+   * handed over because React has not yet committed it to state at this point,
+   * and fitting needs the raster's real size.
+   */
+  onLoaded: (page: PageInfo | null) => void;
 }
 
 /**
@@ -136,6 +140,11 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
   useEffect(() => {
     onLoadedRef.current = onLoaded;
   }, [onLoaded]);
+  const publishedRef = useRef<PageInfo | null>(null);
+  const publish = useCallback((next: PageInfo) => {
+    publishedRef.current = next;
+    setPage(next);
+  }, []);
 
   // Rasterize a cached pdfjs page and publish the matching page-state in the
   // same pass, so toPx/toPt/cssZoom always agree with the pixels on the canvas.
@@ -151,7 +160,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
       await pdfPage.render({ canvasContext: ctx, viewport, canvas }).promise;
       if (isCancelled()) return;
       const t = viewport.transform as number[];
-      setPage({
+      publish({
         widthPx: viewport.width,
         heightPx: viewport.height,
         heightPt: viewport.height / scale,
@@ -159,7 +168,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
         matrix: [t[0]!, t[1]!, t[2]!, t[3]!, t[4]!, t[5]!],
       });
     },
-    [canvasRef],
+    [canvasRef, publish],
   );
 
   const rasterizeImage = useCallback(
@@ -176,9 +185,9 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, widthPx, heightPx);
       ctx.drawImage(img, 0, 0, widthPx, heightPx);
-      setPage({ widthPx, heightPx, heightPt: heightPx / scale, rasterScale: scale, frame: frame ?? undefined });
+      publish({ widthPx, heightPx, heightPt: heightPx / scale, rasterScale: scale, frame: frame ?? undefined });
     },
-    [canvasRef],
+    [canvasRef, publish],
   );
 
   const [activeRasterScale, setActiveRasterScale] = useState(BASE_RASTER);
@@ -226,7 +235,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
         await rasterize(pdfPage, BASE_RASTER, () => cancelled);
       }
       if (cancelled) return;
-      onLoadedRef.current();
+      onLoadedRef.current(publishedRef.current);
       setRendering(false);
     })().catch((error: unknown) => {
       if (cancelled) return;

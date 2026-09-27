@@ -3,8 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useUrlState } from "@/hooks/use-url-state";
 import { QueryError } from "@/components/molecules/query-error";
 import { UnavailableRecord } from "@/components/molecules/unavailable-record";
-import { Button } from "@/components/atoms/button";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
@@ -134,10 +133,9 @@ export default function ProjectInspections() {
         title="Inspections & hold points"
         actions={
           canRequest ? (
-            <Button variant="primary" size="md" onClick={() => setRequestOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setRequestOpen(true)}>
               Request an inspection
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

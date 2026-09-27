@@ -63,7 +63,7 @@ export const documentsApi = {
    * derives fileName and size from the file record, so sending them again
    * would only let the two disagree.
    */
-  createDocument: (projectId: string, body: { categoryId: string; fileId: string }) =>
+  createDocument: (projectId: string, body: { categoryId?: string; fileId: string }) =>
     request<ProjectDocument>(`/projects/${projectId}/documents`, {
       method: "POST",
       body: JSON.stringify(body),
