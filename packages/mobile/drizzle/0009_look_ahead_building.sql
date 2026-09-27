@@ -1,0 +1,1 @@
+ALTER TABLE `look_aheads` ADD `building_id` text;

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { BudgetSlider } from "@/components/atoms";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 import type { Project } from "@/lib/project-types";
 import { useUpdateProjectBudget } from "@/hooks/use-projects";
 
@@ -56,11 +58,11 @@ function EditBudgetDrawer({ project, open, onOpenChange }: EditBudgetDrawerProps
       onSubmit={handleSubmit}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-900">Estimated budget</span>
+        <span className="text-sm font-medium text-ink">Estimated budget</span>
         <button
           type="button"
           onClick={() => setCustom((c) => !c)}
-          className="text-sm font-medium text-[#004DE7] hover:text-[#0041c4]"
+          className="text-sm font-medium text-primary-500 hover:text-primary-600"
         >
           {custom ? "Use the slider" : "Enter a custom amount"}
         </button>
@@ -86,7 +88,7 @@ function EditBudgetDrawer({ project, open, onOpenChange }: EditBudgetDrawerProps
       )}
 
       {invalid && (
-        <p className="text-xs text-[#C72525]">
+        <p className="text-xs text-negative-500">
           Maximum budget should be greater than the minimum.
         </p>
       )}
@@ -107,16 +109,16 @@ function CustomBudgetInput({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-gray-900">{label}</span>
-      <div className="flex h-12 items-center rounded-lg border border-[#EDEDED] bg-white px-3 focus-within:ring-2 focus-within:ring-gray-900/10">
-        <span className="mr-2 shrink-0 text-sm font-medium text-gray-500">{currency}</span>
+      <span className="text-sm font-medium text-ink">{label}</span>
+      <div className={cn(INPUT_CLASS, "flex items-center focus-within:border-primary-500 focus-within:shadow-focus")}>
+        <span className="mr-2 shrink-0 text-sm font-medium text-ink-muted">{currency}</span>
         <input
           type="text"
           inputMode="numeric"
           value={value ? value.toLocaleString("en-US") : ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder="0"
-          className="w-full bg-transparent text-sm text-gray-900 outline-none"
+          className="h-full w-full min-w-0 bg-transparent text-sm text-ink outline-none"
         />
       </div>
     </label>

@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 import { admin, organization } from "better-auth/plugins";
+import { expo } from "@better-auth/expo";
 import { Pool } from "pg";
 import { config } from "../config/index.ts";
 import { sendEmail } from "./mail.ts";
@@ -14,12 +15,13 @@ import {
   verificationEmail,
 } from "./email-templates.ts";
 import { db } from "../db/connection.ts";
-import { generateId } from "./ids.ts";
 import { logger } from "./logger.ts";
+import { generateId } from "./ids.ts";
 import { ac, isEmployeeRole, roles } from "./permissions.ts";
 import { captureBug } from "./sentry.ts";
 import { sampleProjectRepository } from "../modules/sample-project/repository.ts";
 import { sampleProjectService } from "../modules/sample-project/service.ts";
+import { invalidateAccessContext } from "../plugins/access-cache.ts";
 
 const pool =
   "connectionString" in config.db
@@ -74,7 +76,7 @@ async function uniqueOrgSlug(base: string): Promise<string> {
  * company becomes its owner. Returns the user's active organization id.
  * Idempotent: if the user already has a membership, that org is returned.
  */
-async function ensureUserOrganization(
+export async function ensureUserOrganization(
   userId: string,
   knownName?: string,
 ): Promise<string> {
@@ -265,7 +267,13 @@ export const auth = betterAuth({
   secret: config.auth.secret,
   baseURL: config.auth.baseUrl,
   basePath: "/api/auth",
-  trustedOrigins: config.http.corsOrigins,
+  // The native app has no browser origin, so it identifies itself by URL scheme.
+  // `exp://` covers Expo Go / dev clients on a LAN address and stays out of prod.
+  trustedOrigins: [
+    ...config.http.corsOrigins,
+    "buildpanda://",
+    ...(config.isProduction ? [] : ["exp://", "exp://**"]),
+  ],
 
   // better-auth owns rate limiting for /api/auth/* (the Fastify limiter
   // deliberately skips these to avoid double-counting). Custom rules throttle
@@ -408,6 +416,7 @@ export const auth = betterAuth({
   },
 
   plugins: [
+    expo(),
     organization({
       ac,
       roles,
@@ -421,6 +430,20 @@ export const auth = betterAuth({
           url: appUrlFor(`/accept-invitation/${data.id}`),
         });
         await sendEmail({ to: data.email, subject, html });
+      },
+      organizationHooks: {
+        afterUpdateMemberRole: async ({ member }) => {
+          await invalidateAccessContext(member.userId);
+        },
+        afterAcceptInvitation: async ({ member }) => {
+          if (member) await invalidateAccessContext(member.userId);
+        },
+        afterAddMember: async ({ member }) => {
+          await invalidateAccessContext(member.userId);
+        },
+        afterRemoveMember: async ({ member }) => {
+          await invalidateAccessContext(member.userId);
+        },
       },
     }),
     admin({

@@ -6,7 +6,9 @@ export function toInput(values: UpsertInvoiceValues): InvoiceInput {
     vendorName: values.vendorName,
     trade: values.trade,
     number: values.number || undefined,
-    status: values.status,
+    direction: values.direction,
+    counterparty: values.vendorName || null,
+    contractId: values.contractId || undefined,
     invoiceType: values.invoiceType,
     currency: values.currency || undefined,
     vatRate: values.vatRate === "" ? undefined : Number(values.vatRate),
@@ -31,10 +33,11 @@ export function toInput(values: UpsertInvoiceValues): InvoiceInput {
 
 export function toValues(invoice: Invoice): UpsertInvoiceValues {
   return {
-    vendorName: invoice.vendorName,
+    vendorName: invoice.counterparty ?? invoice.vendorName,
     trade: invoice.trade,
     number: invoice.number ?? "",
-    status: invoice.status,
+    direction: invoice.direction ?? "payable",
+    contractId: invoice.contractId ?? "",
     invoiceType: invoice.invoiceType,
     currency: invoice.currency,
     vatRate: String(invoice.vatRate ?? ""),

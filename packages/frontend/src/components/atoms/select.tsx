@@ -13,6 +13,8 @@ interface SelectProps {
   onChange: (value: string | null) => void;
   placeholder?: string;
   className?: string;
+  popupClassName?: string;
+  listClassName?: string;
   disabled?: boolean;
   id?: string;
 }
@@ -23,6 +25,8 @@ function Select({
   onChange,
   placeholder = "Select…",
   className,
+  popupClassName,
+  listClassName,
   disabled,
   id,
 }: SelectProps) {
@@ -76,12 +80,13 @@ function Select({
             className={cn(
               "w-[var(--anchor-width)] min-w-[120px] max-w-[var(--available-width)] origin-[var(--transform-origin)]",
               "bg-grey-50 border border-[#EBEBEB] p-1",
+              popupClassName,
             )}
           >
             {/* Visually hidden input required by Combobox — no search UX exposed */}
             <Combobox.Input className="sr-only" aria-hidden tabIndex={-1} readOnly />
 
-            <Combobox.List className="max-h-[min(16rem,calc(var(--available-height)-3rem))] overflow-y-auto overscroll-contain space-y-1 no-scrollbar">
+            <Combobox.List className={cn("max-h-[min(16rem,calc(var(--available-height)-3rem))] overflow-y-auto overscroll-contain space-y-1 no-scrollbar", listClassName)}>
               {(label: string) => (
                 <Combobox.Item
                   key={label}

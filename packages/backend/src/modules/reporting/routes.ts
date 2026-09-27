@@ -16,7 +16,7 @@ const reportingRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "project", "view");
-      reply.header("cache-control", "private, max-age=60");
+      reply.header("cache-control", "no-store");
       return service.buildSnapshot(project.id);
     },
   );

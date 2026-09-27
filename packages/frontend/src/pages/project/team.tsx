@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import {
@@ -29,6 +29,13 @@ import {
 } from "@/hooks/use-participants";
 import { cn } from "@/lib/utils";
 import type { ProjectParticipant } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
+
+const SIDE_LABEL: Record<NonNullable<ProjectParticipant["side"]>, string> = {
+  client: "Client side",
+  contractor: "Contractor side",
+  consultant: "Consultant",
+};
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
@@ -81,10 +88,9 @@ export default function ProjectTeam() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Project Team"
-        description="Manage who has access to this project and the people delivering this build."
       />
 
       {/* Project access */}
@@ -98,7 +104,7 @@ export default function ProjectTeam() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-[#EBEBEB]">
+        <div className="overflow-hidden rounded-lg border border-line-hair">
           {participants.map((p, idx) => (
             <ParticipantRow
               key={p.id}
@@ -113,10 +119,10 @@ export default function ProjectTeam() {
             onClick={openInvite}
             className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-primary-50"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300 transition-colors group-hover:border-[#004DE7]">
-              <PlusIcon className="size-3.5 text-gray-400 transition-colors group-hover:text-[#004DE7]" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300 transition-colors group-hover:border-primary-500">
+              <PlusIcon className="size-3.5 text-gray-400 transition-colors group-hover:text-primary-500" />
             </div>
-            <span className="text-sm text-gray-400 transition-colors group-hover:text-[#004DE7]">Invite someone…</span>
+            <span className="text-sm text-gray-400 transition-colors group-hover:text-primary-500">Invite someone…</span>
           </button>
         </div>
       </section>
@@ -133,7 +139,7 @@ export default function ProjectTeam() {
       />
 
       {/* Contacts */}
-      <section className="mt-10 border-t border-gray-200 pt-8">
+      <section className="mt-10 border-t border-line pt-8">
         <div className="mb-4 flex lg:flex-row lg:gap-0 gap-2 flex-col items-center justify-between">
           <div className="order-2 lg:order-1">
             <h2 className="text-base font-semibold text-gray-900">Contacts</h2>
@@ -142,15 +148,13 @@ export default function ProjectTeam() {
               access.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => setCreateOpen(true)}
-            className="self-end lg:self-start sm:self-auto order-1 lg:order-2"
-          >
-            <PlusIcon className="size-4" />
+          <CreateButton
+      variant="secondary"
+      onClick={() => setCreateOpen(true)}
+      className="self-end lg:self-start sm:self-auto order-1 lg:order-2"
+     >
             Add Contact
-          </Button>
+     </CreateButton>
         </div>
 
         <UpsertTeamMemberDialog
@@ -159,27 +163,16 @@ export default function ProjectTeam() {
           mode="create"
           onSubmit={handleCreate}
           isSubmitting={createMember.isPending}
-          error={(createMember.error as Error | undefined)?.message ?? null}
+          error={createMember.error ? errorMessage(createMember.error) : null}
         />
 
         {members.length === 0 ? (
-          <Card padding="lg">
-            <EmptyState
-              icon={<ContractorsIcon className="size-6" />}
-              title="No contacts yet"
-              description="Add the engineers, contractors and managers working on this project."
-              action={
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <PlusIcon className="size-4" />
-                  Add Contact
-                </Button>
-              }
-            />
-          </Card>
+          <EmptyState
+            icon={<ContractorsIcon />}
+            title="No contacts yet"
+            description="Add the engineers, contractors and managers working on this project."
+            action={{ label: "Add contact", onClick: () => setCreateOpen(true) }}
+          />
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {members.map((member) => (
@@ -215,7 +208,7 @@ function ParticipantRow({
     <div
       className={cn(
         "flex items-center gap-3 px-4 py-3.5",
-        showDivider && "border-b border-[#F0F0F0]",
+        showDivider && "border-b border-line-hair",
       )}
     >
       <Avatar
@@ -237,6 +230,12 @@ function ParticipantRow({
         <span className="text-xs text-gray-500">
           {roleLabel(participant.role)}
         </span>
+
+        {participant.side ? (
+          <Badge tone={participant.side === "client" ? "accent" : "neutral"} size="sm">
+            {SIDE_LABEL[participant.side]}
+          </Badge>
+        ) : null}
 
         {isOwner ? (
           <Badge tone="info" size="sm">
@@ -343,7 +342,7 @@ function TeamMemberCard({
       )}
 
       {(member.email || member.phone) && (
-        <div className="flex flex-col gap-1 border-t border-[#F0F0F0] pt-3 text-xs">
+        <div className="flex flex-col gap-1 border-t border-line-hair pt-3 text-xs">
           {member.email && (
             <a
               href={`mailto:${member.email}`}
@@ -363,7 +362,7 @@ function TeamMemberCard({
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-3 border-t border-[#F0F0F0] pt-3">
+      <div className="flex items-center justify-end gap-3 border-t border-line-hair pt-3">
         <button
           type="button"
           onClick={() => setEditOpen(true)}
@@ -395,7 +394,7 @@ function TeamMemberCard({
         }}
         onSubmit={handleEdit}
         isSubmitting={editMember.isPending}
-        error={(editMember.error as Error | undefined)?.message ?? null}
+        error={editMember.error ? errorMessage(editMember.error) : null}
       />
 
       <ConfirmDialog

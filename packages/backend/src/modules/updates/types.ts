@@ -93,3 +93,61 @@ export interface UpdateCommentRow {
   body: string;
   created_at: Date | string;
 }
+
+export interface DigestRow {
+  label: string | null;
+  status: string | null;
+}
+
+export interface DigestProjectRow {
+  id: string;
+  name: string;
+  owner_id: string | null;
+  organization_id: string | null;
+}
+
+export interface DigestOrgAdminRow {
+  organizationId: string;
+  userId: string;
+}
+
+export interface DigestSection {
+  heading: string;
+  items: string[];
+}
+
+export interface DigestSiteLog {
+  weather: string | null;
+  temperatureC: number | null;
+  workersExpected: number;
+  workersPresent: number;
+  totalHours: number;
+}
+
+export interface DigestSiteNote {
+  author: string;
+  body: string;
+}
+
+export interface DigestLoggedActivity {
+  name: string;
+  hours: number;
+}
+
+export interface DailyDigestContext {
+  projectName: string;
+  digestDate: string;
+  dateLabel: string;
+  progressPercent: number;
+  currentStage: string | null;
+  siteLog: DigestSiteLog | null;
+  siteNotes: DigestSiteNote[];
+  loggedActivities: DigestLoggedActivity[];
+  sections: DigestSection[];
+}
+
+export type DailyDigestDraft =
+  | { status: "created"; update: ProjectUpdate }
+  | { status: "existing"; update: ProjectUpdate };
+
+export type DailyDigestOutcome = DailyDigestDraft | { status: "quiet" };

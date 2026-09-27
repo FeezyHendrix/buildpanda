@@ -8,6 +8,7 @@ import { formatDayMonth } from "@/lib/formatters";
 import { resolveFileUrl } from "@/hooks/use-files";
 import type { Task } from "@/lib/project-types";
 import { ENTITY_META, LinkGlyph, PriorityBadge, firstImageFileId, htmlToText } from "./task-ui";
+import { MoreVertical } from "lucide-react";
 
 export function TaskCard({
   task,
@@ -47,8 +48,8 @@ export function TaskCard({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
-        "touch-manipulation overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow",
-        isDragging ? "opacity-50 shadow-md" : "hover:shadow-md",
+        "touch-manipulation overflow-hidden border border-[#EBEBEB] bg-white transition-shadow",
+        isDragging ? "opacity-50 shadow-md" : "hover:shadow-sm",
         canManage && "cursor-grab active:cursor-grabbing",
       )}
       {...(canManage ? listeners : {})}
@@ -79,20 +80,33 @@ export function TaskCard({
       <div className="p-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <PriorityBadge priority={task.priority} />
-          {task.entityLinkTypes.length > 0 && (
-            <div className="flex flex-wrap items-center justify-end gap-1">
-              {task.entityLinkTypes.map((type) => (
-                <span
-                  key={type}
-                  className="inline-flex items-center gap-1 rounded bg-[#EEF2FF] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#004DE7]"
-                  title={`Linked to ${ENTITY_META[type].label.toLowerCase()}`}
-                >
-                  <LinkGlyph />
-                  {ENTITY_META[type].label}
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center gap-1">
+            {task.entityLinkTypes.length > 0 && (
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                {task.entityLinkTypes.map((type) => (
+                  <span
+                    key={type}
+                    className="inline-flex items-center gap-1 rounded bg-[#EEF2FF] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#004DE7]"
+                    title={`Linked to ${ENTITY_META[type].label.toLowerCase()}`}
+                  >
+                    <LinkGlyph />
+                    {ENTITY_META[type].label}
+                  </span>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen();
+              }}
+              className="flex size-6 items-center justify-center rounded-md text-[#9CA3AF] hover:bg-[#F6F6F6] hover:text-[#1E1E1E]"
+              aria-label="Task actions"
+            >
+              <MoreVertical className="size-3.5" />
+            </button>
+          </div>
         </div>
         <button type="button" onClick={onOpen} className="block w-full text-left outline-none">
           <p className="text-sm font-medium text-gray-900">{task.title}</p>
@@ -120,22 +134,21 @@ export function TaskCard({
         {(task.assignees.length > 0 || task.assigneeName || due || task.subtaskTotal > 0) && (
           <div className="mt-2.5 flex items-center gap-2">
             {task.assignees.length > 0 ? (
-              <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                <div className="flex -space-x-1">
+              <div className="flex min-w-0 flex-1 items-center">
+                <div className="flex -space-x-1.5">
                   {task.assignees.slice(0, 3).map((assignee) => (
-                    <Avatar key={`${assignee.kind}:${assignee.id}`} name={assignee.name} size="sm" />
+                    <Avatar key={`${assignee.kind}:${assignee.id}`} name={assignee.name} size="sm" className="ring-1 ring-white size-6 bg-primary !text-white text-caption-s" />
                   ))}
+                  {task.assignees.length > 3 && (
+                    <span className="flex size-6 items-center justify-center rounded-full bg-[#F3F4F6] text-[10px] font-medium text-black-500 ring-2 ring-white z-10">
+                      +{task.assignees.length - 3}
+                    </span>
+                  )}
                 </div>
-                <span className="truncate text-xs text-gray-600">
-                  {task.assignees.length === 1
-                    ? task.assignees[0]!.name
-                    : `${task.assignees[0]!.name} +${task.assignees.length - 1}`}
-                </span>
               </div>
             ) : task.assigneeName ? (
-              <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                <Avatar name={task.assigneeName} size="sm" />
-                <span className="truncate text-xs text-gray-600">{task.assigneeName}</span>
+              <div className="flex min-w-0 flex-1 items-center">
+                <Avatar name={task.assigneeName} size="sm" className="ring-2 ring-white" />
               </div>
             ) : (
               <span className="flex-1" />

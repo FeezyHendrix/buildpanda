@@ -3,6 +3,7 @@ import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
 import { IfcExportGuide, type AuthoringTool } from "./ifc-export-guide";
 import { useUploadBimModel } from "@/hooks/use-bim";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 interface Props {
   open: boolean;
@@ -10,8 +11,7 @@ interface Props {
   projectId: string;
 }
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
 const NATIVE_EXT_TOOL: { pattern: RegExp; tool: AuthoringTool; label: string }[] = [
   { pattern: /\.rvt$/i, tool: "revit", label: "Revit" },
@@ -82,7 +82,7 @@ export function UploadBimDialog({ open, onOpenChange, projectId }: Props) {
           type="file"
           accept=".ifc,.rvt,.pln,.pla,.nwd,.nwc,.skp"
           onChange={onPick}
-          className="text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#EDEDED] file:px-3 file:py-2 file:text-sm"
+          className="text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm"
         />
         {file && !isIfc && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">

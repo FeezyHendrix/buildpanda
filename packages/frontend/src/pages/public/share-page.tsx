@@ -50,17 +50,17 @@ export default function SharePage() {
 
   if (loading) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#FCFCFD]">
-        <div className="size-8 animate-spin rounded-full border-2 border-[#004DE7] border-t-transparent" />
+      <div className="flex h-dvh items-center justify-center bg-surface-alt">
+        <div className="size-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
       </div>
     );
   }
 
   if (failed || !meta || !meta.available) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#FCFCFD] p-6">
+      <div className="flex h-dvh items-center justify-center bg-surface-alt p-6">
         <div className="max-w-md text-center">
-          <div className="mx-auto mb-4 inline-flex size-14 items-center justify-center rounded-2xl bg-[#FFF0F0] text-[#D14343]">
+          <div className="mx-auto mb-4 inline-flex size-14 items-center justify-center rounded-lg bg-negative-50 text-negative-500">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M12 8v5M12 16h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -75,8 +75,8 @@ export default function SharePage() {
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-[#FCFCFD]">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-[#EDEDED] bg-white px-6 py-3">
+    <div className="flex h-dvh flex-col bg-surface-alt">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-line-hair bg-white px-6 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-gray-900">{meta.fileName}</p>
           {meta.projectName ? (
@@ -86,7 +86,7 @@ export default function SharePage() {
         <a
           href={fileHref}
           download={meta.fileName}
-          className="shrink-0 rounded-lg bg-[#004DE7] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0046D2]"
+          className="shrink-0 rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
         >
           Download
         </a>
@@ -102,7 +102,7 @@ export default function SharePage() {
         ) : (
           <div className="flex h-full w-full items-center justify-center p-6">
             <div className="max-w-md text-center">
-              <div className="mx-auto mb-4 inline-flex size-14 items-center justify-center rounded-2xl bg-[#F0F4FF] text-[#004DE7]">
+              <div className="mx-auto mb-4 inline-flex size-14 items-center justify-center rounded-lg bg-primary-50 text-primary-500">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
                   <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
@@ -113,7 +113,7 @@ export default function SharePage() {
               <a
                 href={fileHref}
                 download={meta.fileName}
-                className="mt-4 inline-block rounded-lg bg-[#004DE7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0046D2]"
+                className="mt-4 inline-block rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-600"
               >
                 Download {meta.fileName}
               </a>

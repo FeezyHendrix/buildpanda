@@ -2,7 +2,14 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
-import { channelKeys, messageKeys, notificationKeys } from "@/hooks/query-keys";
+import {
+  channelKeys,
+  messageKeys,
+  notificationKeys,
+  preconKeys,
+  preconPresenceKeys,
+  workbookKeys,
+} from "@/hooks/query-keys";
 import { participantKeys } from "@/hooks/use-participants";
 import { cacheMessages, deleteCachedMessage } from "@/lib/chat-cache";
 import { playMessageChime } from "@/lib/notification-sound";
@@ -12,6 +19,8 @@ import {
 } from "@/lib/desktop-notification";
 import { toast } from "@/lib/toast";
 import type { ChatMessage, Channel } from "@/lib/project-types";
+import type { PresenceUser } from "@/api/precon";
+import type { WorkbookChangeEvent } from "@/api/workbook-types";
 
 // Lazy import avoids a static cycle with @/App (which is rendered *inside*
 // RealtimeProvider); the router is only needed when a notification is clicked.
@@ -34,7 +43,9 @@ type RealtimeEvent =
   | "row.verified"
   | "row.rejected"
   | "geometry.updated"
+  | "workbook.updated"
   | "precon.progress"
+  | "precon.presence"
   | "access.updated";
 
 interface RealtimePayload {
@@ -246,6 +257,21 @@ function handleEvent(
     return;
   }
 
+  // Emitted only after the transaction commits, never for a replay or a
+  // refusal. Invalidate rather than write: the editor decides whether to adopt
+  // a new document, because only it knows if a draft is in the grid.
+  if (payload.event === "workbook.updated") {
+    const sessionId = payload.channelId?.startsWith("precon:") ? payload.channelId.slice("precon:".length) : null;
+    if (!sessionId) return;
+    const data = payload.data as WorkbookChangeEvent | undefined;
+    void queryClient.invalidateQueries({ queryKey: workbookKeys.document(sessionId) });
+    // Non-empty `rows` means a rate or description moved, so the bill panel is stale too.
+    if ((data?.rows?.length ?? 0) > 0) {
+      void queryClient.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) });
+    }
+    return;
+  }
+
   if (
     payload.event === "row.updated" ||
     payload.event === "row.verified" ||
@@ -253,6 +279,13 @@ function handleEvent(
     payload.event === "geometry.updated" ||
     payload.event === "precon.progress"
   ) {
+    // Bound cells are rendered from these rows, so a moved figure is a workbook change too.
+    const movedSession = payload.channelId?.startsWith("precon:")
+      ? payload.channelId.slice("precon:".length)
+      : null;
+    if (movedSession && payload.event !== "precon.progress") {
+      void queryClient.invalidateQueries({ queryKey: workbookKeys.document(movedSession) });
+    }
     const sessionId = payload.channelId?.startsWith("precon:") ? payload.channelId.slice("precon:".length) : null;
     if (!sessionId) return;
     if (payload.event === "precon.progress") {
@@ -269,9 +302,19 @@ function handleEvent(
     return;
   }
 
+  // WS-M3B: who is on a take-off session and which row each is looking at.
+  // Pure presence — nothing to refetch; the list is the whole state.
+  if (payload.event === "precon.presence") {
+    const sessionId = payload.channelId?.startsWith("precon:") ? payload.channelId.slice("precon:".length) : null;
+    if (!sessionId) return;
+    const data = payload.data as { users?: PresenceUser[] } | undefined;
+    queryClient.setQueryData<PresenceUser[]>(preconPresenceKeys.session(sessionId), data?.users ?? []);
+    return;
+  }
+
   if (payload.event === "notification.created") {
-    const data = payload.data as { title?: string; body?: string };
-    if (data.title) showDesktopNotification(data.title, data.body);
+    const data = payload.data as { title?: string; body?: string; ctaUrl?: string };
+    if (data.title) showDesktopNotification(data.title, data.body, data.ctaUrl);
     void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     return;
   }

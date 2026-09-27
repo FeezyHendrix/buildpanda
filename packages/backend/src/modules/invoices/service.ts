@@ -1,355 +1,45 @@
 import { config } from "../../config/index.ts";
-import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import type { InvoicesRepository, NewInvoiceLineItemRecord } from "./repository.ts";
+import { Money } from "../../lib/money.ts";
+import {
+  computeMoney,
+  itemRecords,
+  normalizeParty,
+  optional,
+  optionalArray,
+  optionalRate,
+  validateLineItems,
+} from "./invoice-inputs.ts";
+import { num, toInvoice } from "./invoice-mapper.ts";
+import { assertInvoiceTransition, toDatabaseStatus, toWorkflowStatus } from "./invoice-status.ts";
+import type { InvoicesRepository } from "./repository.ts";
 import type {
+  CreateInvoiceInput,
+  EditInvoiceInput,
   Invoice,
   InvoiceBudgetAllocation,
-  InvoiceLineItem,
+  InvoiceDirection,
   InvoiceLineItemRow,
-  InvoiceParty,
-  InvoicePayment,
   InvoicePaymentRow,
   InvoiceRow,
-  InvoiceStatus,
   InvoiceType,
-  PaymentMethod,
-  StoredInvoiceStatus,
+  SendInvoiceInput,
 } from "./types.ts";
 
-export interface InvoicePartyInput {
-  name?: string | null;
-  address?: string | null;
-  tin?: string | null;
-  firsNumber?: string | null;
-  email?: string | null;
-  bank?: {
-    accountName?: string | null;
-    accountNumber?: string | null;
-    bankName?: string | null;
-  } | null;
+export interface InvoicesDeps {
+  /** The project's main contract id — the contract a certificate bills against. */
+  mainContractId?: (projectId: string) => Promise<string | null>;
 }
 
-export interface InvoiceLineItemInput {
-  description: string;
-  quantity?: number;
-  unit?: string;
-  unitRate?: number;
-  budgetCategoryId?: string;
-  isVariation?: boolean;
+/** Receivable is what WE certify to the employer; everything else we owe. */
+function directionFor(type: InvoiceType | undefined): InvoiceDirection {
+  return type === "progress" || type === "final" || type === "variation" || type === "advance"
+    ? "receivable"
+    : "payable";
 }
 
-export interface CreateInvoiceInput {
-  vendorName: string;
-  trade: string;
-  number?: string;
-  status?: StoredInvoiceStatus;
-  amount?: number;
-  retainagePercentage?: number;
-  invoiceType?: InvoiceType;
-  currency?: string;
-  vatRate?: number;
-  whtRate?: number;
-  retentionRate?: number;
-  issueDate?: string;
-  dueDate?: string;
-  notes?: string;
-  fromParty?: InvoicePartyInput | null;
-  toParty?: InvoicePartyInput | null;
-  recipientEmail?: string;
-  ccEmails?: string[];
-  bccEmails?: string[];
-  poReferenceId?: string;
-  paymentClaimId?: string;
-  milestonePaymentId?: string;
-  contractReference?: string;
-  paymentTerms?: string;
-  paymentInstructions?: string;
-  coverNote?: string;
-  headerText?: string;
-  footerText?: string;
-  sourceFileId?: string;
-  lineItems?: InvoiceLineItemInput[];
-}
-
-export interface EditInvoiceInput {
-  vendorName?: string;
-  trade?: string;
-  number?: string;
-  status?: StoredInvoiceStatus;
-  amount?: number;
-  retainagePercentage?: number;
-  invoiceType?: InvoiceType;
-  currency?: string;
-  vatRate?: number;
-  whtRate?: number;
-  retentionRate?: number;
-  issueDate?: string;
-  dueDate?: string;
-  notes?: string;
-  fromParty?: InvoicePartyInput | null;
-  toParty?: InvoicePartyInput | null;
-  recipientEmail?: string;
-  ccEmails?: string[];
-  bccEmails?: string[];
-  poReferenceId?: string;
-  paymentClaimId?: string;
-  milestonePaymentId?: string;
-  contractReference?: string;
-  paymentTerms?: string;
-  paymentInstructions?: string;
-  coverNote?: string;
-  headerText?: string;
-  footerText?: string;
-  lineItems?: InvoiceLineItemInput[];
-}
-
-export interface AddPaymentInput {
-  amount: number;
-  method?: PaymentMethod;
-  paidAt?: string;
-  note?: string;
-}
-
-export interface SendInvoiceInput {
-  recipientEmail: string;
-  cc?: string[];
-  bcc?: string[];
-  coverNote?: string;
-  headerText?: string;
-  footerText?: string;
-}
-
-interface MoneySnapshot {
-  subtotal: number;
-  vatRate: number;
-  whtRate: number;
-  retentionRate: number;
-  vatAmount: number;
-  whtAmount: number;
-  retentionAmount: number;
-  totalInvoiced: number;
-  netPayable: number;
-}
-
-function num(value: string | null | undefined): number {
-  return Number(value ?? 0);
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
-function optional(value: string | null | undefined): string | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function optionalArray(value: string[] | undefined): string[] | null | undefined {
-  if (value === undefined) return undefined;
-  const clean = value.map((item) => item.trim()).filter(Boolean);
-  return clean.length > 0 ? clean : null;
-}
-
-function optionalRate(value: number | undefined): number | undefined {
-  if (value === undefined) return undefined;
-  if (value < 0 || value > 100) throw new BadRequestError("Rate must be between 0 and 100");
-  return value;
-}
-
-function toWorkflowStatus(status: StoredInvoiceStatus | InvoiceStatus | undefined): StoredInvoiceStatus {
-  if (status === undefined) return "Draft";
-  if (status === "Submitted") return "Sent";
-  if (status === "Draft" || status === "Sent" || status === "Approved") return status;
-  if (status === "Paid" || status === "PartiallyPaid" || status === "Overdue") return "Approved";
-  throw new BadRequestError("Invoice status must be Draft, Sent, or Approved");
-}
-
-function toDatabaseStatus(status: StoredInvoiceStatus): StoredInvoiceStatus {
-  return status === "Sent" ? "Submitted" : status;
-}
-
-function normalizeParty(input: InvoicePartyInput | null | undefined): InvoiceParty | null | undefined {
-  if (input === undefined) return undefined;
-  if (input === null) return null;
-  return {
-    name: optional(input.name) ?? null,
-    address: optional(input.address) ?? null,
-    tin: optional(input.tin) ?? null,
-    firsNumber: optional(input.firsNumber) ?? null,
-    email: optional(input.email) ?? null,
-    bank: {
-      accountName: optional(input.bank?.accountName) ?? null,
-      accountNumber: optional(input.bank?.accountNumber) ?? null,
-      bankName: optional(input.bank?.bankName) ?? null,
-    },
-  };
-}
-
-function toPayment(row: InvoicePaymentRow): InvoicePayment {
-  return {
-    id: row.id,
-    amount: num(row.amount),
-    method: row.method,
-    paidAt: row.paid_at,
-    note: row.note,
-  };
-}
-
-function toLineItem(row: InvoiceLineItemRow): InvoiceLineItem {
-  return {
-    id: row.id,
-    position: row.position,
-    description: row.description,
-    quantity: num(row.quantity),
-    unit: row.unit,
-    unitRate: num(row.unit_rate),
-    amount: num(row.amount),
-    budgetCategoryId: row.budget_category_id,
-    isVariation: row.is_variation,
-  };
-}
-
-function deriveStatus(
-  row: InvoiceRow,
-  amountPaid: number,
-  balanceDue: number,
-  netPayable: number,
-): InvoiceStatus {
-  const workflowStatus = toWorkflowStatus(row.status);
-  if (balanceDue <= 0 && netPayable > 0) return "Paid";
-  if (amountPaid > 0) return "PartiallyPaid";
-  const dueDate = row.due_date ? new Date(row.due_date) : null;
-  if (dueDate && dueDate < new Date() && balanceDue > 0 && workflowStatus !== "Draft") return "Overdue";
-  return workflowStatus === "Submitted" ? "Sent" : workflowStatus;
-}
-
-function toInvoice(
-  row: InvoiceRow,
-  paymentRows: InvoicePaymentRow[],
-  lineItemRows: InvoiceLineItemRow[],
-): Invoice {
-  const amount = num(row.amount);
-  const retainagePercentage = num(row.retainage_percentage);
-  const retainageAmount = round2((amount * retainagePercentage) / 100);
-  const payableAmount = round2(amount - retainageAmount);
-  const payments = paymentRows.map(toPayment);
-  const amountPaid = round2(payments.reduce((sum, p) => sum + p.amount, 0));
-  const netPayable = num(row.net_payable);
-  const balanceDue = round2(netPayable - amountPaid);
-  const workflowStatus = toWorkflowStatus(row.status);
-
-  return {
-    id: row.id,
-    invoiceType: row.invoice_type,
-    vendorName: row.vendor_name,
-    trade: row.trade,
-    number: row.number,
-    status: deriveStatus(row, amountPaid, balanceDue, netPayable),
-    workflowStatus,
-    currency: row.currency,
-    amount,
-    retainagePercentage,
-    vatRate: num(row.vat_rate),
-    whtRate: num(row.wht_rate),
-    retentionRate: num(row.retention_rate),
-    subtotal: num(row.subtotal),
-    vatAmount: num(row.vat_amount),
-    whtAmount: num(row.wht_amount),
-    retentionAmount: num(row.retention_amount),
-    totalInvoiced: num(row.total_invoiced),
-    netPayable,
-    issueDate: row.issue_date,
-    dueDate: row.due_date,
-    notes: row.notes,
-    fromParty: row.from_party,
-    toParty: row.to_party,
-    recipientEmail: row.recipient_email,
-    ccEmails: row.cc_emails ?? [],
-    bccEmails: row.bcc_emails ?? [],
-    poReferenceId: row.po_reference_id,
-    paymentClaimId: row.payment_claim_id,
-    milestonePaymentId: row.milestone_payment_id,
-    contractReference: row.contract_reference,
-    paymentTerms: row.payment_terms,
-    paymentInstructions: row.payment_instructions,
-    coverNote: row.cover_note,
-    headerText: row.header_text,
-    footerText: row.footer_text,
-    sentAt: row.sent_at,
-    sentTo: row.sent_to,
-    publicToken: row.public_token,
-    viewedAt: row.viewed_at,
-    pdfStorageKey: row.pdf_storage_key,
-    retainageAmount,
-    payableAmount,
-    amountPaid,
-    balanceDue,
-    lineItems: lineItemRows.map(toLineItem),
-    payments,
-  };
-}
-
-function validateLineItems(items: InvoiceLineItemInput[]): void {
-  for (const item of items) {
-    if (item.description.trim().length === 0) throw new BadRequestError("Line item description is required");
-    const quantity = item.quantity ?? 1;
-    const unitRate = item.unitRate ?? 0;
-    if (quantity <= 0) throw new BadRequestError("Line item quantity must be positive");
-    if (unitRate < 0) throw new BadRequestError("Line item unit rate cannot be negative");
-  }
-}
-
-function computeMoney(
-  items: InvoiceLineItemInput[],
-  rates: { vatRate?: number; whtRate?: number; retentionRate?: number },
-): MoneySnapshot {
-  const subtotal = round2(
-    items.reduce((sum, item) => sum + (item.quantity ?? 1) * (item.unitRate ?? 0), 0),
-  );
-  const vatRate = rates.vatRate ?? config.finance.vatPct;
-  const whtRate = rates.whtRate ?? config.finance.whtPct;
-  const retentionRate = rates.retentionRate ?? config.finance.retentionPct;
-  const vatAmount = round2((subtotal * vatRate) / 100);
-  const totalInvoiced = round2(subtotal + vatAmount);
-  const whtAmount = round2((subtotal * whtRate) / 100);
-  const retentionAmount = round2((subtotal * retentionRate) / 100);
-  const netPayable = round2(totalInvoiced - whtAmount - retentionAmount);
-  return {
-    subtotal,
-    vatRate,
-    whtRate,
-    retentionRate,
-    vatAmount,
-    whtAmount,
-    retentionAmount,
-    totalInvoiced,
-    netPayable,
-  };
-}
-
-function itemRecords(invoiceId: string, items: InvoiceLineItemInput[]): NewInvoiceLineItemRecord[] {
-  return items.map((item, index) => {
-    const quantity = item.quantity ?? 1;
-    const unitRate = item.unitRate ?? 0;
-    return {
-      id: generateId("invl"),
-      invoice_id: invoiceId,
-      position: index,
-      description: item.description.trim(),
-      quantity: String(quantity),
-      unit: optional(item.unit) ?? null,
-      unit_rate: String(unitRate),
-      amount: String(round2(quantity * unitRate)),
-      budget_category_id: optional(item.budgetCategoryId) ?? null,
-      is_variation: item.isVariation ?? false,
-    };
-  });
-}
-
-export function invoicesService(repository: InvoicesRepository) {
+export function invoicesService(repository: InvoicesRepository, deps: InvoicesDeps = {}) {
   async function buildInvoice(row: InvoiceRow): Promise<Invoice> {
     const [payments, items] = await Promise.all([
       repository.listPaymentsForInvoices([row.id]),
@@ -433,11 +123,25 @@ export function invoicesService(repository: InvoicesRepository) {
         throw new BadRequestError("Retainage must be between 0 and 100");
       }
       const id = generateId("inv");
+      const invoiceType = input.invoiceType ?? "vendor";
+      const direction = input.direction ?? directionFor(invoiceType);
+      // A certificate that names no contract bills against the main one — the
+      // waterfall cannot read an invoice that belongs to nothing.
+      const contractId =
+        input.contractId !== undefined
+          ? optional(input.contractId) ?? null
+          : direction === "receivable" && deps.mainContractId
+            ? await deps.mainContractId(projectId)
+            : null;
       const row = await repository.create(
         {
           id,
           project_id: projectId,
-          invoice_type: input.invoiceType ?? "vendor",
+          invoice_type: invoiceType,
+          contract_id: contractId,
+          direction,
+          counterparty: optional(input.counterparty) ?? input.vendorName.trim(),
+          advance_recovery: "0",
           vendor_name: input.vendorName.trim(),
           trade: input.trade.trim(),
           number: optional(input.number) ?? null,
@@ -480,6 +184,9 @@ export function invoicesService(repository: InvoicesRepository) {
 
     async edit(projectId: string, invoiceId: string, input: EditInvoiceInput): Promise<Invoice> {
       const existing = await getOwnedInvoice(projectId, invoiceId);
+      if (existing.voided_at) {
+        throw new ConflictError("This certificate is voided — raise a correction on the next one");
+      }
       const defaults = await defaultsForProject(projectId);
       const currentItems = await repository.listItemsForInvoices([invoiceId]);
       const lineItems = input.lineItems ?? (
@@ -523,8 +230,17 @@ export function invoicesService(repository: InvoicesRepository) {
       if (input.vendorName !== undefined) patch.vendor_name = input.vendorName.trim();
       if (input.trade !== undefined) patch.trade = input.trade.trim();
       if (input.number !== undefined) patch.number = optional(input.number) ?? null;
-      if (input.status !== undefined) patch.status = toDatabaseStatus(toWorkflowStatus(input.status));
-      if (input.invoiceType !== undefined) patch.invoice_type = input.invoiceType;
+      if (input.status !== undefined) {
+        assertInvoiceTransition(existing.status, input.status);
+        patch.status = toDatabaseStatus(toWorkflowStatus(input.status));
+      }
+      if (input.invoiceType !== undefined) {
+        patch.invoice_type = input.invoiceType;
+        if (input.direction === undefined) patch.direction = directionFor(input.invoiceType);
+      }
+      if (input.direction !== undefined) patch.direction = input.direction;
+      if (input.counterparty !== undefined) patch.counterparty = optional(input.counterparty) ?? null;
+      if (input.contractId !== undefined) patch.contract_id = optional(input.contractId) ?? null;
       if (input.currency !== undefined) patch.currency = optional(input.currency) ?? defaults.currency;
       if (input.retainagePercentage !== undefined) patch.retainage_percentage = String(input.retainagePercentage);
       if (input.issueDate !== undefined) patch.issue_date = optional(input.issueDate) ?? null;
@@ -561,8 +277,11 @@ export function invoicesService(repository: InvoicesRepository) {
       const recipientEmail = optional(input.recipientEmail);
       if (!recipientEmail) throw new BadRequestError("Recipient email is required");
       const sentAt = new Date();
+      // Sending bills the invoice; re-sending an approved one only re-delivers
+      // the document and never walks the ladder backwards.
+      const billsNow = toWorkflowStatus(existing.status) === "Draft" || toWorkflowStatus(existing.status) === "Queried";
       const patch: Parameters<typeof repository.update>[1] = {
-        status: "Submitted",
+        ...(billsNow ? { status: "Submitted" as const } : {}),
         recipient_email: recipientEmail,
         cc_emails: optionalArray(input.cc) ?? null,
         bcc_emails: optionalArray(input.bcc) ?? null,
@@ -594,29 +313,6 @@ export function invoicesService(repository: InvoicesRepository) {
       return buildInvoice(updated ?? row);
     },
 
-    async addPayment(projectId: string, invoiceId: string, input: AddPaymentInput): Promise<Invoice> {
-      await getOwnedInvoice(projectId, invoiceId);
-      if (input.amount <= 0) throw new BadRequestError("Payment amount must be positive");
-      await repository.createPayment({
-        id: generateId("pay"),
-        invoice_id: invoiceId,
-        amount: String(input.amount),
-        method: input.method ?? "Bank Transfer",
-        paid_at: optional(input.paidAt) ?? null,
-        note: optional(input.note) ?? null,
-      });
-      const row = await getOwnedInvoice(projectId, invoiceId);
-      return buildInvoice(row);
-    },
-
-    async removePayment(projectId: string, invoiceId: string, paymentId: string): Promise<Invoice> {
-      const row = await getOwnedInvoice(projectId, invoiceId);
-      const payment = await repository.findPayment(paymentId);
-      if (!payment || payment.invoice_id !== invoiceId) throw new NotFoundError("Payment");
-      await repository.deletePayment(paymentId);
-      return buildInvoice(row);
-    },
-
     async getAllocations(projectId: string, invoiceId: string): Promise<InvoiceBudgetAllocation[]> {
       await getOwnedInvoice(projectId, invoiceId);
       const rows = await repository.listAllocations(invoiceId);
@@ -629,8 +325,8 @@ export function invoicesService(repository: InvoicesRepository) {
       allocations: InvoiceBudgetAllocation[],
     ): Promise<InvoiceBudgetAllocation[]> {
       const row = await getOwnedInvoice(projectId, invoiceId);
-      const total = allocations.reduce((sum, a) => sum + a.amount, 0);
-      if (total > Number(row.net_payable) + 0.01) throw new BadRequestError("Allocated amount exceeds the invoice amount");
+      const total = Money.sum(allocations.map((a) => a.amount)).round(2);
+      if (total.gt(Money.of(row.net_payable).round(2))) throw new BadRequestError("Allocated amount exceeds the invoice amount");
       await repository.replaceAllocations(
         invoiceId,
         allocations.map((a) => ({

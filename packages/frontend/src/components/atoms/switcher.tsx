@@ -19,6 +19,7 @@ function Switcher({ value, onChange, className }: SwitcherProps) {
       <button
         type="button"
         onClick={() => onChange("yes")}
+        aria-pressed={value === "yes"}
         className={cn(
           "rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors select-none",
           "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
@@ -32,6 +33,7 @@ function Switcher({ value, onChange, className }: SwitcherProps) {
       <button
         type="button"
         onClick={() => onChange("no")}
+        aria-pressed={value === "no"}
         className={cn(
           "rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors select-none",
           "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",

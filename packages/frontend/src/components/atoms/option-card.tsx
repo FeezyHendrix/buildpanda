@@ -36,6 +36,7 @@ function OptionCard({
   return (
     <button
       type="button"
+      aria-pressed={selected}
       disabled={disabled}
       onClick={onClick}
       className={cn(

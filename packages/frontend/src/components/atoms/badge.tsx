@@ -39,12 +39,12 @@ const solidStyles: Record<BadgeTone, string> = {
 };
 
 const outlineStyles: Record<BadgeTone, string> = {
-  neutral: "border-[0.5px] border-border text-[#1E1E1E]",
-  success: "border-[0.5px] border-border text-[#008236]",
-  warning: "border-[0.5px] border-border text-[#BB4D00]",
-  danger:  "border-[0.5px] border-border text-[#C10007]",
-  info:    "border-[0.5px] border-border text-[#004DE7]",
-  accent:  "border-[0.5px] border-border text-[#5A3DD0]",
+  neutral: "border-[0.2px] border-border text-[#1E1E1E]",
+  success: "border-[0.2px] border-border text-[#008236]",
+  warning: "border-[0.2px] border-border text-[#BB4D00]",
+  danger:  "border-[0.2px] border-border text-[#C10007]",
+  info:    "border-[0.2px] border-border text-[#004DE7]",
+  accent:  "border-[0.2px] border-border text-[#5A3DD0]",
 };
 
 const dotStyles: Record<BadgeTone, string> = {

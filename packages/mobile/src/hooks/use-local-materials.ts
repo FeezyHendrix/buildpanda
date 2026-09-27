@@ -1,0 +1,77 @@
+import { useSyncState } from "@/lib/sync-provider";
+import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useEffect, useMemo } from "react";
+import { materialsApi, type CreateMaterialOrderInput, type MaterialOrderStatus } from "@/api/materials";
+import type { Db } from "@/db/client";
+import { flushOutbox } from "@/db/outbox";
+import { materialsRepository, toMaterialOrder } from "@/db/materials-repository";
+
+/** SQLite first, background refresh — opens with no signal. */
+export function useLocalMaterialOrders(db: Db, projectId: string) {
+  const { isOnline } = useSyncState();
+  const query = useMemo(() => materialsRepository.listQuery(db, projectId), [db, projectId]);
+  const live = useLiveQuery(query, [query]);
+
+  useEffect(() => {
+    if (!isOnline) return;
+    let cancelled = false;
+    materialsApi
+      .list(projectId)
+      .then((rows) => {
+        if (!cancelled) return materialsRepository.upsertFromServer(db, projectId, rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [db, projectId, isOnline]);
+
+  const data = useMemo(() => (live.data ?? []).map(toMaterialOrder), [live.data]);
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
+}
+
+/** One order from SQLite; `null` once the query has run and found nothing. */
+export function useLocalMaterialOrder(db: Db, id: string) {
+  const query = useMemo(() => materialsRepository.byIdQuery(db, id), [db, id]);
+  const live = useLiveQuery(query, [query]);
+  const row = live.data?.[0];
+  const data = useMemo(() => (row ? toMaterialOrder(row) : null), [row]);
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
+}
+
+export function useCreateMaterialOrder(db: Db | null, projectId: string | undefined) {
+  return async (input: CreateMaterialOrderInput) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await materialsRepository.createLocal(db, projectId, input);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
+
+export function useUpdateMaterialOrder(db: Db | null, projectId: string | undefined) {
+  return async (id: string, patch: Partial<CreateMaterialOrderInput>) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await materialsRepository.updateLocal(db, projectId, id, patch);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
+
+/**
+ * Records a delivery (full or partial) against an order. A status change is a
+ * contractual record, so the screen confirms before calling this; the push is
+ * queued like any other edit and lands when there is signal.
+ */
+export function useSetMaterialOrderStatus(db: Db | null, projectId: string | undefined) {
+  return async (id: string, status: MaterialOrderStatus) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await materialsRepository.updateLocal(db, projectId, id, { status });
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
+
+export function useDeleteMaterialOrder(db: Db | null, projectId: string | undefined) {
+  return async (id: string) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await materialsRepository.deleteLocal(db, projectId, id);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}

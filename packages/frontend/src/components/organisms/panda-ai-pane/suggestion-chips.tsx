@@ -15,7 +15,7 @@ export function SuggestionChips({ onSelect }: { onSelect: (suggestion: string) =
           <button
             key={suggestion}
             onClick={() => onSelect(suggestion)}
-            className="flex w-full items-center justify-between rounded-lg border border-[#EDEDED] bg-white p-3 text-left text-sm text-gray-700 transition-colors hover:border-[#004DE7] hover:bg-blue-50 hover:text-[#004DE7]"
+            className="flex w-full items-center justify-between rounded-lg border border-line-hair bg-white p-3 text-left text-sm text-gray-700 transition-colors hover:border-primary-500 hover:bg-blue-50 hover:text-primary-500"
           >
             {suggestion}
             <ChevronRightIcon className="size-4 opacity-50" />

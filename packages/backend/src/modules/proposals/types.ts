@@ -23,6 +23,46 @@ export const ESTIMATE_STATUSES = [
 
 export type EstimateStatus = (typeof ESTIMATE_STATUSES)[number];
 
+export const RETENTION_MODES = ["none", "cash", "bond"] as const;
+export type RetentionMode = (typeof RETENTION_MODES)[number];
+
+export const CLIENT_VISIBLE_DETAIL = ["groups", "lines"] as const;
+export type ClientVisibleDetail = (typeof CLIENT_VISIBLE_DETAIL)[number];
+
+export const SCHEDULE_KINDS = ["advance", "stage"] as const;
+export type ScheduleKind = (typeof SCHEDULE_KINDS)[number];
+
+// Nigerian withholding tax on construction: none (individual client), 2 % resident, 5 % non-resident.
+export const WHT_RATES = [0, 2, 5] as const;
+
+export const PACK_SECTION_KINDS = [
+  "scope",
+  "exclusions",
+  "assumptions",
+  "provisional_sums",
+  "warranties",
+  "terms",
+  "site_survey",
+] as const;
+export type PackSectionKind = (typeof PACK_SECTION_KINDS)[number];
+
+export const PACK_ORIGINS = ["ai", "manual", "prompt", "template"] as const;
+export type PackOrigin = (typeof PACK_ORIGINS)[number];
+
+export const CLIENT_RESPONSES = ["accept", "decline", "change_requested"] as const;
+export type ClientResponse = (typeof CLIENT_RESPONSES)[number];
+
+// Who supplies what. Decides the take-off scopes offered, whether material
+// lines are priced, what the client receives, and who owns material orders.
+export const JOB_PROFILES = ["full_contract", "labour_only", "supply_only"] as const;
+export type JobProfile = (typeof JOB_PROFILES)[number];
+
+export const PLAN_DISCIPLINES = ["architectural", "structural", "mep", "civil", "survey", "other"] as const;
+export type PlanDiscipline = (typeof PLAN_DISCIPLINES)[number];
+
+export const PLAN_REVISION_STATUSES = ["current", "superseded"] as const;
+export type PlanRevisionStatus = (typeof PLAN_REVISION_STATUSES)[number];
+
 export interface ProposalRow {
   id: string;
   org_id: string;
@@ -38,6 +78,7 @@ export interface ProposalRow {
   status: ProposalStatus;
   currency: string;
   valid_until: string | null;
+  job_profile: JobProfile;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -59,6 +100,7 @@ export interface Proposal {
   status: ProposalStatus;
   currency: string;
   validUntil: string | null;
+  jobProfile: JobProfile;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -81,11 +123,41 @@ export interface EstimateRow {
   sent_at: string | null;
   accepted_at: string | null;
   accepted_by_name: string | null;
+  retention_pct: number | string | null;
+  retention_mode: RetentionMode | null;
+  advance_pct: number | string | null;
+  wht_pct: number | string | null;
+  payment_terms_days: number | null;
+  defects_liability_days: number | null;
+  client_visible_detail: ClientVisibleDetail;
+  accepted_ip: string | null;
+  accepted_user_agent: string | null;
+  accepted_pdf_hash: string | null;
+  snapshot_file_id: string | null;
+  response_message: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface Estimate {
+export interface EstimateTerms {
+  retentionPct: number | null;
+  retentionMode: RetentionMode | null;
+  advancePct: number | null;
+  whtPct: number | null;
+  paymentTermsDays: number | null;
+  defectsLiabilityDays: number | null;
+  clientVisibleDetail: ClientVisibleDetail;
+}
+
+export interface AcceptanceEvidence {
+  acceptedIp: string | null;
+  acceptedUserAgent: string | null;
+  acceptedPdfHash: string | null;
+  snapshotFileId: string | null;
+  responseMessage: string | null;
+}
+
+export interface Estimate extends EstimateTerms, AcceptanceEvidence {
   id: string;
   proposalId: string;
   revisionNo: number;
@@ -117,6 +189,7 @@ export interface EstimateItemRow {
   unit_rate: number | string;
   total: number | string;
   boq_item_id: string | null;
+  takeoff_session_id: string | null;
   sort: number;
 }
 
@@ -130,7 +203,9 @@ export interface EstimateItem {
   unit: string;
   unitRate: number;
   total: number;
+  // boqItemId is the take-off line (precon_boq_rows.id) this item's quantity came from
   boqItemId: string | null;
+  takeoffSessionId: string | null;
   sort: number;
 }
 
@@ -142,6 +217,8 @@ export interface PaymentScheduleRow {
   description: string | null;
   description_html: string | null;
   sort: number;
+  kind: ScheduleKind;
+  programme_task_id: string | null;
 }
 
 export interface PaymentScheduleItem {
@@ -152,6 +229,8 @@ export interface PaymentScheduleItem {
   description: string | null;
   descriptionHtml: string | null;
   sort: number;
+  kind: ScheduleKind;
+  programmeTaskId: string | null;
 }
 
 export interface ProposalEventRow {
@@ -182,6 +261,7 @@ export interface CreateProposalInput {
   currency?: string;
   validUntil?: string;
   leadId?: string;
+  jobProfile?: JobProfile;
 }
 
 export interface CreateEstimateItemInput {
@@ -191,7 +271,8 @@ export interface CreateEstimateItemInput {
   qty: number;
   unit: string;
   unitRate: number;
-  boqItemId?: string;
+  boqItemId?: string | null;
+  takeoffSessionId?: string | null;
   sort?: number;
 }
 
@@ -201,63 +282,69 @@ export interface CreatePaymentScheduleInput {
   description?: string;
   descriptionHtml?: string | null;
   sort?: number;
+  kind?: ScheduleKind;
+  programmeTaskId?: string | null;
 }
 
-export interface ProposalPlanRow {
+export interface UpdateEstimateTermsInput {
+  retentionPct?: number | null;
+  retentionMode?: RetentionMode | null;
+  advancePct?: number | null;
+  whtPct?: number | null;
+  paymentTermsDays?: number | null;
+  defectsLiabilityDays?: number | null;
+  clientVisibleDetail?: ClientVisibleDetail;
+  validUntil?: string | null;
+}
+
+export interface PackSectionRow {
   id: string;
   proposal_id: string;
-  file_id: string;
-  label: string | null;
-  uploaded_by: string | null;
-  uploaded_at: string;
+  estimate_id: string | null;
+  kind: PackSectionKind;
+  body_html: string;
   sort: number;
+  origin: PackOrigin;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
 }
 
-export interface ProposalPlan {
+export interface PackSection {
   id: string;
   proposalId: string;
-  fileId: string;
-  fileName: string;
-  sizeBytes: number;
-  mimeType: string;
-  label: string | null;
-  uploadedBy: string | null;
-  uploadedAt: string;
+  estimateId: string | null;
+  kind: PackSectionKind;
+  bodyHtml: string;
   sort: number;
+  origin: PackOrigin;
+  updatedBy: string | null;
+  updatedAt: string;
 }
 
-export interface CreateProposalPlanInput {
-  fileId: string;
-  label?: string;
+export interface UpsertPackSectionInput {
+  kind: PackSectionKind;
+  bodyHtml: string;
+  origin?: PackOrigin;
 }
 
-export interface ProposalBoqItemRow {
-  id: string;
-  proposal_id: string;
-  group_label: string;
-  description: string;
-  description_html: string | null;
-  qty: number | string;
-  unit: string;
-  sort: number;
+export interface PublicRespondInput {
+  action: ClientResponse;
+  name?: string;
+  message?: string;
 }
 
-export interface ProposalBoqItem {
-  id: string;
-  proposalId: string;
-  groupLabel: string;
-  description: string;
-  descriptionHtml: string | null;
-  qty: number;
-  unit: string;
-  sort: number;
+export interface ResponseEvidence {
+  ip: string | null;
+  userAgent: string | null;
+  at: string;
 }
 
-export interface CreateBoqItemInput {
-  groupLabel: string;
-  description: string;
-  descriptionHtml?: string | null;
-  qty: number;
-  unit: string;
-  sort?: number;
-}
+// The conversion and template vocabularies live in their own files; re-exported
+// here so every importer keeps its existing path.
+export type * from "./plan-types.ts";
+export * from "./plan-types.ts";
+export type * from "./convert-types.ts";
+export * from "./convert-types.ts";
+export type * from "./template-types.ts";
+export * from "./template-types.ts";

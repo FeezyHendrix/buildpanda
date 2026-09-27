@@ -320,6 +320,7 @@ export interface NewSignup {
   companyName?: string | null;
   /** Derived from the sign-up request, so it can be absent. */
   country?: string | null;
+  /** True when the account came from an invitation rather than a cold sign-up. */
   invited: boolean;
 }
 

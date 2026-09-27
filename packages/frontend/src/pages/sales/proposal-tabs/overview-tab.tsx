@@ -1,15 +1,32 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { ConvertPreviewDialog } from "@/components/molecules/convert-preview-dialog";
 import { useConvertProposal, useProposalWorkspace } from "@/hooks/use-proposals";
 import { useAbility } from "@/contexts/ability-context";
-import { formatDayMonth, formatShortDate } from "@/lib/formatters";
+import type { ConvertInclude } from "@/api/proposals";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { ActivityTab } from "./activity-tab";
+import { MessagesTab } from "./messages-tab";
+import { OverviewDetails } from "./overview-details";
 
 interface Props {
   proposalId: string;
 }
 
+const LAST_SUITE_KEY = "buildpanda:last-suite";
+
+function rememberConstructionSuite() {
+  try {
+    localStorage.setItem(LAST_SUITE_KEY, "construction");
+  } catch {
+    // private mode or quota: the suite switch is a convenience, not state
+  }
+}
+
+// One page to read the proposal: who it is for, the brief, where it stands
+// with the client, and the notes the team left. Drawings, take-offs, the
+// estimate and the pack each have their own tab.
 export function OverviewTab({ proposalId }: Props) {
   const { data } = useProposalWorkspace(proposalId);
   const convert = useConvertProposal(proposalId);
@@ -17,165 +34,83 @@ export function OverviewTab({ proposalId }: Props) {
   const ability = useAbility();
   const [confirmOpen, setConfirmOpen] = useState(false);
   if (!data) return null;
-  const { proposal, events } = data;
+  const { proposal, estimate } = data;
+  const canConvert = ability.can("convert", "proposals");
 
-  function handleConvert() {
-    convert.mutate(undefined, {
+  function handleConvert(include: ConvertInclude) {
+    convert.mutate(include, {
       onSuccess: ({ projectId }) => {
         setConfirmOpen(false);
-        localStorage.setItem("buildpanda:last-suite", "construction");
+        rememberConstructionSuite();
         navigate(`/project/${projectId}/overview`);
       },
-      onError: () => setConfirmOpen(false),
     });
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Client
-          </h3>
-          <dl className="flex flex-col gap-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Name</dt>
-              <dd className="font-medium text-gray-900">{proposal.clientName}</dd>
-            </div>
-            {proposal.clientEmail && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Email</dt>
-                <dd className="text-gray-700">{proposal.clientEmail}</dd>
-              </div>
-            )}
-            {proposal.clientPhone && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Phone</dt>
-                <dd className="text-gray-700">{proposal.clientPhone}</dd>
-              </div>
-            )}
-            {proposal.location && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Location</dt>
-                <dd className="text-gray-700">{proposal.location}</dd>
-              </div>
-            )}
-          </dl>
+      {proposal.projectId ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white p-5">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Project created</h3>
+            <p className="mt-0.5 text-xs text-gray-500">This proposal has been converted to a construction project.</p>
+          </div>
+          <Link to={`/project/${proposal.projectId}/overview`} onClick={rememberConstructionSuite}>
+            <Button variant="secondary" size="sm">
+              Go to project
+            </Button>
+          </Link>
         </div>
+      ) : proposal.status === "Accepted" ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary-500/20 bg-primary-500/5 p-5">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Ready to build</h3>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {canConvert
+                ? "The client has accepted. Convert it into a construction project to start tracking phases, milestones and finances."
+                : "The client has accepted. An owner or admin can convert it into a construction project."}
+            </p>
+          </div>
+          {canConvert ? (
+            <Button variant="primary" size="sm" onClick={() => setConfirmOpen(true)} loading={convert.isPending}>
+              Convert to project
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      {canConvert ? (
+        <ConvertPreviewDialog
+          proposalId={proposalId}
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          submitting={convert.isPending}
+          error={convert.error ? getApiErrorMessage(convert.error, "Conversion failed. Please try again.") : null}
+          onConfirm={handleConvert}
+        />
+      ) : null}
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Proposal
-          </h3>
-          <dl className="flex flex-col gap-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Number</dt>
-              <dd className="font-mono text-xs font-medium text-gray-700">{proposal.numberLabel}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Currency</dt>
-              <dd className="text-gray-700">{proposal.currency}</dd>
-            </div>
-            {proposal.validUntil && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Valid until</dt>
-                <dd className="text-gray-700">{formatShortDate(proposal.validUntil)}</dd>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Created</dt>
-              <dd className="text-gray-700">{formatShortDate(proposal.createdAt)}</dd>
-            </div>
-          </dl>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <OverviewDetails proposalId={proposalId} proposal={proposal} canSaveTemplate={Boolean(estimate) && ability.can("update", "proposals")} />
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h3 className="mb-2 text-xs font-medium uppercase text-ink-muted">Brief</h3>
+          {proposal.brief ? (
+            <p className="whitespace-pre-line text-sm text-gray-700">{proposal.brief}</p>
+          ) : (
+            <p className="text-sm text-gray-400">No brief was written for this proposal.</p>
+          )}
         </div>
       </div>
 
-      {proposal.brief && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Brief
-          </h3>
-          <p className="whitespace-pre-line text-sm text-gray-700">{proposal.brief}</p>
-        </div>
-      )}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xs font-medium uppercase text-ink-muted">Activity</h2>
+        <ActivityTab proposalId={proposalId} />
+      </section>
 
-      {events.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Activity
-          </h3>
-          <ol className="flex flex-col gap-3">
-            {events.map((ev) => (
-              <li key={ev.id} className="flex items-start gap-3 text-sm">
-                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-gray-300" />
-                <div>
-                  <span className="capitalize text-gray-700">{ev.type.replace(/_/g, " ")}</span>
-                  <span className="ml-2 text-xs text-gray-400">{formatDayMonth(ev.createdAt)}</span>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      {proposal.status === "Accepted" && !proposal.projectId && (
-        <div className="rounded-xl border border-[#004DE7]/20 bg-[#004DE7]/5 p-5">
-          <h3 className="mb-1 text-sm font-semibold text-gray-900">Ready to build</h3>
-          <p className="mb-4 text-sm text-gray-500">
-            This proposal has been accepted. Convert it into a construction project to start
-            tracking phases, milestones, and finances.
-          </p>
-          {ability.can("convert", "proposals") ? (
-            <>
-              {convert.error && (
-                <p className="mb-3 text-xs text-red-600">
-                  Conversion failed. Please try again.
-                </p>
-              )}
-              <Button
-                variant="primary"
-                onClick={() => setConfirmOpen(true)}
-                loading={convert.isPending}
-              >
-                Convert to project
-              </Button>
-              <ConfirmDialog
-                open={confirmOpen}
-                onOpenChange={setConfirmOpen}
-                onConfirm={handleConvert}
-                loading={convert.isPending}
-                title="Convert to project?"
-                confirmLabel="Convert to project"
-                description={
-                  proposal.clientEmail
-                    ? `This creates a construction project seeded with stages, budget categories and payment milestones from the accepted estimate, and invites ${proposal.clientName} (${proposal.clientEmail}) as the client.`
-                    : "This creates a construction project seeded with stages, budget categories and payment milestones from the accepted estimate."
-                }
-              />
-            </>
-          ) : (
-            <p className="text-xs text-gray-400">
-              Only owners and admins can convert proposals to projects.
-            </p>
-          )}
-        </div>
-      )}
-
-      {proposal.projectId && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-5">
-          <h3 className="mb-1 text-sm font-semibold text-green-800">Project created</h3>
-          <p className="mb-4 text-sm text-green-700">
-            This proposal has been converted to a construction project.
-          </p>
-          <Link
-            to={`/project/${proposal.projectId}/overview`}
-            onClick={() => localStorage.setItem("buildpanda:last-suite", "construction")}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-          >
-            Go to project
-          </Link>
-        </div>
-      )}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xs font-medium uppercase text-ink-muted">Internal notes</h2>
+        <MessagesTab proposalId={proposalId} />
+      </section>
     </div>
   );
 }
+OverviewTab.displayName = "OverviewTab";

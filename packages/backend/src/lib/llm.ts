@@ -50,19 +50,26 @@ interface ChatUsage {
   completion_tokens?: number;
 }
 
-interface ChatResponse {
+export interface ChatResponse {
   choices?: Array<{ message?: { content?: string; tool_calls?: LlmToolCall[] } }>;
   usage?: ChatUsage;
 }
 
-interface Provider {
+export interface Provider {
   apiKey: string;
   baseUrl: string;
   model: string;
   timeoutMs: number;
+  // Providers that default to a small output budget (DeepSeek: 8K) declare an
+  // explicit cap so long JSON is not cut off mid-document.
+  maxOutputTokens?: number;
 }
 
-function activeProvider(): Provider | null {
+export function maxTokensField(provider: Provider): { max_tokens?: number } {
+  return provider.maxOutputTokens ? { max_tokens: provider.maxOutputTokens } : {};
+}
+
+export function activeProvider(): Provider | null {
   if (config.openai.apiKey) return config.openai;
   if (config.ai.apiKey) return config.ai;
   return null;
@@ -74,45 +81,6 @@ export function isLlmConfigured(): boolean {
 
 export function activeModelName(): string | null {
   return activeProvider()?.model ?? null;
-}
-
-export const EMBED_DIMENSIONS = 1536;
-
-export function isEmbeddingConfigured(): boolean {
-  return config.openai.apiKey !== "";
-}
-
-interface EmbedResponse {
-  data: { embedding: number[] }[];
-}
-
-export async function embedTexts(inputs: string[]): Promise<number[][]> {
-  if (inputs.length === 0) return [];
-  const { apiKey, baseUrl, embedModel, timeoutMs } = config.openai;
-  if (!apiKey) throw new AppError("OpenAI API key is not configured", { statusCode: 503, code: "embedding_unavailable" });
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(`${baseUrl}/embeddings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      signal: controller.signal,
-      body: JSON.stringify({ model: embedModel, input: inputs }),
-    });
-    if (!response.ok) {
-      throw new AppError(`Embedding API ${response.status}: ${await response.text()}`, { statusCode: 502, code: "embedding_failed" });
-    }
-    const payload = (await response.json()) as EmbedResponse;
-    return payload.data.map((d) => d.embedding);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-export async function embedText(input: string): Promise<number[]> {
-  const [vector] = await embedTexts([input]);
-  if (!vector) throw new AppError("Embedding API returned no vector", { statusCode: 502, code: "embedding_failed" });
-  return vector;
 }
 
 export type LlmValidationStatus = "valid" | "repaired" | "failed" | "unvalidated";
@@ -140,7 +108,7 @@ export function setLlmCallSink(sink: LlmCallSink | null): void {
   callSink = sink;
 }
 
-function emitCallRecord(record: LlmCallRecord): void {
+export function emitCallRecord(record: LlmCallRecord): void {
   if (!callSink) return;
   try {
     callSink({ ...record, orgId: record.orgId ?? getLlmContext()?.orgId ?? null });
@@ -158,10 +126,16 @@ export interface JsonCompletionResult {
 // Extracted so validated and unvalidated callers share one transport, and so
 // tests can exercise the envelope without a live provider. Returns the content
 // plus optional token usage (absent when a provider omits it).
-export type JsonCompletionTransport = (messages: LlmMessage[]) => Promise<JsonCompletionResult>;
+export type JsonCompletionTransport = (messages: LlmMessage[], provider: Provider | null) => Promise<JsonCompletionResult>;
 
-const defaultJsonTransport: JsonCompletionTransport = async (messages) => {
-  const provider = activeProvider();
+// Which provider answers a JSON call. Default is the active text provider;
+// vision and long-document callers pass their own (see llm-vision.ts and
+// llm-long-text.ts).
+export interface JsonCallOptions {
+  provider?: Provider | null;
+}
+
+const defaultJsonTransport: JsonCompletionTransport = async (messages, provider) => {
   if (!provider) return { content: null };
 
   const controller = new AbortController();
@@ -178,6 +152,7 @@ const defaultJsonTransport: JsonCompletionTransport = async (messages) => {
         model: provider.model,
         temperature: 0.1,
         response_format: { type: "json_object" },
+        ...maxTokensField(provider),
         messages,
       }),
     });
@@ -203,8 +178,12 @@ export function setJsonTransportForTests(transport: JsonCompletionTransport): ()
   };
 }
 
-export async function chatJson(messages: LlmMessage[]): Promise<unknown | null> {
-  const { content } = await jsonTransport(messages);
+function resolveProvider(options: JsonCallOptions): Provider | null {
+  return options.provider === undefined ? activeProvider() : options.provider;
+}
+
+export async function chatJson(messages: LlmMessage[], options: JsonCallOptions = {}): Promise<unknown | null> {
+  const { content } = await jsonTransport(messages, resolveProvider(options));
   if (!content) return null;
   return JSON.parse(content);
 }
@@ -221,9 +200,11 @@ export interface ValidatedJsonResult<T> {
 export async function chatJsonValidated<T>(
   messages: LlmMessage[],
   schema: ZodType<T>,
+  options: JsonCallOptions = {},
 ): Promise<ValidatedJsonResult<T> | null> {
   const start = Date.now();
-  const modelVersion = activeModelName();
+  const provider = resolveProvider(options);
+  const modelVersion = provider?.model ?? null;
   let usage: ChatUsage | undefined;
   const record = (validationStatus: LlmValidationStatus, retryCount: number): void => {
     emitCallRecord({
@@ -236,7 +217,7 @@ export async function chatJsonValidated<T>(
     });
   };
 
-  const firstCall = await jsonTransport(messages);
+  const firstCall = await jsonTransport(messages, provider);
   usage = firstCall.usage;
   const first = firstCall.content;
   if (first === null) return null;
@@ -269,7 +250,7 @@ export async function chatJsonValidated<T>(
         "Return ONLY corrected JSON that satisfies the schema. No prose.",
     },
   ];
-  const secondCall = await jsonTransport(repairMessages);
+  const secondCall = await jsonTransport(repairMessages, provider);
   if (secondCall.usage) {
     usage = {
       prompt_tokens: (usage?.prompt_tokens ?? 0) + (secondCall.usage.prompt_tokens ?? 0),
@@ -345,142 +326,6 @@ export async function chatTools(
       content: message?.content ?? "",
       toolCalls: message?.tool_calls ?? [],
     };
-  } catch (error) {
-    emitCallRecord({
-      modelVersion: provider.model,
-      latencyMs: Date.now() - start,
-      validationStatus: "failed",
-      retryCount: 0,
-    });
-    throw error;
-  }
-}
-
-export async function chatStream(
-  messages: LlmMessage[],
-  options: { onToken: (token: string) => void; signal?: AbortSignal },
-): Promise<string> {
-  const provider = activeProvider();
-  if (!provider) return "";
-
-  const start = Date.now();
-  let usage: ChatUsage | undefined;
-  try {
-    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${provider.apiKey}`,
-      },
-      signal: options.signal,
-      body: JSON.stringify({
-        model: provider.model,
-        temperature: 0.3,
-        stream: true,
-        stream_options: { include_usage: true },
-        messages,
-      }),
-    });
-    if (!response.ok || !response.body) {
-      throw new Error(`LLM API ${response.status}: ${await response.text().catch(() => "stream error")}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let full = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const data = trimmed.slice(5).trim();
-        if (data === "[DONE]") continue;
-        try {
-          const json = JSON.parse(data) as {
-            choices?: Array<{ delta?: { content?: string } }>;
-            usage?: ChatUsage;
-          };
-          if (json.usage) usage = json.usage;
-          const token = json.choices?.[0]?.delta?.content;
-          if (token) {
-            full += token;
-            options.onToken(token);
-          }
-        } catch {
-          continue;
-        }
-      }
-    }
-    emitCallRecord({
-      modelVersion: provider.model,
-      latencyMs: Date.now() - start,
-      validationStatus: "unvalidated",
-      retryCount: 0,
-      tokensIn: usage?.prompt_tokens ?? null,
-      tokensOut: usage?.completion_tokens ?? null,
-    });
-    return full;
-  } catch (error) {
-    emitCallRecord({
-      modelVersion: provider.model,
-      latencyMs: Date.now() - start,
-      validationStatus: "failed",
-      retryCount: 0,
-      tokensIn: usage?.prompt_tokens ?? null,
-      tokensOut: usage?.completion_tokens ?? null,
-    });
-    throw error;
-  }
-}
-
-export async function chatVision(
-  textPrompt: string,
-  images: string[],
-  options: { detail?: "low" | "high"; signal?: AbortSignal } = {},
-): Promise<string | null> {
-  const provider = activeProvider();
-  if (!provider) return null;
-
-  const detail = options.detail ?? "low";
-  const content: Array<LlmTextContent | LlmImageContent> = [
-    { type: "text", text: textPrompt },
-    ...images.map((url): LlmImageContent => ({ type: "image_url", image_url: { url, detail } })),
-  ];
-
-  const start = Date.now();
-  try {
-    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${provider.apiKey}`,
-      },
-      signal: options.signal,
-      body: JSON.stringify({
-        model: provider.model,
-        temperature: 0.2,
-        messages: [{ role: "user", content }],
-      }),
-    });
-    if (!response.ok) {
-      throw new Error(`LLM API ${response.status}: ${await response.text()}`);
-    }
-    const payload = (await response.json()) as ChatResponse;
-    emitCallRecord({
-      modelVersion: provider.model,
-      latencyMs: Date.now() - start,
-      validationStatus: "unvalidated",
-      retryCount: 0,
-      tokensIn: payload.usage?.prompt_tokens ?? null,
-      tokensOut: payload.usage?.completion_tokens ?? null,
-    });
-    return payload.choices?.[0]?.message?.content ?? null;
   } catch (error) {
     emitCallRecord({
       modelVersion: provider.model,
