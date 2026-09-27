@@ -1,4 +1,5 @@
 import { Button } from "@/components/atoms/button";
+import { Card } from "@/components/atoms/card";
 import { cn } from "@/lib/utils";
 import {
   type InvoiceTotals,
@@ -27,15 +28,15 @@ export function TotalsCard({
   onCancel,
 }: TotalsCardProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-primary-100 bg-white shadow-sm">
-      <div className="bg-gradient-to-br from-primary-50 to-white p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-primary-700">
+    <Card padding="none" className="overflow-hidden">
+      <div className="p-5">
+        <p className="text-xs font-medium uppercase text-ink-muted">
           Net payable
         </p>
-        <p className="mt-1 text-2xl font-bold tabular-nums text-primary-900">
+        <p className="mt-1 text-2xl font-medium tabular-nums text-ink">
           {money(totals.netPayable)}
         </p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-ink-muted">
           {validLineCount} valid{" "}
           {validLineCount === 1 ? "line item" : "line items"}
         </p>
@@ -57,7 +58,7 @@ export function TotalsCard({
         />
       </dl>
 
-      <div className="border-t border-[#F0F0F0] px-5 py-4">
+      <div className="border-t border-line-hair px-5 py-4">
         {error ? (
           <p className="mb-3 rounded-lg bg-error-50 px-3 py-2 text-xs text-error-700">
             {error}
@@ -84,13 +85,13 @@ export function TotalsCard({
             Cancel
           </Button>
           {!isValid ? (
-            <p className="mt-1 text-[11px] text-gray-500">
+            <p className="mt-1 text-xs text-gray-500">
               Add a vendor and at least one line with a rate to create.
             </p>
           ) : null}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -106,8 +107,8 @@ function Row({ label, value, strong, muted }: RowProps) {
     <div
       className={cn(
         "flex items-center justify-between",
-        strong && "font-semibold text-gray-900",
-        muted && "text-gray-500",
+        strong && "font-semibold text-ink",
+        muted && "text-ink-muted",
       )}
     >
       <dt>{label}</dt>

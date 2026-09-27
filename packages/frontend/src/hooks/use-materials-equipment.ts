@@ -1,15 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { materialsEquipmentApi, type MaterialOrderInput, type EquipmentRequestInput, type ParsedBoqMaterial } from "@/api/materials-equipment";
+import {
+  materialsEquipmentApi,
+  type EquipmentRequestInput,
+  type EquipmentRequestPatch,
+  type ExtendHireInput,
+  type MaterialOrderInput,
+  type MaterialOrderPatch,
+  type ParsedBoqMaterial,
+  type RecordDeliveryInput,
+} from "@/api/materials-equipment";
 
 export type {
   MaterialOrderInput,
+  MaterialOrderPatch,
   EquipmentRequestInput,
+  EquipmentRequestPatch,
+  ExtendHireInput,
+  RecordDeliveryInput,
   ParsedBoqMaterial,
   BoqMaterialOption,
   BoqJobStatus,
   BoqImportJob,
 } from "@/api/materials-equipment";
-import { equipmentRequestKeys, financeKeys, materialKeys } from "./query-keys";
+import {
+  equipmentRequestKeys,
+  financeKeys,
+  materialKeys,
+  materialLedgerKeys,
+  transactionKeys,
+} from "./query-keys";
 import type {
   EquipmentBucket,
   MaterialOrderStatus,
@@ -81,10 +100,44 @@ export function useBulkCreateMaterials() {
 export function useUpdateMaterialOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, orderId, ...body }: Partial<MaterialOrderInput> & { projectId: string; orderId: string }) => materialsEquipmentApi.updateMaterialOrder(projectId, orderId, body),
+    mutationFn: ({ projectId, orderId, ...body }: MaterialOrderPatch & { projectId: string; orderId: string }) => materialsEquipmentApi.updateMaterialOrder(projectId, orderId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: materialKeys.all(projectId) });
       queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
+    },
+  });
+}
+
+export function useMaterialDeliveries(
+  projectId: string | undefined,
+  orderId: string | undefined,
+) {
+  return useQuery({
+    queryKey: materialKeys.deliveries(projectId ?? "__none__", orderId ?? "__none__"),
+    queryFn: () => materialsEquipmentApi.listDeliveries(projectId!, orderId!),
+    enabled: Boolean(projectId && orderId),
+  });
+}
+
+/**
+ * One delivery is one event: it closes the order by quantity, appends a ledger
+ * receipt and books the cost on the stage, so the stock and finance caches go
+ * stale with the order.
+ */
+export function useRecordDelivery() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      orderId,
+      ...body
+    }: RecordDeliveryInput & { projectId: string; orderId: string }) =>
+      materialsEquipmentApi.recordDelivery(projectId, orderId, body),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: materialKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: transactionKeys.all(projectId) });
     },
   });
 }
@@ -123,9 +176,26 @@ export function useCreateEquipmentRequest() {
 export function useUpdateEquipmentRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, requestId, ...body }: Partial<EquipmentRequestInput> & { projectId: string; requestId: string }) => materialsEquipmentApi.updateEquipmentRequest(projectId, requestId, body),
+    mutationFn: ({ projectId, requestId, ...body }: EquipmentRequestPatch & { projectId: string; requestId: string }) => materialsEquipmentApi.updateEquipmentRequest(projectId, requestId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: equipmentRequestKeys.all(projectId) });
+    },
+  });
+}
+
+/** Pushing the off-hire date out, kept as its own record on the hire order. */
+export function useExtendHire() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      requestId,
+      ...body
+    }: ExtendHireInput & { projectId: string; requestId: string }) =>
+      materialsEquipmentApi.extendHire(projectId, requestId, body),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: equipmentRequestKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
 }

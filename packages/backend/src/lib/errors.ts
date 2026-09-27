@@ -41,8 +41,19 @@ export class NotFoundError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(message = "Conflict") {
-    super(message, { statusCode: 409, code: "conflict" });
+  constructor(message = "Conflict", details?: unknown) {
+    super(message, { statusCode: 409, code: "conflict", details });
+  }
+}
+
+/**
+ * Well-formed but too big to run. Not a 400: no field is wrong, so the client
+ * must split the work rather than fix one. Raised before any write, so a
+ * request that hits a bound changes nothing.
+ */
+export class PayloadTooLargeError extends AppError {
+  constructor(message = "Request too large", details?: unknown) {
+    super(message, { statusCode: 413, code: "payload_too_large", details });
   }
 }
 
@@ -55,6 +66,18 @@ export class ValidationError extends AppError {
 export class TooManyRequestsError extends AppError {
   constructor(message = "Rate limit exceeded", details?: unknown) {
     super(message, { statusCode: 429, code: "rate_limited", details });
+  }
+}
+
+/**
+ * A dependency the request needs is down — the object store, typically. It is
+ * not the caller's fault and not an internal bug, and the UI has to be able to
+ * say "storage is unavailable, your text is safe" rather than showing a bare
+ * 500 (findings #1, F5, F51).
+ */
+export class ServiceUnavailableError extends AppError {
+  constructor(message = "A service this request needs is unavailable", code = "service_unavailable") {
+    super(message, { statusCode: 503, code });
   }
 }
 

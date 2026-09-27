@@ -99,12 +99,12 @@ function ManagementStep({
 
   return (
     <div>
-      <h2 className="text-center text-[25px] font-bold text-gray-900 text-balance">
+      <h2 className="text-center text-[25px] font-medium text-gray-900 text-balance">
         {hideInvolvement
           ? "Add Risk Protection to Your Project"
           : "How Would You Like to Manage Your Project?"}
       </h2>
-      <p className="mt-2 text-center text-sm text-[#64748B] text-pretty">
+      <p className="mt-2 text-center text-sm text-ink-muted text-pretty">
         {hideInvolvement
           ? "Choose the safeguards you want on this build. You can change these later."
           : "Configure your management level and risk protection preferences to ensure your peace of mind throughout the construction journey."}

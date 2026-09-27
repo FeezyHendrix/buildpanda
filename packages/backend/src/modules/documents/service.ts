@@ -1,44 +1,20 @@
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
-import { formatBytes } from "../../lib/file-storage.ts";
+import { formatBytes, getDownloadUrl } from "../../lib/file-storage.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { FilesRepository } from "../files/repository.ts";
-import type { NotificationsService } from "../notifications/service.ts";
 import type { DocumentsRepository, VersionWithFile } from "./repository.ts";
 import type {
+  CreateDocumentInput, EditDocumentInput, AddVersionInput, DocumentsDeps,
   CategoryAggregateRow,
   CategoryRow,
   DocumentCategory,
   DocumentRow,
-  DocumentStatus,
   DocumentVersion,
   DocumentVersionRow,
   ProjectDocument,
 } from "./types.ts";
 
-export interface CreateDocumentInput {
-  categoryId: string;
-  fileId?: string;
-  fileName?: string;
-  size?: string;
-  uploadedAt?: string;
-  status?: DocumentStatus;
-}
-
-export interface EditDocumentInput {
-  categoryId?: string;
-  fileName?: string;
-  status?: DocumentStatus;
-}
-
-export interface AddVersionInput {
-  fileId: string;
-  revisionLabel?: string;
-  notes?: string;
-}
-
-export interface DocumentsDeps {
-  notifications?: NotificationsService;
-}
+export type { CreateDocumentInput, EditDocumentInput, AddVersionInput } from "./types.ts";
 
 function notifyDocumentUploaded(
   deps: DocumentsDeps,
@@ -75,6 +51,13 @@ function toDocument(
     versionNo: Math.max(versionCount, row.file_id ? 1 : 0),
     versionCount,
     currentVersionId: row.current_version_id,
+    title: row.title ?? null,
+    revision: row.revision ?? null,
+    supersedesId: row.supersedes_id ?? null,
+    visibility: row.visibility ?? "internal",
+    documentDate: row.document_date
+      ? new Date(row.document_date).toISOString().slice(0, 10)
+      : null,
   };
 }
 
@@ -101,15 +84,12 @@ function toCategory(row: CategoryAggregateRow): DocumentCategory {
     tone: row.tone,
     group: row.group,
     fileCount: count,
-    totalSize: count > 0 ? deriveDisplaySize(row.total_size) : "0 MB",
+    totalSize: formatBytes(Number(row.total_bytes ?? 0)),
   };
 }
 
-function deriveDisplaySize(aggregate: string | null): string {
-  if (!aggregate) return "0 MB";
-  const first = aggregate.split(",")[0]?.trim();
-  return first ?? "0 MB";
-}
+
+
 
 export function documentsService(
   repository: DocumentsRepository,
@@ -117,6 +97,17 @@ export function documentsService(
   deps: DocumentsDeps = {},
 ) {
   return {
+    async listProjectMedia(projectId: string) {
+      const rows = await repository.listProjectMediaSources(projectId);
+      return Promise.all(rows.map(async (item: { id: string; type: "photo" | "video"; url: string | null; storage_path: string | null; title: string; source: string; created_at: Date | string }) => ({
+        id: item.id,
+        type: item.type,
+        url: item.url ?? (item.storage_path ? await getDownloadUrl(item.storage_path) : ""),
+        title: item.title,
+        source: item.source,
+        createdAt: new Date(item.created_at).toISOString(),
+      })));
+    },
     async listByProject(projectId: string): Promise<ProjectDocument[]> {
       const [docs, categories, versionCounts] = await Promise.all([
         repository.listByProject(projectId),
@@ -143,8 +134,8 @@ export function documentsService(
       input: CreateDocumentInput,
       ownerId: string,
     ): Promise<ProjectDocument> {
-      const category = await repository.findCategoryById(input.categoryId);
-      if (!category) throw new NotFoundError("Document category");
+      const category = input.categoryId ? await repository.findCategoryById(input.categoryId) : null;
+      if (input.categoryId && !category) throw new NotFoundError("Document category");
 
       let fileId: string | null = null;
       let fileName: string | undefined = input.fileName;
@@ -169,13 +160,18 @@ export function documentsService(
       const row = await repository.create({
         id: generateId("doc"),
         project_id: projectId,
-        category_id: category.id,
+        category_id: category?.id ?? null,
         file_id: fileId,
         file_name: fileName,
         size,
         size_bytes: sizeBytes,
         status: input.status ?? "Pending",
         uploaded_at: uploadedAt,
+        title: input.title?.trim() || null,
+        revision: input.revision?.trim() || null,
+        supersedes_id: input.supersedesId ?? null,
+        visibility: input.visibility ?? "internal",
+        document_date: input.documentDate ?? null,
       });
 
       // First version (only when there is a real file behind it).
@@ -186,7 +182,7 @@ export function documentsService(
           document_id: row.id,
           file_id: fileId,
           version_no: 1,
-          revision_label: null,
+          revision_label: input.revision?.trim() || null,
           file_name: fileName,
           size,
           size_bytes: sizeBytes,
@@ -203,7 +199,7 @@ export function documentsService(
         notifyDocumentUploaded(deps, recipientId, projectId, row.file_name, ownerId);
       }
 
-      return toDocument(row, category, versionCount);
+      return toDocument(row, category ?? null, versionCount);
     },
 
     async edit(
@@ -225,6 +221,11 @@ export function documentsService(
       }
       if (input.fileName !== undefined) patch.file_name = input.fileName;
       if (input.status !== undefined) patch.status = input.status;
+      if (input.title !== undefined) patch.title = input.title?.trim() || null;
+      if (input.revision !== undefined) patch.revision = input.revision?.trim() || null;
+      if (input.supersedesId !== undefined) patch.supersedes_id = input.supersedesId;
+      if (input.visibility !== undefined) patch.visibility = input.visibility;
+      if (input.documentDate !== undefined) patch.document_date = input.documentDate;
 
       const updated = await repository.update(documentId, patch);
       if (!updated) throw new NotFoundError("Document");

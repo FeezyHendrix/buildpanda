@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { FILTER_TRIGGER_CLASS } from "@/components/atoms/filter-trigger";
 import type { Building } from "@/api/buildings";
 
 export function BuildingFilterDropdown({
@@ -33,20 +34,17 @@ export function BuildingFilterDropdown({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className={cn(
-          "flex h-9 items-center gap-2 rounded-lg bg-white border border-[#EDEDED] px-3 text-sm font-medium text-gray-700",
-          "outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          open && "bg-gray-50"
-        )}
+        aria-expanded={open}
+        className={FILTER_TRIGGER_CLASS}
       >
         <span>{label}</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={cn("size-3.5 text-gray-400 transition-transform", open && "rotate-180")}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={cn("size-3.5 text-ink-muted transition-transform", open && "rotate-180")}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-[#F0F0F0] bg-white p-1.5 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1.5 w-56 rounded-lg border border-line bg-white p-1.5 shadow-card">
           <div className="max-h-60 overflow-y-auto space-y-0.5">
             <button
               type="button"
@@ -55,8 +53,8 @@ export function BuildingFilterDropdown({
                 setOpen(false);
               }}
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors text-left",
-                selectedBuildingId === undefined ? "bg-blue-50 text-[#004DE7]" : "text-gray-600 hover:bg-gray-50"
+                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors text-left",
+                selectedBuildingId === undefined ? "bg-primary-50 text-primary-500" : "text-ink hover:bg-black/5"
               )}
             >
               <span className="flex-1 truncate">All buildings</span>
@@ -77,8 +75,8 @@ export function BuildingFilterDropdown({
                     setOpen(false);
                   }}
                   className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors text-left",
-                    isActive ? "bg-blue-50 text-[#004DE7]" : "text-gray-600 hover:bg-gray-50"
+                    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors text-left",
+                    isActive ? "bg-primary-50 text-primary-500" : "text-ink hover:bg-black/5"
                   )}
                 >
                   <span className="flex-1 truncate">{b.name}</span>

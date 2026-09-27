@@ -1,0 +1,94 @@
+import type { UpsertChangeRequestInput } from "./change-requests";
+import type { CreateLookAheadInput } from "./look-aheads";
+import type { LogMaterialEntryInput } from "./materials-ledger";
+import type { CreateMaterialOrderInput } from "./materials";
+import type { RfiStatusTransition, UpsertRfiInput } from "./rfis";
+
+export type MissingFieldType = "text" | "number" | "date" | "select";
+
+export interface MissingFieldOption {
+  value: string;
+  label: string;
+}
+
+// Mirrors the backend contract: a required field the speaker never said, which
+// the review screen collects before the action may be applied.
+export interface MissingField {
+  name: string;
+  label: string;
+  type: MissingFieldType;
+  options?: MissingFieldOption[];
+}
+
+export interface StageTransitionPayload {
+  stageId: string | null;
+  status: "Pending" | "InProgress" | "Done" | null;
+}
+
+export type DraftAction =
+  | { kind: "rfi"; title: string; summary: string; payload: UpsertRfiInput }
+  | { kind: "daily_log"; title: string; summary: string; payload: { bodyText: string; buildingId?: string | null } }
+  | { kind: "change_request"; title: string; summary: string; payload: UpsertChangeRequestInput }
+  | { kind: "material_log"; title: string; summary: string; payload: LogMaterialEntryInput }
+  | { kind: "material_order"; title: string; summary: string; payload: CreateMaterialOrderInput }
+  | { kind: "look_ahead"; title: string; summary: string; payload: CreateLookAheadInput }
+  | { kind: "update_rfi"; title: string; summary: string; payload: { rfiId: string; patch: Partial<UpsertRfiInput> } }
+  | { kind: "transition_rfi"; title: string; summary: string; payload: { rfiId: string; status: RfiStatusTransition } }
+  | {
+      kind: "update_change_request";
+      title: string;
+      summary: string;
+      payload: { changeRequestId: string; patch: Partial<UpsertChangeRequestInput> };
+    }
+  | { kind: "delete_change_request"; title: string; summary: string; payload: { changeRequestId: string } }
+  | {
+      kind: "update_material_order";
+      title: string;
+      summary: string;
+      payload: { orderId: string; patch: Partial<CreateMaterialOrderInput> };
+    }
+  | { kind: "delete_material_order"; title: string; summary: string; payload: { orderId: string } }
+  | {
+      kind: "update_look_ahead";
+      title: string;
+      summary: string;
+      payload: { lookAheadId: string; patch: Partial<CreateLookAheadInput> };
+    }
+  | { kind: "delete_look_ahead"; title: string; summary: string; payload: { lookAheadId: string } }
+  | { kind: "update_daily_log"; title: string; summary: string; payload: { totalHours: number; buildingId?: string | null } }
+  | {
+      kind: "log_activity";
+      title: string;
+      summary: string;
+      payload: {
+        activityId: string;
+        activityName: string;
+        hoursLogged: number;
+        delayReasonCode?: string | null;
+        delayNote?: string | null;
+      };
+    }
+  | { kind: "comment_rfi"; title: string; summary: string; payload: { rfiId: string; body: string } }
+  | {
+      kind: "comment_change_request";
+      title: string;
+      summary: string;
+      payload: { changeRequestId: string; body: string };
+    }
+  | { kind: "void_ledger_entry"; title: string; summary: string; payload: { entryId: string; reason: string } }
+  | {
+      kind: "void_daily_log_entry";
+      title: string;
+      summary: string;
+      payload: { entryId: string; logDate: string; reason: string };
+    }
+  | { kind: "transition_stage"; title: string; summary: string; payload: StageTransitionPayload };
+
+export type ProposedAction = DraftAction & { missing: MissingField[] };
+
+export type ProposedActionKind = ProposedAction["kind"];
+
+export interface VoiceReport {
+  readonly transcript: string;
+  readonly actions: ProposedAction[];
+}

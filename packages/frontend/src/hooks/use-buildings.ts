@@ -5,7 +5,7 @@ import { buildingKeys, stageKeys } from "./query-keys";
 
 export type { BuildingInput };
 
-export function useBuildings(projectId: string | undefined) {
+export function useBuildings(projectId: string | undefined, enabled = true) {
   // The API rejects /projects/:id/buildings outright while projects.multiBuilding
   // is off, so requesting it anyway is a guaranteed 403 on every project page.
   // Fail closed while the flags load — useFeatureFlag reads enabled when it has
@@ -16,7 +16,7 @@ export function useBuildings(projectId: string | undefined) {
   return useQuery({
     queryKey: buildingKeys.list(projectId ?? "__none__"),
     queryFn: () => buildingsApi.list(projectId!),
-    enabled: Boolean(projectId) && !flagsLoading && multiBuilding,
+    enabled: Boolean(projectId) && enabled && !flagsLoading && multiBuilding,
   });
 }
 

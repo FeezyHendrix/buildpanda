@@ -1,18 +1,4 @@
 import type { Activity, ActivityDelay } from "@/lib/project-types";
-import type { ILink } from "@svar-ui/react-gantt";
-
-export interface GanttTask {
-  id: string | number;
-  text: string;
-  type: "summary" | "task" | "milestone";
-  parent: string | number;
-  open?: boolean;
-  start?: Date;
-  end?: Date;
-  progress?: number;
-  base_start?: Date;
-  base_end?: Date;
-}
 
 export interface DelaySummary {
   open: number;
@@ -56,7 +42,6 @@ export const SCALES: GanttScale[] = [
   },
 ];
 
-export const ROOT_PARENT = 0;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const GANTT_ZOOM = { minCellWidth: 30, maxCellWidth: 240 } as const;
 
@@ -65,13 +50,27 @@ export function parseDate(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function delayEnd(delay: ActivityDelay, activityEnd: Date): Date {
-  const resolved = delay.resolvedAt ? parseDate(delay.resolvedAt) : null;
-  if (resolved) return resolved;
+/**
+ * How long a delay actually ran, as a bar on the chart.
+ *
+ * A delay is a stoppage of a known length, not "everything up to the activity's
+ * planned end": a one-day stop is one day wide wherever it falls. The record
+ * says when work resumed (`endedAt`); while it is still running the only
+ * measure is the days lost so far, and a stop that has lost no days yet still
+ * reads as one day so it stays visible.
+ */
+export function delayBarEnd(delay: ActivityDelay): Date | null {
+  const started = parseDate(delay.startedAt);
+  if (!started) return null;
 
-  const started = parseDate(delay.startedAt) ?? activityEnd;
-  const today = new Date();
-  return new Date(Math.max(activityEnd.getTime(), started.getTime() + DAY_MS, today.getTime()));
+  const ended = delay.endedAt ? parseDate(delay.endedAt) : null;
+  const finish = ended && ended > started
+    ? ended
+    : new Date(started.getTime() + Math.max(1, delay.daysLost) * DAY_MS);
+
+  // A stop recorded as starting and ending on the same day still cost a day;
+  // a zero-width bar would simply vanish off the chart.
+  return new Date(Math.max(finish.getTime(), started.getTime() + DAY_MS));
 }
 
 export function delaySummary(activities: Activity[]): DelaySummary {
@@ -112,10 +111,8 @@ export function buildReport(
       delayCount += 1;
       delayCost += delay.costImpact;
       if (delay.resolvedAt === null) openDelayCount += 1;
-      if (end) {
-        const delayedEnd = delayEnd(delay, end);
-        if (!projectedEnd || delayedEnd > projectedEnd) projectedEnd = delayedEnd;
-      }
+      const delayedEnd = delayBarEnd(delay);
+      if (delayedEnd && (!projectedEnd || delayedEnd > projectedEnd)) projectedEnd = delayedEnd;
     }
   }
 
@@ -138,135 +135,4 @@ export function buildReport(
 export function formatDate(date: Date | null): string {
   if (!date) return "-";
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-export function buildGanttData(
-  activities: Activity[],
-  timeline: { id: string; name: string }[]
-) {
-  const phaseById = new Map(timeline.map((phase) => [phase.id, phase]));
-  const activitiesById = new Map(activities.map((activity) => [activity.id, activity]));
-
-  const usedPhaseIds = new Set<string>();
-
-  for (const activity of activities) {
-    if (activity.phaseId && phaseById.has(activity.phaseId)) {
-      usedPhaseIds.add(activity.phaseId);
-    }
-  }
-
-  const summaryRows: GanttTask[] = [];
-  for (const phaseId of usedPhaseIds) {
-    const phase = phaseById.get(phaseId)!;
-    summaryRows.push({
-      id: phase.id,
-      text: phase.name,
-      type: "summary",
-      parent: ROOT_PARENT,
-      open: true,
-    });
-  }
-
-  const taskRows: GanttTask[] = [];
-  let min = Number.POSITIVE_INFINITY;
-  let max = Number.NEGATIVE_INFINITY;
-
-  for (const activity of activities) {
-    const start = parseDate(activity.plannedStartAt);
-    const end = parseDate(activity.plannedEndAt);
-    if (!start) continue;
-    if (!activity.isMilestone && !end) continue;
-
-    const parentActivity = activity.parentActivityId ? activitiesById.get(activity.parentActivityId) : undefined;
-    const parent = parentActivity
-      ? parentActivity.id
-      : activity.phaseId && usedPhaseIds.has(activity.phaseId)
-        ? activity.phaseId
-        : ROOT_PARENT;
-
-    const base_start = activity.baselineStartAt ? parseDate(activity.baselineStartAt) ?? undefined : undefined;
-    const base_end = activity.baselineEndAt ? parseDate(activity.baselineEndAt) ?? undefined : undefined;
-
-    taskRows.push({
-      id: activity.id,
-      text: activity.isDelayed ? `${activity.name} · delayed` : activity.name,
-      type: activity.isSummary ? "summary" : activity.isMilestone ? "milestone" : "task",
-      parent,
-      open: activity.isSummary ? true : undefined,
-      start,
-      end: activity.isMilestone ? start : end!,
-      progress: Math.round(activity.percentComplete),
-      base_start,
-      base_end,
-    });
-
-    min = Math.min(min, start.getTime());
-    if (end) max = Math.max(max, end.getTime());
-
-    for (const delay of activity.delays) {
-      const delayStart = parseDate(delay.startedAt);
-      if (!delayStart) continue;
-      const extendedEnd = delayEnd(delay, end ?? start);
-      taskRows.push({
-        id: `${activity.id}-${delay.id}`,
-        text: `Delay: ${delay.reasonName}`,
-        type: "task",
-        parent,
-        start: delayStart,
-        end: extendedEnd,
-        progress: delay.resolvedAt ? 100 : 10,
-      });
-      min = Math.min(min, delayStart.getTime());
-      max = Math.max(max, extendedEnd.getTime());
-    }
-  }
-
-  // The Gantt library throws if a task references a parent — or a link
-  // references a source/target — that is not itself present in the dataset.
-  // Activities without a valid start date are skipped above, so any child that
-  // pointed at a skipped parent (e.g. a dateless imported summary row) or a link
-  // to a skipped activity would dangle. Reparent orphans to the root and drop
-  // links whose endpoints were not emitted.
-  const emittedIds = new Set<string>([
-    ...summaryRows.map((row) => String(row.id)),
-    ...taskRows.map((row) => String(row.id)),
-  ]);
-  for (const row of taskRows) {
-    if (row.parent !== ROOT_PARENT && !emittedIds.has(String(row.parent))) {
-      row.parent = ROOT_PARENT;
-    }
-  }
-
-  const links: ILink[] = [];
-  let linkIdCounter = 1;
-  const linkTypeMap: Record<string, "e2s" | "s2s" | "e2e" | "s2e"> = {
-    FS: "e2s",
-    SS: "s2s",
-    FF: "e2e",
-    SF: "s2e",
-  };
-
-  for (const activity of activities) {
-    for (const pred of activity.predecessors) {
-      if (emittedIds.has(pred.activityId) && emittedIds.has(activity.id)) {
-        links.push({
-          id: String(linkIdCounter++),
-          source: pred.activityId,
-          target: activity.id,
-          type: linkTypeMap[pred.type] ?? "e2s",
-          lag: pred.lagDays,
-        });
-      }
-    }
-  }
-
-  const hasRange = Number.isFinite(min) && Number.isFinite(max);
-
-  return {
-    tasks: [...summaryRows, ...taskRows],
-    links,
-    rangeStart: hasRange ? new Date(min - 7 * DAY_MS) : undefined,
-    rangeEnd: hasRange ? new Date(max + 7 * DAY_MS) : undefined,
-    delays: delaySummary(activities),
-  };
 }

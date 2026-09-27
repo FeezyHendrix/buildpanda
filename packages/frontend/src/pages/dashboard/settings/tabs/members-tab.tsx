@@ -16,7 +16,7 @@ import {
 } from "@/hooks/use-organization";
 import { toast } from "@/lib/toast";
 
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { MembersSection } from "../team/members-section";
 import { InvitationsSection } from "../team/invitations-section";
 import { RolesSection } from "../team/roles-section";
@@ -25,6 +25,7 @@ import type { Member, CustomRole } from "../team/types";
 import { InviteMemberDialog } from "@/components/molecules/invite-member-dialog";
 import { RoleBuilderDialog } from "@/components/molecules/role-builder-dialog";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { errorMessage } from "@/lib/api-error";
 
 export function MembersTab() {
   const { data: session } = authClient.useSession();
@@ -104,7 +105,7 @@ export function MembersTab() {
     <div className="flex flex-col gap-8">
       {canManage && (
         <div className="flex justify-end">
-          <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+          <CreateButton onClick={() => setInviteOpen(true)}>Invite member</CreateButton>
         </div>
       )}
 
@@ -148,7 +149,7 @@ export function MembersTab() {
           label: formatRoleLabel(role),
         }))}
         isSubmitting={inviteMember.isPending}
-        error={inviteMember.error?.message ?? null}
+        error={inviteMember.error ? errorMessage(inviteMember.error) : null}
         onSubmit={handleInvite}
       />
 
@@ -165,10 +166,7 @@ export function MembersTab() {
             : null
         }
         isSubmitting={roleToEdit ? updateRole.isPending : createRole.isPending}
-        error={
-          (roleToEdit ? updateRole.error?.message : createRole.error?.message) ??
-          null
-        }
+        error={errorMessage(roleToEdit ? updateRole.error : createRole.error, "") || null}
         onSubmit={handleSubmitRole}
       />
 

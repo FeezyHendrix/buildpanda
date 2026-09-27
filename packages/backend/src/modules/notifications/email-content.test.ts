@@ -49,8 +49,8 @@ test("types whose screens cannot focus one record land on the right section", ()
   const cases: Array<[NotificationType, RegExp]> = [
     ["rfi_assigned", /\/rfis$/],
     ["approval_requested", /\/approvals$/],
-    ["invoice_overdue", /\/finances\/invoices$/],
-    ["milestone_released", /\/finances\/milestone-payments$/],
+    ["invoice_overdue", /\/finances\/budget-invoices$/],
+    ["milestone_released", /\/finances\/budget-invoices$/],
     ["permit_expiring", /\/permits$/],
     ["key_date_missed", /\/key-dates$/],
     ["document_uploaded", /\/documents$/],
@@ -58,7 +58,7 @@ test("types whose screens cannot focus one record land on the right section", ()
     ["material_low_stock", /\/material-log$/],
     ["team_member_added", /\/team$/],
     ["selection_created", /\/selections$/],
-    ["action_item_due", /\/action-items$/],
+    ["rfi_due", /\/rfis$/],
   ];
   for (const [type, expected] of cases) {
     const url = ctaUrl(type);

@@ -2,19 +2,20 @@ import api from "./client";
 import type {
   DocumentCategory,
   DocumentVersion,
+  DocumentVisibility,
   ProjectDocument,
 } from "@/lib/project-types";
 
-export interface CreateDocumentVariables {
+export interface CreateDocumentVariables extends DocumentRegisterInput {
   projectId: string;
   categoryId: string;
   fileId: string;
 }
 
-export interface EditDocumentVariables {
+export interface EditDocumentVariables extends DocumentRegisterInput {
   projectId: string;
   documentId: string;
-  categoryId: string;
+  categoryId?: string;
 }
 
 export interface DeleteDocumentVariables {
@@ -37,6 +38,19 @@ export interface AddVersionVariables {
   notes?: string;
 }
 
+/**
+ * The identity of a document beyond its filename: a drawing register needs a
+ * number and a revision, and a method statement is not the client's business
+ * until it is issued (findings #3, F49).
+ */
+export interface DocumentRegisterInput {
+  title?: string | null;
+  revision?: string | null;
+  supersedesId?: string | null;
+  visibility?: DocumentVisibility;
+  documentDate?: string | null;
+}
+
 export const documentsApi = {
   list: (projectId: string) =>
     api.get<ProjectDocument[]>(`/projects/${projectId}/documents`).then((r) => r.data),
@@ -44,10 +58,10 @@ export const documentsApi = {
   categories: (projectId: string) =>
     api.get<DocumentCategory[]>(`/projects/${projectId}/documents/categories`).then((r) => r.data),
 
-  create: (projectId: string, body: { categoryId: string; fileId: string }) =>
+  create: (projectId: string, body: DocumentRegisterInput & { categoryId: string; fileId: string }) =>
     api.post<ProjectDocument>(`/projects/${projectId}/documents`, body).then((r) => r.data),
 
-  edit: (projectId: string, documentId: string, body: { categoryId: string }) =>
+  edit: (projectId: string, documentId: string, body: DocumentRegisterInput & { categoryId?: string }) =>
     api.put<ProjectDocument>(`/projects/${projectId}/documents/${documentId}`, body).then((r) => r.data),
 
   delete: (projectId: string, documentId: string) =>

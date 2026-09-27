@@ -1,3 +1,4 @@
+import { safeReturnPath } from "./return-path";
 // Web desktop notifications. Permission is requested once when realtime
 // connects; showDesktopNotification is a no-op when unsupported or not granted,
 // so callers never have to guard. Built for web today; a future mobile build
@@ -10,7 +11,7 @@ export function requestNotificationPermission(): void {
   }
 }
 
-export function showDesktopNotification(title: string, body?: string): void {
+export function showDesktopNotification(title: string, body?: string, ctaUrl?: string): void {
   if (typeof window === "undefined" || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
   if (typeof document !== "undefined" && document.visibilityState === "visible") {
@@ -18,7 +19,9 @@ export function showDesktopNotification(title: string, body?: string): void {
     return;
   }
   try {
-    new Notification(title, { body: body || undefined, icon: "/favicon.ico" });
+    const notification = new Notification(title, { body: body || undefined, icon: "/favicon.ico" });
+    const target = safeReturnPath(ctaUrl);
+    if (target) notification.onclick = () => { window.focus(); window.location.assign(target); notification.close(); };
   } catch {
     void 0;
   }

@@ -1,4 +1,12 @@
 import type { Knex } from "knex";
+import { types as pgTypes } from "pg";
+
+// A DATE is a calendar day, not an instant. Left to the driver it arrives as a
+// Date at local midnight, and formatting that back through toISOString() moves
+// it a day west of Greenwich. The runtime connection (src/db/connection.ts)
+// already keeps dates as strings; migrations read the same columns, so they
+// have to agree.
+pgTypes.setTypeParser(1082, (value: string) => value);
 
 // Any deployed environment (production, staging, …) connects via DATABASE_URL.
 // knex CLI selects the config by NODE_ENV, so every deploy env needs an entry —
@@ -16,6 +24,12 @@ const hosted: Knex.Config = {
     // the whole API down. Pending migrations still run and recorded ones still
     // never re-run; only the completeness check is relaxed.
     disableMigrationsListValidation: true,
+  },
+  // Without this a deployed environment cannot be seeded at all: knex falls
+  // back to its default "./seeds" and every seed fails on a missing directory.
+  seeds: {
+    directory: "./src/db/seeds",
+    extension: "ts",
   },
 };
 

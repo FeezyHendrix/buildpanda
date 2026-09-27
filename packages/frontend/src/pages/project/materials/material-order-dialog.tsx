@@ -6,6 +6,9 @@ import { Select } from "@/components/atoms/select";
 import { TextArea } from "@/components/atoms/text-area";
 import { TextInput } from "@/components/atoms/text-input";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { Label } from "@/components/atoms/label";
+import { cn } from "@/lib/utils";
 import { CONSTRUCTION_UNITS } from "@/lib/construction-units";
 import { currencySymbol } from "@/lib/formatters";
 import type { MaterialOrder, RequestPriority } from "@/lib/project-types";
@@ -235,3 +238,53 @@ export function MaterialOrderDialog({ open, onOpenChange, projectId, initial, on
     </FormDrawer>
   );
 }
+
+/** A labelled input with a hint or an error under it, shared with the delivery dialog. */
+export function Field({
+  label,
+  id,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  step = "any",
+  min,
+  hint,
+  error,
+}: {
+  label: string;
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+  step?: string;
+  min?: string;
+  /** Explains the field; an `error` replaces it. */
+  hint?: string | null;
+  error?: string | null;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <input
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        type={type}
+        step={step}
+        min={min}
+        aria-invalid={error ? true : undefined}
+        className={cn(INPUT_CLASS, error && "border-error-500")}
+      />
+      {error ? (
+        <p className="text-xs text-error-500">{error}</p>
+      ) : hint ? (
+        <p className="text-xs text-grey-450">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
+
+Field.displayName = "Field";

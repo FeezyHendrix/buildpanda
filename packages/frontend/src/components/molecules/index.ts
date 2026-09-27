@@ -46,7 +46,10 @@ export {
   UploadDocumentDialog,
   type UploadDocumentDialogProps,
 } from "./upload-document-dialog";
-export { KpiCard, type KpiCardProps } from "./kpi-card";
+export { KpiCard, type KpiCardProps, type KpiTone } from "./kpi-card";
+export { SimpleDropdown, type SimpleDropdownProps, type DropdownOption } from "./simple-dropdown";
+export { DateRangeFilter, formatDateRangeLabel, type DateRangeFilterProps } from "./date-range-filter";
+export { RowActionsMenu, type RowActionsMenuProps } from "./row-actions-menu";
 export { LocationStep, type LocationStepProps } from "./location-step";
 export {
   ManagementStep,

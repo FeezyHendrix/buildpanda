@@ -35,13 +35,13 @@ const steps: { icon: IconComponent; title: string; description: string }[] = [
     icon: BellIcon,
     title: "Always in the loop, never in the dark",
     description:
-      "Get regular updates from your dedicated advisor and reach your project team directly whenever you need them. No more waiting and wondering.",
+      "Get regular updates and reach your project team directly whenever you need them. Every person on the project has a named role, so you know who to ask.",
   },
   {
     icon: KeyIcon,
-    title: "Get your keys, stress-free",
+    title: "Close out with the full record",
     description:
-      "Your project is delivered on time and on budget, with every payment tied to verified work. No nasty surprises just the home you planned for.",
+      "Your project is delivered with every payment recorded against work that was signed off. You keep the full record of what was built, certified and paid.",
   },
 ];
 

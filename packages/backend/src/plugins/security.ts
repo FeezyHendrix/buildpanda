@@ -6,6 +6,7 @@ import IORedis from "ioredis";
 import { config } from "../config/index.ts";
 import { clientIp } from "../lib/client-geo.ts";
 import { TooManyRequestsError } from "../lib/errors.ts";
+import { sanitizeHtmlFields } from "../lib/rich-text.ts";
 
 function rateLimitKey(request: FastifyRequest): string {
   return clientIp(request) ?? request.ip;
@@ -20,17 +21,39 @@ export const publicTokenRateLimit: RateLimitOptions = {
   timeWindow: 60_000,
 };
 
+// One app update downloads dozens of immutable assets in a burst. Allow the
+// full update and retries without relaxing limits on manifests or token links.
+export const otaAssetRateLimit: RateLimitOptions = {
+  max: 300,
+  timeWindow: 60_000,
+};
+
 export const leadsRateLimit: RateLimitOptions = {
   max: 5,
   timeWindow: 60_000,
 };
 
 const securityPlugin: FastifyPluginAsync = async (fastify) => {
+  // Rich text is stored raw and rendered with dangerouslySetInnerHTML on the
+  // web, so a daily-log entry or RFI comment could otherwise carry markup that
+  // runs in whoever opens the record next. Sanitising here rather than in each
+  // service covers every route at once, including ones added later.
+  fastify.addHook("preHandler", async (request) => {
+    if (request.body && typeof request.body === "object") {
+      request.body = sanitizeHtmlFields(request.body);
+    }
+  });
+
   await fastify.register(helmet, {
     // This is a JSON API, never an HTML origin, so a restrictive default-src
     // 'none' CSP is safe and blocks any accidental script/embed surface.
+    // The frameAncestors directive explicitly allows the SPA to iframe inline
+    // files (e.g. PDFs) returned by the /view endpoints.
     contentSecurityPolicy: {
-      directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+      directives: { 
+        defaultSrc: ["'none'"], 
+        frameAncestors: config.http.corsOrigins 
+      },
     },
     // Cross-origin: the SPA and admin panel live on different hosts and must be
     // able to read API responses and presigned-link redirects.

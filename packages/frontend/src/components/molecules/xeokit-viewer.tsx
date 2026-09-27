@@ -107,7 +107,7 @@ export default function XeokitViewer({ xktUrl, onSelect }: Props) {
   }, [xktUrl, onSelect]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl bg-[#1a1a1a]">
+    <div className="relative h-full w-full overflow-hidden rounded-lg bg-ink">
       <canvas ref={canvasRef} className="h-full w-full" />
       <div className="pointer-events-none absolute bottom-3 left-3 z-10 select-none rounded-md bg-black/30 px-2.5 py-1 text-xs font-semibold tracking-wide text-white/80 backdrop-blur-sm">
         BuildPanda · BIM

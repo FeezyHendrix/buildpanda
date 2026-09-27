@@ -1,10 +1,15 @@
+import { useUrlState } from "@/hooks/use-url-state";
+import { useCachedMessages } from "./chat/use-cached-messages";
+import { useMessageDestination } from "./chat/use-message-destination";
+import { MessageEditDialog } from "./chat/message-edit-dialog";
+import { groupMessages } from "./chat/group-messages";
 import { useState, useRef, useEffect, useMemo } from "react";
+import { Button } from "@/components/atoms/button";
 import { useProjectContext } from "@/layouts/project-layout";
 import { toast } from "@/lib/toast";
 import {
   useProjectChannels,
   useChannelMessages,
-  useEditMessage,
   useDeleteMessage,
   useMarkChannelRead,
   useToggleReaction,
@@ -14,7 +19,7 @@ import {
   useOpenDm,
   useAllChannels,
   useUpdateMembership,
-  useForwardToActionItem,
+  useForwardToTask,
   useChannelMembers,
   useCreateChannel,
 } from "@/hooks/use-chat";
@@ -22,7 +27,6 @@ import { authClient } from "@/lib/auth-client";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { useChannelRealtime } from "@/lib/realtime";
 import { cn } from "@/lib/utils";
-import { cacheMessages, readCachedMessages } from "@/lib/chat-cache";
 import type { Channel, ChatMessage } from "@/lib/project-types";
 import { BellIcon, BellOffIcon, PlusIcon, StarIcon } from "@/components/atoms/chat-icons";
 
@@ -38,67 +42,53 @@ import { DmHeaderTitle } from "./chat/dm-header-title";
 
 export default function ProjectChat() {
   const { project } = useProjectContext();
+  return <ChatWorkspace projectId={project.id} />;
+}
+
+export function ChatWorkspace({ projectId = "" }: { projectId?: string }) {
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
 
-  const { data: projectChannels = [] } = useProjectChannels(project.id);
+  const { data: scopedChannels = [] } = useProjectChannels(projectId);
   const { data: allChannels = [] } = useAllChannels();
-  const dmChannels = allChannels.filter((c: Channel) => c.type === "dm");
+  const projectChannels = projectId ? scopedChannels : allChannels.filter(c => c.type === "project" || c.type === "org");
+  const dmChannels = allChannels.filter(c => c.type === "dm" || c.type === "group_dm");
 
-  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
-  const [mobileShowChat, setMobileShowChat] = useState(false);
-  const [cachedMessages, setCachedMessages] = useState<ChatMessage[]>([]);
+  const [activeChannelId, setActiveChannelId] = useUrlState<string | null>("channel", null);
+  const [targetMessageId] = useUrlState<string | null>("message", null);
+  const [mobileShowChat, setMobileShowChat] = useState(Boolean(activeChannelId));
+  const firstChannelId = projectChannels[0]?.id ?? dmChannels[0]?.id;
 
   useEffect(() => {
-    if (projectChannels.length > 0 && !activeChannelId) {
-      setActiveChannelId(projectChannels[0]!.id);
+    if (firstChannelId && !activeChannelId) {
+      setActiveChannelId(firstChannelId);
     }
-  }, [projectChannels, activeChannelId]);
+  }, [firstChannelId, activeChannelId, setActiveChannelId]);
 
-  const { data: messagesData, hasPreviousPage, fetchPreviousPage, isFetchingPreviousPage } = useChannelMessages(activeChannelId);
+  const { data: messagesData, hasPreviousPage, fetchPreviousPage, isFetchingPreviousPage, isPending: messagesPending } = useChannelMessages(activeChannelId);
   const serverMessages = useMemo(
     () => messagesData?.pages.flat() ?? [],
     [messagesData],
   );
-  const messages = serverMessages.length > 0 ? serverMessages : cachedMessages;
+  const messages = useCachedMessages(activeChannelId, serverMessages, messagesData !== undefined);
+  const destinationError = useMessageDestination(messages, hasPreviousPage, isFetchingPreviousPage || messagesPending, fetchPreviousPage);
   useChannelRealtime(activeChannelId ?? undefined);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!activeChannelId) {
-      setCachedMessages([]);
-      return () => {
-        cancelled = true;
-      };
-    }
-    void readCachedMessages(activeChannelId).then((rows) => {
-      if (!cancelled) setCachedMessages(rows);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeChannelId]);
+  const markRead = useMarkChannelRead(projectId, activeChannelId!);
+  const markChannelRead = markRead.mutate;
+  const lastMessageId = serverMessages[serverMessages.length - 1]?.id;
 
   useEffect(() => {
-    if (!activeChannelId || serverMessages.length === 0) return;
-    setCachedMessages(serverMessages);
-    void cacheMessages(activeChannelId, serverMessages);
-  }, [activeChannelId, serverMessages]);
-  const markRead = useMarkChannelRead(project.id, activeChannelId!);
-
-  useEffect(() => {
-    if (messages.length > 0 && activeChannelId) {
-      const lastMsg = messages[messages.length - 1]!;
-      markRead.mutate(lastMsg.id);
+    if (lastMessageId && activeChannelId) {
+      markChannelRead(lastMessageId);
     }
-  }, [messages.length, activeChannelId]);
+  }, [lastMessageId, activeChannelId, markChannelRead]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!targetMessageId) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [lastMessageId, targetMessageId]);
 
-  const editMsg = useEditMessage(activeChannelId!);
   const deleteMsg = useDeleteMessage(activeChannelId!);
   const pinMsg = usePinMessage(activeChannelId!);
   const unpinMsg = useUnpinMessage(activeChannelId!);
@@ -109,18 +99,10 @@ export default function ProjectChat() {
   const { data: pins = [] } = usePins(activeChannelId);
   const pinnedIds = new Set(pins.map((p: ChatMessage) => p.id));
 
-  
-  const defaultProjectChannel = projectChannels[0];
-  const { data: channelMembers = [] } = useChannelMembers(
-    activeChannelId && projectChannels.find(c => c.id === activeChannelId) 
-      ? activeChannelId 
-      : defaultProjectChannel?.id
-  );
+  const { data: channelMembers = [] } = useChannelMembers(activeChannelId ?? undefined);
 
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
-  const [editBody, setEditBody] = useState("");
   const [deletingMsg, setDeletingMsg] = useState<ChatMessage | null>(null);
-  
   const [threadRootMsg, setThreadRootMsg] = useState<ChatMessage | null>(null);
   const [quotedMsg, setQuotedMsg] = useState<ChatMessage | null>(null);
   const [showPins, setShowPins] = useState(false);
@@ -145,59 +127,41 @@ export default function ProjectChat() {
     toggleReaction.mutate({ messageId: m.id, emoji });
   };
 
-  const forwardToTask = useForwardToActionItem();
+  const forwardToTask = useForwardToTask();
   const handleForward = (m: ChatMessage) => {
     forwardToTask.mutate(m.id, {
-      onSuccess: () => toast("Action item created from message", "success"),
-      onError: () => toast("Could not create action item"),
+      onSuccess: () => toast("Task created from message", "success"),
+      onError: () => toast("Could not create task"),
     });
   };
 
   const activeChannel = projectChannels.find((c) => c.id === activeChannelId) || dmChannels.find((c: Channel) => c.id === activeChannelId);
 
-  const groups: ChatMessage[][] = [];
-  let currentGroup: ChatMessage[] = [];
-  messages.forEach((m) => {
-    if (!currentGroup.length) {
-      currentGroup.push(m);
-    } else {
-      const prev = currentGroup[currentGroup.length - 1]!;
-      const sameAuthor = prev.authorId === m.authorId;
-      const timeDiff = new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime();
-      if (sameAuthor && timeDiff < 5 * 60 * 1000) {
-        currentGroup.push(m);
-      } else {
-        groups.push(currentGroup);
-        currentGroup = [m];
-      }
-    }
-  });
-  if (currentGroup.length) groups.push(currentGroup);
+  const groups = groupMessages(messages);
 
   if (projectChannels.length === 0 && dmChannels.length === 0) {
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center p-6">
-        <div className="text-center text-gray-500">Start the conversation...</div>
+        <div className="text-center text-ink-muted">Start the conversation...</div>
       </div>
     );
   }
 
-  
   return (
     <div className="absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white">
       <div className={cn(
-        "flex flex-col border-r border-gray-200 bg-gray-50/50",
+        "flex flex-col border-r border-line-hair bg-surface-alt",
         "w-full lg:w-64",
         mobileShowChat ? "hidden lg:flex" : "flex",
       )}>
-        <div className="flex h-14 items-center border-b border-gray-200 px-4">
-          <h2 className="font-semibold text-gray-900">Channels</h2>
+        <div className="flex h-14 items-center border-b border-line-hair px-4">
+          <h2 className="font-semibold text-ink">Channels</h2>
         </div>
         <div className="mt-4 flex-1 overflow-y-auto px-3">
           <div>
             <div className="mb-1 flex items-center justify-between px-3">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-black-300">Groups</span>
-              <button onClick={() => setShowNewGroup(true)} className="text-gray-400 hover:text-gray-700" aria-label="New group">
+              <span className="text-xs font-medium uppercase text-ink-muted">Groups</span>
+              <button hidden={!projectId} type="button" onClick={() => setShowNewGroup(true)} className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink" aria-label="New group">
                 <PlusIcon className="size-4" />
               </button>
             </div>
@@ -214,9 +178,9 @@ export default function ProjectChat() {
           </div>
 
           <div>
-            <div className="mb-1 mt-5 flex items-center justify-between px-3 text-[11px] font-semibold uppercase tracking-wider text-black-300">
+            <div className="mb-1 mt-5 flex items-center justify-between px-3 text-xs font-medium uppercase text-ink-muted">
               <span>Direct Messages</span>
-              <button onClick={() => setShowNewDm(true)} className="text-gray-400 hover:text-gray-700" aria-label="Add direct message">
+              <button type="button" onClick={() => setShowNewDm(true)} className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink" aria-label="Add direct message">
                 <PlusIcon className="size-4" />
               </button>
             </div>
@@ -238,48 +202,48 @@ export default function ProjectChat() {
 
       {activeChannelId && activeChannel ? (
         <div className={cn("flex min-w-0 flex-1 flex-col overflow-hidden", !mobileShowChat && "hidden lg:flex")}>
-          <div className="relative overflow-visible flex items-start gap-4 border-b border-gray-200 px-4 lg:px-6 py-3.5">
+          <div className="relative overflow-visible flex items-start gap-4 border-b border-line-hair px-4 lg:px-6 py-3.5">
             <div className="min-w-0 max-w-[260px]">
               <div className="flex items-center gap-2 lg:gap-1.5">
               <button
                 type="button"
                 onClick={() => setMobileShowChat(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 lg:hidden"
+                className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink lg:hidden"
                 aria-label="Back to channels"
               >
                 <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-                <h3 className="text-[15px] font-semibold text-black-900">
+                <h3 className="text-base font-semibold text-ink">
                   {activeChannel.type === "dm" ? (
                     <DmHeaderTitle channel={activeChannel} currentUserId={currentUserId} />
                   ) : (
-                    <><span className="text-gray-400">#</span> {activeChannel.name || "general"}</>
+                    <><span className="text-ink-muted">#</span> {activeChannel.name || "general"}</>
                   )}
                 </h3>
-                {activeChannel.type !== "dm" && <StarIcon className="size-4 text-gray-300" />}
+                {activeChannel.type !== "dm" && <StarIcon className="size-4 text-ink-disabled" />}
               </div>
               {activeChannel.topic && (
-                <p className="hidden mt-0.5 text-[11px] leading-snug text-black-300 sm:inline">{activeChannel.topic}</p>
+                <p className="hidden mt-0.5 text-xs leading-snug text-ink-muted sm:inline">{activeChannel.topic}</p>
               )}
             </div>
             <div className="flex flex-1 items-center justify-end gap-4">
               <MessageSearch onSelect={(cid) => { setActiveChannelId(cid); setThreadRootMsg(null); }} />
               {pins.length > 0 && (
                 <div className="relative">
-                  <button onClick={() => setShowPins(!showPins)} className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900">
+                  <button type="button" onClick={() => setShowPins(!showPins)} className="flex items-center gap-1 text-sm font-medium text-ink hover:text-primary-500">
                     <span className="text-base">📌</span> {pins.length} Pinned
                   </button>
                   {showPins && (
-                    <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 shadow-lg z-20">
+                    <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto rounded-lg border border-line bg-white p-2 shadow-card z-20">
                       {pins.map((p: ChatMessage) => (
-                        <div key={p.id} className="mb-2 p-2 hover:bg-gray-50 rounded group border-b border-gray-100 last:border-0">
-                          <div className="text-xs font-medium text-gray-900">{p.authorName}</div>
-                          <div className="text-xs text-gray-600 truncate">{p.body}</div>
+                        <div key={p.id} className="mb-2 p-2 hover:bg-surface-alt rounded group border-b border-line-hair last:border-0">
+                          <div className="text-xs font-medium text-ink">{p.authorName}</div>
+                          <div className="text-xs text-ink truncate">{p.body}</div>
                           <div className="mt-2 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => unpinMsg.mutate(p.id)} className="text-[10px] font-medium text-gray-400 hover:text-red-500">Unpin</button>
-                            <button onClick={() => { setThreadRootMsg(p); setShowPins(false); }} className="text-[10px] font-medium text-gray-400 hover:text-primary-500">Reply</button>
+                            <button onClick={() => unpinMsg.mutate(p.id)} className="text-[10px] font-medium text-ink-muted hover:text-negative-500">Unpin</button>
+                            <button onClick={() => { setThreadRootMsg(p); setShowPins(false); }} className="text-[10px] font-medium text-ink-muted hover:text-primary-500">Reply</button>
                           </div>
                         </div>
                       ))}
@@ -287,9 +251,10 @@ export default function ProjectChat() {
                   )}
                 </div>
               )}
-              <button 
+              <button
+                type="button"
                 onClick={() => updateMembership.mutate({ muted: !activeChannel.muted })}
-                className="text-gray-500 hover:text-gray-900 transition-colors"
+                className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink"
                 title={activeChannel.muted ? "Unmute group" : "Mute group"}
               >
                 {activeChannel.muted ? <BellOffIcon className="size-5" /> : <BellIcon className="size-5" />}
@@ -298,19 +263,20 @@ export default function ProjectChat() {
           </div>
 
           <div className="flex-1 overflow-y-auto py-4">
+            {destinationError ? <p role="status" className="p-4 text-sm text-ink-muted">{destinationError}</p> : null}
             {hasPreviousPage && (
               <div className="flex justify-center py-4">
-                <button
-                  type="button"
-                  disabled={isFetchingPreviousPage}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={isFetchingPreviousPage}
                   onClick={() => fetchPreviousPage()}
-                  className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-full"
                 >
-                  {isFetchingPreviousPage ? "Loading..." : "Load older messages"}
-                </button>
+                  Load older messages
+                </Button>
               </div>
             )}
-            
             {groups.map((group, i) => (
               <MessageGroup
                 key={group[0]!.id + i}
@@ -333,14 +299,14 @@ export default function ProjectChat() {
 
           <Composer
             channelId={activeChannelId}
-            projectId={project.id}
+            projectId={projectId}
             placeholder={activeChannel.type === "dm" ? "Message direct message" : `Message #${activeChannel.name || "general"}`}
             quotedMessage={quotedMsg}
             onClearQuote={() => setQuotedMsg(null)}
           />
         </div>
       ) : (
-        <div className={cn("flex flex-1 items-center justify-center text-gray-500", !mobileShowChat && "hidden lg:flex")}>
+        <div className={cn("flex flex-1 items-center justify-center text-ink-muted", !mobileShowChat && "hidden lg:flex")}>
           Select a channel
         </div>
       )}
@@ -348,7 +314,7 @@ export default function ProjectChat() {
       {threadRootMsg && (
         <ThreadPanel
           rootMessage={threadRootMsg}
-          projectId={project.id}
+          projectId={projectId}
           currentUserId={currentUserId}
           pinnedIds={pinnedIds}
           onClose={() => setThreadRootMsg(null)}
@@ -382,7 +348,7 @@ export default function ProjectChat() {
         loading={createChannel.isPending}
         onSubmit={(name, isPrivate) => {
           createChannel.mutate(
-            { type: "project", name, projectId: project.id, isPrivate },
+            { type: "project", name, projectId: projectId, isPrivate },
             {
               onSuccess: (newChannel) => {
                 setActiveChannelId(newChannel.id);
@@ -411,47 +377,7 @@ export default function ProjectChat() {
         variant="danger"
       />
 
-      {editingMsg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-[15px] font-semibold text-black-900">
-              Edit message
-            </h3>
-            <textarea
-              autoFocus
-              value={editBody || editingMsg.body}
-              onChange={(e) => setEditBody(e.target.value)}
-              className="h-32 w-full resize-none rounded-md border border-gray-200 p-3 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30"
-            />
-            <div className="mt-4 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingMsg(null);
-                  setEditBody("");
-                }}
-                className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  editMsg.mutate({
-                    messageId: editingMsg.id,
-                    body: editBody || editingMsg.body,
-                  });
-                  setEditingMsg(null);
-                  setEditBody("");
-                }}
-                className="rounded-md bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600"
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {editingMsg ? <MessageEditDialog key={editingMsg.id} message={editingMsg} onClose={() => setEditingMsg(null)} /> : null}
     </div>
   );
 }

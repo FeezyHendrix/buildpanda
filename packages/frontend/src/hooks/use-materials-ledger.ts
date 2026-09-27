@@ -49,6 +49,14 @@ export function useLogMaterialEntry(projectId: string) {
   });
 }
 
+export function useApproveMaterialEntry(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (entryId: string) => materialsLedgerApi.approveEntry(projectId, entryId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) }),
+  });
+}
+
 export function useVoidMaterialEntry(projectId: string) {
   const qc = useQueryClient();
   return useMutation({

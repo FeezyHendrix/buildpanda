@@ -5,13 +5,26 @@ import { ProgressBar } from "@/components/atoms/progress-bar";
 import { Spinner } from "@/components/atoms/spinner";
 import { FormDrawer } from "./form-drawer";
 import { MediaDropzone } from "./media-dropzone";
-import type { DocumentCategory } from "@/lib/project-types";
+import type { DocumentCategory, DocumentVisibility, ProjectDocument } from "@/lib/project-types";
+
+/** What a submit hands back. The v2 dialog asks only for the file and its category; the rest is null. */
+export interface UploadDocumentInput {
+  categoryId: string;
+  file: File;
+  title: string | null;
+  revision: string | null;
+  supersedesId: string | null;
+  visibility: DocumentVisibility;
+  documentDate: string | null;
+}
 
 interface UploadDocumentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: DocumentCategory[];
-  onSubmit: (input: { categoryId: string; file: File }) => void;
+  /** Accepted for the shared upload pages; the v2 dialog does not name a superseded document. */
+  documents?: ProjectDocument[];
+  onSubmit: (input: UploadDocumentInput) => void;
   onCreateCategory?: (name: string) => string;
   isSubmitting?: boolean;
   progress?: number | null;
@@ -88,7 +101,7 @@ function UploadDocumentDialog({
 
   function handleSubmit(): void {
     if (!file || !categoryId) return;
-    onSubmit({ categoryId, file });
+    onSubmit({ categoryId, file, title: null, revision: null, supersedesId: null, visibility: "internal", documentDate: null });
   }
 
   function handleCreateCategory(): void {

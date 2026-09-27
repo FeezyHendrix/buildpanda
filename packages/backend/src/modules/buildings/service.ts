@@ -1,4 +1,4 @@
-import { NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { BuildingsRepository, BuildingUpdatePatch } from "./repository.ts";
 import type { Building, BuildingRow, BuildingStatus } from "./types.ts";
@@ -37,6 +37,13 @@ function toBuilding(row: BuildingRow): Building {
 
 export function buildingsService(repository: BuildingsRepository) {
   return {
+    async assertRealBuilding(projectId: string, buildingId: string): Promise<void> {
+      const building = await repository.findById(buildingId);
+      if (!building || building.project_id !== projectId || building.kind !== "real") {
+        throw new BadRequestError("buildingId must name a real building in this project");
+      }
+    },
+
     async list(projectId: string): Promise<Building[]> {
       const [rows, stageProgress] = await Promise.all([
         repository.listByProject(projectId),
