@@ -229,23 +229,10 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = 
   },
 ] as const;
 
-export const DOCUMENT_ENTRIES: readonly (NavEntry & { helper: string })[] = [
-  {
-    label: "Documents",
-    slug: "documents",
-    resource: "documents",
-    Icon: icons2.folderBlack,
-    helper: "Files & categories",
-    flag: "projects.documents",
-  },
-  {
-    label: "BIMs",
-    slug: "bim",
-    resource: "bim",
-    Icon: DocumentsIcon,
-    helper: "3D model viewer",
-    flag: "projects.bim",
-  },
+// Listed under a "Documents" heading, the way Panda AI sits under Intelligence.
+export const DOCUMENT_ENTRIES: readonly NavEntry[] = [
+  { label: "Documents", slug: "documents", resource: "documents", Icon: icons2.folderBlack, flag: "projects.documents" },
+  { label: "BIMs", slug: "bim", resource: "bim", Icon: DocumentsIcon, flag: "projects.bim" },
 ] as const;
 
 export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
