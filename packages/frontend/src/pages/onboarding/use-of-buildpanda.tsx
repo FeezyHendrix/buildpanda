@@ -1,8 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { authClient } from "@/lib/auth-client";
 import { useOnboardingContext } from "@/layouts/onboarding-layout";
-import { markOnboardingComplete } from "@/lib/route-guards";
 import { useCompleteOnboarding } from "@/hooks/use-onboarding";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/atoms/button";
@@ -73,7 +71,6 @@ function BackButton({ onClick }: { onClick: () => void }) {
 export default function OnboardingUsage() {
   const { data, update } = useOnboardingContext();
   const navigate = useNavigate();
-  const { data: sessionData } = authClient.useSession();
   const completeOnboarding = useCompleteOnboarding();
   const { usage } = data;
 
@@ -86,8 +83,6 @@ export default function OnboardingUsage() {
   }
 
   function handleComplete() {
-    const userId = (sessionData?.user as { id?: string } | undefined)?.id;
-
     completeOnboarding.mutate(
       {
         companyName: data.companyName,
@@ -101,12 +96,9 @@ export default function OnboardingUsage() {
         usage: data.usage,
       },
       {
-        onSuccess: () => {
-          // Keep the localStorage fallback so the guard works even if the
-          // status query hasn't settled yet on the next navigation.
-          if (userId) markOnboardingComplete(userId);
-          navigate("/dashboard");
-        },
+        // The mutation seeds the status cache from the response, so the guard on
+        // /dashboard already sees completed:true by the time we land.
+        onSuccess: () => navigate("/dashboard"),
         onError: (err) => {
           const msg = err instanceof Error ? err.message : "Could not save onboarding data";
           toast(msg, "error");

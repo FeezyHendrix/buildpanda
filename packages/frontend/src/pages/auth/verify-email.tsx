@@ -6,9 +6,8 @@ import { useSession } from "@/stores/auth";
 import {
   PENDING_ORG_INVITE_KEY,
   PENDING_PROJECT_INVITE_KEY,
-  homePathFor,
+  resolveHomePath,
 } from "@/lib/route-guards";
-import { onboardingApi } from "@/api/onboarding";
 
 function continueAfterVerifyPath(redirectTo?: string | null): string {
   // Org invitations are auto-accepted at sign-up, so bouncing back to the
@@ -132,19 +131,12 @@ export default function VerifyEmailPage() {
     }
 
     // An invited employee lands in an org whose onboarding may already be
-    // complete (done by whoever invited them) — check the server rather than
-    // trusting this browser's localStorage.
+    // complete (done by whoever invited them), so the destination has to come
+    // from the server rather than being assumed.
     let cancelled = false;
     void (async () => {
-      const status =
-        user.accountType === "project_owner"
-          ? null
-          : await onboardingApi.status().catch(() => null);
-      if (!cancelled) {
-        navigate(homePathFor(user.accountType, user.id, status?.completed), {
-          replace: true,
-        });
-      }
+      const path = await resolveHomePath(user.accountType);
+      if (!cancelled) navigate(path, { replace: true });
     })();
 
     return () => {

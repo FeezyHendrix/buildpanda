@@ -8,6 +8,7 @@ import { useProjectAccess } from "@/hooks/use-participants";
 import { canViewResource } from "@/lib/project-types";
 import { DataCommitmentGate } from "@/components/molecules/data-commitment-gate";
 import { useOnboardingStatus } from "@/hooks/use-onboarding";
+import { onboardingApi, type OnboardingStatus } from "@/api/onboarding";
 
 /**
  * Route guards for the owner/company split.
@@ -21,44 +22,43 @@ import { useOnboardingStatus } from "@/hooks/use-onboarding";
 
 type SessionUser = { accountType?: string | null; id?: string | null };
 
-// ─── Onboarding completion (temporary localStorage strategy) ───────────────────
+// ─── Onboarding completion ────────────────────────────────────────────────────
 //
-// This is a stopgap until the backend exposes an `isOnboarded` field on the
-// user record. See docs/onboarding-backend-migration.md for the migration plan.
-//
-// Key is scoped to the userId so multiple users on the same device are isolated.
-const ONBOARDING_KEY = (userId: string) =>
-  `buildpanda:onboarding-complete:${userId}`;
+// `organization.onboarding_completed_at` is the single source of truth, read via
+// GET /v2/onboarding/status. Onboarding is a property of the WORKSPACE, not the
+// person, so an employee invited into an already-onboarded org is never asked to
+// re-enter their employer's details.
 
 /**
- * Returns true when the user has completed onboarding.
- * Checks the server-side flag first (via the React Query cache written by
- * useOnboardingStatus), falls back to the localStorage stopgap so the guard
- * works before the query settles on fresh page loads.
+ * The wizard is required only when the server says so AND the caller could
+ * actually submit it. Anything else — loading, errored, disabled, or a role
+ * without `organization:update` — is false on purpose: bouncing a user into a
+ * wizard whose POST would also fail strands them with no way into the app.
  */
-export function isOnboardingComplete(
-  userId: string | null | undefined,
-  serverCompleted?: boolean,
+function wizardRequired(status: OnboardingStatus | null | undefined): boolean {
+  return Boolean(status && !status.completed && status.canComplete);
+}
+
+export function needsOnboarding(
+  accountType: string | null | undefined,
+  query: ReturnType<typeof useOnboardingStatus>,
 ): boolean {
-  if (serverCompleted) return true;
-  if (!userId) return false;
-  try {
-    return localStorage.getItem(ONBOARDING_KEY(userId)) === "true";
-  } catch {
-    return false;
-  }
+  if (accountType === "project_owner") return false;
+  if (!query.isSuccess) return false;
+  return wizardRequired(query.data);
 }
 
 /**
- * Marks the current user's onboarding as complete in localStorage.
- * Call this at the end of the onboarding flow before navigating to the app.
+ * Pre-navigation equivalent of `needsOnboarding` for the auth pages, which decide
+ * where to go inside a submit handler before any guard mounts. Shares
+ * `wizardRequired`, so sign-in and the destination guard cannot disagree.
  */
-export function markOnboardingComplete(userId: string): void {
-  try {
-    localStorage.setItem(ONBOARDING_KEY(userId), "true");
-  } catch {
-    // localStorage unavailable (private mode / quota) — silently ignore
-  }
+export async function resolveHomePath(
+  accountType: string | null | undefined,
+): Promise<string> {
+  if (accountType === "project_owner") return "/my-build";
+  const status = await onboardingApi.status().catch(() => null);
+  return homePathFor(accountType, wizardRequired(status));
 }
 
 function useGuardSession() {
@@ -76,18 +76,13 @@ const LAST_SUITE_KEY = "buildpanda:last-suite";
 export const PENDING_PROJECT_INVITE_KEY = "buildpanda:pending-project-invite";
 export const PENDING_ORG_INVITE_KEY = "buildpanda:pending-org-invite";
 
-/**
- * Returns the correct home path for a user after sign-in.
- * @param accountType - value from the session user
- * @param userId - used to check the localStorage onboarding flag
- */
+/** Returns the correct home path for a user after sign-in. */
 export function homePathFor(
   accountType: string | null | undefined,
-  userId?: string | null,
-  serverOnboardingCompleted?: boolean,
+  needsWizard: boolean,
 ): string {
   if (accountType === "project_owner") return "/my-build";
-  if (!isOnboardingComplete(userId, serverOnboardingCompleted)) return "/onboarding";
+  if (needsWizard) return "/onboarding";
   const lastSuite = localStorage.getItem(LAST_SUITE_KEY);
   return lastSuite === "sales" ? "/sales" : "/dashboard";
 }
@@ -121,14 +116,17 @@ export function RequireAuth({ children }: { children: ReactNode }) {
  */
 export function RequireOnboarding({ children }: { children: ReactNode }) {
   const { isPending, signedIn, accountType } = useGuardSession();
-  const { data } = authClient.useSession();
-  const userId = (data?.user as SessionUser | undefined)?.id ?? null;
-  const { data: onboardingStatus, isPending: onboardingPending } = useOnboardingStatus();
+  const status = useOnboardingStatus();
 
-  if (isPending || onboardingPending) return <FullScreenLoader />;
+  if (isPending) return <FullScreenLoader />;
+  // Must precede the status check: the query is disabled until an org is known,
+  // and a disabled React Query reports `isPending` forever — testing it first
+  // would leave every signed-out visitor on a permanent loader.
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
-  if (isOnboardingComplete(userId, onboardingStatus?.completed)) {
-    return <Navigate to={homePathFor(accountType, userId, onboardingStatus?.completed)} replace />;
+  if (status.isPending) return <FullScreenLoader />;
+  if (!needsOnboarding(accountType, status)) {
+    // `false` is hardcoded so this exit can never point back at /onboarding.
+    return <Navigate to={homePathFor(accountType, false)} replace />;
   }
   return <>{children}</>;
 }
@@ -136,10 +134,16 @@ export function RequireOnboarding({ children }: { children: ReactNode }) {
 /** Company-only routes (dashboard, project creation). Owners → their portal. */
 export function RequireCompany({ children }: { children: ReactNode }) {
   const { isPending, signedIn, accountType } = useGuardSession();
+  const status = useOnboardingStatus();
   if (isPending) return <FullScreenLoader />;
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
   if (accountType === "project_owner") {
     return <Navigate to="/my-build" replace />;
+  }
+  if (status.isPending) return <FullScreenLoader />;
+  // Without this the wizard is skippable by deep-linking straight to /dashboard.
+  if (needsOnboarding(accountType, status)) {
+    return <Navigate to="/onboarding" replace />;
   }
   return <>{children}</>;
 }
@@ -199,10 +203,12 @@ export function SalesFeatureFlagGate({ flag, children }: { flag: FeatureFlagKey;
 
 /** Root landing: sends each account type to its home. */
 export function HomeRedirect() {
-  const { isPending, signedIn, accountType, userId } = useGuardSession();
-  const { data: onboardingStatus, isPending: onboardingPending } = useOnboardingStatus();
-  if (isPending || onboardingPending) return <FullScreenLoader />;
+  const { isPending, signedIn, accountType } = useGuardSession();
+  const status = useOnboardingStatus();
+  if (isPending) return <FullScreenLoader />;
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
+  // Pending invites win, and are answered before waiting on any query: accepting
+  // an invite is what gives the user the org the status call needs.
   const pendingProjectInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
   if (pendingProjectInvite) {
     return <Navigate to={`/accept-project-invite/${pendingProjectInvite}`} replace />;
@@ -211,5 +217,6 @@ export function HomeRedirect() {
   if (pendingOrgInvite) {
     return <Navigate to={`/accept-invitation/${pendingOrgInvite}`} replace />;
   }
-  return <Navigate to={homePathFor(accountType, userId, onboardingStatus?.completed)} replace />;
+  if (status.isPending) return <FullScreenLoader />;
+  return <Navigate to={homePathFor(accountType, needsOnboarding(accountType, status))} replace />;
 }
