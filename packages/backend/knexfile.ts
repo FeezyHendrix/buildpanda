@@ -32,6 +32,11 @@ const config: Record<string, Knex.Config> = {
     migrations: {
       directory: "./src/db/migrations",
       extension: "ts",
+      // Same relaxation as `hosted`, for the same reason: switching between
+      // branches leaves one dev database recording migrations that only exist on
+      // the other branch, and knex calls that "corrupt" and refuses to run at
+      // all. Pending migrations still run and recorded ones still never re-run.
+      disableMigrationsListValidation: true,
     },
     seeds: {
       directory: "./src/db/seeds",
