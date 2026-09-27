@@ -6,6 +6,7 @@ import type { TakeoffKind, TakeoffMode, TakeoffScope, TakeoffScopeKind } from "@
 import {
   DEFAULT_MEASURE_SCOPES,
   FINISHES_ELEMENTS,
+  MEASURABLE_PLAN,
   PDF_PLAN,
   PICTURE_PLAN,
   SCOPES_FOR_PROFILE,
@@ -32,37 +33,41 @@ interface Props {
   plans: MeasurablePlan[];
   submitting: boolean;
   error: string | null;
-  onConfirm: (scope: TakeoffScope) => void;
+  onConfirm: (scope: TakeoffScope, mode: TakeoffMode) => void;
   // decides which scopes are offered; a labour-only job adds the materials schedule
   jobProfile?: string | null;
   /** Current take-offs already on the chosen drawings, so re-measuring is explained. */
   existing?: ExistingTakeoff[];
-  /** Who measures: Panda AI (default) or the person, drawing on the sheets. */
-  mode?: TakeoffMode;
+  /** Who measures when the dialog opens; the person can switch inside it. */
+  initialMode?: TakeoffMode;
   /** WS-M3B: re-measuring on a newer revision starts from the scope of the take-off it replaces. */
   initialScope?: TakeoffScope;
 }
 
-// The same scope picker serves both; only the words change with who measures.
-const DIALOG_COPY: Record<
-  TakeoffMode,
-  { title: string; submitLabel: string; description: (files: string) => string; dwgNote: string }
-> = {
-  ai: {
-    title: "Measure with Panda AI",
-    submitLabel: "Start measuring",
-    description: (files) =>
-      `What should Panda AI produce from ${files}? Nothing is final — every line goes to review before it touches the proposal.`,
-    dwgNote: "read by the automated take-off into a take-off you review like any other. Scope applies to PDF drawings.",
-  },
-  manual: {
-    title: "Measure by hand",
-    submitLabel: "Open the sheets",
-    description: (files) =>
-      `You draw, BuildPanda keeps the bill. Panda AI can still help by prompt. What is this take-off of ${files} for?`,
-    dwgNote: "opened with its sheet register and bounds; nothing is measured until you draw.",
-  },
-};
+const MODE_OPTIONS: { value: TakeoffMode; label: string; hint: string }[] = [
+  { value: "ai", label: "Panda AI", hint: "Reads the drawing and drafts every line for review." },
+  { value: "manual", label: "By hand", hint: "Opens the sheets for you to draw each line." },
+];
+
+const SUBMIT_LABEL: Record<TakeoffMode, string> = { ai: "Start measuring", manual: "Open the sheets" };
+
+function ModePicker({ value, onChange }: { value: TakeoffMode; onChange: (mode: TakeoffMode) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Who measures">
+      {MODE_OPTIONS.map((option) => (
+        <RadioCard
+          key={option.value}
+          title={option.label}
+          description={option.hint}
+          selected={value === option.value}
+          onClick={() => onChange(option.value)}
+          className="p-3"
+        />
+      ))}
+    </div>
+  );
+}
+ModePicker.displayName = "ModePicker";
 
 function SectionChip({ label, selected, onToggle }: { label: string; selected: boolean; onToggle: () => void }) {
   return (
@@ -117,10 +122,18 @@ function replacedBy(existing: ExistingTakeoff[], kind: TakeoffScopeKind, mode: T
   return existing.filter((e) => e.scope.kind === kind && ((e.takeoffKind ?? "pdf") === "manual") === (mode === "manual"));
 }
 
+/**
+ * The one dialog behind "Measure": who measures (Panda AI or the person) and
+ * what the take-off covers. A picture has no engine behind it, so it can only
+ * be measured by hand and the choice is not shown.
+ */
 export function MeasurePlanDialog({
-  open, onOpenChange, plans, submitting, error, onConfirm, jobProfile, existing = [], mode = "ai", initialScope,
+  open, onOpenChange, plans, submitting, error, onConfirm, jobProfile, existing = [], initialMode = "ai", initialScope,
 }: Props) {
   const scopes = (jobProfile && SCOPES_FOR_PROFILE[jobProfile]) || DEFAULT_MEASURE_SCOPES;
+  const aiCanRead = plans.some((p) => MEASURABLE_PLAN.test(p.fileName));
+  const [pickedMode, setPickedMode] = useState<TakeoffMode>(initialMode);
+  const mode: TakeoffMode = aiCanRead ? pickedMode : "manual";
   const [kind, setKind] = useState<TakeoffScopeKind>(initialScope?.kind ?? scopes[0] ?? "full");
   const [elements, setElements] = useState<string[]>(initialScope?.elements.length ? initialScope.elements : FINISHES_ELEMENTS);
 
@@ -130,22 +143,23 @@ export function MeasurePlanDialog({
   const fileLabel = plans.length === 1 ? plans[0]!.fileName : `${plans.length} drawings`;
   const submitDisabled = kind === "sections" && elements.length === 0;
   const replaced = replacedBy(existing, kind, mode);
-  const copy = DIALOG_COPY[mode];
 
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={copy.title}
-      description={copy.description(fileLabel)}
-      submitLabel={copy.submitLabel}
+      title={`Measure ${fileLabel}`}
+      description="Nothing is final. Every line stays editable, and the take-off only reaches the estimate when you bring it in."
+      submitLabel={SUBMIT_LABEL[mode]}
       submitting={submitting}
       submitDisabled={submitDisabled}
       error={error}
-      onSubmit={() => onConfirm({ kind, elements: kind === "sections" ? elements : [] })}
+      onSubmit={() => onConfirm({ kind, elements: kind === "sections" ? elements : [] }, mode)}
       className="w-[min(560px,calc(100vw-2rem))]"
     >
+      {aiCanRead ? <ModePicker value={mode} onChange={setPickedMode} /> : null}
       <div className="flex flex-col gap-2">
+        <p className="text-xs font-medium uppercase text-ink-muted">What to measure</p>
         {scopes.map((option) => (
           <RadioCard
             key={option}
@@ -163,19 +177,18 @@ export function MeasurePlanDialog({
           {replaced.length === 1
             ? `${replaced[0]!.title} already has this take-off (Rev ${replaced[0]!.revision}).`
             : `${replaced.length} of these drawings already have this take-off.`}{" "}
-          Measuring again makes the next revision and marks the current one superseded. Verified lines are not carried
-          over; the earlier revision stays readable under the new one.
+          Measuring again makes the next revision and marks the current one superseded. The earlier revision stays readable.
         </p>
       ) : null}
-      {dwgCount > 0 ? (
+      {dwgCount > 0 && mode === "ai" ? (
         <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
-          {dwgCount === 1 ? "The DWG drawing is" : `${dwgCount} DWG drawings are`} {copy.dwgNote}
+          {dwgCount === 1 ? "The DWG drawing is" : `${dwgCount} DWG drawings are`} read whole by the automated take-off. Scope applies to PDF drawings.
         </p>
       ) : null}
       {pictureCount > 0 ? (
         <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
           {pictureCount === 1 ? "The picture opens" : `${pictureCount} pictures open`} as a sheet with no scale. Use Set scale (S) on two points
-          a known distance apart, then measure. Panda AI does not read pictures.
+          a known distance apart, then measure.
         </p>
       ) : null}
     </FormDialog>

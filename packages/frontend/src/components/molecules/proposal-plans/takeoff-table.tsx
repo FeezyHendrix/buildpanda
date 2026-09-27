@@ -1,6 +1,5 @@
 import { useMemo, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { PencilRuler } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -15,35 +14,29 @@ import { toast } from "@/lib/toast";
 
 const RUNNING = new Set(["generating", "uploading"]);
 
-// Who measured it: the engine or a person. A hand-built take-off has no
-// drawing behind it; a measured one always does.
-function OriginBadge({ session }: { session: PreconSession }) {
-  const byPandaAi = session.takeoffKind !== "manual";
-  return byPandaAi ? (
-    <Badge tone="info">Panda AI</Badge>
-  ) : (
-    <Badge tone="neutral">Manual</Badge>
-  );
+function originLabel(s: PreconSession): string {
+  return s.takeoffKind === "manual" ? "By hand" : "Panda AI";
 }
-OriginBadge.displayName = "OriginBadge";
 
 function stateLabel(s: PreconSession): string {
-  return s.supersededBy ? "Superseded" : s.stale ? "Drawing revised" : PRECON_STATUS_LABEL[s.status];
+  return s.stale ? "Drawing revised" : PRECON_STATUS_LABEL[s.status];
 }
 
+// The take-off and, under it, how it was made: who measured, what, which revision.
+function TitleCell({ session }: { session: PreconSession }) {
+  const meta = [originLabel(session), describeScope(session.scope), session.planId ? `Rev ${session.revision}` : null].filter(Boolean);
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate font-medium text-gray-900">{session.title}</span>
+      <span className="truncate text-xs text-ink-muted">{meta.join(" · ")}</span>
+    </span>
+  );
+}
+TitleCell.displayName = "TitleCell";
+
 function StateCell({ session }: { session: PreconSession }) {
-  if (session.supersededBy) return <Badge tone="neutral">Superseded</Badge>;
   // WS-M3B: the drawing moved on; the take-off is still readable but needs re-measuring
-  if (session.stale) {
-    return (
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <Badge tone="warning">Drawing revised</Badge>
-        <span className="truncate text-xs text-amber-700">
-          Measured on an earlier revision{session.stale.newerRevision ? ` · now Rev ${session.stale.newerRevision}` : ""}
-        </span>
-      </span>
-    );
-  }
+  if (session.stale) return <Badge tone="warning">Drawing revised</Badge>;
   const running = RUNNING.has(session.status);
   const latest = session.progressLog[session.progressLog.length - 1];
   return (
@@ -66,10 +59,25 @@ function StateCell({ session }: { session: PreconSession }) {
 }
 StateCell.displayName = "StateCell";
 
+// Verified out of total, with the lines still needing a decision beside it.
+function LinesCell({ session }: { session: PreconSession }) {
+  const lines = session.lines;
+  if (!lines || lines.total === 0) return <span className="text-gray-400">0</span>;
+  return (
+    <span className="inline-flex items-center justify-end gap-2 tabular-nums">
+      <span className="text-gray-700">
+        {lines.verified} of {lines.total}
+      </span>
+      {lines.attention > 0 ? <Badge tone="warning">{lines.attention} to check</Badge> : null}
+    </span>
+  );
+}
+LinesCell.displayName = "LinesCell";
+
 function ActionsCell({ session }: { session: PreconSession }) {
   const retry = useRetryPreconSession(session.id);
   const stop = (e: MouseEvent) => e.stopPropagation();
-  const primary = session.status === "reviewing" && !session.supersededBy;
+  const primary = session.status === "reviewing";
   return (
     <span className="flex items-center justify-end gap-1" onClick={stop}>
       {session.status === "failed" ? (
@@ -93,49 +101,14 @@ function ActionsCell({ session }: { session: PreconSession }) {
 ActionsCell.displayName = "ActionsCell";
 
 const COLUMNS: DataGridColumn<PreconSession>[] = [
-  {
-    id: "title",
-    header: "Take-off",
-    accessor: (s) => s.title,
-    sortable: true,
-    cell: (s) => (
-      <span className="flex min-w-0 items-center gap-2">
-        <span className="truncate font-medium text-gray-900">{s.title}</span>
-        <OriginBadge session={s} />
-      </span>
-    ),
-  },
-  { id: "scope", header: "Scope", accessor: (s) => describeScope(s.scope), sortable: true, filter: { kind: "select" }, width: "11rem" },
-  {
-    id: "revision",
-    header: "Rev",
-    accessor: (s) => (s.planId ? s.revision : null),
-    sortable: true,
-    align: "center",
-    width: "4.5rem",
-    cell: (s) => <span className="font-mono text-xs text-gray-600">{s.planId ? s.revision : "—"}</span>,
-  },
-  { id: "state", header: "State", accessor: stateLabel, sortable: true, filter: { kind: "select" }, width: "13rem", cell: (s) => <StateCell session={s} /> },
-  { id: "lines", header: "Lines", accessor: (s) => s.lines?.total ?? 0, sortable: true, align: "right", width: "5rem" },
-  { id: "verified", header: "Verified", accessor: (s) => s.lines?.verified ?? 0, sortable: true, align: "right", width: "6rem" },
-  {
-    id: "attention",
-    header: "Needs attention",
-    accessor: (s) => s.lines?.attention ?? 0,
-    sortable: true,
-    align: "right",
-    width: "8rem",
-    cell: (s) => {
-      const n = s.lines?.attention ?? 0;
-      return n > 0 ? <Badge tone="warning">{n}</Badge> : <span className="text-gray-400">0</span>;
-    },
-  },
+  { id: "title", header: "Take-off", accessor: (s) => s.title, sortable: true, cell: (s) => <TitleCell session={s} /> },
+  { id: "state", header: "State", accessor: stateLabel, sortable: true, filter: { kind: "select" }, width: "12rem", cell: (s) => <StateCell session={s} /> },
+  { id: "verified", header: "Lines verified", accessor: (s) => s.lines?.verified ?? 0, sortable: true, align: "right", width: "11rem", cell: (s) => <LinesCell session={s} /> },
   {
     id: "measured",
     header: "Measured",
     accessor: (s) => s.createdAt,
     sortable: true,
-    filter: { kind: "date" },
     width: "9rem",
     cell: (s) => <span className="text-gray-600">{formatTimeAgo(s.createdAt)}</span>,
   },
@@ -145,45 +118,34 @@ const COLUMNS: DataGridColumn<PreconSession>[] = [
 interface Props {
   sessions: PreconSession[];
   isLoading: boolean;
-  /** The table's one primary action: open a drawing and draw the lines yourself. */
-  onMeasureByHand: () => void;
 }
 
 /**
  * Every current take-off on the proposal as one table; a row opens the
  * take-off workspace. Superseded revisions stay in the database and reachable
- * by link, but never clutter this list.
+ * by link, but never clutter this list. Measuring starts from the drawing.
  */
-export function TakeoffTable({ sessions, isLoading, onMeasureByHand }: Props) {
+export function TakeoffTable({ sessions, isLoading }: Props) {
   const navigate = useNavigate();
   const rows = useMemo(() => sessions.filter((s) => s.supersededBy === null), [sessions]);
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-gray-900">Take-offs</h2>
-        <Button size="sm" onClick={onMeasureByHand}>
-          <PencilRuler className="mr-1.5 size-3.5" aria-hidden="true" />
-          Measure by hand
-        </Button>
-      </div>
-      <DataGrid
-        data={rows}
-        columns={COLUMNS}
-        getRowId={(s) => s.id}
-        searchKeys={[(s) => s.title, (s) => describeScope(s.scope)]}
-        searchPlaceholder="Search take-offs"
-        initialSort={{ columnId: "measured", direction: "desc" }}
-        isLoading={isLoading}
-        onRowClick={(s) => navigate(`/sales/takeoff/${s.id}`)}
-        emptyState={
-          <EmptyState
-            title="No measurements yet"
-            description="Measure a drawing by hand here, or choose Measure with Panda AI on the Drawings tab."
-            variant="inline"
-          />
-        }
-      />
-    </div>
+    <DataGrid
+      data={rows}
+      columns={COLUMNS}
+      getRowId={(s) => s.id}
+      searchKeys={[(s) => s.title, (s) => describeScope(s.scope), originLabel]}
+      searchPlaceholder="Search take-offs"
+      initialSort={{ columnId: "measured", direction: "desc" }}
+      isLoading={isLoading}
+      onRowClick={(s) => navigate(`/sales/takeoff/${s.id}`)}
+      emptyState={
+        <EmptyState
+          title="No take-offs yet"
+          description="Press Measure on a drawing to start one. It appears here as soon as it is running."
+          variant="inline"
+        />
+      }
+    />
   );
 }
 TakeoffTable.displayName = "TakeoffTable";
