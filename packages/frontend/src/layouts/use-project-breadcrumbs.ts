@@ -2,6 +2,7 @@ import { useLocation } from "react-router-dom";
 import type { BreadcrumbItem } from "@/components/molecules/breadcrumbs";
 import {
   CLIENT_ENTRIES,
+  DOCUMENT_TOOL_ENTRIES,
   FINANCE_ENTRIES,
   MATERIALS_ENTRIES,
   NAV_ENTRIES,
@@ -25,6 +26,7 @@ type GroupHeading =
   | "Site Control"
   | "Materials & Equipment"
   | "Finance"
+  | "Documents"
   | "Buildings";
 
 interface Group {
@@ -39,6 +41,7 @@ const GROUPS: readonly Group[] = [
   { heading: "Site Control", entries: SITE_CONTROL_ENTRIES },
   { heading: "Materials & Equipment", entries: MATERIALS_ENTRIES },
   { heading: "Finance", entries: FINANCE_ENTRIES },
+  { heading: "Documents", entries: DOCUMENT_TOOL_ENTRIES },
 ];
 
 /** Route tail each group crumb links to: the first entry of the group. */
@@ -48,6 +51,7 @@ const GROUP_LINK: Record<GroupHeading, string> = {
   "Site Control": SITE_CONTROL_ENTRIES[0]!.slug,
   "Materials & Equipment": MATERIALS_ENTRIES[0]!.slug,
   Finance: FINANCE_ENTRIES[0]!.slug,
+  Documents: "documents",
   Buildings: "buildings",
 };
 

@@ -28,6 +28,7 @@ import {
   OPERATIONS_ENTRIES,
   SITE_CONTROL_ENTRIES,
   FINANCE_ENTRIES,
+  DOCUMENT_TOOL_ENTRIES,
   CLIENT_ENTRIES,
   TASKS_ENTRY,
   type ProjectNavItem,
@@ -137,6 +138,14 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   const financeItems = useMemo<GroupNavItem[]>(
     () =>
       FINANCE_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
+        ...entry,
+        to: `/project/${project.id}/${entry.slug}`,
+      })),
+    [project.id, enabledKeys, access],
+  );
+  const documentToolItems = useMemo<ProjectNavItem[]>(
+    () =>
+      DOCUMENT_TOOL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -507,6 +516,9 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                       onClose={onClose}
                     />
                   )}
+                {documentToolItems.map((item) => (
+                  <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
+                ))}
 
                 <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
                   Intelligence
