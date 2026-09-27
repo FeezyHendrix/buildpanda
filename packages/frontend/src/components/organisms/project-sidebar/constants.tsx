@@ -197,14 +197,6 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = 
     flag: "projects.documents",
   },
   {
-    label: "BIMs",
-    slug: "bim",
-    resource: "bim",
-    Icon: DocumentsIcon,
-    helper: "3D model viewer",
-    flag: "projects.bim",
-  },
-  {
     label: "Client Approvals",
     slug: "approvals",
     resource: "approvals",
@@ -235,6 +227,11 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = 
     Icon: AlertIcon,
     helper: "Exposures, owners & responses",
   },
+] as const;
+
+// Rendered under the Documents link, the way master grouped them.
+export const DOCUMENT_TOOL_ENTRIES: readonly NavEntry[] = [
+  { label: "BIMs", slug: "bim", resource: "bim", Icon: DocumentsIcon, flag: "projects.bim" },
 ] as const;
 
 export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
