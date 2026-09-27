@@ -1,8 +1,13 @@
+import type { NotificationsService } from "../notifications/service.ts";
 import type { Tone } from "../projects/types.ts";
 
 export type DocumentStatus = "Verified" | "Pending" | "Expired";
 
-export type CategoryGroup = "document" | "plan";
+/** Internal to the delivery team, or issued to the client. */
+export const DOCUMENT_VISIBILITIES = ["internal", "shared"] as const;
+export type DocumentVisibility = (typeof DOCUMENT_VISIBILITIES)[number];
+
+export type CategoryGroup = "document" | "plan" | "media";
 
 export interface DocumentCategory {
   id: string;
@@ -26,6 +31,11 @@ export interface ProjectDocument {
   versionNo: number;
   versionCount: number;
   currentVersionId: string | null;
+  title: string | null;
+  revision: string | null;
+  supersedesId: string | null;
+  visibility: DocumentVisibility;
+  documentDate: string | null;
 }
 
 export interface DocumentVersion {
@@ -58,6 +68,11 @@ export interface DocumentRow {
   status: DocumentStatus;
   uploaded_at: string;
   current_version_id: string | null;
+  title: string | null;
+  revision: string | null;
+  supersedes_id: string | null;
+  visibility: DocumentVisibility;
+  document_date: Date | string | null;
 }
 
 export interface DocumentVersionRow {
@@ -80,5 +95,42 @@ export interface CategoryAggregateRow {
   tone: Tone;
   group: CategoryGroup;
   file_count: string;
-  total_size: string | null;
+  total_bytes: string | null;
+}
+
+export interface DocumentRegisterFields {
+  /** The title a person reads; the filename stays the file's own name. */
+  title?: string | null;
+  /** "Rev C", "P02" — free text; every discipline numbers differently. */
+  revision?: string | null;
+  /** The document this one replaces, so the register shows the chain. */
+  supersedesId?: string | null;
+  visibility?: DocumentVisibility;
+  /** The date on the document itself, not the day it was uploaded. */
+  documentDate?: string | null;
+}
+
+export interface CreateDocumentInput extends DocumentRegisterFields {
+  categoryId?: string | null;
+  fileId?: string;
+  fileName?: string;
+  size?: string;
+  uploadedAt?: string;
+  status?: DocumentStatus;
+}
+
+export interface EditDocumentInput extends DocumentRegisterFields {
+  categoryId?: string;
+  fileName?: string;
+  status?: DocumentStatus;
+}
+
+export interface AddVersionInput {
+  fileId: string;
+  revisionLabel?: string;
+  notes?: string;
+}
+
+export interface DocumentsDeps {
+  notifications?: NotificationsService;
 }

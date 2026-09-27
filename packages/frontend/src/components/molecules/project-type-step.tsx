@@ -1,9 +1,8 @@
 import { OptionCard } from "@/components/atoms/option-card";
 import buildHomeIcon from "@/assets/icons/build-a-new-home-icon.svg";
 import renovateIcon from "@/assets/icons/renovate-a-property.svg";
-import investIcon from "@/assets/icons/invest-in-real-estate.svg";
 
-type ProjectType = "build" | "renovate" | "invest";
+type ProjectType = "build" | "renovate" | "civil" | "invest";
 
 interface ProjectTypeStepProps {
   selected: ProjectType | null;
@@ -26,27 +25,28 @@ const options = [
       "Update or expand your current property. Manage repairs and modernizations remotely.",
   },
   {
-    type: "invest" as const,
-    icon: investIcon,
-    title: "Invest in Real Estate",
+    // A road, a drain or a bridge is none of the three residential options the
+    // wizard used to offer; a civils PM had to pick "Renovate" (finding #1).
+    type: "civil" as const,
+    icon: buildHomeIcon,
+    title: "Civil / Infrastructure",
     subtitle:
-      "Browse vetted development opportunities and fractional ownership projects.",
-    badge: "Coming Soon",
+      "Roads, drainage, bridges and other linear or public works, measured by chainage and section.",
   },
 ] as const;
 
 function ProjectTypeStep({ selected, onSelect }: ProjectTypeStepProps) {
   return (
     <div>
-      <h2 className="text-center text-[25px] font-bold text-gray-900 text-balance">
+      <h2 className="text-center text-[25px] font-medium text-gray-900 text-balance">
         What would you like to do?
       </h2>
-      <p className="mt-2 text-center text-sm text-[#929292] text-pretty">
+      <p className="mt-2 text-center text-sm text-gray-400 text-pretty">
         Select the option that best describes your goal. We'll help you manage
         the process from anywhere in the world.
       </p>
 
-      <div className="mt-8 flex flex-col lg:flex-row gap-5">
+      <div className="mt-8 grid gap-5 lg:grid-cols-2">
         {options.map((option) => (
           <OptionCard
             key={option.type}
@@ -56,7 +56,6 @@ function ProjectTypeStep({ selected, onSelect }: ProjectTypeStepProps) {
             title={option.title}
             subtitle={option.subtitle}
             selected={selected === option.type}
-            badge={"badge" in option ? option.badge : undefined}
             onClick={() => onSelect(option.type)}
           />
         ))}

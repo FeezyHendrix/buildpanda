@@ -3,6 +3,8 @@ import { MoneyInput } from "@/components/atoms/money-input";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { currencySymbol } from "@/lib/formatters";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface UpsertBudgetPeriodValues {
   period: string;
@@ -22,8 +24,7 @@ interface UpsertBudgetPeriodDialogProps {
   currency?: string;
 }
 
-const inputClass =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const inputClass = INPUT_CLASS;
 
 const EMPTY: UpsertBudgetPeriodValues = {
   period: "",
@@ -140,7 +141,7 @@ function UpsertBudgetPeriodDialog({
           placeholder="Any additional context for this month..."
           maxLength={2000}
           rows={4}
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
         />
       </div>
     </FormDrawer>

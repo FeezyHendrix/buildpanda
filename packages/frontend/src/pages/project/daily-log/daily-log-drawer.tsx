@@ -1,0 +1,377 @@
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Dialog } from "@base-ui/react/dialog";
+import { X } from "lucide-react";
+import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
+import { RichTextField } from "@/components/molecules/rich-text-field";
+import {
+  useAddDailyLogEntry,
+  useDownloadDailyReport,
+  useEmailDailyReport,
+  useProjectDailyLog,
+} from "@/hooks/use-daily-logs";
+import type { DailyLogDay } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
+import { DailyLogEntryRow } from "./daily-log-entry-row";
+import { AddActivityHours } from "./add-activity-hours";
+import { VoidDayAction } from "./void-day-action";
+import { formatDayDate, formatHours, formatWeekday, WEATHER_LABEL, WEATHER_TONE } from "./daily-log-helpers";
+import { errorMessage } from "@/lib/api-error";
+
+interface DailyLogDrawerProps {
+  open: boolean;
+  projectId: string;
+  logDate: string | null;
+  /** Scroll to and focus the entry composer once the day has loaded. */
+  focusComposer: boolean;
+  userId: string | null;
+  canCreateEntry: boolean;
+  canVoidEntry: boolean;
+  canGenerateReport: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEditConditions: (logDate: string) => void;
+}
+
+function DailyLogDrawer({
+  open,
+  projectId,
+  logDate,
+  focusComposer,
+  userId,
+  canCreateEntry,
+  canVoidEntry,
+  canGenerateReport,
+  onOpenChange,
+  onEditConditions,
+}: DailyLogDrawerProps) {
+  const dayQuery = useProjectDailyLog(open && logDate ? projectId : undefined, logDate ?? undefined);
+  const day = dayQuery.data;
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Backdrop
+          className={cn(
+            "fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-300",
+            "data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
+          )}
+        />
+        <Dialog.Popup
+          // When the composer is requested, the dialog's own initial focus would
+          // land on the close button and beat the editor; the composer focuses itself.
+          initialFocus={focusComposer ? false : true}
+          className={cn(
+            "fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-line-hair bg-white shadow-drawer outline-none md:w-[min(750px,100vw)]",
+            "transition-transform duration-300 ease-out",
+            "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
+          )}
+        >
+          <header className="flex items-start justify-between gap-4 border-b border-line-hair px-6 py-5">
+            <div className="min-w-0">
+              <Dialog.Title className="text-lg font-semibold text-gray-900">
+                Daily log · {logDate ? formatDayDate(logDate) : ""}
+              </Dialog.Title>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                {logDate ? <span>{formatWeekday(logDate)}</span> : null}
+                {day?.voidedAt ? <Badge tone="danger" size="sm">Voided</Badge> : null}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {canVoidEntry && logDate && day && !day.voidedAt ? (
+                <VoidDayAction projectId={projectId} logDate={logDate} />
+              ) : null}
+            <Dialog.Close
+              aria-label="Close"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink-muted outline-none hover:bg-black/5 hover:text-ink focus-visible:shadow-focus"
+            >
+              <X className="size-5" />
+            </Dialog.Close>
+            </div>
+          </header>
+
+          {!day || !logDate ? (
+            <div className="flex flex-1 items-center justify-center">
+              {dayQuery.isError ? (
+                <p className="text-sm text-negative-600">Could not load this day.</p>
+              ) : (
+                <Spinner size="md" />
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col gap-8 overflow-y-auto px-6 py-5">
+              <ConditionsSection day={day} canEdit={canCreateEntry} onEdit={() => onEditConditions(logDate)} />
+              <ActivitiesSection day={day} projectId={projectId} canCreateEntry={canCreateEntry} />
+              <EntriesSection
+                day={day}
+                projectId={projectId}
+                userId={userId}
+                canCreateEntry={canCreateEntry}
+                canVoidEntry={canVoidEntry}
+                focusComposer={focusComposer}
+              />
+              {canGenerateReport ? <ReportSection projectId={projectId} logDate={logDate} /> : null}
+            </div>
+          )}
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+DailyLogDrawer.displayName = "DailyLogDrawer";
+
+function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <section>
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="text-xs font-medium uppercase text-ink-muted">{title}</h4>
+        {action}
+      </div>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+function EditLink({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <Button type="button" variant="ghost" size="sm" onClick={onClick}>
+      {label}
+    </Button>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-line-hair bg-white p-3">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <div className="mt-1 text-lg font-semibold tabular-nums text-gray-900">{value}</div>
+    </div>
+  );
+}
+
+function ConditionsSection({ day, canEdit, onEdit }: { day: DailyLogDay; canEdit: boolean; onEdit: () => void }) {
+  const hasConditions = day.weatherCondition !== null || day.workersExpected > 0 || day.workersPresent > 0 || day.totalHours > 0;
+  return (
+    <Section title="Conditions" action={canEdit ? <EditLink label={hasConditions ? "Edit" : "Add conditions"} onClick={onEdit} /> : null}>
+      {hasConditions ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Metric
+            label="Weather"
+            value={
+              day.weatherCondition ? (
+                <Badge tone={WEATHER_TONE[day.weatherCondition]} size="md">{WEATHER_LABEL[day.weatherCondition]}</Badge>
+              ) : (
+                "—"
+              )
+            }
+          />
+          <Metric label="Temperature" value={day.temperatureC !== null ? `${day.temperatureC}°C` : "—"} />
+          <Metric label="Crew present" value={`${day.workersPresent}/${day.workersExpected}`} />
+          <Metric label="Total hours" value={formatHours(day.totalHours)} />
+        </div>
+      ) : (
+        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No site conditions recorded for this day.</p>
+      )}
+    </Section>
+  );
+}
+
+function ActivitiesSection({
+  day,
+  projectId,
+  canCreateEntry,
+}: {
+  day: DailyLogDay;
+  projectId: string;
+  canCreateEntry: boolean;
+}) {
+  const total = day.activities.reduce((sum, a) => sum + a.hoursLogged, 0);
+  const linkedIds = day.activities.map((a) => a.activityId);
+  const dayHours = day.totalHours;
+  // Day hours and activity hours are two independent records of the same shift;
+  // a PM needs to see when they disagree (finding F8).
+  const mismatch = dayHours > 0 && total > 0 && Math.abs(dayHours - total) >= 0.5;
+  return (
+    <Section title="Activities">
+      {day.activities.length === 0 ? (
+        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No activities logged against this day.</p>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-line-hair">
+          <Table>
+            <TableHead>
+              <tr>
+                <TableHeaderCell>Activity</TableHeaderCell>
+                <TableHeaderCell align="right">Hours</TableHeaderCell>
+              </tr>
+            </TableHead>
+            <TableBody>
+              {day.activities.map((a) => (
+                <TableRow key={a.activityId}>
+                  <TableCell>{a.activityName}</TableCell>
+                  <TableCell align="right" className="tabular-nums">{formatHours(a.hoursLogged)}</TableCell>
+                </TableRow>
+              ))}
+              <TableRow tone="total">
+                <TableCell>Total</TableCell>
+                <TableCell align="right" className="tabular-nums">{formatHours(total)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      )}
+      {mismatch ? (
+        <p className="mt-2 rounded-lg bg-warning-50 px-3 py-2 text-xs text-warning-700">
+          ⚠ The day records {formatHours(dayHours)} but {formatHours(total)} are logged against
+          activities — one of the two is incomplete.
+        </p>
+      ) : null}
+      {canCreateEntry && !day.voidedAt ? (
+        <AddActivityHours projectId={projectId} logDate={day.logDate} linkedIds={linkedIds} />
+      ) : null}
+    </Section>
+  );
+}
+
+interface EntriesProps {
+  day: DailyLogDay;
+  projectId: string;
+  userId: string | null;
+  canCreateEntry: boolean;
+  canVoidEntry: boolean;
+  focusComposer: boolean;
+}
+
+function EntriesSection({ day, projectId, userId, canCreateEntry, canVoidEntry, focusComposer }: EntriesProps) {
+  return (
+    <Section title={`Entries (${day.entries.length})`}>
+      {day.entries.length === 0 ? (
+        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No team logs for this day yet.</p>
+      ) : (
+        <div className="flex flex-col divide-y divide-line-hair">
+          {day.entries.map((entry) => (
+            <DailyLogEntryRow
+              key={entry.id}
+              projectId={projectId}
+              logDate={day.logDate}
+              entry={entry}
+              userId={userId}
+              canVoidEntry={canVoidEntry}
+            />
+          ))}
+        </div>
+      )}
+      {canCreateEntry ? <EntryComposer projectId={projectId} logDate={day.logDate} autoFocus={focusComposer} /> : null}
+    </Section>
+  );
+}
+
+function EntryComposer({ projectId, logDate, autoFocus }: { projectId: string; logDate: string; autoFocus: boolean }) {
+  const [html, setHtml] = useState("");
+  const [text, setText] = useState("");
+  const [editorKey, setEditorKey] = useState(0);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const addEntry = useAddDailyLogEntry();
+
+  // The tiptap editor mounts a tick after the drawer, so watch the wrapper and
+  // focus the contenteditable as soon as it exists (no rAF: it never fires in a
+  // background tab). The popup's own initial focus is disabled in that mode.
+  useEffect(() => {
+    if (!autoFocus) return;
+    const root = wrapperRef.current;
+    if (!root) return;
+    const focusEditor = (): boolean => {
+      const target = root.querySelector<HTMLElement>('[contenteditable="true"]');
+      if (!target) return false;
+      target.scrollIntoView({ block: "center" });
+      target.focus();
+      return true;
+    };
+    if (focusEditor()) return;
+    const observer = new MutationObserver(() => {
+      if (focusEditor()) observer.disconnect();
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [autoFocus, logDate]);
+
+  const hasContent = text.trim().length > 0;
+
+  function submit(): void {
+    addEntry.mutate(
+      { projectId, logDate, bodyHtml: html, bodyText: text },
+      {
+        onSuccess: () => {
+          setHtml("");
+          setText("");
+          setEditorKey((k) => k + 1);
+          toast("Your log was added", "success");
+        },
+        onError: () => toast("Could not add your log"),
+      },
+    );
+  }
+
+  return (
+    <div ref={wrapperRef} className="mt-4 flex flex-col gap-3 border-t border-line-hair pt-4">
+      <RichTextField
+        key={editorKey}
+        label="Add my log"
+        value={html}
+        onChange={setHtml}
+        onChangeText={setText}
+        projectId={projectId}
+        placeholder="e.g. Completed the level 3 slab pour, inspected rebar, flagged a delivery delay…"
+      />
+      {addEntry.error ? (
+        <p className="rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-600">{errorMessage(addEntry.error)}</p>
+      ) : null}
+      <div className="flex justify-end">
+        <Button type="button" variant="primary" size="sm" disabled={!hasContent} loading={addEntry.isPending} onClick={submit}>
+          Add entry
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ReportSection({ projectId, logDate }: { projectId: string; logDate: string }) {
+  const download = useDownloadDailyReport();
+  const email = useEmailDailyReport();
+  return (
+    <Section title="Report">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          loading={download.isPending}
+          onClick={() => download.mutate({ projectId, logDate }, { onError: () => toast("Could not download report") })}
+        >
+          Download report
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          loading={email.isPending}
+          onClick={() =>
+            email.mutate(
+              { projectId, logDate },
+              {
+                onSuccess: (res) => toast(`Report sent to ${res.sentTo}`, "success"),
+                onError: () => toast("Could not email report"),
+              },
+            )
+          }
+        >
+          Email me
+        </Button>
+      </div>
+    </Section>
+  );
+}
+
+export { DailyLogDrawer, type DailyLogDrawerProps };

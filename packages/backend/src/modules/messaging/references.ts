@@ -27,8 +27,6 @@ interface EntityConfig {
 
 const ENTITY_CONFIG: Record<string, EntityConfig> = {
   rfi: { table: "rfis", titleColumn: "subject", path: (p, id) => `/project/${p}/rfis?open=${id}` },
-  action_item: { table: "action_items", titleColumn: "title", path: (p, id) => `/project/${p}/action-items?open=${id}` },
-  query: { table: "queries", titleColumn: "subject", path: (p, id) => `/project/${p}/queries?open=${id}` },
   change_request: { table: "change_requests", titleColumn: "title", path: (p, id) => `/project/${p}/change-requests?open=${id}` },
   activity: { table: "activities", titleColumn: "name", path: (p, id) => `/project/${p}/activities?open=${id}` },
   task: {

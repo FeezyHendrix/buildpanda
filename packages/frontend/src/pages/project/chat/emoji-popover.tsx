@@ -34,14 +34,14 @@ export function EmojiPopover({
   return (
     <div
       ref={ref}
-      className="absolute bottom-full left-0 z-30 mb-2 grid w-max origin-bottom-left grid-cols-6 gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-lg motion-safe:animate-[emoji-pop_150ms_cubic-bezier(0.175,0.885,0.32,1.275)]"
+      className="absolute bottom-full left-0 z-30 mb-2 grid w-max origin-bottom-left grid-cols-6 gap-1 rounded-lg border border-line-hair bg-white p-2 shadow-lg motion-safe:animate-[emoji-pop_150ms_cubic-bezier(0.175,0.885,0.32,1.275)]"
     >
       {COMPOSER_EMOJIS.map((emoji) => (
         <button
           key={emoji}
           type="button"
           onClick={() => onPick(emoji)}
-          className="flex size-8 items-center justify-center rounded-md text-lg transition-transform duration-150 ease-out hover:bg-gray-100 active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
+          className="flex size-8 items-center justify-center rounded-md text-lg transition-transform duration-150 ease-out hover:bg-black/5 active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
         >
           {emoji}
         </button>

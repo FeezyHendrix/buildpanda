@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 interface AddDailyLogEntryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  logDate: string;
+  logDate?: string;
   projectId: string;
   submitting?: boolean;
   error?: string | null;
@@ -18,7 +18,7 @@ interface AddDailyLogEntryDialogProps {
 export function AddDailyLogEntryDialog({
   open,
   onOpenChange,
-  logDate,
+  logDate: _logDate,
   projectId,
   submitting,
   error,
@@ -38,9 +38,9 @@ export function AddDailyLogEntryDialog({
   }, [open]);
 
   function handlePick(e: React.ChangeEvent<HTMLInputElement>): void {
-    const file = e.target.files?.[0];
-    if (file) editorRef.current?.insertImageFile(file);
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
+    void (async () => { for (const file of files) await editorRef.current?.insertImageFile(file); })();
   }
 
   const hasContent = text.trim().length > 0;
@@ -49,22 +49,22 @@ export function AddDailyLogEntryDialog({
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={`Add your log — ${logDate}`}
-      description="Record what you did on site today. Attach photos from your camera or files. Your name and role are saved with the entry."
-      submitLabel="Add entry"
+      footerVariant="stacked"
+      title={`Add Daily Log`}
+      description="Record what you did on site today"
+      submitLabel="Add Log"
       submitDisabled={!hasContent}
       submitting={submitting}
       error={error}
       onSubmit={() => onSubmit(html, text)}
     >
       <RichTextField
-        label="What did you do today?"
         value={html}
         onChange={setHtml}
         onChangeText={setText}
         projectId={projectId}
         onReady={(handle) => (editorRef.current = handle)}
-        placeholder="e.g. Completed the level 3 slab pour, inspected rebar, flagged a delivery delay…"
+        placeholder="Describe what happened on site."
       />
 
       <Menu.Root>
@@ -74,7 +74,15 @@ export function AddDailyLogEntryDialog({
             "outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
           )}
         >
-          <svg className="size-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="size-4 text-gray-500"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <circle cx="9" cy="9" r="2" />
             <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
@@ -82,7 +90,12 @@ export function AddDailyLogEntryDialog({
           Attach image
         </Menu.Trigger>
         <Menu.Portal>
-          <Menu.Positioner side="top" align="start" sideOffset={6} className="z-[60]">
+          <Menu.Positioner
+            side="top"
+            align="start"
+            sideOffset={6}
+            className="z-[60]"
+          >
             <Menu.Popup className="min-w-48 rounded-xl border border-gray-100 bg-white p-1 shadow-lg outline-none">
               <Menu.Item
                 className={cn(
@@ -91,7 +104,15 @@ export function AddDailyLogEntryDialog({
                 )}
                 onClick={() => cameraInputRef.current?.click()}
               >
-                <svg className="size-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="size-4 text-gray-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
                   <circle cx="12" cy="13" r="3" />
                 </svg>
@@ -104,7 +125,15 @@ export function AddDailyLogEntryDialog({
                 )}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <svg className="size-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="size-4 text-gray-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                 </svg>
                 Choose file
@@ -119,6 +148,7 @@ export function AddDailyLogEntryDialog({
         type="file"
         accept="image/*"
         capture="environment"
+        multiple
         className="hidden"
         onChange={handlePick}
       />
@@ -126,6 +156,7 @@ export function AddDailyLogEntryDialog({
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={handlePick}
       />

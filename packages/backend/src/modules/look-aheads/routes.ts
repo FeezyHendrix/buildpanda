@@ -79,6 +79,18 @@ const lookAheadPatchBody = {
   },
 } as const;
 
+const approveBody = {
+  type: "object",
+  additionalProperties: false,
+  properties: { note: { type: ["string", "null"], maxLength: 2000 } },
+} as const;
+
+const revokeBody = {
+  type: "object",
+  additionalProperties: false,
+  properties: { reason: { type: ["string", "null"], maxLength: 2000 } },
+} as const;
+
 const lookAheadRoutes: FastifyPluginAsync = async (fastify) => {
   const buildings = buildingsRepository(fastify.db);
   const service = lookAheadsService(lookAheadsRepository(fastify.db), (projectId) =>
@@ -136,6 +148,28 @@ const lookAheadRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
       return service.update(project.id, request.params.lookAheadId, request.body);
+    },
+  );
+
+  fastify.post<{ Params: { id: string; lookAheadId: string }; Body: { note?: string | null } }>(
+    "/projects/:id/look-aheads/:lookAheadId/approve",
+    { schema: { params: lookAheadParams, body: approveBody } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
+      const user = request.requireAuth();
+      return service.approve(project.id, request.params.lookAheadId, request.body ?? {}, {
+        id: user.id,
+        name: user.name ?? null,
+      });
+    },
+  );
+
+  fastify.post<{ Params: { id: string; lookAheadId: string }; Body: { reason?: string | null } }>(
+    "/projects/:id/look-aheads/:lookAheadId/revoke-approval",
+    { schema: { params: lookAheadParams, body: revokeBody } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
+      return service.revokeApproval(project.id, request.params.lookAheadId, request.body?.reason ?? null);
     },
   );
 

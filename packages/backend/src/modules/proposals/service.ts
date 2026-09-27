@@ -1,13 +1,18 @@
 import type { ProposalsRepository } from "./repository.ts";
+import type { EstimateItemsService } from "./estimate-items-service.ts";
 import type {
   CreateProposalInput,
   CreateEstimateItemInput,
-  CreatePaymentScheduleInput,
+  CreateProposalPlanInput,
+  UpdateProposalPlanInput,
 } from "./types.ts";
 import { generateId } from "../../lib/ids.ts";
-import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 
-export function proposalsService(repo: ProposalsRepository) {
+// `estimates` is the transaction-bound seam that owns every write to an
+// estimate's lines, meta and status. This service never writes them directly:
+// doing so would step outside the estimate's row lock.
+export function proposalsService(repo: ProposalsRepository, estimates: EstimateItemsService) {
   async function createProposal(
     orgId: string,
     userId: string,
@@ -27,8 +32,47 @@ export function proposalsService(repo: ProposalsRepository) {
       currency: input.currency ?? "NGN",
       validUntil: input.validUntil,
       leadId: input.leadId,
+      jobProfile: input.jobProfile,
       createdBy: userId,
     });
+  }
+
+  // A drawing revision never replaces a file: uploading the same sheet code
+  // marks the previous current revision superseded and links the pair, so a
+  // take-off measured on the old revision keeps pointing at what it measured.
+  async function addPlan(proposalId: string, orgId: string, userId: string, input: CreateProposalPlanInput) {
+    const proposal = await repo.getById(proposalId, orgId);
+    if (!proposal) throw new NotFoundError("Proposal");
+    const sheetCode = input.sheetCode?.trim() || null;
+    const previous = sheetCode ? await repo.findCurrentPlanBySheetCode(proposalId, sheetCode) : null;
+    const existing = await repo.listPlans(proposalId);
+    const id = generateId("plan");
+    await repo.insertPlan({
+      id,
+      proposalId,
+      fileId: input.fileId,
+      label: input.label?.trim() || null,
+      sheetCode,
+      discipline: input.discipline ?? null,
+      revision: input.revision?.trim() || null,
+      uploadedBy: userId,
+      sort: existing.length,
+    });
+    if (previous) await repo.supersedePlan(previous.id, id);
+    return repo.listPlans(proposalId);
+  }
+
+  async function updatePlan(proposalId: string, orgId: string, planId: string, input: UpdateProposalPlanInput) {
+    const proposal = await repo.getById(proposalId, orgId);
+    if (!proposal) throw new NotFoundError("Proposal");
+    const updated = await repo.updatePlan(planId, proposalId, {
+      label: input.label === undefined ? undefined : input.label?.trim() || null,
+      sheetCode: input.sheetCode === undefined ? undefined : input.sheetCode?.trim() || null,
+      discipline: input.discipline,
+      revision: input.revision === undefined ? undefined : input.revision?.trim() || null,
+    });
+    if (updated === 0) throw new NotFoundError("Plan");
+    return repo.listPlans(proposalId);
   }
 
   async function getWorkspace(proposalId: string, orgId: string) {
@@ -59,34 +103,39 @@ export function proposalsService(repo: ProposalsRepository) {
     const row = await repo.getById(proposalId, orgId);
     if (!row) throw new NotFoundError("Proposal");
 
-    const existing = await repo.getActiveEstimate(proposalId);
-    const revisionNo = existing ? existing.revisionNo + 1 : 1;
+    // Superseding the last revision and opening the next are one transition:
+    // held under the proposal's revision locks so two concurrent callers cannot
+    // both read the same revision number and both claim to supersede.
+    return estimates.withProposalEstimatesLock(proposalId, async (ctx) => {
+      const existing = await ctx.proposals.getActiveEstimate(proposalId);
+      const revisionNo = existing ? existing.revisionNo + 1 : 1;
 
-    if (revisionNo > 1) {
-      if (!opts.changeNote?.trim()) {
-        throw new BadRequestError("A change note is required when creating a new revision.");
+      if (revisionNo > 1) {
+        if (!opts.changeNote?.trim()) {
+          throw new BadRequestError("A change note is required when creating a new revision.");
+        }
+        // Supersede previous Sent revision (Draft revisions are just replaced)
+        await ctx.proposals.supersedePreviousSentEstimate(proposalId);
       }
-      // Supersede previous Sent revision (Draft revisions are just replaced)
-      await repo.supersedePreviousSentEstimate(proposalId);
-    }
 
-    const estimate = await repo.insertEstimate({
-      id: generateId("est"),
-      proposalId,
-      revisionNo,
-      taxLabel: opts.orgTaxLabel ?? "VAT",
-      taxPct: opts.orgTaxPct ?? 0,
-      changeNote: opts.changeNote,
+      const estimate = await ctx.proposals.insertEstimate({
+        id: generateId("est"),
+        proposalId,
+        revisionNo,
+        taxLabel: opts.orgTaxLabel ?? "VAT",
+        taxPct: opts.orgTaxPct ?? 0,
+        changeNote: opts.changeNote,
+      });
+
+      await ctx.proposals.logEvent(proposalId, "estimate_drafted", userId, { revisionNo });
+
+      // Update proposal to "Preparing" if it was "New"
+      if (row.status === "New") {
+        await ctx.proposals.updateProposal(proposalId, orgId, { status: "Preparing" });
+      }
+
+      return estimate;
     });
-
-    await repo.logEvent(proposalId, "estimate_drafted", userId, { revisionNo });
-
-    // Update proposal to "Preparing" if it was "New"
-    if (row.status === "New") {
-      await repo.updateProposal(proposalId, orgId, { status: "Preparing" });
-    }
-
-    return estimate;
   }
 
   async function saveEstimateItems(
@@ -95,38 +144,7 @@ export function proposalsService(repo: ProposalsRepository) {
     orgId: string,
     items: CreateEstimateItemInput[],
   ) {
-    const proposal = await repo.getById(proposalId, orgId);
-    if (!proposal) throw new ForbiddenError("No access to this proposal");
-
-    const estimate = await repo.getEstimate(estimateId);
-    if (!estimate || estimate.proposalId !== proposalId) throw new NotFoundError("Estimate");
-    if (estimate.status !== "Draft") {
-      throw new BadRequestError("Only Draft estimates can be edited. Create a new revision to make changes.");
-    }
-
-    const ids = items.map(() => generateId("item"));
-    const saved = await repo.replaceItems(estimateId, items, ids);
-    await repo.recalcTotals(estimateId, estimate.contingencyPct, estimate.taxPct);
-    return saved;
-  }
-
-  async function savePaymentSchedule(
-    estimateId: string,
-    proposalId: string,
-    orgId: string,
-    schedule: CreatePaymentScheduleInput[],
-  ) {
-    const proposal = await repo.getById(proposalId, orgId);
-    if (!proposal) throw new ForbiddenError("No access to this proposal");
-
-    const estimate = await repo.getEstimate(estimateId);
-    if (!estimate || estimate.proposalId !== proposalId) throw new NotFoundError("Estimate");
-    if (estimate.status !== "Draft") {
-      throw new BadRequestError("Only Draft estimates can be edited.");
-    }
-
-    const ids = schedule.map(() => generateId("sched"));
-    return repo.replaceSchedule(estimateId, schedule, ids);
+    return estimates.saveEstimateItems(estimateId, proposalId, orgId, items);
   }
 
   async function updateEstimateMeta(
@@ -135,27 +153,16 @@ export function proposalsService(repo: ProposalsRepository) {
     orgId: string,
     patch: { contingencyPct?: number; taxLabel?: string; taxPct?: number },
   ) {
-    const proposal = await repo.getById(proposalId, orgId);
-    if (!proposal) throw new ForbiddenError("No access to this proposal");
-
-    const estimate = await repo.getEstimate(estimateId);
-    if (!estimate || estimate.proposalId !== proposalId) throw new NotFoundError("Estimate");
-    if (estimate.status !== "Draft") {
-      throw new BadRequestError("Only Draft estimates can be edited.");
-    }
-
-    await repo.updateEstimateMeta(estimateId, patch);
-    const newContingency = patch.contingencyPct ?? estimate.contingencyPct;
-    const newTaxPct = patch.taxPct ?? estimate.taxPct;
-    await repo.recalcTotals(estimateId, newContingency, newTaxPct);
+    await estimates.updateEstimateMeta(estimateId, proposalId, orgId, patch);
   }
 
   return {
     createProposal,
+    addPlan,
+    updatePlan,
     getWorkspace,
     createEstimateRevision,
     saveEstimateItems,
-    savePaymentSchedule,
     updateEstimateMeta,
   };
 }

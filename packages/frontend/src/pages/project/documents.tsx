@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { ReactSVG } from "react-svg";
 import { Button } from "@/components/atoms/button";
-import { icons } from "@/assets/icons/icons";
-import { PageHeader } from "@/components/molecules/page-header";
 import { UploadDocumentDialog } from "@/components/molecules/upload-document-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import {
   useCreateDocument,
   useProjectDocumentCategories,
@@ -15,11 +13,10 @@ import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { canResourceAction } from "@/lib/project-types";
-import type {
-  CategoryGroup,
-} from "@/lib/project-types";
+import type { CategoryGroup } from "@/lib/project-types";
 import { CategoryMetricsCard } from "./documents/category-metrics-card";
 import { DocumentsTable } from "./documents/documents-table";
+import { Upload } from "lucide-react";
 
 export default function ProjectDocuments() {
   const { project, access } = useProjectContext();
@@ -33,9 +30,35 @@ export default function ProjectDocuments() {
   const uploadFile = useUploadFile();
   const createDocument = useCreateDocument();
 
-  const visibleCategories = categories.filter((c) => c.group === tab);
-  const visibleDocuments = documents.filter((d) => d.group === tab);
+  // Frontend-only category mock until POST /document-categories lands
+  // (see docs/documents-add-category-backend.md). Locally added categories
+  // aren't persisted and reset on reload.
+  const [localCategories, setLocalCategories] = useState<
+    Array<{ id: string; name: string; group: CategoryGroup }>
+  >([]);
+
+  function handleCreateCategory(name: string): string {
+    const id = `local-${Date.now()}`;
+    setLocalCategories((prev) => [...prev, { id, name, group: tab }]);
+    return id;
+  }
+
   const isPlans = tab === "plan";
+
+  useSetPageTitle(
+    "Documents",
+    isPlans
+      ? "Drawings and schematics with full revision history."
+      : "Secure, centralized management for project compliance.",
+  );
+
+  const visibleCategories = [
+    ...categories.filter((c) => c.group === tab),
+    ...localCategories
+      .filter((c) => c.group === tab)
+      .map((c) => ({ id: c.id, name: c.name, fileCount: 0, totalSize: "0 MB", tone: "brand" as const, group: c.group })),
+  ];
+  const visibleDocuments = documents.filter((d) => d.group === tab);
   const isUploading = uploadFile.isPending || createDocument.isPending;
   const uploadError = uploadFile.error
     ? getApiErrorMessage(uploadFile.error)
@@ -43,8 +66,6 @@ export default function ProjectDocuments() {
       ? getApiErrorMessage(createDocument.error)
       : null;
 
-  // 401/403 are already surfaced globally by the axios interceptor; toast the
-  // rest so an upload failure is never silent.
   function notifyUploadError(err: unknown): void {
     const status = getApiErrorStatus(err);
     if (status === 401 || status === 403) return;
@@ -92,44 +113,37 @@ export default function ProjectDocuments() {
 
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <PageHeader
-        title="Documents"
-        description={
-          isPlans
-            ? "Drawings and schematics with full revision history."
-            : "Secure, centralized management for project compliance."
-        }
-        actions={
-          canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setUploadOpen(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+      {/* Tabs + upload action */}
+      <div className="flex items-center justify-between">
+        <div className="inline-flex border border-[#EDEDED] bg-[#F6F6F6] p-0.5">
+          {(["document", "plan"] as const).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setTab(g)}
+              className={cn(
+                "px-4 py-1.5 text-sm font-medium transition-colors",
+                tab === g
+                  ? "bg-white text-[#111827] shadow-sm"
+                  : "text-[#6B7280] hover:text-[#111827]",
+              )}
             >
-              <ReactSVG src={icons.upload} />
-              {isPlans ? "Upload plan" : "Upload document"}
-            </Button>
-          ) : undefined
-        }
-      />
+              {g === "document" ? "Documents" : "Project Plans"}
+            </button>
+          ))}
+        </div>
 
-      <div className="mt-6 inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
-        {(["document", "plan"] as const).map((g) => (
-          <button
-            key={g}
-            type="button"
-            onClick={() => setTab(g)}
-            className={cn(
-              "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
-              tab === g
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-900",
-            )}
+        {canManage && (
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => setUploadOpen(true)}
+            className="gap-2 font-semibold"
           >
-            {g === "document" ? "Documents" : "Plans"}
-          </button>
-        ))}
+            <Upload className="size-5" />
+            {isPlans ? "Upload Plan" : "Upload Document"}
+          </Button>
+        )}
       </div>
 
       <UploadDocumentDialog
@@ -140,24 +154,19 @@ export default function ProjectDocuments() {
         progress={uploadProgress}
         error={uploadError}
         onSubmit={handleUpload}
+        onCreateCategory={handleCreateCategory}
       />
 
-      <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {visibleCategories.map((category) => (
-          <CategoryMetricsCard key={category.id} category={category} />
+      <section className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {visibleCategories.map((category, index) => (
+          <CategoryMetricsCard key={category.id} category={category} index={index} />
         ))}
       </section>
 
       <section className="mt-10">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">
-            {isPlans ? "Plans & Drawings" : "Recent Documents"}
-          </h2>
-          <p className="text-xs text-gray-500">
-            {visibleDocuments.length} {isPlans ? "plan" : "document"}
-            {visibleDocuments.length === 1 ? "" : "s"}
-          </p>
-        </div>
+        <h2 className="mb-4 text-base font-semibold text-[#111827]">
+          {isPlans ? "Plans & Drawings" : "Recent Documents"}
+        </h2>
 
         <DocumentsTable
           documents={visibleDocuments}

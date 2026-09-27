@@ -15,6 +15,7 @@ export type { UpsertInvoiceValues, UpsertLineItem };
 interface UpsertInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   mode: "create" | "edit";
   initial?: UpsertInvoiceValues;
   onSubmit: (values: UpsertInvoiceValues) => void;
@@ -26,6 +27,7 @@ interface UpsertInvoiceDialogProps {
 function UpsertInvoiceDialog({
   open,
   onOpenChange,
+  projectId,
   mode,
   initial,
   onSubmit,
@@ -60,7 +62,7 @@ function UpsertInvoiceDialog({
       onSubmit={() => onSubmit(sanitizeInvoice(form.values))}
       className="w-[min(720px,100vw)]"
     >
-      <InvoiceForm form={form} money={money} />
+      <InvoiceForm form={form} money={money} projectId={projectId} />
     </FormDrawer>
   );
 }

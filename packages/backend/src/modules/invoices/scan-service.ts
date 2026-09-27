@@ -2,7 +2,8 @@ import type { Knex } from "knex";
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { openStoredFile, streamToBuffer } from "../../lib/file-storage.ts";
 import { renderPdfPagesToPng, pngToDataUrl } from "../../lib/document-render.ts";
-import { chatJsonValidated, type LlmMessage } from "../../lib/llm.ts";
+import type { LlmMessage } from "../../lib/llm.ts";
+import { chatVisionJsonValidated } from "../../lib/llm-vision.ts";
 import { filesRepository } from "../files/repository.ts";
 import { extractedInvoiceSchema, type ExtractedInvoice } from "./scan-schema.ts";
 
@@ -89,7 +90,7 @@ export function invoicesScanService(db: Knex) {
         },
       ];
 
-      const result = await chatJsonValidated(messages, extractedInvoiceSchema);
+      const result = await chatVisionJsonValidated(messages, extractedInvoiceSchema);
       if (!result) {
         throw new BadRequestError("Invoice scanning is not configured on this environment");
       }

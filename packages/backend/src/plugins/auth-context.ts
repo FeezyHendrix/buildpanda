@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
-import { auth } from "../lib/auth.ts";
+import { auth, ensureUserOrganization } from "../lib/auth.ts";
 import { config } from "../config/index.ts";
 import { enterLlmContext } from "../lib/llm-context.ts";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "../lib/errors.ts";
@@ -245,7 +245,30 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
           image: session.user.image ?? null,
           role,
         };
-        request.activeOrganizationId = session.session.activeOrganizationId ?? null;
+        let { memberRows, customRoleRows, participantRows } = await fastify.accessCache.load(
+          session.user.id,
+          () => loadAccessContextRows(session.user.id),
+        );
+
+        const sessionOrgId = session.session.activeOrganizationId ?? null;
+        let activeOrganizationId =
+          sessionOrgId && memberRows.some((row) => row.organizationId === sessionOrgId)
+            ? sessionOrgId
+            : memberRows[0]?.organizationId ?? null;
+        if (!activeOrganizationId) {
+          activeOrganizationId = await ensureUserOrganization(session.user.id, session.user.name);
+          await fastify.accessCache.invalidate(session.user.id);
+          memberRows = [{ organizationId: activeOrganizationId, role: "owner" }];
+          customRoleRows = [];
+          participantRows = [];
+        }
+        request.activeOrganizationId = activeOrganizationId;
+
+        if (activeOrganizationId && activeOrganizationId !== sessionOrgId) {
+          await fastify.db("session")
+            .where({ id: session.session.id })
+            .update({ activeOrganizationId });
+        }
 
         enterLlmContext({
           orgId: request.activeOrganizationId ?? undefined,
@@ -254,14 +277,6 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
         });
 
         touchLastActivity(fastify.db, session.user.id);
-
-        // Role/permission rows are served from the access cache (Redis-backed
-        // when configured) and re-read only after an explicit invalidation on
-        // write or the TTL safety net elapses.
-        const { memberRows, customRoleRows, participantRows } = await fastify.accessCache.load(
-          session.user.id,
-          () => loadAccessContextRows(session.user.id),
-        );
 
         request.orgRoles = new Map(memberRows.map((row) => [row.organizationId, row.role]));
 
@@ -309,14 +324,19 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
         (method === "GET" && /^\/project-invites\/[^/?]+$/.test(url)) ||
         // An org invitation reaches someone who has no account yet, so there is
         // no session to check: the opaque invitation id is the credential, as
-        // with the project-invite and password-reset links above. Reading it
-        // returns only the org name, invited email and role, and declining only
-        // moves a pending row to rejected.
+        // with the project-invite link above. Reading it returns only the org
+        // name, invited email and role; declining only moves pending -> rejected.
         (method === "GET" && /^\/v2\/invitations\/[^/?]+(\?|$)/.test(url)) ||
         (method === "POST" && /^\/v2\/invitations\/[^/?]+\/decline(\?|$)/.test(url)) ||
         (method === "GET" && /^\/share\/[^/?]+(\/file)?$/.test(url)) ||
         (method === "POST" && /^\/rfi-reply\/[^/?]+$/.test(url)) ||
-        (method === "POST" && url === "/leads/consultation");
+        (method === "POST" && url === "/leads/consultation") ||
+        // OTA: the app checks for updates before anyone signs in, so the
+        // manifest and its assets cannot sit behind a session. Publishing is
+        // exempt from the session gate but guarded by its own bearer token.
+        (method === "GET" && /^\/ota\/manifest(\?|$)/.test(url)) ||
+        (method === "GET" && /^\/ota\/assets\/[^/?]+\/[^/?]+$/.test(url)) ||
+        (method === "POST" && url === "/ota/publish");
       if (!isPublic) throw new UnauthorizedError();
     }
   });

@@ -16,6 +16,8 @@ import LeadsPage from "@/pages/leads";
 import JobsPage from "@/pages/jobs";
 import MaintenancePage from "@/pages/maintenance";
 import FeatureFlagsPage from "@/pages/feature-flags";
+import InspectionRequestsPage from "@/pages/inspection-requests";
+import InspectionCataloguePage from "@/pages/inspection-catalogue";
 
 export default function App() {
   return (
@@ -35,6 +37,8 @@ export default function App() {
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectDetailPage />} />
             <Route path="leads" element={<LeadsPage />} />
+            <Route path="inspections" element={<InspectionRequestsPage />} />
+            <Route path="inspection-catalogue" element={<InspectionCataloguePage />} />
             <Route path="jobs" element={<JobsPage />} />
             <Route path="maintenance" element={<MaintenancePage />} />
             <Route path="feature-flags" element={<FeatureFlagsPage />} />

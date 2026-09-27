@@ -16,7 +16,12 @@ export interface NewLookAheadRecord {
 
 export type LookAheadPatch = Partial<
   Omit<NewLookAheadRecord, "id" | "project_id" | "created_by_id">
->;
+> & {
+  approved_by_id?: string | null;
+  approved_by_name?: string | null;
+  approved_at?: Date | null;
+  approval_note?: string | null;
+};
 
 export function lookAheadsRepository(db: Knex) {
   return {

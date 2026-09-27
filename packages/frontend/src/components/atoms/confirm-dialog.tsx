@@ -40,30 +40,40 @@ function ConfirmDialog({
         />
         <AlertDialog.Popup
           className={cn(
-            "fixed top-1/2 left-1/2 z-50 w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 bg-white py-8 px-10 shadow-xl outline-none",
+            "fixed top-1/2 left-1/2 z-50 w-[430px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 border border-[#EBEBEB] bg-white p-6 shadow-xl outline-none",
             "transition-[transform,opacity] duration-200 ease-out",
             "data-[starting-style]:translate-y-[calc(-50%+12px)] data-[starting-style]:opacity-0",
             "data-[ending-style]:translate-y-[calc(-50%+12px)] data-[ending-style]:opacity-0",
           )}
         >
-          <AlertDialog.Title className="text-h4 font-bold text-black-500 text-balance">
+          <AlertDialog.Title className="text-[18px] font-bold leading-tight text-[#1E1E1E] text-balance">
             {title}
           </AlertDialog.Title>
           {description && (
-            <AlertDialog.Description className="mt-2 mb-16 text-caption-l font-medium text-grey-450 text-pretty">
+            <AlertDialog.Description className="mt-2 text-[13px] leading-5 text-[#767676] text-pretty">
               {description}
             </AlertDialog.Description>
           )}
-          <div className="mt-8 flex w-full items-center gap-3">
-            <AlertDialog.Close className="text-caption-l font-medium text-grey-450 outline-none hover:text-black-500 w-[50%]">
-              {cancelLabel}
-            </AlertDialog.Close>
+          <div className="mt-6 flex w-full gap-3">
+            <AlertDialog.Close
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="flex-1"
+                  disabled={!!loading}
+                >
+                  {cancelLabel}
+                </Button>
+              }
+            />
             <Button
               type="button"
               variant={variant === "danger" ? "danger" : "primary"}
               size="lg"
               loading={loading}
-              className="px-8 w-[50%]"
+              className="flex-1"
               onClick={() => {
                 onConfirm();
                 if (loading === undefined) onOpenChange(false);

@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { UpsertRiskDialog, type UpsertRiskValues } from "@/components/molecules/upsert-risk-dialog";
 import { useCreateRiskFactor, useDeleteRiskFactor, useEditRiskFactor } from "@/hooks/use-risks";
 import type { RiskFactor } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
 
 const RISK_SEVERITY_TONE: Record<
   RiskFactor["severity"],
@@ -43,19 +44,18 @@ export function RiskFactorsPanel({
     <Card className={className}>
       <div className="flex items-center justify-between py-3 px-5">
         <div className="flex gap-2 items-center">
-          <ReactSVG src={icons.refresh} />
           <h3 className="text-[13px] font-semibold text-black-300">
             Identified Risk Factors
           </h3>
         </div>
       </div>
-      <div className="bg-white rounded-[12px] h-full m-1 p-6">
+      <div className="h-full px-5 pb-5">
         {risks.length === 0 ? (
           <EmptyState
-            title="No active risks"
-            icon={(<ReactSVG src={icons.riskShield} />)}
+            variant="inline"
+            title="No active risks yet"
+            icon={<ReactSVG src={icons.riskShield} />}
             description="Add a risk factor to track and mitigate issues on this project."
-            className="py-6"
           />
         ) : (
           <ul className="flex flex-col gap-3">
@@ -73,7 +73,7 @@ export function RiskFactorsPanel({
         mode="create"
         onSubmit={handleCreate}
         isSubmitting={createRisk.isPending}
-        error={(createRisk.error as Error | undefined)?.message ?? null}
+        error={createRisk.error ? errorMessage(createRisk.error) : null}
       />
     </Card>
   );
@@ -133,15 +133,10 @@ function RiskFactorRow({
         open={editOpen}
         onOpenChange={setEditOpen}
         mode="edit"
-        initial={{
-          title: risk.title,
-          description: risk.description,
-          descriptionHtml: risk.descriptionHtml,
-          severity: risk.severity,
-        }}
+        initial={risk}
         onSubmit={handleEdit}
         isSubmitting={editRisk.isPending}
-        error={(editRisk.error as Error | undefined)?.message ?? null}
+        error={editRisk.error ? errorMessage(editRisk.error) : null}
       />
 
       <ConfirmDialog

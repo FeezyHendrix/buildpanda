@@ -3,6 +3,7 @@ import { Button } from "@/components/atoms/button";
 import { CurrencyPicker } from "@/components/atoms/currency-picker";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { Badge } from "@/components/atoms/badge";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { CURRENCY_CODES } from "@/lib/currency";
 import type { StructuredProgramme } from "@/hooks/use-programme-import";
 import { PhasePreview } from "./phase-preview";
@@ -53,14 +54,13 @@ export function PreviewState({
     });
   }
 
-  const inputClass =
-    "h-10 w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-sm text-gray-900 outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]";
+  const inputClass = INPUT_CLASS;
 
   return (
     <form onSubmit={submit} className="space-y-6">
       {intoExisting ? (
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-gray-900">Import schedule</h3>
+          <h3 className="text-sm font-semibold text-ink">Import schedule</h3>
           <Badge tone="neutral" size="md">
             {result.phases.length} phases · {result.activities.length} activities
             {milestoneCount > 0 ? ` · ${milestoneCount} milestones` : ""}
@@ -74,7 +74,7 @@ export function PreviewState({
       ) : (
         <div>
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-gray-900">Project details</h3>
+            <h3 className="text-sm font-semibold text-ink">Project details</h3>
             <Badge tone="neutral" size="md">
               {result.phases.length} phases · {result.activities.length} activities
               {milestoneCount > 0 ? ` · ${milestoneCount} milestones` : ""}
@@ -87,7 +87,7 @@ export function PreviewState({
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-600">Project name</span>
+              <span className="mb-1 block text-sm font-medium text-ink">Project name</span>
               <input
                 className={inputClass}
                 value={projectName}
@@ -96,11 +96,11 @@ export function PreviewState({
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-600">Currency</span>
+              <span className="mb-1 block text-sm font-medium text-ink">Currency</span>
               <CurrencyPicker currencies={CURRENCY_CHOICES} value={currency} onChange={setCurrency} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-600">City</span>
+              <span className="mb-1 block text-sm font-medium text-ink">City</span>
               <input
                 className={inputClass}
                 value={city}
@@ -109,7 +109,7 @@ export function PreviewState({
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-600">State / Region</span>
+              <span className="mb-1 block text-sm font-medium text-ink">State / Region</span>
               <input
                 className={inputClass}
                 value={locationState}
@@ -118,7 +118,7 @@ export function PreviewState({
               />
             </label>
             <label className="block sm:col-span-2">
-              <span className="mb-1 block text-xs font-medium text-gray-600">Total budget</span>
+              <span className="mb-1 block text-sm font-medium text-ink">Total budget</span>
               <MoneyInput
                 className={inputClass}
                 value={budgetTotal}
@@ -131,8 +131,8 @@ export function PreviewState({
       )}
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-gray-900">Parsed schedule preview</h3>
-        <div className="max-h-64 space-y-3 overflow-y-auto rounded-xl border border-[#EDEDED] p-3">
+        <h3 className="mb-2 text-sm font-semibold text-ink">Parsed schedule preview</h3>
+        <div className="max-h-64 space-y-3 overflow-y-auto rounded-lg border border-line-hair p-3">
           {result.phases.map((phase) => (
             <PhasePreview key={phase.key} phase={phase} activities={result.activities} />
           ))}
@@ -140,7 +140,7 @@ export function PreviewState({
       </div>
 
       {applyError && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{applyError}</div>
+        <div className="rounded-md bg-negative-50 p-3 text-sm text-negative-600">{applyError}</div>
       )}
 
       <div className="flex items-center justify-end">

@@ -4,6 +4,7 @@ import {
   AlertIcon,
   BinocularsIcon,
   BlocksIcon,
+  CameraIcon,
   ClipboardIcon,
   GanttIcon,
   CalendarIcon,
@@ -11,21 +12,27 @@ import {
   FinancesIcon,
   InspectionsIcon,
   MaterialsIcon,
-  MessagesIcon,
-  OverviewIcon,
   TrendingUpIcon,
   UpdatesIcon,
 } from "@/components/atoms/project-nav-icons";
+import { icons2 } from "@/assets/icons2/icon2";
 
 export type IconComponent = ComponentType<SVGAttributes<SVGSVGElement>>;
 
 export interface NavEntry {
   label: string;
   slug: string;
+  /** A component renders directly; a string is an icons2 asset src rendered via ReactSVG. */
   Icon: IconComponent | string;
   flag?: FeatureFlagKey;
   /** Permission resource from the backend `statement`; shown only with `<resource>:view`. */
   resource?: string;
+  /**
+   * The action the entry needs on that resource; `view` when omitted. Cost
+   * pages ask for `viewCosts` — the contractor's internal position, which a
+   * client-side role holds `finances:view` without.
+   */
+  action?: string;
 }
 
 export interface ProjectNavItem extends NavEntry {
@@ -37,8 +44,11 @@ export interface GroupNavItem extends ProjectNavItem {
   helper: string;
 }
 
+// The v2 sidebar structure with master's routes. Overview, Updates and Tasks
+// stand alone at the top; the groups follow; Documents, Panda AI (under
+// Intelligence), the team links and Settings are rendered by the sidebar itself.
 export const NAV_ENTRIES: readonly NavEntry[] = [
-  { label: "Overview", slug: "overview", Icon: OverviewIcon },
+  { label: "Overview", slug: "overview", Icon: icons2.overview },
   {
     label: "Updates",
     slug: "updates",
@@ -48,6 +58,14 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
   },
 ] as const;
 
+export const TASKS_ENTRY: NavEntry = {
+  label: "Tasks",
+  slug: "tasks",
+  resource: "schedule",
+  Icon: TrendingUpIcon,
+  flag: "projects.schedule",
+};
+
 export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   {
     label: "Materials",
@@ -55,6 +73,14 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     resource: "materials",
     Icon: MaterialsIcon,
     helper: "Orders & requests",
+    flag: "commercial.materialsEquipment",
+  },
+  {
+    label: "Material Approvals",
+    slug: "material-approvals",
+    resource: "materials",
+    Icon: InspectionsIcon,
+    helper: "Spec sign-off requests",
     flag: "commercial.materialsEquipment",
   },
   {
@@ -83,7 +109,7 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   },
 ] as const;
 
-export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+export const PROGRESS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   {
     label: "Build Stages",
     slug: "schedules/stages",
@@ -109,7 +135,7 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "projects.schedule",
   },
   {
-    label: "Project Chart",
+    label: "Programme of work",
     slug: "schedules/project-chart",
     resource: "schedule",
     Icon: GanttIcon,
@@ -118,73 +144,96 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   },
 ] as const;
 
-export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
-  [
-    {
-      label: "Daily Log",
-      slug: "schedules/daily-log",
-      resource: "dailyLog",
-      Icon: ClipboardIcon,
-      helper: "Field reports",
-      flag: "quality.dailyLogs",
-    },
-    {
-      label: "Look Aheads",
-      slug: "look-aheads",
-      resource: "schedule",
-      Icon: BinocularsIcon,
-      helper: "Rolling look-ahead planning",
-      flag: "projects.schedule",
-    },
-    {
-      label: "RFIs",
-      slug: "rfis",
+export const OPERATIONS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  {
+    label: "Daily Log",
+    slug: "schedules/daily-log",
+    resource: "dailyLog",
+    Icon: ClipboardIcon,
+    helper: "Field reports",
+    flag: "quality.dailyLogs",
+  },
+  {
+    label: "Look Ahead",
+    slug: "look-aheads",
+    resource: "schedule",
+    Icon: BinocularsIcon,
+    helper: "Rolling look-ahead planning",
+    flag: "projects.schedule",
+  },
+  {
+    label: "Inspections",
+    slug: "inspections",
+    resource: "inspections",
+    Icon: InspectionsIcon,
+    helper: "Hold points & quality checks",
+    flag: "quality.inspections",
+  },
+] as const;
+
+export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  {
+    label: "RFIs",
+    slug: "rfis",
     resource: "rfis",
-      Icon: AlertIcon,
-      helper: "Requests for information",
-      flag: "workflow.rfis",
-    },
-    {
-      label: "BIM Models",
-      slug: "bim",
-    resource: "bim",
-      Icon: DocumentsIcon,
-      helper: "3D model viewer",
-      flag: "projects.bim",
-    },
-    {
-      label: "Client Approvals",
-      slug: "approvals",
-      resource: "approvals",
-      Icon: InspectionsIcon,
-      helper: "Client sign-offs",
-      flag: "workflow.approvals",
-    },
-    {
-      label: "Selections",
-      slug: "selections",
-      resource: "selections",
-      Icon: InspectionsIcon,
-      helper: "Client choices & allowances",
-      flag: "projects.selections",
-    },
-    {
-      label: "Change Requests",
-      slug: "change-requests",
-      resource: "change-requests",
-      Icon: FinancesIcon,
-      helper: "Scope changes",
-      flag: "workflow.changeRequests",
-    },
-    {
-      label: "Permits & Compliance",
-      slug: "permits",
-      resource: "permits",
-      Icon: DocumentsIcon,
-      helper: "Regulatory permits & expiry",
-      flag: "compliance.permits",
-    },
-  ] as const;
+    Icon: AlertIcon,
+    helper: "Requests for information",
+    flag: "workflow.rfis",
+  },
+  {
+    label: "Plans",
+    slug: "plans",
+    resource: "documents",
+    Icon: DocumentsIcon,
+    helper: "Drawings & revisions",
+    flag: "projects.documents",
+  },
+  {
+    label: "Media Library",
+    slug: "media-library",
+    resource: "documents",
+    Icon: CameraIcon,
+    helper: "Site photos & videos",
+    flag: "projects.documents",
+  },
+  {
+    label: "Client Approvals",
+    slug: "approvals",
+    resource: "approvals",
+    Icon: InspectionsIcon,
+    helper: "Client sign-offs",
+    flag: "workflow.approvals",
+  },
+  {
+    label: "Selections",
+    slug: "selections",
+    resource: "selections",
+    Icon: InspectionsIcon,
+    helper: "Client choices & allowances",
+    flag: "projects.selections",
+  },
+  {
+    label: "Permits & Compliance",
+    slug: "permits",
+    resource: "permits",
+    Icon: DocumentsIcon,
+    helper: "Regulatory permits & expiry",
+    flag: "compliance.permits",
+  },
+  {
+    label: "Risk Register",
+    slug: "risks",
+    resource: "risks",
+    Icon: AlertIcon,
+    helper: "Exposures, owners & responses",
+  },
+] as const;
+
+// Listed under a "Documents" heading, the way Panda AI sits under Intelligence.
+export const DOCUMENT_ENTRIES: readonly NavEntry[] = [
+  { label: "Documents", slug: "documents", resource: "documents", Icon: icons2.folderBlack, flag: "projects.documents" },
+  { label: "BIMs", slug: "bim", resource: "bim", Icon: DocumentsIcon, flag: "projects.bim" },
+] as const;
 
 export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   {
@@ -192,101 +241,46 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     slug: "finances",
     resource: "finances",
     Icon: FinancesIcon,
-    helper: "Cashflow & escrow",
+    helper: "Money position",
     flag: "commercial.finances",
   },
   {
-    label: "Contract",
-    slug: "finances/contract",
+    label: "Contracts & Phases",
+    slug: "finances/contracts-phases",
     resource: "finances",
-    Icon: FinancesIcon,
-    helper: "Contract settings",
+    Icon: BlocksIcon,
+    helper: "Contracts, terms & phase costs",
     flag: "commercial.finances",
   },
   {
-    label: "Expendition",
-    slug: "finances/transactions",
-    resource: "transactions",
-    Icon: DocumentsIcon,
-    helper: "Photo-backed expense ledger",
-    flag: "commercial.transactions",
-  },
-  // {
-  //   label: "Advance",
-  //   slug: "finances/advance",
-  //   resource: "finances",
-  //   Icon: FinancesIcon,
-  //   helper: "Mobilization & recovery",
-  //   flag: "commercial.finances",
-  // },
-  // {
-  //   label: "Retention",
-  //   slug: "finances/retention",
-  //   resource: "finances",
-  //   Icon: FinancesIcon,
-  //   helper: "Held & staged releases",
-  //   flag: "commercial.finances",
-  // },
-  // {
-  //   label: "Measured Work",
-  //   slug: "finances/measured-work",
-  //   resource: "finances",
-  //   Icon: FinancesIcon,
-  //   helper: "Unit-rate valuations",
-  //   flag: "commercial.finances",
-  // },
-  {
-    label: "Final Account",
-    slug: "finances/final-account",
+    label: "Expenses",
+    slug: "finances/expenses",
     resource: "finances",
+    action: "viewCosts",
     Icon: FinancesIcon,
-    helper: "Contract settlement",
+    helper: "Site spend & purchase orders",
     flag: "commercial.finances",
   },
   {
-    label: "Budget",
-    slug: "finances/budget",
-    resource: "finances",
+    label: "Change Orders",
+    slug: "change-requests",
+    resource: "change-requests",
     Icon: FinancesIcon,
-    helper: "Planning & allocation",
-    flag: "commercial.budget",
+    helper: "Scope changes",
+    flag: "workflow.changeRequests",
   },
   {
-    label: "Milestone Payments",
-    slug: "finances/milestone-payments",
+    label: "Budget & Invoices",
+    slug: "finances/budget-invoices",
     resource: "finances",
-    Icon: FinancesIcon,
-    helper: "Drawdown schedule",
+    Icon: DocumentsIcon,
+    helper: "Billing sheet, invoices & payments",
     flag: "commercial.finances",
-  },
-  {
-    label: "Payment Claims",
-    slug: "finances/payment-claims",
-    resource: "finances",
-    Icon: DocumentsIcon,
-    helper: "Drawdowns",
-    flag: "commercial.paymentClaims",
-  },
-  {
-    label: "Invoices",
-    slug: "finances/invoices",
-    resource: "finances",
-    Icon: DocumentsIcon,
-    helper: "AP / AR",
-    flag: "commercial.invoices",
-  },
-  {
-    label: "Purchase Orders",
-    slug: "finances/purchase-orders",
-    resource: "finances",
-    Icon: DocumentsIcon,
-    helper: "Committed spend",
-    flag: "commercial.purchaseOrders",
   },
 ] as const;
 
 export const CLIENT_ENTRIES: readonly NavEntry[] = [
-  { label: "Overview", slug: "overview", Icon: OverviewIcon },
+  { label: "Overview", slug: "overview", Icon: icons2.grid },
   {
     label: "Updates",
     slug: "updates",
@@ -300,13 +294,6 @@ export const CLIENT_ENTRIES: readonly NavEntry[] = [
     resource: "schedule",
     Icon: CalendarIcon,
     flag: "projects.schedule",
-  },
-  {
-    label: "Queries",
-    slug: "queries",
-    resource: "queries",
-    Icon: MessagesIcon,
-    flag: "workflow.queries",
   },
   {
     label: "Selections",

@@ -42,8 +42,8 @@ function AssignMenu({
     <Menu.Root>
       <Menu.Trigger
         className={cn(
-          "rounded-md px-2 py-1 text-xs font-medium text-gray-500 outline-none",
-          "hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "rounded-md px-2 py-1 text-xs font-medium text-ink-muted outline-none",
+          "hover:bg-black/5 hover:text-ink focus-visible:shadow-focus",
         )}
         aria-label="Assign"
         onClick={(e) => e.stopPropagation()}
@@ -54,13 +54,13 @@ function AssignMenu({
         <Menu.Positioner align="end" sideOffset={6}>
           <Menu.Popup
             className={cn(
-              "z-50 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 outline-none",
+              "z-50 min-w-[160px] rounded-lg border border-line bg-white p-1.5 shadow-card outline-none",
             )}
           >
             <Menu.Item
               className={cn(
-                "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
-                "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+                "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-ink",
+                "outline-none data-[highlighted]:bg-surface-alt data-[highlighted]:text-ink",
               )}
               onClick={() => onAssign(null)}
             >
@@ -70,8 +70,8 @@ function AssignMenu({
               <Menu.Item
                 key={option.id}
                 className={cn(
-                  "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
-                  "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+                  "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-ink",
+                  "outline-none data-[highlighted]:bg-surface-alt data-[highlighted]:text-ink",
                 )}
                 onClick={() => onAssign(option.id)}
               >
@@ -98,8 +98,8 @@ function MoveMenu<S extends string>({
     <Menu.Root>
       <Menu.Trigger
         className={cn(
-          "rounded-md px-2 py-1 text-xs font-medium text-gray-500 outline-none",
-          "hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "rounded-md px-2 py-1 text-xs font-medium text-ink-muted outline-none",
+          "hover:bg-black/5 hover:text-ink focus-visible:shadow-focus",
         )}
         aria-label="Move to status"
         onClick={(e) => e.stopPropagation()}
@@ -110,7 +110,7 @@ function MoveMenu<S extends string>({
         <Menu.Positioner align="end" sideOffset={6}>
           <Menu.Popup
             className={cn(
-              "z-50 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 outline-none",
+              "z-50 min-w-[160px] rounded-lg border border-line bg-white p-1.5 shadow-card outline-none",
             )}
           >
             {columns
@@ -119,8 +119,8 @@ function MoveMenu<S extends string>({
                 <Menu.Item
                   key={c.status}
                   className={cn(
-                    "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
-                    "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+                    "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-ink",
+                    "outline-none data-[highlighted]:bg-surface-alt data-[highlighted]:text-ink",
                   )}
                   onClick={() => onMove(c.status)}
                 >
@@ -158,31 +158,31 @@ function KanbanBoard<T, S extends string>({
       {columns.map((column) => {
         const colItems = items.filter((i) => getStatus(i) === column.status);
         return (
-          <div key={column.status} className="flex flex-col gap-3 rounded-2xl bg-[#FAFAFA] p-3">
+          <div key={column.status} className="flex flex-col gap-3 rounded-lg bg-surface-alt p-3">
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
                 <span className={cn("size-2 rounded-full", column.accent)} />
-                <span className="text-sm font-semibold text-gray-900">{column.label}</span>
+                <span className="text-sm font-semibold text-ink">{column.label}</span>
               </div>
-              <span className="text-xs font-medium text-gray-400">{colItems.length}</span>
+              <span className="text-xs font-medium text-ink-muted">{colItems.length}</span>
             </div>
             <div className="flex flex-col gap-2.5">
               {colItems.length === 0 ? (
-                <p className="px-1 py-6 text-center text-xs text-gray-400">Nothing here</p>
+                <p className="px-1 py-6 text-center text-xs text-ink-muted">Nothing here</p>
               ) : (
                 colItems.map((item) => {
                   const id = getId(item);
                   return (
                     <div
                       key={id}
-                      className="rounded-xl border border-[#EDEDED] bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
+                      className="rounded-lg border border-line-hair bg-white p-3 shadow-card transition-colors hover:bg-surface-alt"
                     >
                       <button
                         type="button"
                         onClick={() => onOpen(id)}
                         className="w-full text-left"
                       >
-                        <p className="text-sm font-semibold text-gray-900">{getTitle(item)}</p>
+                        <p className="text-sm font-semibold text-ink">{getTitle(item)}</p>
                         {renderMeta && (
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
                             {renderMeta(item)}

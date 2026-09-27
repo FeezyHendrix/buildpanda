@@ -77,7 +77,12 @@ function Navbar({
         )}
         {leadingSlot && (
           <>
-            {showLogo && <span className="hidden h-6 w-px shrink-0 bg-gray-200 sm:block" aria-hidden="true" />}
+            {showLogo && (
+              <span
+                className="hidden h-6 w-px shrink-0 bg-gray-200 sm:block"
+                aria-hidden="true"
+              />
+            )}
             <div className="flex min-w-0 items-center">{leadingSlot}</div>
           </>
         )}
@@ -102,11 +107,15 @@ function Navbar({
                 aria-expanded={notificationsOpen}
               />
               {notificationsOpen && (
-                <div className="absolute -right-15 lg:-right-10 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                <div className="absolute -right-22 lg:-right-0 top-full z-50 mt-2 w-[303px] lg:w-[388px] overflow-hidden border border-[#EAEAEA] bg-white shadow-lg flex flex-col">
                   <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">Notifications</p>
-                      <p className="text-xs text-gray-500">{resolvedNotificationCount} unread</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        Notifications
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {resolvedNotificationCount} unread
+                      </p>
                     </div>
                     {resolvedNotificationCount > 0 && (
                       <button
@@ -118,29 +127,47 @@ function Navbar({
                       </button>
                     )}
                   </div>
-                  <div className="max-h-96 space-y-1 overflow-y-auto p-2.5">
+                  <div className="max-h-96 overflow-y-auto">
                     {(notificationsData?.notifications ?? []).length === 0 ? (
-                      <div className="px-4 py-8 text-center text-sm text-gray-500">No notifications yet.</div>
+                      <div className="px-4 py-8 text-center text-sm text-gray-500">
+                        No notifications yet.
+                      </div>
                     ) : (
                       notificationsData!.notifications.map((notification) => (
                         <button
                           key={notification.id}
                           type="button"
                           onClick={() => {
-                            if (!notification.readAt) markRead.mutate(notification.id);
+                            if (!notification.readAt)
+                              markRead.mutate(notification.id);
                             setNotificationsOpen(false);
                             navigate(notificationHref(notification));
                           }}
                           className={cn(
-                            "flex w-full gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-gray-50",
+                            "flex w-full gap-3 px-3 py-3 text-left transition-colors hover:bg-gray-50",
                             !notification.readAt && "bg-primary-50/60",
                           )}
                         >
-                          <span className={cn("mt-1 size-2 shrink-0 rounded-full", notification.readAt ? "bg-gray-200" : "bg-primary-500")} />
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-medium text-gray-900">{notification.title}</span>
-                            {notification.body && <span className="mt-0.5 block text-xs text-gray-500">{notification.body}</span>}
-                            <span className="mt-1 block text-[11px] text-gray-400">{formatTimeAgo(notification.createdAt)}</span>
+                          <span
+                            className={cn(
+                              "mt-1 size-3 shrink-0 rounded-full",
+                              notification.readAt
+                                ? "bg-gray-200"
+                                : "bg-primary-500",
+                            )}
+                          />
+                          <span className="w-[332px] flex-1">
+                            <span className="block text-caption-l font-semibold text-black">
+                              {notification.title}
+                            </span>
+                            {notification.body && (
+                              <span className="mt-0.5 block text-caption-m text-black lg-pr-0">
+                                {notification.body}
+                              </span>
+                            )}
+                            <span className="mt-4 block text-[11px] text-gray-400">
+                              {formatTimeAgo(notification.createdAt)}
+                            </span>
                           </span>
                         </button>
                       ))

@@ -1,15 +1,16 @@
-import { Dialog } from "@base-ui/react/dialog";
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { TextArea } from "@/components/atoms/text-area";
+import { TextInput } from "@/components/atoms/text-input";
+import { FormDrawer } from "./form-drawer";
+import { MediaDropzone } from "./media-dropzone";
 import {
   documentVersionViewUrl,
   useAddDocumentVersion,
   useDocumentVersions,
 } from "@/hooks/use-documents";
 import { useUploadFile } from "@/hooks/use-files";
-import { cn } from "@/lib/utils";
 import type { DocumentVersion, ProjectDocument } from "@/lib/project-types";
 import { FileViewerDialog } from "./file-viewer-dialog";
 
@@ -20,6 +21,13 @@ interface DocumentVersionsDialogProps {
   document: ProjectDocument;
   /** Whether the viewer may upload new versions. Read-only when false. */
   canManage?: boolean;
+}
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 function formatWhen(value: string): string {
@@ -36,19 +44,43 @@ function DocumentVersionsDialog({
   const { data: versions = [], isLoading } = useDocumentVersions(projectId, document.id);
   const uploadFile = useUploadFile();
   const addVersion = useAddDocumentVersion();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [revisionLabel, setRevisionLabel] = useState("");
   const [notes, setNotes] = useState("");
+  const [pickedFile, setPickedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [viewer, setViewer] = useState<DocumentVersion | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setRevisionLabel("");
+    setNotes("");
+    setPickedFile(null);
+    setFileError(null);
+    setViewer(null);
+  }, [open ]);
 
   const busy = uploadFile.isPending || addVersion.isPending;
   const error =
+    fileError ??
     (uploadFile.error as Error | undefined)?.message ??
     (addVersion.error as Error | undefined)?.message ??
     null;
 
-  function handlePick(file: File | null): void {
+  function handleFiles(files: FileList): void {
+    const file = files[0];
     if (!file) return;
+    if (file.size > MAX_FILE_BYTES) {
+      setPickedFile(null);
+      setFileError("File is too large. Maximum size is 10MB.");
+      return;
+    }
+    setFileError(null);
+    setPickedFile(file);
+  }
+
+  function handleUpload(): void {
+    if (!pickedFile || busy) return;
+    const file = pickedFile;
     uploadFile.mutate(
       { file },
       {
@@ -65,7 +97,8 @@ function DocumentVersionsDialog({
               onSuccess: () => {
                 setRevisionLabel("");
                 setNotes("");
-                if (fileInputRef.current) fileInputRef.current.value = "";
+                setPickedFile(null);
+                setFileError(null);
               },
             },
           );
@@ -76,116 +109,114 @@ function DocumentVersionsDialog({
 
   return (
     <>
-      <Dialog.Root open={open} onOpenChange={onOpenChange}>
-        <Dialog.Portal>
-          <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />
-          <Dialog.Popup
-            className={cn(
-              "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-              "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
-            )}
-          >
-            <header className="px-6 pt-6">
-              <Dialog.Title className="text-lg font-semibold text-gray-900">
-                Version history
-              </Dialog.Title>
-              <Dialog.Description className="mt-1.5 truncate text-sm text-gray-500">
-                {document.fileName}
-              </Dialog.Description>
-            </header>
+      <FormDrawer
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Upload New Version"
+        submitLabel={canManage ? "Upload" : "Done"}
+        submitDisabled={canManage ? !pickedFile || busy : false}
+        submitting={canManage ? busy : false}
+        error={error}
+        onSubmit={() => {
+          if (!canManage) {
+            onOpenChange(false);
+            return;
+          }
+          handleUpload();
+        }}
+        footerVariant="stacked"
+      >
+        {canManage && (
+          <>
+            <TextInput
+              label="Revision Label"
+              value={revisionLabel}
+              onChange={setRevisionLabel}
+              placeholder="Rev C"
+            />
 
-            {/* Upload a new revision */}
-            {canManage && (
-            <div className="mx-6 mt-4 rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-4">
-              <p className="text-sm font-medium text-gray-900">Upload new version</p>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <input
-                  value={revisionLabel}
-                  onChange={(e) => setRevisionLabel(e.target.value)}
-                  placeholder="Revision label (e.g. Rev C)"
-                  className="h-10 flex-1 rounded-lg border border-[#EDEDED] bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-                />
-                <input
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="What changed? (optional)"
-                  className="h-10 flex-1 rounded-lg border border-[#EDEDED] bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-                />
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="sr-only"
-                onChange={(e) => handlePick(e.target.files?.[0] ?? null)}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="mt-3 h-9 px-4 text-sm"
+            <TextArea
+              label="What Changed?"
+              optional
+              value={notes}
+              onChange={setNotes}
+              rows={5}
+            />
+
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[13px] font-medium text-[#1E1E1E]">File</p>
+              <MediaDropzone
+                multiple={false}
+                hint="(max. 10MB)"
+                onFiles={handleFiles}
                 disabled={busy}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {busy ? "Uploading…" : "Choose file & upload"}
-              </Button>
-              {error && (
-                <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
-              )}
-            </div>
-            )}
-
-            {/* History */}
-            <div className="mt-4 flex-1 overflow-y-auto px-6 pb-2">
-              {isLoading ? (
-                <p className="py-6 text-center text-sm text-gray-500">Loading…</p>
-              ) : versions.length === 0 ? (
-                <p className="py-6 text-center text-sm text-gray-500">No versions yet.</p>
-              ) : (
-                <ul className="flex flex-col divide-y divide-[#F0F0F0]">
-                  {versions.map((v) => (
-                    <li key={v.id} className="flex items-center justify-between gap-3 py-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-900">
-                            v{v.versionNo}
-                            {v.revisionLabel ? ` · ${v.revisionLabel}` : ""}
-                          </span>
-                          {v.isCurrent && (
-                            <Badge tone="info" size="sm">
-                              Current
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="truncate text-xs text-gray-500">
-                          {v.fileName} · {v.size} · {formatWhen(v.createdAt)}
-                        </p>
-                        {v.notes && <p className="mt-0.5 truncate text-xs text-gray-400">{v.notes}</p>}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setViewer(v)}
-                        className="shrink-0 text-xs font-medium text-[#004DE7] hover:text-[#0041c4]"
-                      >
-                        View
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <footer className="flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
-              <Dialog.Close
-                render={
-                  <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
-                    Done
-                  </Button>
-                }
               />
-            </footer>
-          </Dialog.Popup>
-        </Dialog.Portal>
-      </Dialog.Root>
+              {pickedFile && (
+                <div className="flex items-center justify-between gap-2 border border-[#EBEBEB] bg-white px-3 py-2">
+                  <p className="min-w-0 truncate text-[13px] text-[#1E1E1E]">
+                    {pickedFile.name}{" "}
+                    <span className="text-xs text-[#9CA3AF]">
+                      · {formatFileSize(pickedFile.size)}
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPickedFile(null)}
+                    aria-label="Remove selected file"
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] outline-none hover:bg-[#F5F5F5] hover:text-[#1E1E1E]"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-[#F0F0F0]" aria-hidden />
+          </>
+        )}
+
+        <div className="flex flex-col">
+          {isLoading ? (
+            <p className="py-6 text-center text-sm text-[#9CA3AF]">Loading…</p>
+          ) : versions.length === 0 ? (
+            <p className="py-6 text-center text-sm text-[#9CA3AF]">No versions yet.</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-[#F0F0F0]">
+              {versions.map((v) => (
+                <li key={v.id} className="py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-[#1E1E1E]">
+                        V{v.versionNo}
+                      </span>
+                      {v.isCurrent && (
+                        <Badge tone="info" size="sm">
+                          Current
+                        </Badge>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setViewer(v)}
+                      className="shrink-0 text-xs font-medium text-[#004DE7] outline-none hover:underline"
+                    >
+                      View
+                    </button>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-[#767676]">
+                    {v.fileName} · {v.size} · {formatWhen(v.createdAt)}
+                  </p>
+                  {v.notes && (
+                    <p className="mt-0.5 truncate text-xs text-[#9CA3AF]">{v.notes}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </FormDrawer>
 
       {viewer && (
         <FileViewerDialog

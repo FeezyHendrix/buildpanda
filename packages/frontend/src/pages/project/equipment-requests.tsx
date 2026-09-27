@@ -1,22 +1,27 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ChevronLeft, ChevronRight, MoreVertical, Plus } from "lucide-react";
+import { ReactSVG } from "react-svg";
+import { icons2 } from "@/assets/icons2/icon2";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { IconBox } from "@/components/atoms/icon-box";
-import { Label } from "@/components/atoms/label";
 import {
-  CalendarIcon,
-  ChevronRightIcon,
-  MaterialsIcon,
-  PlusIcon,
-} from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/atoms/dropdown-menu";
+import { MoneyInput } from "@/components/atoms/money-input";
+import { Select } from "@/components/atoms/select";
+import { Spinner } from "@/components/atoms/spinner";
+import { TextArea } from "@/components/atoms/text-area";
+import { TextInput } from "@/components/atoms/text-input";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
-import { PageHeader } from "@/components/molecules/page-header";
+import { MetricCard } from "@/components/molecules/metric-card";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import {
   useCreateEquipmentRequest,
   useDeleteEquipmentRequest,
@@ -24,7 +29,11 @@ import {
   useUpdateEquipmentRequest,
   type EquipmentRequestInput,
 } from "@/hooks/use-materials-equipment";
-import { formatCurrency, formatShortDate } from "@/lib/formatters";
+import {
+  currencySymbol,
+  formatCurrency,
+  formatShortDate,
+} from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type {
   EquipmentBucket,
@@ -61,12 +70,37 @@ const STATUS_META: Record<
   Cancelled: { label: "Cancelled", tone: "danger" },
 };
 
-const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const PRIORITY_TONE: Record<RequestPriority, "danger" | "warning" | "neutral"> = {
+  Critical: "danger",
+  High: "warning",
+  Normal: "neutral",
+  Low: "neutral",
+};
 
-function nextStatus(
-  status: EquipmentRequestStatus,
-): EquipmentRequestStatus | null {
+const PRIORITY_OPTIONS = (["Low", "Normal", "High", "Critical"] as RequestPriority[]).map(
+  (priority) => ({ value: priority, label: priority }),
+);
+
+const CURRENCIES = ["NGN", "USD"] as const;
+
+const PAGE_SIZE = 10;
+
+function pageNumbers(page: number, totalPages: number): (number | "…")[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  const window = [page - 1, page, page + 1].filter((n) => n > 1 && n < totalPages);
+  const pages = new Set([1, totalPages, ...window]);
+  const sorted = [...pages].sort((a, b) => a - b);
+  const out: (number | "…")[] = [];
+  sorted.forEach((n, i) => {
+    if (i > 0 && n - sorted[i - 1]! > 1) out.push("…");
+    out.push(n);
+  });
+  return out;
+}
+
+function nextStatus(status: EquipmentRequestStatus): EquipmentRequestStatus | null {
   switch (status) {
     case "Draft":
       return "Requested";
@@ -84,29 +118,27 @@ function nextStatus(
   }
 }
 
-function formatDate(value: string | null): string {
-  return formatShortDate(value) || "Not set";
-}
-
 function defaultFrom(): string {
-  return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 function defaultUntil(): string {
-  return new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  return new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 export default function ProjectEquipmentRequests() {
+  useSetPageTitle(
+    "Equipments Request",
+    "Manage equipment from field request through approval, booking, site use, and return so machinery never sits outside the build plan.",
+  );
+
   const { project, access } = useProjectContext();
+  const navigate = useNavigate();
   const canRequest = canResourceAction(access, "materials", "request");
   const canApprove = canResourceAction(access, "materials", "approve");
   const params = useParams<{ bucket?: EquipmentBucket }>();
-  const activeBucket = BUCKETS.some((item) => item.bucket === params.bucket)
-    ? params.bucket
+  const activeBucket: EquipmentBucket = BUCKETS.some((item) => item.bucket === params.bucket)
+    ? (params.bucket as EquipmentBucket)
     : "requests";
   const activeMeta =
     BUCKETS.find((item) => item.bucket === activeBucket) ?? DEFAULT_BUCKET_META;
@@ -116,12 +148,26 @@ export default function ProjectEquipmentRequests() {
   );
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<EquipmentRequest | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<EquipmentRequest | null>(
-    null,
-  );
+  const [deleteTarget, setDeleteTarget] = useState<EquipmentRequest | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const createRequest = useCreateEquipmentRequest();
   const updateRequest = useUpdateEquipmentRequest();
   const deleteRequest = useDeleteEquipmentRequest();
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeBucket, search]);
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return requests;
+    return requests.filter((request) =>
+      [request.title, request.equipmentName, request.supplier ?? ""].some((field) =>
+        field.toLowerCase().includes(q),
+      ),
+    );
+  }, [requests, search]);
 
   function upsert(values: EquipmentRequestInput): void {
     if (editTarget) {
@@ -137,141 +183,160 @@ export default function ProjectEquipmentRequests() {
     );
   }
 
-  const bookedCost = requests.reduce(
-    (sum, request) => sum + request.estimatedCost,
-    0,
-  );
+  const bookedCost = requests.reduce((sum, request) => sum + request.estimatedCost, 0);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = visible.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const showingFrom = visible.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const showingTo = Math.min(safePage * PAGE_SIZE, visible.length);
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Materials", to: `/project/${project.id}/materials` },
-          { label: "Equipment Requests" },
-        ]}
-        className="mb-4"
-      />
-      <PageHeader
-        title="Rental / equipment requests"
-        description="Manage equipment from field request through approval, booking, site use, and return so machinery never sits outside the build plan."
-        badges={<Badge tone="info">{activeMeta.label}</Badge>}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Link
-              to={`/project/${project.id}/materials`}
-              className="inline-flex h-[32px] items-center justify-center gap-2.5 rounded-lg bg-[#F6F6F6] px-5 py-3 text-[13px] font-semibold text-gray-900 hover:bg-gray-200"
-            >
-              Materials
-              <ChevronRightIcon className="size-4" />
-            </Link>
-            {canRequest && (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => setCreateOpen(true)}
-              >
-                <PlusIcon className="size-4" />
-                New equipment request
-              </Button>
-            )}
-          </div>
-        }
-      />
+    <div className="mx-auto w-full max-w-[738px] px-4 py-6 sm:px-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Select
+          options={BUCKETS.map((item) => ({ value: item.bucket, label: item.label }))}
+          value={activeBucket}
+          onChange={(v) =>
+            v && navigate(`/project/${project.id}/equipment-requests/${v}`)
+          }
+          className="shrink-0 sm:w-[160px]"
+        />
+        {canRequest && (
+          <Button variant="primary" size="lg" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            New Equipments Request
+          </Button>
+        )}
+      </div>
 
-      <nav
-        className="mt-8 grid gap-3 md:grid-cols-5"
-        aria-label="Equipment request routes"
-      >
-        {BUCKETS.map((item) => (
-          <Link
-            key={item.bucket}
-            to={`/project/${project.id}/equipment-requests/${item.bucket}`}
-            className={cn(
-              "rounded-2xl border p-4 transition-colors",
-              activeBucket === item.bucket
-                ? "border-[#004DE7] bg-[#E6EFFE]"
-                : "border-[#EDEDED] bg-white hover:bg-gray-50",
-            )}
-          >
-            <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-            <p className="mt-1 text-xs text-gray-500">{item.helper}</p>
-          </Link>
-        ))}
-      </nav>
-
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
-        <Metric
+      <section className="mt-6 grid gap-4 md:grid-cols-2">
+        <MetricCard
           label="Visible requests"
-          value={requests.length.toString()}
-          helper={activeMeta.helper}
+          value={requests.length}
+          helperText={activeMeta.helper}
         />
-        <Metric
+        <MetricCard
           label="Booked cost"
-          value={formatCurrency(bookedCost, project.currency, {
-            compact: true,
-          })}
-          helper="Estimated hire spend"
-        />
-        <Metric
-          label="Lifecycle stage"
-          value={activeMeta.label}
-          helper="Derived from status"
+          value={formatCurrency(bookedCost, project.currency, { compact: true })}
+          helperText="Estimated hire spend"
         />
       </section>
 
-      <Card padding="lg" className="mt-6">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">
-              {activeMeta.label}
-            </h2>
-            <p className="mt-0.5 text-xs text-gray-500">
-              Equipment requests stay linked to phases, activities, supplier
-              docs, and site dates.
-            </p>
-          </div>
+      <div className="mt-8 min-w-0">
+        <h2 className="text-[18px] font-bold text-[#1E1E1E]">Requests</h2>
+
+        <div className="relative mt-3 w-full sm:max-w-[320px]">
+          <ReactSVG
+            src={icons2.search}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 shrink-0 [&_svg]:size-[18px]"
+          />
+          <TextInput
+            type="search"
+            placeholder="Search Orders and Requests"
+            value={search}
+            onChange={setSearch}
+            aria-label="Search requests"
+            className="h-9 w-full indent-8"
+          />
         </div>
 
-        {isLoading ? (
-          <p className="py-10 text-center text-sm text-gray-500">
-            Loading equipment requests…
-          </p>
-        ) : requests.length === 0 ? (
-          <EmptyState
-            icon={<MaterialsIcon className="size-8 text-gray-300" />}
-            title="No equipment requests here"
-            description="Create a rental request or move existing equipment through the lifecycle."
-            action={
-              canRequest ? (
-                <Button onClick={() => setCreateOpen(true)}>
-                  Create request
-                </Button>
-              ) : undefined
-            }
-            className="py-10"
-          />
-        ) : (
-          <div className="flex flex-col divide-y divide-[#F0F0F0]">
-            {requests.map((request) => (
-              <EquipmentRow
-                key={request.id}
-                request={request}
-                canRequest={canRequest}
-                canApprove={canApprove}
-                onEdit={() => setEditTarget(request)}
-                onDelete={() => setDeleteTarget(request)}
-                onAdvance={(status) =>
-                  updateRequest.mutate({
-                    projectId: project.id,
-                    requestId: request.id,
-                    status,
-                  })
+        <div className="mt-3">
+          {isLoading ? (
+            <div className="flex justify-center border border-[#EBEBEB] bg-white py-16">
+              <Spinner size="md" />
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="border border-[#EBEBEB] bg-white">
+              <EmptyState
+                title="No equipment requests here"
+                description="Create a rental request or move existing equipment through the lifecycle."
+                action={
+                  canRequest ? (
+                    <Button variant="primary" size="lg" onClick={() => setCreateOpen(true)}>
+                      <Plus className="size-4" />
+                      Create request
+                    </Button>
+                  ) : undefined
                 }
+                className="py-10"
               />
-            ))}
-          </div>
-        )}
-      </Card>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col gap-3">
+                {paged.map((request) => (
+                  <EquipmentRow
+                    key={request.id}
+                    request={request}
+                    canRequest={canRequest}
+                    canApprove={canApprove}
+                    onEdit={() => setEditTarget(request)}
+                    onDelete={() => setDeleteTarget(request)}
+                    onAdvance={(status) =>
+                      updateRequest.mutate({
+                        projectId: project.id,
+                        requestId: request.id,
+                        status,
+                      })
+                    }
+                  />
+                ))}
+              </div>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-[#767676]">
+                  Showing {showingFrom} to {showingTo} of {visible.length} Requests
+                </p>
+                {totalPages > 1 && (
+                  <nav aria-label="Requests pages" className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label="Previous page"
+                      disabled={safePage === 1}
+                      onClick={() => setPage(safePage - 1)}
+                      className="flex size-7 items-center justify-center rounded-full text-[#1E1E1E] outline-none transition-colors hover:bg-[#F5F5F5] disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      <ChevronLeft className="size-4" />
+                    </button>
+                    {pageNumbers(safePage, totalPages).map((n, i) =>
+                      n === "…" ? (
+                        <span key={`gap-${i}`} className="px-1 text-xs text-[#9CA3AF]">
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={n}
+                          type="button"
+                          aria-label={`Page ${n}`}
+                          aria-current={n === safePage ? "page" : undefined}
+                          onClick={() => setPage(n)}
+                          className={cn(
+                            "flex size-7 items-center justify-center rounded-full text-[13px] font-medium outline-none transition-colors",
+                            n === safePage
+                              ? "bg-[#1E1E1E] text-white"
+                              : "text-[#1E1E1E] hover:bg-[#F5F5F5]",
+                          )}
+                        >
+                          {n}
+                        </button>
+                      ),
+                    )}
+                    <button
+                      type="button"
+                      aria-label="Next page"
+                      disabled={safePage === totalPages}
+                      onClick={() => setPage(safePage + 1)}
+                      className="flex size-7 items-center justify-center rounded-full text-[#1E1E1E] outline-none transition-colors hover:bg-[#F5F5F5] disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      <ChevronRight className="size-4" />
+                    </button>
+                  </nav>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       <EquipmentRequestDialog
         open={createOpen || editTarget !== null}
@@ -285,9 +350,9 @@ export default function ProjectEquipmentRequests() {
         onSubmit={upsert}
         isSubmitting={createRequest.isPending || updateRequest.isPending}
         error={
-          ((createRequest.error ?? updateRequest.error) as Error | null)
-            ?.message ?? null
+          ((createRequest.error ?? updateRequest.error) as Error | null)?.message ?? null
         }
+        currency={project.currency}
       />
       <ConfirmDialog
         open={deleteTarget !== null}
@@ -310,26 +375,6 @@ export default function ProjectEquipmentRequests() {
   );
 }
 
-function Metric({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  return (
-    <Card padding="md" className="bg-[#F8F8F8] rounded-[1px] border-none p-5">
-      <p className="text-[12px] font-medium text-black-300">{label}</p>
-      <p className="mt-2 text-[20px] font-semibold tabular-nums text-black-500">
-        {value}
-      </p>
-      <p className="mt-1 text-[13px] font-medium text-black-300">{helper}</p>
-    </Card>
-  );
-}
-
 function EquipmentRow({
   request,
   onEdit,
@@ -348,66 +393,79 @@ function EquipmentRow({
   const next = nextStatus(request.status);
   // Approval-tier transitions mirror the backend guard.
   const APPROVAL = ["Approved", "Scheduled", "OnHire", "Returned"];
-  const canAdvance = next !== null && (APPROVAL.includes(next) ? canApprove : canRequest);
+  const canAdvance =
+    next !== null && (APPROVAL.includes(next) ? canApprove : canRequest);
   return (
-    <article className="flex flex-col gap-4 py-4 xl:flex-row xl:items-center">
-      <div className="flex min-w-0 flex-1 items-start gap-3">
-        <IconBox
-          tone={request.priority === "Critical" ? "red" : "brand"}
-          size="sm"
-          icon={<CalendarIcon className="size-4" />}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-gray-900">
-              {request.title}
-            </h3>
-            <Badge tone={STATUS_META[request.status].tone}>
-              {STATUS_META[request.status].label}
-            </Badge>
-            <Badge
-              tone={request.operatorRequired ? "warning" : "neutral"}
-              variant="outline"
-            >
-              {request.operatorRequired
-                ? "Operator required"
-                : request.equipmentType}
-            </Badge>
-          </div>
-          <p className="mt-1 text-sm text-gray-600 text-pretty">
-            {request.quantity} × {request.equipmentName}
-            {request.supplier ? ` from ${request.supplier}` : ""}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-            <span>
-              {formatDate(request.neededFrom)} →{" "}
-              {formatDate(request.neededUntil)}
-            </span>
-            <span>Phase: {request.phaseName ?? "Unlinked"}</span>
-            <span>Activity: {request.activityName ?? "Unlinked"}</span>
-            <span>Doc: {request.documentName ?? "No supplier doc"}</span>
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-        <p className="mr-2 text-sm font-semibold tabular-nums text-gray-900">
-          {formatCurrency(request.estimatedCost, request.currency)}
+    <article className="border border-[#EBEBEB] bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+          <span className="font-medium text-[#004DE7]">
+            {formatShortDate(request.neededFrom) || "—"} →{" "}
+            {formatShortDate(request.neededUntil) || "—"}
+          </span>
+          <span className="text-[#D1D5DB]">•</span>
+          <span className="text-[#767676]">Phase: {request.phaseName ?? "Unlinked"}</span>
+          <span className="text-[#D1D5DB]">•</span>
+          <span className="text-[#767676]">
+            Activity: {request.activityName ?? "Unlinked"}
+          </span>
+          <span className="text-[#D1D5DB]">•</span>
+          <span className="text-[#767676]">Doc: {request.documentName ?? "No receipt/spec"}</span>
         </p>
-        {next && canAdvance ? (
-          <Button size="sm" variant="secondary" onClick={() => onAdvance(next)}>
-            Move to {STATUS_META[next].label}
-          </Button>
-        ) : null}
-        {canRequest ? (
-          <Button size="sm" variant="ghost" onClick={onEdit}>
-            Edit
-          </Button>
-        ) : null}
-        {canApprove ? (
-          <Button size="sm" variant="ghost" onClick={onDelete}>
-            Delete
-          </Button>
-        ) : null}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                aria-label="Request actions"
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-[#9CA3AF] outline-none transition-colors hover:bg-[#F5F5F5] hover:text-[#1E1E1E]"
+              >
+                <MoreVertical className="size-4" />
+              </button>
+            }
+          />
+          <DropdownMenuContent align="end" className="w-[200px]">
+            {canRequest && (
+              <DropdownMenuItem onSelect={onEdit}>
+                <ReactSVG src={icons2.edit} className="size-4 shrink-0" />
+                Edit
+              </DropdownMenuItem>
+            )}
+            {canAdvance && next && (
+              <DropdownMenuItem onSelect={() => onAdvance(next)}>
+                Move to {STATUS_META[next].label}
+              </DropdownMenuItem>
+            )}
+            {canApprove && (
+              <DropdownMenuItem tone="danger" onSelect={onDelete}>
+                <ReactSVG src={icons2.delete} className="size-4 shrink-0" />
+                Delete
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="mt-2.5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#1E1E1E]">
+            <span className="truncate">
+              {request.quantity} × {request.equipmentName}
+            </span>
+            <Badge tone={PRIORITY_TONE[request.priority]} size="sm">
+              {request.priority}
+            </Badge>
+          </p>
+          <p className="mt-1 truncate text-xs text-[#767676]">{request.title}</p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <p className="whitespace-nowrap text-sm font-bold tabular-nums text-[#1E1E1E]">
+            {formatCurrency(request.estimatedCost, request.currency)}
+          </p>
+          <Badge tone={STATUS_META[request.status].tone} size="sm">
+            {STATUS_META[request.status].label}
+          </Badge>
+        </div>
       </div>
     </article>
   );
@@ -420,6 +478,7 @@ interface EquipmentDialogProps {
   onSubmit: (values: EquipmentRequestInput) => void;
   isSubmitting: boolean;
   error: string | null;
+  currency?: string;
 }
 
 function EquipmentRequestDialog({
@@ -429,6 +488,7 @@ function EquipmentRequestDialog({
   onSubmit,
   isSubmitting,
   error,
+  currency = "NGN",
 }: EquipmentDialogProps) {
   const [title, setTitle] = useState("");
   const [equipmentName, setEquipmentName] = useState("");
@@ -438,6 +498,7 @@ function EquipmentRequestDialog({
   const [priority, setPriority] = useState<RequestPriority>("Normal");
   const [neededFrom, setNeededFrom] = useState(defaultFrom());
   const [neededUntil, setNeededUntil] = useState(defaultUntil());
+  const [requestCurrency, setRequestCurrency] = useState(currency);
   const [estimatedCost, setEstimatedCost] = useState("0");
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [operatorRequired, setOperatorRequired] = useState(false);
@@ -453,11 +514,12 @@ function EquipmentRequestDialog({
     setPriority(initial?.priority ?? "Normal");
     setNeededFrom(initial?.neededFrom.slice(0, 10) ?? defaultFrom());
     setNeededUntil(initial?.neededUntil.slice(0, 10) ?? defaultUntil());
+    setRequestCurrency(initial?.currency ?? currency);
     setEstimatedCost(String(initial?.estimatedCost ?? 0));
     setDeliveryLocation(initial?.deliveryLocation ?? "");
     setOperatorRequired(initial?.operatorRequired ?? false);
     setNotes(initial?.notes ?? "");
-  }, [initial, open]);
+  }, [initial, open, currency]);
 
   const valid =
     title.trim() &&
@@ -466,13 +528,14 @@ function EquipmentRequestDialog({
     Number(quantity) > 0 &&
     neededFrom &&
     neededUntil;
+
   return (
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={initial ? "Edit equipment request" : "New equipment request"}
+      title={initial ? "Edit Equipments Request" : "New Equipments Request"}
       description="Tie equipment rentals to schedule dates, site activities, supplier paperwork, and return control."
-      submitLabel={initial ? "Save changes" : "Create request"}
+      submitLabel={initial ? "Save changes" : "Create Request"}
       submitDisabled={!valid}
       submitting={isSubmitting}
       error={error}
@@ -487,143 +550,168 @@ function EquipmentRequestDialog({
           neededFrom,
           neededUntil,
           estimatedCost: Number(estimatedCost || 0),
-          currency: "NGN",
+          currency: requestCurrency as "NGN" | "USD",
           deliveryLocation: deliveryLocation.trim() || null,
           operatorRequired,
           notes: notes.trim() || null,
         });
       }}
+      footerVariant="stacked"
     >
-      <Field
+      <TextInput
         label="Title"
-        id="eq-title"
         value={title}
         onChange={setTitle}
-        placeholder="e.g. Crane for roof truss lift"
+        placeholder="e.g Crane for roof truss"
+        autoFocus
       />
-      <Field
+
+      <TextInput
         label="Equipment"
-        id="eq-name"
         value={equipmentName}
         onChange={setEquipmentName}
-        placeholder="Mobile crane"
+        placeholder="Mobile Crane"
       />
+
       <div className="grid grid-cols-2 gap-3">
-        <Field
-          label="Type"
-          id="eq-type"
-          value={equipmentType}
-          onChange={setEquipmentType}
-        />
-        <Field
+        <TextInput
           label="Quantity"
-          id="eq-quantity"
           value={quantity}
           onChange={setQuantity}
           type="number"
+          min="0"
+          step="any"
         />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="eq-priority">Priority</Label>
-          <select
-            id="eq-priority"
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label className="text-[13px] font-medium text-[#1E1E1E]">Priority</label>
+          <Select
+            options={PRIORITY_OPTIONS}
             value={priority}
-            onChange={(e) => setPriority(e.target.value as RequestPriority)}
-            className={FIELD}
-          >
-            {(["Low", "Normal", "High", "Critical"] as RequestPriority[]).map(
-              (item) => (
-                <option key={item}>{item}</option>
-              ),
-            )}
-          </select>
+            onChange={(v) => v && setPriority(v as RequestPriority)}
+            placeholder="Select priority"
+          />
         </div>
-        <Field
-          label="Estimated cost"
-          id="eq-cost"
-          value={estimatedCost}
-          onChange={setEstimatedCost}
-          type="number"
-        />
       </div>
+
       <div className="grid grid-cols-2 gap-3">
-        <Field
-          label="Needed from"
-          id="eq-from"
-          value={neededFrom}
-          onChange={setNeededFrom}
-          type="date"
-        />
-        <Field
-          label="Needed until"
-          id="eq-until"
-          value={neededUntil}
-          onChange={setNeededUntil}
-          type="date"
-        />
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label htmlFor="eq-needed-from" className="text-[13px] font-medium text-[#1E1E1E]">
+            Needed from
+          </label>
+          <div
+            className="relative"
+            onClick={(e) =>
+              (e.currentTarget.querySelector("input") as HTMLInputElement | null)?.showPicker?.()
+            }
+          >
+            <input
+              id="eq-needed-from"
+              type="date"
+              value={neededFrom}
+              onChange={(e) => setNeededFrom(e.target.value)}
+              onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+              placeholder="DD/MM/YY"
+              className="h-11 w-full cursor-pointer border border-[#EBEBEB] bg-white px-3.5 pr-9 text-caption-l text-black-500 outline-none transition-colors placeholder:text-[#B0B0B0] focus:border-black-500 focus:ring-1 focus:ring-black-500/10 [&::-webkit-calendar-picker-indicator]:hidden"
+            />
+            <ReactSVG
+              src={icons2.calendar}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 [&_svg]:size-[16px]"
+            />
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label htmlFor="eq-needed-until" className="text-[13px] font-medium text-[#1E1E1E]">
+            Needed until
+          </label>
+          <div
+            className="relative"
+            onClick={(e) =>
+              (e.currentTarget.querySelector("input") as HTMLInputElement | null)?.showPicker?.()
+            }
+          >
+            <input
+              id="eq-needed-until"
+              type="date"
+              value={neededUntil}
+              onChange={(e) => setNeededUntil(e.target.value)}
+              onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+              placeholder="DD/MM/YY"
+              className="h-11 w-full cursor-pointer border border-[#EBEBEB] bg-white px-3.5 pr-9 text-caption-l text-black-500 outline-none transition-colors placeholder:text-[#B0B0B0] focus:border-black-500 focus:ring-1 focus:ring-black-500/10 [&::-webkit-calendar-picker-indicator]:hidden"
+            />
+            <ReactSVG
+              src={icons2.calendar}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 [&_svg]:size-[16px]"
+            />
+          </div>
+        </div>
       </div>
-      <Field
+
+      <TextInput
         label="Supplier"
-        id="eq-supplier"
+        optional
         value={supplier}
         onChange={setSupplier}
-        placeholder="Optional"
+        placeholder="Name of Supplier"
       />
-      <Field
-        label="Delivery location"
-        id="eq-location"
+
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-medium text-[#1E1E1E]">Estimated Cost</label>
+        <div className="flex">
+          <div className="w-28 shrink-0">
+            <Select
+              options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+              value={requestCurrency}
+              onChange={(v) => v && setRequestCurrency(v)}
+            />
+          </div>
+          <div className="flex-1">
+            <MoneyInput
+              placeholder="0"
+              value={estimatedCost}
+              onChange={setEstimatedCost}
+              currencySymbol={currencySymbol(requestCurrency)}
+              aria-label="Estimated cost"
+              className="rounded-none indent-4 border border-border bg-white px-3.5 text-[14px] text-left text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none transition-colors focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-[13px] font-medium text-[#1E1E1E]">Operator Required</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={operatorRequired}
+          aria-label="Operator required"
+          onClick={() => setOperatorRequired((v) => !v)}
+          className={cn(
+            "relative h-6 w-11 shrink-0 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#004DE7]/30",
+            operatorRequired ? "bg-[#004DE7]" : "bg-[#D1D5DB]",
+          )}
+        >
+          <span
+            className={cn(
+              "absolute top-0.5 size-5 rounded-full bg-white shadow transition-all",
+              operatorRequired ? "left-[22px]" : "left-0.5",
+            )}
+          />
+        </button>
+      </div>
+
+      <TextInput
+        label="Delivery Location"
         value={deliveryLocation}
         onChange={setDeliveryLocation}
-        placeholder="Site gate, crane pad…"
+        placeholder="Site store, gate,..."
       />
-      <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input
-          type="checkbox"
-          checked={operatorRequired}
-          onChange={(e) => setOperatorRequired(e.target.checked)}
-        />
-        Operator required
-      </label>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="eq-notes">Lifecycle notes</Label>
-        <textarea
-          id="eq-notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="min-h-24 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        />
-      </div>
-    </FormDrawer>
-  );
-}
 
-function Field({
-  label,
-  id,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  id: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <input
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        type={type}
-        className={FIELD}
+      <TextArea
+        label="Lifecycle Notes"
+        value={notes}
+        onChange={setNotes}
+        rows={5}
       />
-    </div>
+    </FormDrawer>
   );
 }

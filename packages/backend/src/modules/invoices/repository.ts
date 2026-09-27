@@ -1,9 +1,11 @@
 import type { Knex } from "knex";
 import type {
+  InvoiceDirection,
   InvoiceLineItemRow,
   InvoiceParty,
   InvoicePaymentRow,
   InvoiceRow,
+  InvoiceStageLineRow,
   InvoiceType,
   PaymentMethod,
   StoredInvoiceStatus,
@@ -47,6 +49,10 @@ export interface NewInvoiceRecord {
   header_text: string | null;
   footer_text: string | null;
   source_file_id: string | null;
+  contract_id: string | null;
+  direction: InvoiceDirection;
+  counterparty: string | null;
+  advance_recovery: string;
 }
 
 export interface InvoiceUpdatePatch {
@@ -89,6 +95,14 @@ export interface InvoiceUpdatePatch {
   public_token?: string | null;
   viewed_at?: Date | string | null;
   pdf_storage_key?: string | null;
+  billing_period?: string | null;
+  contract_id?: string | null;
+  direction?: InvoiceDirection;
+  counterparty?: string | null;
+  advance_recovery?: string;
+  voided_at?: Date | string | null;
+  voided_by_id?: string | null;
+  void_reason?: string | null;
 }
 
 export interface InvoiceOrganizationRow {
@@ -123,6 +137,20 @@ export interface NewPaymentRecord {
   method: PaymentMethod;
   paid_at: string | null;
   note: string | null;
+  credit: boolean;
+  recorded_by_id: string | null;
+}
+
+export interface NewInvoiceStageLineRecord {
+  id: string;
+  project_id: string;
+  invoice_id: string;
+  stage_id: string;
+  scheduled_value: string;
+  this_period: string;
+  stored_materials: string;
+  retained: string;
+  sort_order: number;
 }
 
 export interface InvoiceOrgDefaultsRow {
@@ -214,6 +242,11 @@ export function invoicesRepository(db: Knex) {
         .first<InvoiceOrgDefaultsRow>();
     },
 
+    /** The billing-sheet month a pay application was raised for. */
+    async setBillingPeriod(invoiceId: string, period: string): Promise<void> {
+      await db("project_invoices").where({ id: invoiceId }).update({ billing_period: period });
+    },
+
     findPayment(paymentId: string): Promise<InvoicePaymentRow | undefined> {
       return db<InvoicePaymentRow>("invoice_payments").where({ id: paymentId }).first();
     },
@@ -281,6 +314,34 @@ export function invoicesRepository(db: Knex) {
           .delete();
         if (allocations.length > 0) {
           await trx("invoice_budget_allocations").insert(allocations);
+        }
+      });
+    },
+
+    listStageLines(invoiceId: string): Promise<InvoiceStageLineRow[]> {
+      return db<InvoiceStageLineRow>("invoice_stage_lines")
+        .where({ invoice_id: invoiceId })
+        .orderBy("sort_order", "asc");
+    },
+
+    listStageLinesForStages(
+      projectId: string,
+      stageIds: string[],
+    ): Promise<InvoiceStageLineRow[]> {
+      if (stageIds.length === 0) return Promise.resolve([]);
+      return db<InvoiceStageLineRow>("invoice_stage_lines")
+        .where({ project_id: projectId })
+        .whereIn("stage_id", stageIds);
+    },
+
+    async replaceStageLines(
+      invoiceId: string,
+      records: NewInvoiceStageLineRecord[],
+    ): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("invoice_stage_lines").where({ invoice_id: invoiceId }).delete();
+        if (records.length > 0) {
+          await trx("invoice_stage_lines").insert(records);
         }
       });
     },

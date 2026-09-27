@@ -129,7 +129,7 @@ export function TextareaField({
         placeholder={placeholder}
         maxLength={maxLength}
         rows={rows}
-        className={cn(inputClass, "h-auto min-h-[112px] py-3")}
+        className={cn(inputClass, "h-auto min-h-24 py-3")}
       />
     </FieldShell>
   );
@@ -144,7 +144,7 @@ interface SectionProps {
 
 export function Section({ title, description, action, children }: SectionProps) {
   return (
-    <section className="rounded-2xl border border-[#F0F0F0] bg-white p-5 sm:p-6">
+    <section className="rounded-lg border border-line-hair bg-white p-5 sm:p-6">
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-gray-900">{title}</h2>

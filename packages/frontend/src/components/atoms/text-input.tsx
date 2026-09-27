@@ -28,7 +28,7 @@ export function TextInput({
         {...props}
         onChange={(e) => onChange?.(e.target.value)}
         className={cn(
-          "h-11 border-[0.5px] border-[#EBEBEB] bg-white px-3.5 text-caption-l text-black-500 placeholder:text-[#B0B0B0] outline-none transition-colors focus:border-black-500 focus:ring-1 focus:ring-black-500/10",
+          "h-11 border-[0.5px] border-border bg-white px-3.5 text-caption-l text-black-500 placeholder:text-[#B0B0B0] outline-none transition-colors focus:border-black-500 focus:ring-1 focus:ring-black-500/10",
           props.disabled && "cursor-not-allowed bg-gray-50 text-black-500",
           className,
         )}

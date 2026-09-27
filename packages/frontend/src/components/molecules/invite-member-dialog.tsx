@@ -67,7 +67,7 @@ function InviteMemberDialog({
             className="flex flex-col gap-6"
           >
             <header>
-              <Dialog.Title className="text-h4 font-bold text-black-500">
+              <Dialog.Title className="text-h6 font-bold text-black-500">
                 Invite Team Member
               </Dialog.Title>
               <Dialog.Description className="mt-2 text-caption-l font-medium text-grey-450 text-pretty">

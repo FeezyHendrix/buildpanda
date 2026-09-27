@@ -1,11 +1,9 @@
 import { type ReactNode } from "react";
-import { cn } from "@/lib/utils";
-import {
-  inputClass,
-  lineAmount,
-  type UpsertLineItem,
-} from "./invoice-form-model";
+import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { UnitInput } from "@/components/atoms/unit-input";
+import { cn } from "@/lib/utils";
+import { lineAmount, type UpsertLineItem } from "./invoice-form-model";
 
 interface LineItemsListProps {
   items: UpsertLineItem[];
@@ -43,7 +41,7 @@ export function LineItemsList({
 
 function Header() {
   return (
-    <div className="mb-2 hidden grid-cols-12 gap-3 border-b border-[#F0F0F0] px-2 pb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400 md:grid">
+    <div className="mb-2 hidden grid-cols-12 gap-3 border-b border-line-hair px-2 pb-2 text-xs font-medium uppercase text-ink-muted md:grid">
       <span className="col-span-4">Description</span>
       <span className="col-span-1 text-right">Qty</span>
       <span className="col-span-2">Unit</span>
@@ -68,19 +66,15 @@ function Row({ index, line, canRemove, money, onChange, onRemove }: RowProps) {
   const lineNum = index + 1;
 
   return (
-    <li className="rounded-xl border border-[#F0F0F0] bg-[#FAFAFA] p-3 md:rounded-none md:border-0 md:border-b md:border-[#F5F5F5] md:bg-transparent md:p-2 md:last:border-b-0">
+    <li className="rounded-lg border border-line-hair bg-surface-alt p-3 md:rounded-none md:border-0 md:border-b md:border-line-hair md:bg-transparent md:p-2 md:last:border-b-0">
       <div className="mb-3 flex items-center justify-between md:hidden">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+        <span className="text-xs font-medium uppercase text-ink-muted">
           Line {lineNum}
         </span>
         {canRemove ? (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-xs font-medium text-gray-500 hover:text-error-600"
-          >
+          <Button type="button" variant="danger" size="sm" onClick={onRemove}>
             Remove
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -90,7 +84,7 @@ function Row({ index, line, canRemove, money, onChange, onRemove }: RowProps) {
           onChange={(e) => onChange({ description: e.target.value })}
           placeholder="Description"
           aria-label={`Line ${lineNum} description`}
-          className={cn(inputClass, "col-span-12 md:col-span-4")}
+          className={cn(INPUT_SM_CLASS, "col-span-12 md:col-span-4")}
         />
         <Cell span="col-span-4 md:col-span-1" label="Qty">
           <input
@@ -99,7 +93,7 @@ function Row({ index, line, canRemove, money, onChange, onRemove }: RowProps) {
             placeholder="1"
             inputMode="decimal"
             aria-label={`Line ${lineNum} quantity`}
-            className={cn(inputClass, "text-right")}
+            className={cn(INPUT_SM_CLASS, "text-right")}
           />
         </Cell>
         <Cell span="col-span-4 md:col-span-2" label="Unit">
@@ -107,7 +101,7 @@ function Row({ index, line, canRemove, money, onChange, onRemove }: RowProps) {
             value={line.unit}
             onChange={(v) => onChange({ unit: v })}
             aria-label={`Line ${lineNum} unit`}
-            className={inputClass}
+            className={INPUT_SM_CLASS}
           />
         </Cell>
         <Cell span="col-span-4 md:col-span-2" label="Rate">
@@ -117,14 +111,14 @@ function Row({ index, line, canRemove, money, onChange, onRemove }: RowProps) {
             placeholder="0.00"
             inputMode="decimal"
             aria-label={`Line ${lineNum} rate`}
-            className={cn(inputClass, "text-right")}
+            className={cn(INPUT_SM_CLASS, "text-right")}
           />
         </Cell>
-        <div className="col-span-12 flex items-center justify-between border-t border-[#EEE] pt-2.5 md:col-span-2 md:justify-end md:border-0 md:pl-2 md:pt-0">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 md:hidden">
+        <div className="col-span-12 flex items-center justify-between border-t border-line-hair pt-2.5 md:col-span-2 md:justify-end md:border-0 md:pl-2 md:pt-0">
+          <span className="text-xs font-medium uppercase text-ink-muted md:hidden">
             Amount
           </span>
-          <span className="text-sm font-semibold tabular-nums text-gray-900">
+          <span className="text-sm font-semibold tabular-nums text-ink">
             {money(amount)}
           </span>
         </div>
@@ -134,7 +128,7 @@ function Row({ index, line, canRemove, money, onChange, onRemove }: RowProps) {
               type="button"
               onClick={onRemove}
               aria-label={`Remove line ${lineNum}`}
-              className="inline-flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-error-50 hover:text-error-600"
+              className="inline-flex size-8 items-center justify-center rounded-md text-ink-muted hover:bg-negative-50 hover:text-negative-600"
             >
               <TrashIcon />
             </button>
@@ -154,7 +148,7 @@ interface CellProps {
 function Cell({ span, label, children }: CellProps) {
   return (
     <div className={span}>
-      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:hidden">
+      <span className="mb-1 block text-xs font-medium uppercase text-ink-muted md:hidden">
         {label}
       </span>
       {children}

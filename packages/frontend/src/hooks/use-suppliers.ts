@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { suppliersApi, type SupplierInput } from "@/api/suppliers";
+import { suppliersApi, type SupplierEditInput, type SupplierInput } from "@/api/suppliers";
 import { supplierKeys } from "./query-keys";
 
-export type { SupplierInput };
+export type { SupplierInput, SupplierEditInput };
 
 export function useSuppliers(projectId: string | undefined, includeInactive = false) {
   return useQuery({
@@ -30,7 +30,7 @@ export function useUpdateSupplier() {
       projectId,
       supplierId,
       ...body
-    }: Partial<SupplierInput> & { projectId: string; supplierId: string; active?: boolean }) =>
+    }: SupplierEditInput & { projectId: string; supplierId: string }) =>
       suppliersApi.update(projectId, supplierId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: supplierKeys.all(projectId) });

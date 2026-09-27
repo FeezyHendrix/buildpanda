@@ -16,19 +16,28 @@ import { toast } from "@/lib/toast";
 import { EstimateLineItems } from "./estimate-tab/line-items";
 import { EstimateTotals } from "./estimate-tab/totals";
 import { EstimateRevisionDrawer } from "./estimate-tab/revision-drawer";
+import { EstimateTermsPanel } from "./estimate-tab/terms";
+import { PaymentSchedulePanel } from "./estimate-tab/payment-schedule";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface Props {
   proposalId: string;
   estimate: Estimate | null;
   currency: string;
   projectId?: string | null;
+  validUntil?: string | null;
 }
 
-export function EstimateTab({ proposalId, estimate, currency, projectId }: Props) {
+function scheduleTotal(estimate: Estimate): number {
+  return Math.round(estimate.schedule.reduce((sum, s) => sum + s.percent, 0) * 100) / 100;
+}
+
+export function EstimateTab({ proposalId, estimate, currency, projectId, validUntil = null }: Props) {
   const ability = useAbility();
   const canCreate = ability.can("create", "proposals");
   const canUpdate = ability.can("update", "proposals");
   const canSend = ability.can("send", "proposals");
+  const canTerms = ability.can("terms", "estimates") || canUpdate;
 
   const createEstimate = useCreateEstimate(proposalId);
   const sendEstimate = useSendEstimate(proposalId);
@@ -40,27 +49,29 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
   const [revisionDrawerOpen, setRevisionDrawerOpen] = useState(false);
 
   const isDraft = estimate?.status === "Draft";
+  const scheduleComplete = estimate ? Math.abs(scheduleTotal(estimate) - 100) < 0.01 : false;
 
   if (!estimate) {
     return (
-      <div className="flex flex-col items-center gap-4 py-16">
+      <div className="flex flex-col items-center gap-4">
         <EmptyState
+          variant="inline"
           title="No estimate yet"
           description={
             canCreate
               ? "Create the first estimate for this proposal."
               : "No estimate has been created for this proposal yet."
           }
+          action={
+            canCreate
+              ? {
+                  label: "Create estimate",
+                  onClick: () => createEstimate.mutate({}),
+                  loading: createEstimate.isPending,
+                }
+              : undefined
+          }
         />
-        {canCreate && (
-          <Button
-            variant="primary"
-            onClick={() => createEstimate.mutate({})}
-            loading={createEstimate.isPending}
-          >
-            Create estimate
-          </Button>
-        )}
         {createEstimate.isError && (
           <p className="text-xs text-red-600">Failed to create estimate.</p>
         )}
@@ -108,10 +119,17 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
               variant="primary"
               size="sm"
               loading={sendEstimate.isPending}
-              onClick={async () => {
-                const result = await sendEstimate.mutateAsync(estimate.id);
-                setShareUrl(result.shareUrl);
-              }}
+              disabled={!scheduleComplete}
+              title={scheduleComplete ? undefined : "Payment stages must total 100 % before sending"}
+              onClick={() =>
+                sendEstimate.mutate(estimate.id, {
+                  onSuccess: (result) => {
+                    setShareUrl(result.shareUrl);
+                    toast("Sent. The client's copy is frozen as a PDF.", "success");
+                  },
+                  onError: (err) => toast(getApiErrorMessage(err, "Could not send the estimate."), "error"),
+                })
+              }
             >
               Send to client
             </Button>
@@ -125,17 +143,17 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
       </div>
 
       {(shareUrl ?? estimate.shareToken) && (
-        <div className="flex items-center gap-3 rounded-xl border border-[#004DE7]/20 bg-blue-50 px-4 py-3">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-4 shrink-0 text-[#004DE7]">
+        <div className="flex items-center gap-3 rounded-lg border border-primary-500/20 bg-blue-50 px-4 py-3">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-4 shrink-0 text-primary-500">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
-          <span className="flex-1 truncate text-xs text-[#004DE7]">
+          <span className="flex-1 truncate text-xs text-primary-500">
             {shareUrl ?? `${window.location.origin}/p/${estimate.shareToken}`}
           </span>
           <button
             type="button"
-            className="shrink-0 text-xs font-medium text-[#004DE7] hover:underline"
+            className="shrink-0 text-xs font-medium text-primary-500 hover:underline"
             onClick={() => {
               void navigator.clipboard.writeText(shareUrl ?? `${window.location.origin}/p/${estimate.shareToken ?? ""}`);
             }}
@@ -145,9 +163,23 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
         </div>
       )}
 
-      {sendEstimate.isError && (
-        <p className="text-xs text-red-600">Failed to send estimate. Please try again.</p>
-      )}
+      {estimate.status === "Draft" && !scheduleComplete ? (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Payment stages total {scheduleTotal(estimate)} %. They must make exactly 100 % before this revision can be sent.
+        </p>
+      ) : null}
+      {estimate.acceptedAt ? (
+        <p className="rounded-lg bg-success-50 px-3 py-2 text-xs text-success-700">
+          Accepted by {estimate.acceptedByName ?? "the client"} on {new Date(estimate.acceptedAt).toLocaleString("en-GB")}
+          {estimate.acceptedIp ? ` from ${estimate.acceptedIp}` : ""}.
+          {estimate.acceptedPdfHash ? ` Document hash ${estimate.acceptedPdfHash.slice(0, 12)}…` : ""}
+        </p>
+      ) : null}
+      {estimate.responseMessage && estimate.status !== "Accepted" ? (
+        <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">
+          Client wrote: <span className="italic">“{estimate.responseMessage}”</span>
+        </p>
+      ) : null}
 
       <EstimateLineItems
         proposalId={proposalId}
@@ -164,6 +196,10 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
         canUpdate={canUpdate}
         currency={currency}
       />
+
+      <PaymentSchedulePanel proposalId={proposalId} estimate={estimate} currency={currency} isDraft={isDraft} canEdit={canTerms} />
+
+      <EstimateTermsPanel proposalId={proposalId} estimate={estimate} validUntil={validUntil} isDraft={isDraft} canEdit={canTerms} />
 
       <EstimateRevisionDrawer
         proposalId={proposalId}

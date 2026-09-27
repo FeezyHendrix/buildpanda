@@ -57,8 +57,8 @@ export const chatApi = {
   getLinkPreview: (url: string) =>
     api.post<{ preview: LinkPreview | null }>("/link-preview", { url }).then((r) => r.data.preview),
 
-  forwardToActionItem: (messageId: string) =>
-    api.post<{ id: string }>(`/messages/${messageId}/forward-to-action-item`).then((r) => r.data),
+  forwardToTask: (messageId: string) =>
+    api.post<{ id: string }>(`/messages/${messageId}/forward-to-task`).then((r) => r.data),
 
   searchMessages: (query: string, channelId?: string) =>
     api.get<ChatMessage[]>("/search/messages", { params: { q: query, channelId } }).then((r) => r.data),

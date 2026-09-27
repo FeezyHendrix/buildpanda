@@ -133,3 +133,20 @@ export const FlagIcon = (p: SVGProps<SVGSVGElement>) => (
     <line x1="4" y1="22" x2="4" y2="15" />
   </svg>
 );
+
+export const ClipboardCheckIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...I(p)}>
+    <path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1Z" />
+    <path d="M16 5h2a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2" />
+    <path d="m9 13 2 2 4-4" />
+  </svg>
+);
+
+export const CatalogueIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...I(p)}>
+    <path d="M4 5h16M4 12h16M4 19h16" />
+    <circle cx="7.5" cy="5" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="7.5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="7.5" cy="19" r="1.2" fill="currentColor" stroke="none" />
+  </svg>
+);

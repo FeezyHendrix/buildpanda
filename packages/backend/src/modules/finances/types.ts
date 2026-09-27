@@ -1,6 +1,12 @@
 import type { Currency, Tone } from "../projects/types.ts";
 
 export type MilestoneStatus = "Completed" | "InProgress" | "Pending";
+
+// Where a stage payment sits in the claim chain: pending until its stage is
+// reached, claimable, claimed by a payment request, certified once the invoice
+// is recorded, paid once the payment is recorded.
+export const MILESTONE_CLAIM_STATES = ["pending", "claimable", "claimed", "certified", "paid"] as const;
+export type MilestoneClaimState = (typeof MILESTONE_CLAIM_STATES)[number];
 export type SignOffStatus = "Verified" | "Scheduled" | "Pending";
 export type LedgerType = "Release" | "Deposit" | "Hold";
 
@@ -24,17 +30,15 @@ export type RetentionReleaseMode = (typeof RETENTION_RELEASE_MODES)[number];
 export const ADVANCE_RECOVERY_MODES = ["percentage", "fixed"] as const;
 export type AdvanceRecoveryMode = (typeof ADVANCE_RECOVERY_MODES)[number];
 
-export interface ContractTerms {
-  contractType: ContractType;
-  retentionRate: number;
-  retentionReleaseMode: RetentionReleaseMode;
-  advancePercentage: number;
-  advanceRecoveryMode: AdvanceRecoveryMode;
-  advanceRecoveryRate: number;
-  paymentTermsDays: number;
-  defectsLiabilityDays: number;
-  contractNotes: string | null;
-}
+// The contract terms and the contract POSITION they produce live in
+// contract-types.ts; re-exported so every importer keeps one import site.
+export * from "./contract-types.ts";
+import type {
+  ContractForm,
+  ContractTerms,
+  FundingPosition,
+  ValuationFrequency,
+} from "./contract-types.ts";
 
 export interface BudgetPhase {
   id: string;
@@ -61,6 +65,7 @@ export interface MilestonePayment {
   amount: number;
   proof: { fileName: string; verified: boolean } | null;
   inspectorSignOff: SignOffStatus;
+  claimState: MilestoneClaimState;
 }
 
 export interface PaymentLedgerEntry {
@@ -81,6 +86,10 @@ export interface ProjectFinances {
   adjustedContract: number;
   certifiedGrossToDate: number;
   amountPaidToDate: number;
+  retentionHeld: number;
+  advanceRecovered: number;
+  /** Deposits and milestone releases — the funding ledger, not the contract waterfall. */
+  funding: FundingPosition;
   contractTerms: ContractTerms;
   budgetAllocation: BudgetPhase[];
   materialsProcured: MaterialProcurement[];
@@ -106,6 +115,21 @@ export interface FinancesRow {
   payment_terms_days: number;
   defects_liability_days: number;
   contract_notes: string | null;
+  retention_held: string;
+  liquidated_damages_rate: string;
+  liquidated_damages_cap_percent: string;
+  commencement_date: string | Date | null;
+  completion_date: string | Date | null;
+  employer_name: string | null;
+  contractor_name: string | null;
+  contract_form: ContractForm | null;
+  vat_rate: string;
+  advance_recovery_from_certificate: number;
+  retention_cap_percent: string;
+  valuation_frequency: ValuationFrequency;
+  defects_period_months: number;
+  funds_deposited: string;
+  funds_released: string;
 }
 
 export interface BudgetPhaseRow {
@@ -141,6 +165,7 @@ export interface MilestonePaymentRow {
   proof_file_name: string | null;
   proof_verified: boolean;
   inspector_sign_off: SignOffStatus;
+  claim_state: MilestoneClaimState;
   sort_order: number;
 }
 
@@ -326,4 +351,18 @@ export interface NewFinanceEventRecord {
   summary: string;
   amount?: number | null;
   entity_id?: string | null;
+}
+
+// Cost-to-stage: what a build stage has cost so far, derived from the money
+// records attributed to it. Committed = issued purchase orders; actual =
+// logged expenses. Nothing here is a transaction the system performs.
+export interface StageCost {
+  stageId: string;
+  committed: number;
+  actual: number;
+  currency: Currency;
+}
+
+export interface StageCostsResponse {
+  stages: StageCost[];
 }

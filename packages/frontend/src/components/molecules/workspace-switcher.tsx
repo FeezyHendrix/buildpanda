@@ -6,6 +6,8 @@ import {
   useOrganizations,
   useSetActiveOrganization,
 } from "@/hooks/use-organization";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 interface WorkspaceSwitcherProps {
   className?: string;
@@ -43,8 +45,8 @@ function WorkspaceSwitcher({ className }: WorkspaceSwitcherProps) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex h-9 items-center gap-2 rounded-full bg-[#F6F6F6] pl-1.5 pr-3 text-sm outline-none transition-colors hover:bg-[#EDEDED]",
-          open && "bg-[#EDEDED]",
+          "flex h-9 items-center gap-2 rounded-full bg-surface-alt pl-1.5 pr-3 text-sm outline-none transition-colors hover:bg-gray-100",
+          open && "bg-gray-100",
         )}
         aria-label="Switch workspace"
         aria-expanded={open}
@@ -72,8 +74,8 @@ function WorkspaceSwitcher({ className }: WorkspaceSwitcherProps) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-[264px] rounded-xl border border-[#F0F0F0] bg-white p-2 shadow-lg">
-          <p className="px-2 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <div className="absolute left-0 top-full z-50 mt-2 w-[264px] rounded-lg border border-line-hair bg-white p-2 shadow-lg">
+          <p className="px-2 pb-1.5 pt-1 text-xs font-medium uppercase text-ink-muted">
             Your workspaces
           </p>
           <div className="max-h-72 space-y-0.5 overflow-y-auto">
@@ -89,7 +91,7 @@ function WorkspaceSwitcher({ className }: WorkspaceSwitcherProps) {
                   }}
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm outline-none transition-colors",
-                    isActive ? "bg-[#F6F6F6] text-gray-900" : "text-gray-700 hover:bg-[#F6F6F6]",
+                    isActive ? "bg-surface-alt text-gray-900" : "text-gray-700 hover:bg-surface-alt",
                   )}
                 >
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-600 text-[10px] font-semibold text-white">
@@ -121,9 +123,9 @@ function WorkspaceSwitcher({ className }: WorkspaceSwitcherProps) {
                 },
               );
             }}
-            className="mt-1.5 border-t border-gray-100 px-1 pb-1 pt-2.5"
+            className="mt-1.5 border-t border-line-hair px-1 pb-1 pt-2.5"
           >
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+            <p className="mb-1.5 text-xs font-medium uppercase text-ink-muted">
               New workspace
             </p>
             <div className="flex gap-1.5">
@@ -131,15 +133,11 @@ function WorkspaceSwitcher({ className }: WorkspaceSwitcherProps) {
                 value={newOrgName}
                 onChange={(e) => setNewOrgName(e.target.value)}
                 placeholder="Workspace name"
-                className="h-9 min-w-0 flex-1 rounded-lg bg-[#F6F6F6] px-2.5 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-primary-200"
+                className={cn(INPUT_SM_CLASS, "min-w-0 flex-1")}
               />
-              <button
-                type="submit"
-                disabled={!newOrgName.trim() || createOrg.isPending}
-                className="h-9 shrink-0 rounded-lg bg-primary-600 px-3 text-xs font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
-              >
-                {createOrg.isPending ? "…" : "Create"}
-              </button>
+              <Button type="submit" size="md" disabled={!newOrgName.trim()} loading={createOrg.isPending}>
+                Create
+              </Button>
             </div>
           </form>
         </div>

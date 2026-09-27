@@ -1,8 +1,9 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface RadioCardProps {
-  title: string;
-  description: string;
+  title: ReactNode;
+  description: ReactNode;
   selected?: boolean;
   disabled?: boolean;
   onClick?: () => void;

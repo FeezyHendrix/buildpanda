@@ -1,4 +1,4 @@
-import { useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { PageHeader } from "@/components/molecules/page-header";
 import { BackArrowIcon } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
@@ -21,20 +21,22 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const activeTabId = (searchParams.get("tab") as TabId) || "organization";
 
   return (
     <div className="mx-auto max-w-[636px] w-full py-8">
       <div className="mb-4 flex flex-col items-start gap-3">
-        <Link
-          to="/dashboard"
-          aria-label="Back to dashboard"
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          aria-label="Go back"
           className="mt-0.5 inline-flex gap-2 shrink-0 items-center justify-center text-black-500 font-medium text-caption-l hover:underline"
         >
           <BackArrowIcon className="size-5" />
           <span>Go Back</span>
-        </Link>
+        </button>
         <PageHeader
           title="Settings"
           description="Manage your project preferences, permissions, and configuration."

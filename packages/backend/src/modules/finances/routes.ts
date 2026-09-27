@@ -2,7 +2,10 @@ import type { FastifyPluginAsync } from "fastify";
 import { assertProjectPermission } from "../../lib/authorization.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
+import { purchaseOrdersRepository } from "../purchase-orders/repository.ts";
+import { transactionsRepository } from "../transactions/repository.ts";
 import { financesRepository } from "./repository.ts";
+import { stageCostsService } from "./stage-costs.ts";
 import {
   financesService,
   type CashFlowInput,
@@ -14,11 +17,16 @@ import {
   type UpdateContractTermsInput,
   type UpdateMilestoneInput,
 } from "./service.ts";
+import financeSummaryRoutes from "./summary-routes.ts";
 import {
   ADVANCE_RECOVERY_MODES,
+  CONTRACT_FORMS,
   CONTRACT_TYPES,
   RETENTION_RELEASE_MODES,
+  VALUATION_FREQUENCIES,
 } from "./types.ts";
+
+const DATE_PATTERN = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
 
 const projectIdParams = {
   type: "object",
@@ -120,24 +128,77 @@ const contractTermsBody = {
     retentionReleaseMode: { type: "string", enum: [...RETENTION_RELEASE_MODES] },
     advancePercentage: { type: "number", minimum: 0, maximum: 1 },
     advanceRecoveryMode: { type: "string", enum: [...ADVANCE_RECOVERY_MODES] },
-    advanceRecoveryRate: { type: "number", minimum: 0 },
+    // Every rate is a FRACTION (0.05 = 5%), including this one — it used to be
+    // stored as a percentage next to fractional neighbours.
+    advanceRecoveryRate: { type: "number", minimum: 0, maximum: 1 },
+    advanceRecoveryFromCertificate: { type: "integer", minimum: 1 },
+    retentionCapPercent: { type: "number", minimum: 0, maximum: 1 },
+    vatRate: { type: "number", minimum: 0, maximum: 1 },
+    liquidatedDamagesRate: { type: "number", minimum: 0 },
+    liquidatedDamagesCapPercent: { type: "number", minimum: 0, maximum: 1 },
+    commencementDate: { type: ["string", "null"], pattern: DATE_PATTERN },
+    completionDate: { type: ["string", "null"], pattern: DATE_PATTERN },
+    employerName: { type: ["string", "null"], maxLength: 200 },
+    contractorName: { type: ["string", "null"], maxLength: 200 },
+    contractForm: { type: ["string", "null"], enum: [...CONTRACT_FORMS, null] },
+    valuationFrequency: { type: "string", enum: [...VALUATION_FREQUENCIES] },
     paymentTermsDays: { type: "integer", minimum: 0 },
     defectsLiabilityDays: { type: "integer", minimum: 0 },
+    defectsPeriodMonths: { type: "integer", minimum: 0 },
     contractNotes: { type: ["string", "null"], maxLength: 2000 },
   },
 } as const;
 
+const stageCostsResponse = {
+  200: {
+    type: "object",
+    required: ["stages"],
+    properties: {
+      stages: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["stageId", "committed", "actual", "currency"],
+          properties: {
+            stageId: { type: "string" },
+            committed: { type: "number" },
+            actual: { type: "number" },
+            currency: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
 const financeRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = financesService(financesRepository(fastify.db), {
+  const repository = financesRepository(fastify.db);
+  const service = financesService(repository, {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
-
+  const stageCosts = stageCostsService({
+    finances: repository,
+    transactions: transactionsRepository(fastify.db),
+    purchaseOrders: purchaseOrdersRepository(fastify.db),
+  });
+  await fastify.register(financeSummaryRoutes);
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/finances",
     { schema: { params: projectIdParams } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       return service.getByProject(project.id);
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/finances/stage-costs",
+    { schema: { params: projectIdParams, response: stageCostsResponse } },
+    async (request) => {
+      // What a stage has cost is the contractor's own position, not the
+      // client's — it takes viewCosts, not plain view.
+      const project = await request.requireProjectPermission(request.params.id, "finances", "viewCosts");
+      return stageCosts.byProject(project.id);
     },
   );
 

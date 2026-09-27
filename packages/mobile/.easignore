@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+drizzle/meta/
+*.png
+*.jpg
+*.mp4
+.git/
+ios/
+android/

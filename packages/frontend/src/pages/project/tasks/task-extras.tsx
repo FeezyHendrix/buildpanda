@@ -96,7 +96,7 @@ export function TaskExtras({
                 checked={st.done}
                 disabled={!canManageTasks}
                 onChange={(e) => updateSubtask.mutate({ subtaskId: st.id, done: e.target.checked })}
-                className="size-4 rounded border-gray-300 text-[#004DE7] focus:ring-[#004DE7]"
+                className="size-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500"
               />
               <span className={cn("flex-1 text-sm", st.done ? "text-gray-400 line-through" : "text-gray-700")}>
                 {st.title}
@@ -143,14 +143,14 @@ export function TaskExtras({
                   <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase", LINK_TYPE_TONE[group.type])}>
                     {LINK_TYPE_LABELS[group.type]}
                   </span>
-                  <span className="text-[11px] text-gray-400">{group.links.length}</span>
+                  <span className="text-xs text-gray-400">{group.links.length}</span>
                 </div>
                 {group.links.map((link) => (
                   <div key={link.id} className="group flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-gray-50">
                     <button
                       type="button"
                       onClick={() => onOpenTask?.(link.targetTaskId)}
-                      className="flex-1 truncate text-left text-sm text-gray-700 hover:text-[#004DE7]"
+                      className="flex-1 truncate text-left text-sm text-gray-700 hover:text-primary-500"
                       title="Open task"
                     >
                       {link.targetTaskTitle}
@@ -173,7 +173,7 @@ export function TaskExtras({
         )}
 
         {canManageTasks && linkableItems.length > 0 && (
-          <div className="flex flex-col gap-2 rounded-xl bg-[#FAFAFA] p-2">
+          <div className="flex flex-col gap-2 rounded-lg bg-surface-alt p-2">
             <div className="flex gap-2">
               <select
                 value={linkType}

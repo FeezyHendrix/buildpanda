@@ -7,8 +7,7 @@ import type {
   PaymentLedgerEntry,
   ProjectStatus,
   RiskLevel,
-  UpdateCategory,
-} from "@/lib/project-types";
+  UpdateCategory, MilestoneClaimState } from "@/lib/project-types";
 import type { InvoiceStatus } from "@/hooks/use-invoices";
 import type { ProposalStatus } from "@/api/proposals";
 
@@ -65,10 +64,14 @@ export const PARTICIPANT_STATUS_TONE: Record<ParticipantStatus, BadgeTone> = {
 export const INVOICE_STATUS_TONE: Record<InvoiceStatus, BadgeTone> = {
   Draft: "neutral",
   Sent: "info",
+  Submitted: "info",
+  Queried: "warning",
   Approved: "accent",
   PartiallyPaid: "warning",
   Paid: "success",
   Overdue: "danger",
+  /** A voided certificate stays on file but no longer counts — it recedes. */
+  Void: "neutral",
 };
 
 export const ACTIVITY_STATUS_TONE: Record<ActivityStatus, BadgeTone> = {
@@ -107,4 +110,17 @@ export const PROPOSAL_STATUS_LABEL: Record<ProposalStatus, string> = {
   Converted: "Converted",
   Lost: "Lost",
   Expired: "Expired",
+};
+
+// Where a stage payment sits in the claim chain. Each state pairs a tone with
+// a glyph so it never relies on colour alone.
+export const MILESTONE_CLAIM_STATE_META: Record<
+  MilestoneClaimState,
+  { label: string; tone: BadgeTone; glyph: string }
+> = {
+  pending: { label: "Not yet claimable", tone: "neutral", glyph: "○" },
+  claimable: { label: "Claimable", tone: "info", glyph: "◔" },
+  claimed: { label: "Claim submitted", tone: "warning", glyph: "→" },
+  certified: { label: "Invoice recorded", tone: "accent", glyph: "✓" },
+  paid: { label: "Paid", tone: "success", glyph: "●" },
 };

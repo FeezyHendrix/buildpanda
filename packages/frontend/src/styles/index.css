@@ -84,6 +84,32 @@
   /* secondary — brand yellow */
   --color-secondary: #FFE607;
 
+  /* success — one readable green for "done / on track", the tone the Badge
+     atom already uses. The neon mint stays available for non-status brand fills. */
+  --color-mint-500: #1AE592;
+  --color-success-50:  #E8F7EE;
+  --color-success-100: #C5EBD4;
+  --color-success-200: #9FDCB6;
+  --color-success-300: #6FC78F;
+  --color-success-400: #41AC68;
+  --color-success-500: #1B8E45;
+  --color-success-600: #157439;
+  --color-success-700: #10592C;
+  --color-success-800: #0C4322;
+  --color-success-900: #082D17;
+
+  /* error / negative — one red for "failed, overdue, over budget". */
+  --color-error-50:  #FDECEC;
+  --color-error-100: #F8D2D2;
+  --color-error-200: #F0AFAF;
+  --color-error-300: #E48484;
+  --color-error-400: #D65252;
+  --color-error-500: #C72525;
+  --color-error-600: #A52214;
+  --color-error-700: #8A1919;
+  --color-error-800: #6B1313;
+  --color-error-900: #4D0E0E;
+
   /* success — design system green scale */
   --color-success-50:  #F0FDF4;
   --color-success-100: #DCFCE7;
@@ -144,6 +170,49 @@
   --color-grey-700: #181818;
   --color-grey-800: #111111;
   --color-grey-900: #0A0A0A;
+
+  /* semantic roles used across pages — mapped onto the existing palette */
+  --color-ink: #131B2E;
+  --color-ink-hover: #004DE7;
+  --color-ink-inverted: #FFFFFF;
+  --color-ink-muted: #606060;
+  --color-ink-subtle: #414141;
+  --color-ink-disabled: #B5B5B5;
+  --color-line: #EDEDED;
+  --color-line-hover: #C8C8C8;
+  --color-line-hair: #F0F0F0;
+  --color-line-disabled: #EDEDED;
+  --color-line-dark: #111111;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F6F6F6;
+  --color-surface-track: #F6F6F6;
+  --color-surface-info: #E6EDFD;
+  --color-surface-brand: #EDE7FF;
+  --color-sidebar-flyout: #111111;
+  /* negative and pending are aliases of error and warning, so one status can
+     never end up with two different colours depending on which name was used. */
+  --color-negative-50: #FDECEC;
+  --color-negative-100: #F8D2D2;
+  --color-negative-500: #C72525;
+  --color-negative-600: #A52214;
+  --color-negative-700: #8A1919;
+  --color-pending-50: #FFF3E0;
+  --color-pending-100: #FFE2B8;
+  --color-pending-500: #C26A00;
+  --color-pending-600: #A85A00;
+  --color-pending-700: #824600;
+  --color-other-50: #E6EDFD;
+  --color-other-500: #004DE7;
+  --color-other-600: #0046D2;
+  --color-neutral-50: #F6F6F6;
+  --color-neutral-500: #606060;
+  --color-neutral-600: #414141;
+  --color-accent-50: #EDE7FF;
+  --color-accent-500: #5A3DD0;
+  --color-accent-600: #4A30B0;
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-drawer: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-focus: 0 0 0 2px rgb(17 24 39 / 0.1);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -295,6 +364,36 @@ input[type="radio"] {
 :focus {
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* The two resets above strip every focus ring in the product, so no keyboard user
+   can see where they are (WCAG 2.4.7). Removing them is the real fix, but it
+   changes every screen at once and needs its own visual pass. The take-off editor
+   is keyboard-driven — shortcuts per tool — so it opts back in here. Scoped to
+   [data-takeoff-focus] and placed after the resets so it wins on source order;
+   nothing outside the sheet viewer changes. Delete this block together with the
+   resets above when focus is restored app-wide. */
+[data-takeoff-focus] :focus-visible {
+  outline: 2px solid var(--color-primary-500) !important;
+  outline-offset: 1px !important;
+}
+
+/* Progressive enhancement ONLY — not the overflow affordance. On macOS Chromium
+   every scroller is an overlay that measures a 0px gutter and paints nothing at
+   rest (verified: a plain overflow-y:auto div measures 0 too), which is how most
+   of the tool rail went unnoticed. The real affordances are the rail's scroll
+   buttons and the "All tools" trigger; this just gives platforms that do render
+   classic scrollbars a tidy one. Do NOT add `scrollbar-width`/`scrollbar-color`:
+   either makes Chromium ignore these pseudo-elements entirely. */
+.tool-rail-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.tool-rail-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-grey-100);
+  border-radius: 3px;
+}
+.tool-rail-scroll::-webkit-scrollbar-track {
+  background-color: transparent;
 }
 
 

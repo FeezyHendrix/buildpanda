@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   financesApi,
+  type StageCostsResponse,
   type AddCashFlowVariables,
   type DepositVariables,
   type UpsertMilestoneInput,
@@ -9,6 +10,13 @@ import {
   type RaiseDisputeVariables,
   type UpdateContractSumVariables,
   type RecordVariationVariables,
+} from "@/api/finances";
+export type {
+  FinanceSummary,
+  FundingPosition,
+  LdExposure,
+  EotPosition,
+  StageBudgetLine,
 } from "@/api/finances";
 import type { UpdateContractTermsInput } from "@/lib/project-types";
 import { financeKeys } from "./query-keys";
@@ -19,6 +27,37 @@ export function useProjectFinances(projectId: string | undefined) {
       ? financeKeys.summary(projectId)
       : financeKeys.summary("__none__"),
     queryFn: () => financesApi.summary(projectId!),
+    enabled: Boolean(projectId),
+  });
+}
+
+/**
+ * The one money model. Every finance surface — the overview waterfall, the KPI
+ * strip, the project overview's cash card — reads these figures and recomputes
+ * none of them.
+ */
+export function useFinancePosition(projectId: string | undefined) {
+  return useQuery({
+    queryKey: financeKeys.position(projectId ?? "__none__"),
+    queryFn: () => financesApi.position(projectId!),
+    enabled: Boolean(projectId),
+  });
+}
+
+export type StageCostMap = Record<string, { committed: number; actual: number }>;
+
+function toStageCostMap(response: StageCostsResponse): StageCostMap {
+  const map: StageCostMap = {};
+  for (const s of response.stages) map[s.stageId] = { committed: s.committed, actual: s.actual };
+  return map;
+}
+
+/** Cost-to-stage keyed by stage id; a stage with nothing attributed is absent. */
+export function useStageCosts(projectId: string | undefined) {
+  return useQuery({
+    queryKey: financeKeys.stageCosts(projectId ?? "__none__"),
+    queryFn: () => financesApi.stageCosts(projectId!),
+    select: toStageCostMap,
     enabled: Boolean(projectId),
   });
 }
@@ -64,6 +103,7 @@ export function useAddCashFlowEntry() {
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: [...financeKeys.all(projectId), "cash-flow"] });
       queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.position(projectId) });
       queryClient.invalidateQueries({ queryKey: financeKeys.events(projectId) });
     },
   });
