@@ -20,6 +20,12 @@ function toOnboardingStatus(
   };
 }
 
+function dialledPhone(input: OnboardingInput): string | null {
+  const phone = input.phone?.trim();
+  if (!phone) return null;
+  return input.phoneCountryCode ? `${input.phoneCountryCode}:${phone}` : phone;
+}
+
 export function onboardingService(repo: OnboardingRepository) {
   return {
     async status(orgId: string): Promise<OnboardingStatus> {
@@ -46,27 +52,25 @@ export function onboardingService(repo: OnboardingRepository) {
         throw new BadRequestError(`Invalid usage option(s): ${invalidUsage.join(", ")}`);
       }
 
-      // Persist org-level fields + mark complete
-      await repo.completeOnboarding(orgId, {
+      const current = await repo.getOrgOnboarding(orgId);
+      // Idempotent success rather than a conflict: the only realistic re-submit is
+      // a retry after a lost response, and failing that would strand a workspace
+      // that is in fact already set up. It also stops this from doubling as a
+      // permanent "rename my company" endpoint — later edits go through
+      // org-profile, which carries its own permission.
+      if (current?.onboarding_completed_at) return toOnboardingStatus(current);
+
+      await repo.completeOnboarding(orgId, userId, {
         name: input.companyName.trim(),
         country: input.country.trim(),
         state: input.state?.trim() || null,
         company_size: input.companySize,
         usage: input.usage,
+        userName: `${input.firstName.trim()} ${input.lastName.trim()}`,
+        userPhone: dialledPhone(input),
       });
 
-      // Persist user-level fields
-      const fullName = `${input.firstName.trim()} ${input.lastName.trim()}`;
-      await repo.updateUserName(userId, fullName);
-      if (input.phone?.trim()) {
-        const phoneWithCode = input.phoneCountryCode
-          ? `${input.phoneCountryCode}:${input.phone.trim()}`
-          : input.phone.trim();
-        await repo.updateUserPhone(userId, phoneWithCode);
-      }
-
-      const row = await repo.getOrgOnboarding(orgId);
-      return toOnboardingStatus(row);
+      return toOnboardingStatus(await repo.getOrgOnboarding(orgId));
     },
   };
 }

@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import type { OnboardingStatusResponse } from "./types.ts";
+import { mapAllows } from "../../lib/permissions.ts";
 import { onboardingRepository } from "./repository.ts";
 import { onboardingService } from "./service.ts";
 import { COMPANY_SIZES, USAGE_OPTIONS } from "./types.ts";
@@ -36,6 +38,7 @@ const statusResponse = {
       state: { type: ["string", "null"] },
       companySize: { type: ["string", "null"] },
       usage: { type: ["array", "null"], items: { type: "string" } },
+      canComplete: { type: "boolean" },
     },
   },
 } as const;
@@ -46,20 +49,35 @@ const onboardingRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     "/v2/onboarding/status",
     { schema: { response: statusResponse } },
-    async (request) => {
+    async (request): Promise<OnboardingStatusResponse> => {
       request.requireAuth();
       const orgId = request.requireOrgScope();
-      return service.status(orgId);
+      return {
+        ...(await service.status(orgId)),
+        canComplete: mapAllows(
+          request.orgPermissions.get(orgId) ?? new Map(),
+          "organization",
+          "update",
+        ),
+      };
     },
   );
 
   fastify.post(
     "/v2/onboarding",
     { schema: { body: completeBody, response: statusResponse } },
-    async (request) => {
+    async (request): Promise<OnboardingStatusResponse> => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgScope();
-      return service.complete(orgId, user.id, request.body as Parameters<typeof service.complete>[2]);
+      // The wizard renames the whole organization, so plain membership is not
+      // enough: owner/admin carry `organization:update`, member/viewer/employee
+      // do not. Role comes from membership, never from `accountType`.
+      const orgId = request.requireOrgPermission("organization", "update");
+      const status = await service.complete(
+        orgId,
+        user.id,
+        request.body as Parameters<typeof service.complete>[2],
+      );
+      return { ...status, canComplete: true };
     },
   );
 };

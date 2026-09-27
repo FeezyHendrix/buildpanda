@@ -335,5 +335,9 @@ export const preconKeys = {
 
 export const onboardingKeys = {
   all: ["onboarding"] as const,
-  status: () => [...onboardingKeys.all, "status"] as const,
+  // Scoped by org: completion lives on the organization, and the active org is
+  // switchable mid-session. A bare key would serve the previous org's answer
+  // after a switch — enough to open the wizard against the wrong company.
+  status: (orgId: string | undefined) =>
+    [...onboardingKeys.all, "status", orgId ?? "none"] as const,
 };

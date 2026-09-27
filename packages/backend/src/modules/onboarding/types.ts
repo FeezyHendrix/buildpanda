@@ -32,7 +32,7 @@ export interface OnboardingInput {
   usage: string[];
 }
 
-/** What GET /v2/onboarding/status returns. */
+/** The workspace's own onboarding state, as derived from the organization row. */
 export interface OnboardingStatus {
   completed: boolean;
   completedAt: string | null;
@@ -41,4 +41,24 @@ export interface OnboardingStatus {
   state: string | null;
   companySize: string | null;
   usage: string[] | null;
+}
+
+/**
+ * What GET /v2/onboarding/status returns. `canComplete` is per-caller, not
+ * per-workspace: the wizard renames the organization, so only owners/admins may
+ * submit it. The client needs it to avoid routing a plain member to a form that
+ * would 403 — which would strand them with no way into the app.
+ */
+export interface OnboardingStatusResponse extends OnboardingStatus {
+  canComplete: boolean;
+}
+
+export interface OnboardingPatch {
+  name: string;
+  country: string;
+  state: string | null;
+  company_size: string;
+  usage: string[];
+  userName: string;
+  userPhone: string | null;
 }

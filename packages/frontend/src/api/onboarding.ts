@@ -8,6 +8,8 @@ export interface OnboardingStatus {
   state: string | null;
   companySize: string | null;
   usage: string[] | null;
+  /** Whether THIS caller's org role may submit the wizard (owner/admin only). */
+  canComplete: boolean;
 }
 
 export interface CompleteOnboardingInput {

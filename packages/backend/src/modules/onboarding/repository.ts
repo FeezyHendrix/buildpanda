@@ -1,20 +1,9 @@
 import type { Knex } from "knex";
-import type { OnboardingOrgRow } from "./types.ts";
+import type { OnboardingOrgRow, OnboardingPatch } from "./types.ts";
 
 export interface OnboardingRepository {
   getOrgOnboarding(orgId: string): Promise<(OnboardingOrgRow & { name: string }) | undefined>;
-  completeOnboarding(
-    orgId: string,
-    patch: {
-      name: string;
-      country: string;
-      state: string | null;
-      company_size: string;
-      usage: string[];
-    },
-  ): Promise<void>;
-  updateUserName(userId: string, name: string): Promise<void>;
-  updateUserPhone(userId: string, phone: string): Promise<void>;
+  completeOnboarding(orgId: string, userId: string, patch: OnboardingPatch): Promise<void>;
 }
 
 export function onboardingRepository(db: Knex): OnboardingRepository {
@@ -26,26 +15,30 @@ export function onboardingRepository(db: Knex): OnboardingRepository {
         .first();
     },
 
-    async completeOnboarding(orgId, patch) {
-      await db("organization")
-        .where({ id: orgId })
-        .update({
+    async completeOnboarding(orgId, userId, patch) {
+      const now = new Date().toISOString();
+      // One transaction across both tables: the organization write is what flips
+      // the onboarding gate, so were the user write to fail on its own the wizard
+      // would never be shown again and the person's name would stay the
+      // email-derived placeholder permanently.
+      await db.transaction(async (trx) => {
+        await trx("organization").where({ id: orgId }).update({
           name: patch.name,
           country: patch.country,
           state: patch.state,
           company_size: patch.company_size,
           usage: JSON.stringify(patch.usage),
-          onboarding_completed_at: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          onboarding_completed_at: now,
+          updatedAt: now,
         });
-    },
-
-    async updateUserName(userId, name) {
-      await db("user").where({ id: userId }).update({ name, updatedAt: new Date().toISOString() });
-    },
-
-    async updateUserPhone(userId, phone) {
-      await db("user").where({ id: userId }).update({ phone, updatedAt: new Date().toISOString() });
+        await trx("user")
+          .where({ id: userId })
+          .update({
+            name: patch.userName,
+            updatedAt: now,
+            ...(patch.userPhone ? { phone: patch.userPhone } : {}),
+          });
+      });
     },
   };
 }
