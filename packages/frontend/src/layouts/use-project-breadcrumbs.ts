@@ -2,7 +2,7 @@ import { useLocation } from "react-router-dom";
 import type { BreadcrumbItem } from "@/components/molecules/breadcrumbs";
 import {
   CLIENT_ENTRIES,
-  DOCUMENT_TOOL_ENTRIES,
+  DOCUMENT_ENTRIES,
   FINANCE_ENTRIES,
   MATERIALS_ENTRIES,
   NAV_ENTRIES,
@@ -41,7 +41,7 @@ const GROUPS: readonly Group[] = [
   { heading: "Site Control", entries: SITE_CONTROL_ENTRIES },
   { heading: "Materials & Equipment", entries: MATERIALS_ENTRIES },
   { heading: "Finance", entries: FINANCE_ENTRIES },
-  { heading: "Documents", entries: DOCUMENT_TOOL_ENTRIES },
+  { heading: "Documents", entries: DOCUMENT_ENTRIES },
 ];
 
 /** Route tail each group crumb links to: the first entry of the group. */
@@ -74,7 +74,6 @@ const EXTRA_ROUTES = {
   "panda-ai": { label: "Panda AI" },
   team: { label: "Team" },
   people: { label: "People" },
-  documents: { label: "Documents" },
   selections: { label: "Selections" },
   permits: { label: "Permits" },
   inspections: { label: "Inspections", group: "Operations" },

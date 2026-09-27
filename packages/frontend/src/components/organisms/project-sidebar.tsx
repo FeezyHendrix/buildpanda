@@ -28,7 +28,7 @@ import {
   OPERATIONS_ENTRIES,
   SITE_CONTROL_ENTRIES,
   FINANCE_ENTRIES,
-  DOCUMENT_TOOL_ENTRIES,
+  DOCUMENT_ENTRIES,
   CLIENT_ENTRIES,
   TASKS_ENTRY,
   type ProjectNavItem,
@@ -143,9 +143,9 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
       })),
     [project.id, enabledKeys, access],
   );
-  const documentToolItems = useMemo<ProjectNavItem[]>(
+  const documentItems = useMemo<GroupNavItem[]>(
     () =>
-      DOCUMENT_TOOL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
+      DOCUMENT_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource, e.action)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -176,6 +176,11 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
       location.pathname.startsWith(`${item.to}/`),
   );
   const isSiteControlActive = siteControlItems.some(
+    (item) =>
+      location.pathname === item.to ||
+      location.pathname.startsWith(`${item.to}/`),
+  );
+  const isDocumentsActive = documentItems.some(
     (item) =>
       location.pathname === item.to ||
       location.pathname.startsWith(`${item.to}/`),
@@ -504,21 +509,15 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                   </>
                 )}
 
-                {isOn("projects.documents") &&
-                  canViewSection(access, "projects.documents", "documents") && (
-                    <ProjectNavLink
-                      item={{
-                        label: "Documents",
-                        slug: "documents",
-                        Icon: icons2.folderBlack,
-                        to: `/project/${project.id}/documents`,
-                      }}
-                      onClose={onClose}
-                    />
-                  )}
-                {documentToolItems.map((item) => (
-                  <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
-                ))}
+                {documentItems.length > 0 && (
+                  <SidebarNavGroup
+                    label="Documents"
+                    Icon={icons2.folderBlack}
+                    items={documentItems}
+                    active={isDocumentsActive}
+                    onClose={onClose}
+                  />
+                )}
 
                 <span className="text-caption-s font-bold text-grey-450 uppercase tracking-[20%]">
                   Intelligence
