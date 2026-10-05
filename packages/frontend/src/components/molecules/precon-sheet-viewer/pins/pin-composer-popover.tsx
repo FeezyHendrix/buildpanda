@@ -33,7 +33,7 @@ export function PinComposerPopover({
 
   return (
     <PinPopover anchor={anchor} title="Add comment" color={color} onClose={onCancel}>
-      <p className="mt-1.5 truncate text-xs text-gray-500">
+      <p className="mt-1.5 truncate text-xs text-ink-muted">
         {lineLabel ? `On line: ${lineLabel}` : "Not tied to a bill line — select a line first to attach it"}
       </p>
       <textarea
@@ -48,7 +48,7 @@ export function PinComposerPopover({
         className={cn(TEXTAREA_CLASS, "mt-2")}
       />
       <div className="mt-2.5 flex items-center gap-2">
-        <p className="text-[10px] text-gray-400">⌘↵ to save</p>
+        <p className="text-[10px] text-black-300">⌘↵ to save</p>
         <Button variant="ghost" size="sm" className="ml-auto" onClick={onCancel}>
           Cancel
         </Button>

@@ -47,15 +47,15 @@ export function SheetPicker({ layout, activeSheetId, onSelect, onDelete, onClose
         role="dialog"
         aria-label="All worksheets"
         tabIndex={-1}
-        className="max-h-full w-full max-w-sm overflow-y-auto rounded-lg border border-line bg-surface shadow-drawer outline-none"
+        className="max-h-full w-full max-w-sm overflow-y-auto rounded-none border border-line bg-surface shadow-drawer outline-none"
         onClick={(event) => event.stopPropagation()}
       >
-        <p className="border-b border-line px-3 py-2 text-[11px] font-semibold text-black-300">All worksheets</p>
+        <p className="border-b border-line px-3 py-2 text-caption-m font-semibold text-black-300">All worksheets</p>
         <a
           href="/third-party-notices.txt"
           target="_blank"
           rel="noreferrer"
-          className="block border-b border-line-hair px-3 py-1.5 text-[11px] text-ink-muted outline-none hover:text-primary-600 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className="block border-b border-line-hair px-3 py-1.5 text-caption-m text-ink-muted outline-none hover:text-primary-600 focus-visible:ring-2 focus-visible:ring-gray-900/10"
         >
           Third-party licences
         </a>
@@ -65,9 +65,9 @@ export function SheetPicker({ layout, activeSheetId, onSelect, onDelete, onClose
               <button
                 type="button"
                 className={cn(
-                  "flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-[13px] outline-none",
+                  "flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-caption-l outline-none",
                   sheet.sheetId === activeSheetId ? "bg-primary-50 font-semibold text-primary-700" : "text-ink",
-                  "hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                  "hover:bg-grey-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
                 )}
                 onClick={() => {
                   onSelect(sheet.sheetId);

@@ -3,7 +3,7 @@ import { Navigate, useParams } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
 import type { FeatureFlagKey } from "@/lib/feature-flags";
-import { useOrgPermissions } from "@/hooks/use-organization";
+import { useActiveOrganizationId, useOrgPermissions } from "@/hooks/use-organization";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { canViewResource } from "@/lib/project-types";
 import { DataCommitmentGate } from "@/components/molecules/data-commitment-gate";
@@ -46,6 +46,25 @@ export function needsOnboarding(
   if (accountType === "project_owner") return false;
   if (!query.isSuccess) return false;
   return wizardRequired(query.data);
+}
+
+type OnboardingGate = "loading" | "skip" | "required";
+
+/**
+ * The one place that decides whether a signed-in user must finish the wizard.
+ * Every guard reads this rather than re-deriving it, so they cannot disagree
+ * with each other and the ordering below cannot be reintroduced wrongly.
+ */
+function useOnboardingGate(accountType: string | null | undefined): OnboardingGate {
+  const orgId = useActiveOrganizationId();
+  const query = useOnboardingStatus();
+  if (accountType === "project_owner") return "skip";
+  // No active organization means the query is disabled, and a disabled React
+  // Query reports `isPending` forever — waiting on it would strand the user on
+  // a loader with nothing to resolve it. Let them through instead.
+  if (!orgId) return "skip";
+  if (query.isPending) return "loading";
+  return needsOnboarding(accountType, query) ? "required" : "skip";
 }
 
 /**
@@ -97,9 +116,17 @@ function FullScreenLoader() {
 
 /** Any signed-in user (owners may be participants, staff may own builds). */
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { isPending, signedIn } = useGuardSession();
+  const { isPending, signedIn, accountType } = useGuardSession();
+  const gate = useOnboardingGate(accountType);
   if (isPending) return <FullScreenLoader />;
+  // Must precede the gate: it depends on an org id that only exists once the
+  // session has resolved, and a signed-out visitor has none.
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
+  if (gate === "loading") return <FullScreenLoader />;
+  // The wizard names the company that brands every proposal and document, so an
+  // un-onboarded workspace cannot use the app. The invite-acceptance routes are
+  // deliberately NOT behind this guard, so an invitee can still join an org.
+  if (gate === "required") return <Navigate to="/onboarding" replace />;
   return (
     <>
       {children}
@@ -116,15 +143,12 @@ export function RequireAuth({ children }: { children: ReactNode }) {
  */
 export function RequireOnboarding({ children }: { children: ReactNode }) {
   const { isPending, signedIn, accountType } = useGuardSession();
-  const status = useOnboardingStatus();
+  const gate = useOnboardingGate(accountType);
 
   if (isPending) return <FullScreenLoader />;
-  // Must precede the status check: the query is disabled until an org is known,
-  // and a disabled React Query reports `isPending` forever — testing it first
-  // would leave every signed-out visitor on a permanent loader.
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
-  if (status.isPending) return <FullScreenLoader />;
-  if (!needsOnboarding(accountType, status)) {
+  if (gate === "loading") return <FullScreenLoader />;
+  if (gate !== "required") {
     // `false` is hardcoded so this exit can never point back at /onboarding.
     return <Navigate to={homePathFor(accountType, false)} replace />;
   }
@@ -134,17 +158,14 @@ export function RequireOnboarding({ children }: { children: ReactNode }) {
 /** Company-only routes (dashboard, project creation). Owners → their portal. */
 export function RequireCompany({ children }: { children: ReactNode }) {
   const { isPending, signedIn, accountType } = useGuardSession();
-  const status = useOnboardingStatus();
+  const gate = useOnboardingGate(accountType);
   if (isPending) return <FullScreenLoader />;
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
   if (accountType === "project_owner") {
     return <Navigate to="/my-build" replace />;
   }
-  if (status.isPending) return <FullScreenLoader />;
-  // Without this the wizard is skippable by deep-linking straight to /dashboard.
-  if (needsOnboarding(accountType, status)) {
-    return <Navigate to="/onboarding" replace />;
-  }
+  if (gate === "loading") return <FullScreenLoader />;
+  if (gate === "required") return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }
 
@@ -204,7 +225,7 @@ export function SalesFeatureFlagGate({ flag, children }: { flag: FeatureFlagKey;
 /** Root landing: sends each account type to its home. */
 export function HomeRedirect() {
   const { isPending, signedIn, accountType } = useGuardSession();
-  const status = useOnboardingStatus();
+  const gate = useOnboardingGate(accountType);
   if (isPending) return <FullScreenLoader />;
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
   // Pending invites win, and are answered before waiting on any query: accepting
@@ -217,6 +238,6 @@ export function HomeRedirect() {
   if (pendingOrgInvite) {
     return <Navigate to={`/accept-invitation/${pendingOrgInvite}`} replace />;
   }
-  if (status.isPending) return <FullScreenLoader />;
-  return <Navigate to={homePathFor(accountType, needsOnboarding(accountType, status))} replace />;
+  if (gate === "loading") return <FullScreenLoader />;
+  return <Navigate to={homePathFor(accountType, gate === "required")} replace />;
 }

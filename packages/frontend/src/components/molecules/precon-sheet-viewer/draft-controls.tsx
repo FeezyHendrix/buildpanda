@@ -1,5 +1,5 @@
 import { Check, Redo2, Undo2, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/atoms/button";
 
 interface Props {
   /** Length and angle of the run's last segment — the live rubber band. */
@@ -20,9 +20,6 @@ interface Props {
   onCancel: () => void;
 }
 
-const BUTTON = "flex h-8 items-center justify-center gap-1 rounded-md px-2 text-xs font-semibold";
-const GHOST = "text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-ink-disabled disabled:hover:bg-transparent";
-
 /**
  * Undo / Redo / Finish / Cancel for the shape being drawn, floating over the
  * bottom-centre of the canvas. Mirrors the keyboard: Backspace or Ctrl/Cmd+Z
@@ -32,60 +29,61 @@ const GHOST = "text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disab
 export function DraftControls({ readout, areaShape, onAreaShape, arcMode, onArcMode, canUndo, canRedo, finishBlockedReason, onUndo, onRedo, onFinish, onCancel }: Props) {
   return (
     <div
-      className="flex max-w-full flex-wrap items-center gap-1 rounded-lg border border-line bg-white p-1 shadow-sm"
+      className="flex max-w-full flex-wrap items-center gap-1 rounded-none border border-line bg-white p-1 shadow-sm"
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
     >
       {areaShape ? (
-        <span className="flex items-center gap-0.5 rounded-md bg-surface-alt p-0.5" role="group" aria-label="Area drawing mode">
-          <button type="button" aria-pressed={areaShape === "polygon"} title="Click points; click the first point or press Enter to close" className={cn(BUTTON, areaShape === "polygon" ? "bg-white text-primary-700 shadow-sm" : "text-gray-500")} onClick={() => onAreaShape("polygon")}>
+        <span className="flex items-center gap-0.5 rounded-none bg-surface-alt p-0.5" role="group" aria-label="Area drawing mode">
+          <Button type="button" size="sm" variant={areaShape === "polygon" ? "primary" : "ghost"} aria-pressed={areaShape === "polygon"} title="Click points; click the first point or press Enter to close" onClick={() => onAreaShape("polygon")}>
             Polygon
-          </button>
-          <button type="button" aria-pressed={areaShape === "rectangle"} title="Drag two opposite corners" className={cn(BUTTON, areaShape === "rectangle" ? "bg-white text-primary-700 shadow-sm" : "text-gray-500")} onClick={() => onAreaShape("rectangle")}>
+          </Button>
+          <Button type="button" size="sm" variant={areaShape === "rectangle" ? "primary" : "ghost"} aria-pressed={areaShape === "rectangle"} title="Drag two opposite corners" onClick={() => onAreaShape("rectangle")}>
             Rectangle
-          </button>
+          </Button>
         </span>
       ) : null}
       {arcMode !== null ? (
-        <span className="flex items-center gap-0.5 rounded-md bg-surface-alt p-0.5" role="group" aria-label="Segment mode">
-          <button type="button" aria-pressed={!arcMode} title="The next click places a straight segment" className={cn(BUTTON, !arcMode ? "bg-white text-primary-700 shadow-sm" : "text-gray-500")} onClick={() => onArcMode(false)}>
+        <span className="flex items-center gap-0.5 rounded-none bg-surface-alt p-0.5" role="group" aria-label="Segment mode">
+          <Button type="button" size="sm" variant={!arcMode ? "primary" : "ghost"} aria-pressed={!arcMode} title="The next click places a straight segment" onClick={() => onArcMode(false)}>
             Straight
-          </button>
-          <button type="button" aria-pressed={arcMode} title="The next click marks the arc's midpoint, the one after its end (same as Alt-click)" className={cn(BUTTON, arcMode ? "bg-white text-primary-700 shadow-sm" : "text-gray-500")} onClick={() => onArcMode(true)}>
+          </Button>
+          <Button type="button" size="sm" variant={arcMode ? "primary" : "ghost"} aria-pressed={arcMode} title="The next click marks the arc's midpoint, the one after its end (same as Alt-click)" onClick={() => onArcMode(true)}>
             Arc
-          </button>
+          </Button>
         </span>
       ) : null}
       {readout ? (
-        <span data-rubberband className="px-2 font-mono text-xs tabular-nums text-gray-600">
+        <span data-rubberband className="px-2 font-mono text-caption-m tabular-nums text-ink-muted">
           {readout.lengthM.toFixed(2)} m · {Math.round(readout.angleDeg)}°
         </span>
       ) : null}
-      <button type="button" aria-label="Undo last point" title="Undo last point (Backspace or Ctrl+Z)" className={cn(BUTTON, GHOST)} disabled={!canUndo} onClick={onUndo}>
+      <Button type="button" size="sm" variant="ghost" aria-label="Undo last point" title="Undo last point (Backspace or Ctrl+Z)" disabled={!canUndo} onClick={onUndo}>
         <Undo2 className="size-4" aria-hidden="true" />
         Undo
-      </button>
-      <button type="button" aria-label="Redo point" title="Redo (Ctrl+Shift+Z)" className={cn(BUTTON, GHOST)} disabled={!canRedo} onClick={onRedo}>
+      </Button>
+      <Button type="button" size="sm" variant="ghost" aria-label="Redo point" title="Redo (Ctrl+Shift+Z)" disabled={!canRedo} onClick={onRedo}>
         <Redo2 className="size-4" aria-hidden="true" />
         Redo
-      </button>
+      </Button>
       <span className="h-5 w-px bg-line" aria-hidden="true" />
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="primary"
         aria-label="Finish shape"
         title={finishBlockedReason ?? "Finish (Enter or double-click)"}
-        className={cn(BUTTON, "bg-primary-500 text-ink-inverted hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50")}
         disabled={finishBlockedReason !== null}
         onClick={onFinish}
       >
         <Check className="size-4" aria-hidden="true" />
         Finish
-      </button>
-      <button type="button" aria-label="Cancel drawing" title="Cancel (Esc)" className={cn(BUTTON, GHOST)} onClick={onCancel}>
+      </Button>
+      <Button type="button" size="sm" variant="ghost" aria-label="Cancel drawing" title="Cancel (Esc)" onClick={onCancel}>
         <X className="size-4" aria-hidden="true" />
         Cancel
-      </button>
+      </Button>
     </div>
   );
 }

@@ -47,9 +47,9 @@ export function ProgrammePredecessorEditor({ task, tasks, disabled, onChange }: 
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium uppercase text-ink-muted">Depends on</p>
+      <p className="text-caption-m font-medium uppercase text-ink-muted">Depends on</p>
       {task.predecessors.length === 0 && !adding ? (
-        <p className="text-xs text-gray-400">No predecessors. This task can start on day one.</p>
+        <p className="text-caption-m text-black-300">No predecessors. This task can start on day one.</p>
       ) : null}
       <ul className="space-y-1">
         {task.predecessors.map((link, index) => (
@@ -83,7 +83,7 @@ export function ProgrammePredecessorEditor({ task, tasks, disabled, onChange }: 
                 </option>
               ))}
             </select>
-            <label className="flex items-center gap-1 text-xs text-gray-500">
+            <label className="flex items-center gap-1 text-caption-m text-ink-muted">
               lag
               <input
                 className={inputClass + " w-16 text-right"}
@@ -98,15 +98,17 @@ export function ProgrammePredecessorEditor({ task, tasks, disabled, onChange }: 
               />
               d
             </label>
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="ghost"
               disabled={disabled}
               aria-label="Remove dependency"
-              className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+              className="h-7 w-7 px-0 text-black-300 hover:bg-error-50 hover:text-error-500"
               onClick={() => removeLink(index)}
             >
               <X className="size-3.5" aria-hidden="true" />
-            </button>
+            </Button>
           </li>
         ))}
       </ul>

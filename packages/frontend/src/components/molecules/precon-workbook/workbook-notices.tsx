@@ -29,7 +29,7 @@ export function RefusalPanel({
   if (total === 0) return null;
 
   return (
-    <div className="border-b border-error-100 bg-error-50 px-3 py-2 text-xs text-error-700" role="alert">
+    <div className="border-b border-error-100 bg-error-50 px-3 py-2 text-caption-m text-error-700" role="alert">
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold">
           {total === 1 ? "One change was not saved" : `${total} changes were not saved`} — nothing else was saved either.
@@ -89,7 +89,7 @@ export function SaveFailureBanner({
 }) {
   return (
     <div
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-error-100 bg-error-50 px-3 py-2 text-xs text-error-700"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-error-100 bg-error-50 px-3 py-2 text-caption-m text-error-700"
       role="alert"
     >
       <p className="min-w-0 flex-1">
@@ -122,7 +122,7 @@ export function ConflictPanel({
   busy: boolean;
 }) {
   return (
-    <div className="border-b border-warning-100 bg-warning-50 px-3 py-2 text-xs text-warning-800" role="alert">
+    <div className="border-b border-warning-100 bg-warning-50 px-3 py-2 text-caption-m text-warning-800" role="alert">
       <p className="font-semibold">
         Someone else saved this workbook{report.at ? ` at ${new Date(report.at).toLocaleTimeString()}` : ""}. It is now
         version {report.toVersion}.
@@ -134,8 +134,8 @@ export function ConflictPanel({
       </p>
 
       {report.lines.length > 0 ? (
-        <div className="mt-2 overflow-hidden rounded-md border border-warning-100 bg-surface">
-          <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 border-b border-line-hair px-2 py-1 text-[11px] font-semibold text-black-300">
+        <div className="mt-2 overflow-hidden rounded-none border border-warning-100 bg-surface">
+          <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 border-b border-line-hair px-2 py-1 text-caption-m font-semibold text-black-300">
             <span>Cell</span>
             <span>Yours</span>
             <span>Theirs</span>
@@ -143,7 +143,7 @@ export function ConflictPanel({
           {report.lines.map((line) => (
             <div
               key={line.label}
-              className="grid grid-cols-[1fr_auto_auto] gap-x-3 border-b border-line-hair px-2 py-1 text-[11px] text-ink last:border-b-0"
+              className="grid grid-cols-[1fr_auto_auto] gap-x-3 border-b border-line-hair px-2 py-1 text-caption-m text-ink last:border-b-0"
             >
               <span className="truncate text-black-300">{line.label}</span>
               <span className="font-mono">{line.mine}</span>
@@ -182,7 +182,7 @@ export function ReviewBanner({ rollup, stale }: { rollup: WorkbookReviewRollup; 
   return (
     <p
       className={cn(
-        "flex flex-wrap items-center gap-x-2 gap-y-0.5 border-b px-3 py-1 text-[11px]",
+        "flex flex-wrap items-center gap-x-2 gap-y-0.5 border-b px-3 py-1 text-caption-m",
         stale ? "border-warning-100 bg-warning-50 text-warning-800" : "border-line bg-surface-alt text-ink-muted",
       )}
     >

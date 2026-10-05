@@ -61,9 +61,9 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
   };
 
   return (
-    <div className="space-y-3 rounded-lg border border-line bg-gray-50 p-3">
+    <div className="space-y-3 rounded-none border border-line bg-grey-50 p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase text-ink-muted">{ROW_ORIGIN_LABEL[row.origin]}</p>
+        <p className="text-caption-m font-medium uppercase text-ink-muted">{ROW_ORIGIN_LABEL[row.origin]}</p>
         {row.confidence ? (
           <Badge tone={row.confidence === "high" ? "success" : "warning"}>{row.confidence === "high" ? "High confidence" : "Low confidence"}</Badge>
         ) : null}
@@ -71,12 +71,12 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
       <LineEvidence row={row} />
 
       {row.editedAt ? (
-        <p className="rounded-md bg-white px-2 py-1 text-xs text-gray-600">
+        <p className="rounded-none bg-white px-2 py-1 text-caption-m text-ink-muted">
           Edited {formatShortDate(row.editedAt)}. The line above is Panda AI's original basis; the figures below are the current values.
         </p>
       ) : null}
 
-      <label className="block text-xs text-gray-500">
+      <label className="block text-caption-m text-ink-muted">
         Description
         <input
           className={FIELD}
@@ -90,24 +90,24 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
       </label>
 
       {row.qtyGross !== null ? (
-        <dl className="space-y-1 text-xs">
+        <dl className="space-y-1 text-caption-m">
           <div className="flex justify-between">
-            <dt className="text-gray-500">Gross</dt>
-            <dd className="font-medium text-gray-900">
+            <dt className="text-ink-muted">Gross</dt>
+            <dd className="font-medium text-ink">
               {row.qtyGross} {row.unit}
             </dd>
           </div>
           {row.deductions.map((d, i) => (
             <div key={`${d.label}-${i}`} className="flex justify-between">
-              <dt className="text-gray-500">Less {d.label}</dt>
-              <dd className="font-medium text-red-600">
+              <dt className="text-ink-muted">Less {d.label}</dt>
+              <dd className="font-medium text-error-500">
                 −{d.qty} {row.unit}
               </dd>
             </div>
           ))}
           <div className="flex justify-between border-t border-line pt-1">
-            <dt className="text-gray-600">Net quantity</dt>
-            <dd className="font-semibold text-gray-900">
+            <dt className="text-ink-muted">Net quantity</dt>
+            <dd className="font-semibold text-ink">
               {row.qty} {row.unit}
             </dd>
           </div>
@@ -115,7 +115,7 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
       ) : null}
 
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs text-gray-500">
+        <label className="text-caption-m text-ink-muted">
           Qty
           <input
             className={FIELD}
@@ -128,7 +128,7 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
             }}
           />
         </label>
-        <label className="text-xs text-gray-500">
+        <label className="text-caption-m text-ink-muted">
           Rate (₦)
           <input
             className={FIELD}
@@ -142,7 +142,7 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
           />
         </label>
       </div>
-      {row.rateSource ? <p className="text-xs text-gray-400">Rate from {row.rateSource}</p> : null}
+      {row.rateSource ? <p className="text-caption-m text-black-300">Rate from {row.rateSource}</p> : null}
 
       <div className="flex gap-2">
         {canVerify ? (
@@ -171,7 +171,7 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
         </Button>
       </div>
       {row.verifiedBy && row.status === "verified" ? (
-        <p className="text-xs text-gray-400">Verified {row.verifiedAt ? formatShortDate(row.verifiedAt) : ""}</p>
+        <p className="text-caption-m text-black-300">Verified {row.verifiedAt ? formatShortDate(row.verifiedAt) : ""}</p>
       ) : null}
     </div>
   );

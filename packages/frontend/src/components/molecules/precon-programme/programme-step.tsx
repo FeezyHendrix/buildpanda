@@ -35,18 +35,20 @@ const slugify = (value: string) => value.replace(/[^a-z0-9]+/gi, "-").slice(0, 6
 
 function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   return (
-    <div role="tablist" aria-label="Programme view" className="inline-flex overflow-hidden rounded-lg border border-line text-xs font-semibold">
+    <div role="tablist" aria-label="Programme view" className="inline-flex overflow-hidden rounded-none border border-line">
       {(["table", "chart"] as const).map((v) => (
-        <button
+        <Button
           key={v}
           type="button"
           role="tab"
+          size="sm"
+          variant="ghost"
           aria-selected={view === v}
-          className={cn("px-3 py-1.5", view === v ? "bg-primary-50 text-primary-700" : "text-gray-500 hover:bg-gray-50")}
+          className={cn(view === v ? "bg-primary-50 text-primary-700" : "text-ink-muted")}
           onClick={() => onChange(v)}
         >
           {v === "table" ? "Table" : "Chart"}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -119,11 +121,11 @@ export function ProgrammeStep({ sessionId, sessionTitle, editable = true }: Prop
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-white">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border border-line bg-white">
       <header className="flex flex-wrap items-center gap-3 border-b border-line-hair px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-gray-900">Programme of work</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-caption-l font-semibold text-black-500">Programme of work</h2>
+          <p className="text-caption-m text-ink-muted">
             {tasks.length > 0
               ? `${formatDate(programme?.startDate ?? null)} → ${formatDate(programme?.finishDate ?? null)} · ${progress.verified} of ${progress.total} tasks verified${criticalCount > 0 ? ` · ${criticalCount} on the critical path` : ""}`
               : "Panda AI drafts tasks, durations and dependencies from the verified bill. The scheduler works out dates and the critical path."}
@@ -131,7 +133,7 @@ export function ProgrammeStep({ sessionId, sessionTitle, editable = true }: Prop
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {tasks.length > 0 ? <ViewToggle view={view} onChange={setView} /> : null}
-          <label className="flex items-center gap-1.5 text-xs text-gray-500">
+          <label className="flex items-center gap-1.5 text-caption-m text-ink-muted">
             Start
             <input
               type="date"
@@ -164,12 +166,12 @@ export function ProgrammeStep({ sessionId, sessionTitle, editable = true }: Prop
       {drafting ? (
         <div className="flex items-center gap-3 border-b border-line-hair bg-primary-50 px-4 py-2.5">
           <Spinner size="xs" />
-          <p className="truncate text-xs text-primary-700">{latestMessage ?? "Sequencing work packages and estimating durations from the bill."}</p>
+          <p className="truncate text-caption-m text-primary-700">{latestMessage ?? "Sequencing work packages and estimating durations from the bill."}</p>
         </div>
       ) : null}
-      {failed ? <p className="border-b border-line-hair bg-red-50 px-4 py-2 text-xs text-red-700">{latestMessage}</p> : null}
+      {failed ? <p className="border-b border-line-hair bg-error-50 px-4 py-2 text-caption-m text-error-600">{latestMessage}</p> : null}
       {timedOut ? (
-        <p className="border-b border-line-hair bg-amber-50 px-4 py-2 text-xs text-amber-800">
+        <p className="border-b border-line-hair bg-warning-50 px-4 py-2 text-caption-m text-warning-600">
           The draft is taking longer than expected. Reload the page to check whether Panda AI has finished.
         </p>
       ) : null}
@@ -180,8 +182,8 @@ export function ProgrammeStep({ sessionId, sessionTitle, editable = true }: Prop
         </div>
       ) : tasks.length === 0 ? (
         <div className="px-4 py-12 text-center">
-          <p className="text-sm font-semibold text-gray-900">No programme drafted yet</p>
-          <p className="mx-auto mt-2 max-w-md text-xs text-gray-500">
+          <p className="text-caption-l font-semibold text-black-500">No programme drafted yet</p>
+          <p className="mx-auto mt-2 max-w-md text-caption-m text-ink-muted">
             Every measured element becomes a work package with a duration, a stated basis and its dependencies. Review
             them before anyone plans against them.
           </p>

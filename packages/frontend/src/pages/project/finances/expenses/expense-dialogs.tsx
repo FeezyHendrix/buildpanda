@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
@@ -96,6 +96,7 @@ export function UpsertTransactionDialog({
   onManageCategories: () => void;
 }) {
   const isEdit = Boolean(initial);
+  const stageFieldId = useId();
   const [values, setValues] = useState<TransactionFormValues>(() => {
     if (!initial) return { ...EMPTY_FORM };
     return {
@@ -245,8 +246,9 @@ export function UpsertTransactionDialog({
         </div>
 
         <div className="space-y-2">
-          <Label>Stage</Label>
+          <Label htmlFor={stageFieldId}>Build stage</Label>
           <ComboSelect
+            id={stageFieldId}
             items={stageItems}
             value={values.stageId || NO_STAGE}
             onChange={(val) => setValues({ ...values, stageId: val && val !== NO_STAGE ? val : "" })}

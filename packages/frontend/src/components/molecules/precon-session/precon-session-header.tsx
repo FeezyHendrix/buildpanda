@@ -35,27 +35,27 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <div className="min-w-0">
-        <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:underline">
+        <Link to={backTo} className="inline-flex items-center gap-1 text-caption-m font-medium text-primary-600 hover:underline">
           <ArrowLeft className="size-3.5" aria-hidden="true" />
           Back to proposal
         </Link>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <h1 className="min-w-0 truncate text-lg font-semibold text-gray-900">{session.title}</h1>
+          <h1 className="min-w-0 truncate text-body-m font-semibold text-ink">{session.title}</h1>
           <Badge tone={PRECON_STATUS_TONE[session.status]} dot={running}>
             {manual && running ? "Rendering sheets" : PRECON_STATUS_LABEL[session.status]}
           </Badge>
           {manual ? <Badge tone="neutral">Measured by hand</Badge> : <Badge tone="info">Panda AI</Badge>}
-          {session.planId ? <span className="font-mono text-xs text-gray-400">Rev {session.revision}</span> : null}
+          {session.planId ? <span className="font-mono text-caption-m text-black-300">Rev {session.revision}</span> : null}
         </div>
         {session.supersededBy ? (
-          <p className="mt-1 inline-flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800">
+          <p className="mt-1 inline-flex items-center gap-2 rounded-none bg-warning-50 px-2 py-1 text-caption-m text-warning-600">
             Superseded: the drawing was measured again after this revision.
             <Link to={`/sales/takeoff/${session.supersededBy}`} className="font-medium underline">
               Open the current revision
             </Link>
           </p>
         ) : null}
-        <p className="text-xs leading-relaxed text-gray-500">
+        <p className="text-caption-m leading-relaxed text-ink-muted">
           {describeScope(session.scope)}
           {reviewing && manual ? ` · ${progress.total} line${progress.total === 1 ? "" : "s"} measured by hand` : null}
           {reviewing && !manual ? ` · ${progress.verified} of ${progress.total} lines verified` : null}

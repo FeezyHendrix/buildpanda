@@ -13,8 +13,8 @@ const TOOL_CHOICES: { key: MeasureTool; label: string }[] = [
   { key: "wall_area", label: "Wall area" },
 ];
 
-const FIELD = "mt-1 h-8 w-full rounded-md border border-line px-2 text-sm";
-const LABEL = "block text-xs font-medium text-gray-600";
+const FIELD = "mt-1 h-8 w-full rounded-none border border-line px-2 text-caption-l";
+const LABEL = "block text-caption-m font-medium text-ink-muted";
 
 interface Props {
   confirmed: DefinitionConfirmation | null;
@@ -43,7 +43,7 @@ export function InspectorLegacy({ confirmed, viewports, onConfirm }: Props) {
 
   if (confirmed) {
     return (
-      <p className="rounded-md bg-primary-50 px-2 py-1.5 text-xs text-primary-800" data-legacy-confirmed>
+      <p className="rounded-none bg-primary-50 px-2 py-1.5 text-caption-m text-primary-800" data-legacy-confirmed>
         Basis confirmed for this edit: {confirmed.tool} · {confirmed.unit}
         {confirmed.factor?.heightM ? ` · height ${confirmed.factor.heightM} m` : ""}
         {confirmed.factor?.depthM ? ` · depth ${confirmed.factor.depthM} m` : ""}
@@ -51,9 +51,9 @@ export function InspectorLegacy({ confirmed, viewports, onConfirm }: Props) {
     );
   }
   return (
-    <div className="rounded-md border border-amber-200 bg-amber-50 p-2" data-legacy-confirm>
-      <p className="text-xs font-semibold text-amber-800">Legacy line — no recorded basis</p>
-      <p className="mt-0.5 text-xs text-amber-700">Confirm how it was measured before its quantity can change. Nothing is assumed.</p>
+    <div className="rounded-none border border-warning-200 bg-warning-50 p-2" data-legacy-confirm>
+      <p className="text-caption-m font-semibold text-warning-600">Legacy line — no recorded basis</p>
+      <p className="mt-0.5 text-caption-m text-warning-500">Confirm how it was measured before its quantity can change. Nothing is assumed.</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <label className={LABEL}>
           Measured as

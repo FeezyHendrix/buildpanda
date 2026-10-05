@@ -3,8 +3,8 @@ import { Button } from "@/components/atoms/button";
 import type { PreconBoqRow, PreconDeduction } from "@/api/precon";
 import type { useRowCommands } from "./use-row-commands";
 
-const FIELD = "mt-1 h-8 w-full rounded-md border border-line px-2 text-sm tabular-nums";
-const LABEL = "block text-xs font-medium text-gray-600";
+const FIELD = "mt-1 h-8 w-full rounded-none border border-line px-2 text-caption-l tabular-nums";
+const LABEL = "block text-caption-m font-medium text-ink-muted";
 
 interface Props {
   row: PreconBoqRow;
@@ -33,8 +33,8 @@ export function InspectorStatedDeduction({ row, deduction, index, commands, onCl
   const valid = Number.isFinite(qty) && qty > 0 && unitRaw.trim() !== "" && unitChecked;
 
   return (
-    <div className="mt-2 rounded-md border border-amber-200 bg-amber-50/50 p-2" data-stated-form>
-      <p className="text-xs font-medium text-amber-800">
+    <div className="mt-2 rounded-none border border-warning-200 bg-warning-50/50 p-2" data-stated-form>
+      <p className="text-caption-m font-medium text-warning-600">
         Stated figure, unit never confirmed — re-enter it as checked numbers, or take it off the line.
       </p>
       <label className={`${LABEL} mt-1`}>
@@ -51,7 +51,7 @@ export function InspectorStatedDeduction({ row, deduction, index, commands, onCl
           <input aria-label="Stated opening unit" className={FIELD} value={unitRaw} onChange={(e) => setUnitRaw(e.target.value)} />
         </label>
       </div>
-      <label className="mt-1.5 flex items-start gap-2 text-xs font-medium text-gray-800">
+      <label className="mt-1.5 flex items-start gap-2 text-caption-m font-medium text-black-500">
         <input type="checkbox" data-stated-unit-confirm className="mt-0.5" checked={unitChecked} onChange={(e) => setUnitChecked(e.target.checked)} />
         I confirm this figure is in {unitRaw.trim() || "the stated unit"} — the engine assumed it and nobody had checked.
       </label>

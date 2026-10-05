@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/atoms/button";
 
 /** A right-clicked vertex or segment of the shape being edited. */
 export interface SavedEditMenuTarget {
@@ -24,7 +24,7 @@ interface Props {
   onClose: () => void;
 }
 
-const ITEM = "flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-ink-disabled disabled:hover:bg-transparent";
+const ITEM = "w-full justify-start text-left";
 
 /**
  * The explicit deletion menu (contract 16): deleting a point, a segment and the
@@ -39,34 +39,34 @@ export function SavedEditMenu({ target, removeBlockedReason, onSplitHere, onDele
   return (
     <div
       data-saved-edit-menu
-      className="absolute z-30 w-48 rounded-lg border border-line bg-white p-1 shadow-lg"
+      className="absolute z-30 w-48 rounded-none border border-line bg-white p-1 shadow-lg"
       style={{ left: target.x, top: target.y }}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}
     >
       {target.kind === "segment" && onToggleSegment ? (
-        <button type="button" data-toggle-segment className={ITEM} onClick={item(onToggleSegment.run)}>
+        <Button type="button" size="sm" variant="ghost" data-toggle-segment className={ITEM} onClick={item(onToggleSegment.run)}>
           {onToggleSegment.label}
-        </button>
+        </Button>
       ) : null}
       {target.kind === "vertex" && onSplitHere ? (
-        <button type="button" className={ITEM} onClick={item(onSplitHere)}>
+        <Button type="button" size="sm" variant="ghost" className={ITEM} onClick={item(onSplitHere)}>
           Split here (two lines)
-        </button>
+        </Button>
       ) : null}
       {target.kind === "vertex" ? (
-        <button type="button" className={ITEM} disabled={removeBlockedReason !== null} title={removeBlockedReason ?? undefined} onClick={item(onDeletePoint)}>
+        <Button type="button" size="sm" variant="ghost" className={ITEM} disabled={removeBlockedReason !== null} title={removeBlockedReason ?? undefined} onClick={item(onDeletePoint)}>
           Delete point {target.index + 1}
-        </button>
+        </Button>
       ) : onDeleteSegment ? (
-        <button type="button" className={ITEM} onClick={item(onDeleteSegment)}>
+        <Button type="button" size="sm" variant="ghost" className={ITEM} onClick={item(onDeleteSegment)}>
           Delete segment {target.index + 1}
-        </button>
+        </Button>
       ) : null}
-      <button type="button" className={cn(ITEM, "text-red-600 hover:bg-red-50")} onClick={item(onDeleteMeasurement)}>
+      <Button type="button" size="sm" variant="light-danger" className={ITEM} onClick={item(onDeleteMeasurement)}>
         Delete measurement
-      </button>
+      </Button>
     </div>
   );
 }

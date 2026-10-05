@@ -67,8 +67,8 @@ function BidSummaryCard({ snapshot }: { snapshot: PreconSnapshot }) {
   return (
     <Card className="space-y-4 p-5">
       <div>
-        <h2 className="text-sm font-semibold text-gray-900">Bid summary</h2>
-        <p className="text-xs text-gray-500">
+        <h2 className="text-sm font-semibold text-ink">Bid summary</h2>
+        <p className="text-xs text-ink-muted">
           {progress.verified} of {progress.total} items verified ({complete}%). Figures below are recorded draft amounts —
           BuildPanda logs them; no money moves here.
         </p>
@@ -76,8 +76,8 @@ function BidSummaryCard({ snapshot }: { snapshot: PreconSnapshot }) {
       <dl className="space-y-1.5 text-sm">
         {lines.map((line) => (
           <div key={line.label} className="flex justify-between">
-            <dt className={line.strong ? "font-semibold text-gray-900" : "text-gray-500"}>{line.label}</dt>
-            <dd className={line.strong ? "text-lg font-medium text-gray-900" : "tabular-nums text-gray-800"}>
+            <dt className={line.strong ? "font-semibold text-ink" : "text-ink-muted"}>{line.label}</dt>
+            <dd className={line.strong ? "text-lg font-medium text-ink" : "tabular-nums text-black-500"}>
               {naira.format(line.value)}
             </dd>
           </div>
@@ -85,7 +85,7 @@ function BidSummaryCard({ snapshot }: { snapshot: PreconSnapshot }) {
       </dl>
       <div className="grid grid-cols-3 gap-2 border-t border-line-hair pt-3">
         {SETTING_FIELDS.map(({ key, label }) => (
-          <label key={key} className="text-xs text-gray-500">
+          <label key={key} className="text-xs text-ink-muted">
             {label}
             <input
               className={cn(INPUT_SM_CLASS, "mt-0.5")}
@@ -109,19 +109,19 @@ function AreasSummaryCard({ snapshot }: { snapshot: PreconSnapshot }) {
   return (
     <Card className="space-y-4 p-5">
       <div>
-        <h2 className="text-sm font-semibold text-gray-900">Measured areas</h2>
-        <p className="text-xs text-gray-500">
+        <h2 className="text-sm font-semibold text-ink">Measured areas</h2>
+        <p className="text-xs text-ink-muted">
           {progress.verified} of {progress.total} spaces verified. Nothing is priced — this sheet lists floor areas only.
         </p>
       </div>
       <dl className="space-y-1.5 text-sm">
         <div className="flex justify-between">
-          <dt className="text-gray-500">Spaces identified</dt>
-          <dd className="tabular-nums text-gray-800">{spaces.length}</dd>
+          <dt className="text-ink-muted">Spaces identified</dt>
+          <dd className="tabular-nums text-black-500">{spaces.length}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="font-semibold text-gray-900">Total floor area</dt>
-          <dd className="text-lg font-medium text-gray-900">{squareMetres.format(totalM2)} m²</dd>
+          <dt className="font-semibold text-ink">Total floor area</dt>
+          <dd className="text-lg font-medium text-ink">{squareMetres.format(totalM2)} m²</dd>
         </div>
       </dl>
     </Card>
@@ -174,8 +174,8 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
 
       <Card className="space-y-4 p-5">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">{areas ? "Areas schedule" : "Bid pack"}</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-sm font-semibold text-ink">{areas ? "Areas schedule" : "Bid pack"}</h2>
+          <p className="text-xs text-ink-muted">
             {areas
               ? "Export the areas workbook or bring the spaces into the estimate as lines."
               : "Export the BOQ workbook or bring the reviewed bill into the estimate. You will see every change first."}
@@ -186,7 +186,7 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
             {areas ? "Download areas (Excel)" : "Export Excel"}
           </Button>
           {areas ? null : (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-ink-muted">
               Live formulas, not pasted figures: net = gross − deductions × typical, amount = net × rate, subtotals and the grand total as SUM.
               Change a rate in the workbook and the bill re-adds itself. A Measurements sheet lists every line's sheet, tool, gross and basis.
             </p>
@@ -200,18 +200,18 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
               {applyLabel}
             </Button>
           ) : (
-            <p className="text-xs text-gray-500" data-no-apply-permission>
+            <p className="text-xs text-ink-muted" data-no-apply-permission>
               Recording this bill on a proposal or estimate needs the take-off apply permission.
             </p>
           )}
           {progress.total > 0 && progress.verified < progress.total ? (
-            <p className="text-xs text-amber-700">
+            <p className="text-xs text-warning-500">
               {progress.total - progress.verified} line{progress.total - progress.verified === 1 ? "" : "s"} still
               unverified. Unreviewed AI lines are applied as drafted.
             </p>
           ) : null}
         </div>
-        <p className="border-t border-line-hair pt-3 text-xs text-gray-400">
+        <p className="border-t border-line-hair pt-3 text-xs text-black-300">
           {manual
             ? "Measured by hand · every line carries the name of the person who drew it in the audit trail. A quantity surveyor must review before the bill is used contractually."
             : "Measured by Panda AI · verified line items carry the reviewer's name in the audit trail. A quantity surveyor must review before the bill is used contractually."}

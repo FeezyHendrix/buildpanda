@@ -21,11 +21,11 @@ export function PresenceAvatars({ users, currentUserId }: { users: PresenceUser[
           key={user.id}
           name={user.name}
           size="sm"
-          className={cn("ring-2 ring-white", index > 0 && "-ml-2", user.id === currentUserId && "bg-gray-500")}
+          className={cn("ring-2 ring-white", index > 0 && "-ml-2", user.id === currentUserId && "bg-grey-400")}
         />
       ))}
       {overflow > 0 ? (
-        <span className="-ml-2 inline-flex size-8 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600 ring-2 ring-white">
+        <span className="-ml-2 inline-flex size-8 items-center justify-center rounded-full bg-grey-100 text-caption-m font-medium text-ink-muted ring-2 ring-white">
           +{overflow}
         </span>
       ) : null}
@@ -41,7 +41,7 @@ export function RowFocusAvatars({ users }: { users: PresenceUser[] }) {
   return (
     <span className="inline-flex shrink-0 items-center" title={`${names} ${users.length === 1 ? "is" : "are"} on this line`} aria-label={`${names} on this line`}>
       {users.slice(0, 3).map((user, index) => (
-        <Avatar key={user.id} name={user.name} size="sm" className={cn("size-5 text-[9px] ring-1 ring-white", index > 0 && "-ml-1.5")} />
+        <Avatar key={user.id} name={user.name} size="sm" className={cn("size-5 text-caption-s ring-1 ring-white", index > 0 && "-ml-1.5")} />
       ))}
     </span>
   );

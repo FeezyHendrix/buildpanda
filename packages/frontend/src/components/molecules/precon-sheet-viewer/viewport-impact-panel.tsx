@@ -20,16 +20,16 @@ const num = (value: number | null) => (value === null ? "—" : String(Math.roun
  */
 export function ViewportImpactPanel({ preview, applying, onApply, onCancel, onOpenRow }: Props) {
   return (
-    <div className="absolute right-3 top-3 z-20 flex w-96 max-h-[calc(100%-1.5rem)] flex-col gap-2 overflow-y-auto rounded-lg border border-line bg-white p-3 shadow-lg" data-viewport-impact onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-      <p className="text-sm font-semibold text-gray-900">Scale region change</p>
+    <div className="absolute right-3 top-3 z-20 flex w-96 max-h-[calc(100%-1.5rem)] flex-col gap-2 overflow-y-auto rounded-none border border-line bg-white p-3 shadow-lg" data-viewport-impact onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+      <p className="text-caption-l font-semibold text-black-500">Scale region change</p>
       {preview.rescaled.length > 0 ? (
         <div>
-          <p className="text-xs font-semibold text-gray-700">Lines restated by the new region scale</p>
-          <ul className="mt-1 space-y-0.5 text-xs">
+          <p className="text-caption-m font-semibold text-black-500">Lines restated by the new region scale</p>
+          <ul className="mt-1 space-y-0.5 text-caption-m">
             {preview.rescaled.map((row) => (
               <li key={row.rowId} className="flex justify-between gap-2 border-t border-line-hair py-1" data-rescaled-row={row.rowId}>
-                <span className="min-w-0 truncate text-gray-800">{row.description}</span>
-                <span className="shrink-0 tabular-nums text-gray-700">
+                <span className="min-w-0 truncate text-black-500">{row.description}</span>
+                <span className="shrink-0 tabular-nums text-black-500">
                   {num(row.currentQty)} → <span className="font-semibold">{num(row.newQty)}</span> {row.unit ?? ""}
                 </span>
               </li>
@@ -38,13 +38,13 @@ export function ViewportImpactPanel({ preview, applying, onApply, onCancel, onOp
         </div>
       ) : null}
       {preview.removed.map((region) => (
-        <div key={region.viewportId} className="rounded-md border border-amber-200 bg-amber-50 p-2" data-removed-region={region.viewportId}>
-          <p className="text-xs font-semibold text-amber-800">
+        <div key={region.viewportId} className="rounded-none border border-warning-200 bg-warning-50 p-2" data-removed-region={region.viewportId}>
+          <p className="text-caption-m font-semibold text-warning-600">
             Region {region.label} is being withdrawn
             {region.measurements.length > 0 ? ` — ${region.measurements.length} measurement${region.measurements.length === 1 ? "" : "s"} were taken in it` : ""}
           </p>
           {region.measurements.length > 0 ? (
-            <ul className="mt-1 list-inside list-disc text-xs text-amber-700">
+            <ul className="mt-1 list-inside list-disc text-caption-m text-warning-500">
               {region.measurements.map((m) => (
                 <li key={m.geometryId}>{m.description}</li>
               ))}
@@ -53,19 +53,25 @@ export function ViewportImpactPanel({ preview, applying, onApply, onCancel, onOp
         </div>
       ))}
       {preview.rescaled.length === 0 && preview.removed.length === 0 && preview.unresolvedRowIds.length === 0 ? (
-        <p className="text-xs text-gray-500">No measured line is affected by this region change.</p>
+        <p className="text-caption-m text-ink-muted">No measured line is affected by this region change.</p>
       ) : null}
       {preview.unresolvedRowIds.length > 0 ? (
-        <div className="rounded-md border border-red-200 bg-red-50 p-2" data-unresolved-block>
-          <p className="text-xs font-semibold text-red-800">
+        <div className="rounded-none border border-error-200 bg-error-50 p-2" data-unresolved-block>
+          <p className="text-caption-m font-semibold text-error-500">
             {preview.unresolvedRowIds.length} line{preview.unresolvedRowIds.length === 1 ? "" : "s"} record no measurement basis — the region change cannot proceed until each is confirmed. No override exists.
           </p>
           <ul className="mt-1 space-y-0.5">
             {preview.unresolvedRowIds.map((rowId) => (
               <li key={rowId}>
-                <button type="button" className="text-xs text-red-900 underline" onClick={() => onOpenRow(rowId)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-auto px-0 py-0 text-caption-m font-normal text-error-600 underline hover:bg-transparent"
+                  onClick={() => onOpenRow(rowId)}
+                >
                   Confirm this line's basis in the inspector
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

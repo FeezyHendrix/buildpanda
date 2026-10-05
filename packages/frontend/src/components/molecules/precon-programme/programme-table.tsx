@@ -32,14 +32,14 @@ function NewTaskForm({ onCreate, creating, onClose }: { onCreate: (name: string,
   const valid = name.trim().length > 0 && Number.isFinite(Number(duration)) && Number(duration) >= 0;
   return (
     <form
-      className="flex flex-wrap items-center gap-2 border-t border-line-hair bg-gray-50 px-3 py-2"
+      className="flex flex-wrap items-center gap-2 border-t border-line-hair bg-grey-50 px-3 py-2"
       onSubmit={(e) => {
         e.preventDefault();
         if (valid) onCreate(name.trim(), Math.round(Number(duration)));
       }}
     >
       <input className={inputClass + " min-w-[200px] flex-1"} placeholder="Task name" value={name} autoFocus onChange={(e) => setName(e.target.value)} />
-      <label className="flex items-center gap-1 text-xs text-gray-500">
+      <label className="flex items-center gap-1 text-xs text-ink-muted">
         <input className={inputClass + " w-16 text-right"} inputMode="numeric" value={duration} onChange={(e) => setDuration(e.target.value)} aria-label="Duration in working days" />
         days
       </label>
@@ -87,7 +87,7 @@ export function ProgrammeTable({ sessionId, programme, editable, selectedTaskId,
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="grid grid-cols-[1fr_72px_120px_64px_112px] gap-2 border-b border-line-hair bg-gray-50 px-3 py-2 text-xs font-medium uppercase text-ink-muted">
+      <div className="grid grid-cols-[1fr_72px_120px_64px_112px] gap-2 border-b border-line-hair bg-grey-50 px-3 py-2 text-xs font-medium uppercase text-ink-muted">
         <span>Task</span>
         <span className="text-right">Duration</span>
         <span className="text-right">Start → finish</span>

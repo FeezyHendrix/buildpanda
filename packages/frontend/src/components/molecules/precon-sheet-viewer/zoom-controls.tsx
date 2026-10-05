@@ -1,4 +1,5 @@
 import { Crosshair, Maximize2, Minus, Plus } from "lucide-react";
+import { Button } from "@/components/atoms/button";
 
 interface Props {
   userZoom: number;
@@ -8,7 +9,7 @@ interface Props {
   onZoomSelection?: (() => void) | null;
 }
 
-const BUTTON = "flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100";
+const ICON_BUTTON = "size-8 px-0";
 
 function formatZoom(userZoom: number): string {
   return Number.isFinite(userZoom) ? String(Math.round(userZoom * 100)) : "100";
@@ -18,26 +19,26 @@ function formatZoom(userZoom: number): string {
 export function ZoomControls({ userZoom, onZoomBy, onFit, onZoomSelection = null }: Props) {
   return (
     <div
-      className="flex max-w-full flex-wrap items-center gap-1 rounded-lg border border-line bg-white p-1 shadow-sm"
+      className="flex max-w-full flex-wrap items-center gap-1 rounded-none border border-line bg-white p-1 shadow-sm"
       role="group"
       aria-label="View controls"
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      <button type="button" aria-label="Zoom out" title="Zoom out" className={BUTTON} onClick={() => onZoomBy(1 / 1.5)}>
+      <Button type="button" size="sm" variant="ghost" aria-label="Zoom out" title="Zoom out" className={ICON_BUTTON} onClick={() => onZoomBy(1 / 1.5)}>
         <Minus className="size-4" aria-hidden="true" />
-      </button>
-      <span className="min-w-12 text-center font-mono text-xs tabular-nums text-gray-600">{formatZoom(userZoom)}%</span>
-      <button type="button" aria-label="Zoom in" title="Zoom in" className={BUTTON} onClick={() => onZoomBy(1.5)}>
+      </Button>
+      <span className="min-w-12 text-center font-mono text-caption-m tabular-nums text-ink-muted">{formatZoom(userZoom)}%</span>
+      <Button type="button" size="sm" variant="ghost" aria-label="Zoom in" title="Zoom in" className={ICON_BUTTON} onClick={() => onZoomBy(1.5)}>
         <Plus className="size-4" aria-hidden="true" />
-      </button>
-      <button type="button" aria-label="Fit to view" title="Fit to view" className={BUTTON} onClick={onFit}>
+      </Button>
+      <Button type="button" size="sm" variant="ghost" aria-label="Fit to view" title="Fit to view" className={ICON_BUTTON} onClick={onFit}>
         <Maximize2 className="size-4" aria-hidden="true" />
-      </button>
+      </Button>
       {onZoomSelection ? (
-        <button type="button" aria-label="Zoom to selection" title="Zoom to the selected measurement" className={BUTTON} onClick={onZoomSelection}>
+        <Button type="button" size="sm" variant="ghost" aria-label="Zoom to selection" title="Zoom to the selected measurement" className={ICON_BUTTON} onClick={onZoomSelection}>
           <Crosshair className="size-4" aria-hidden="true" />
-        </button>
+        </Button>
       ) : null}
     </div>
   );

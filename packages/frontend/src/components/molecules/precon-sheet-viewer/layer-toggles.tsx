@@ -1,4 +1,5 @@
 import { Eye, EyeOff, MessageSquare, Pencil, Ruler } from "lucide-react";
+import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";
 
 // One sheet carries two kinds of work: measurements that became bill lines,
@@ -30,27 +31,29 @@ export function LayerToggles({
   onToggle: (layer: SheetLayer) => void;
 }) {
   return (
-    <div className="absolute right-3 top-3 z-10 flex flex-col gap-0.5 rounded-lg border border-line bg-white/95 p-1 shadow-sm">
+    <div className="absolute right-3 top-3 z-10 flex flex-col gap-0.5 rounded-none border border-line bg-white/95 p-1 shadow-sm">
       {LAYER_META.map(({ key, label, Icon }) => {
         const on = layers[key];
         const count = counts[key];
         return (
-          <button
+          <Button
             key={key}
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => onToggle(key)}
             aria-pressed={on}
             title={`${on ? "Hide" : "Show"} ${label.toLowerCase()}${count ? ` (${count})` : ""}`}
             className={cn(
-              "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
-              on ? "text-gray-700 hover:bg-gray-100" : "text-gray-400 hover:bg-gray-50",
+              "justify-start gap-1.5 px-2 font-medium transition-colors",
+              on ? "text-ink-subtle" : "text-black-300",
             )}
           >
             <Icon size={13} aria-hidden="true" />
             <span className="min-w-14 text-left">{label}</span>
-            <span className="tabular-nums text-gray-400">{count || ""}</span>
+            <span className="tabular-nums text-black-300">{count || ""}</span>
             {on ? <Eye size={12} aria-hidden="true" /> : <EyeOff size={12} aria-hidden="true" />}
-          </button>
+          </Button>
         );
       })}
     </div>

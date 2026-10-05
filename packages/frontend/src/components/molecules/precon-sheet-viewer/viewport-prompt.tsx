@@ -17,6 +17,7 @@ export interface ViewportDraft {
 }
 
 const INPUT = cn(INPUT_SM_CLASS, "w-auto");
+const INLINE_LINK = "h-auto px-0 py-0 text-caption-m font-normal text-inherit underline hover:bg-transparent";
 
 export function newViewportDraft(rect: [number, number, number, number], existing: number): ViewportDraft {
   return { rect, label: `Detail ${existing + 1}`, mode: "ratio", ratio: "", ptLength: null, mm: "" };
@@ -51,40 +52,40 @@ export function ViewportPromptBanner({ draft, saving, onChange, onSave, onDiscar
     if (e.key === "Enter" && canSave) onSave();
   };
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-primary-100 bg-primary-50 px-3 py-1.5 text-xs text-primary-800">
+    <div className="flex flex-wrap items-center gap-2 border-b border-primary-100 bg-primary-50 px-3 py-1.5 text-caption-m text-primary-800">
       <span>Viewport</span>
       <input autoFocus className={cn(INPUT, "w-28")} value={draft.label} onChange={(e) => onChange({ label: e.target.value })} onKeyDown={onEnter} aria-label="Viewport label" />
       {draft.mode === "ratio" ? (
         <>
           <span>is drawn at 1:</span>
           <input className={cn(INPUT, "w-16")} inputMode="numeric" placeholder="20" value={draft.ratio} onChange={(e) => onChange({ ratio: e.target.value })} onKeyDown={onEnter} aria-label="Scale ratio" />
-          <button type="button" className="underline" onClick={() => onChange({ mode: "points", ptLength: null })}>
+          <Button type="button" size="sm" variant="ghost" className={INLINE_LINK} onClick={() => onChange({ mode: "points", ptLength: null })}>
             or draw a known dimension inside it
-          </button>
+          </Button>
         </>
       ) : draft.ptLength === null ? (
         <>
           <span>— click two points inside it a known distance apart</span>
-          <button type="button" className="underline" onClick={() => onChange({ mode: "ratio" })}>
+          <Button type="button" size="sm" variant="ghost" className={INLINE_LINK} onClick={() => onChange({ mode: "ratio" })}>
             type a ratio instead
-          </button>
+          </Button>
         </>
       ) : (
         <>
           <span>— these two points are</span>
           <input autoFocus className={cn(INPUT, "w-24")} inputMode="decimal" placeholder="1200" value={draft.mm} onChange={(e) => onChange({ mm: e.target.value })} onKeyDown={onEnter} aria-label="Real distance in millimetres" />
           <span>mm apart</span>
-          <button type="button" className="underline" onClick={() => onChange({ ptLength: null })}>
+          <Button type="button" size="sm" variant="ghost" className={INLINE_LINK} onClick={() => onChange({ ptLength: null })}>
             redraw
-          </button>
+          </Button>
         </>
       )}
       <Button size="sm" loading={saving} disabled={!canSave} onClick={onSave}>
         Save viewport
       </Button>
-      <button type="button" className="underline" onClick={onDiscard}>
+      <Button type="button" size="sm" variant="ghost" className={INLINE_LINK} onClick={onDiscard}>
         Discard
-      </button>
+      </Button>
     </div>
   );
 }
@@ -101,7 +102,7 @@ interface RegionEditProps {
 /** An existing region under edit: label, ratio, and draggable bounds on the sheet. Save runs the impact preview first. */
 export function RegionEditBanner({ edit, saving, onPatch, onSave, onCancel }: RegionEditProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-amber-100 bg-amber-50 px-3 py-1.5 text-xs text-amber-900" data-region-edit-banner>
+    <div className="flex flex-wrap items-center gap-2 border-b border-warning-100 bg-warning-50 px-3 py-1.5 text-caption-m text-warning-700" data-region-edit-banner>
       <span>Editing region</span>
       <input className={cn(INPUT, "w-28")} value={edit.label} onChange={(e) => onPatch({ label: e.target.value })} aria-label="Region label" />
       <span>at 1:</span>
@@ -110,9 +111,9 @@ export function RegionEditBanner({ edit, saving, onPatch, onSave, onCancel }: Re
       <Button size="sm" loading={saving} onClick={onSave}>
         Preview change
       </Button>
-      <button type="button" className="underline" onClick={onCancel}>
+      <Button type="button" size="sm" variant="ghost" className={INLINE_LINK} onClick={onCancel}>
         Cancel
-      </button>
+      </Button>
     </div>
   );
 }

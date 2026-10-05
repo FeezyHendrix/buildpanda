@@ -12,7 +12,7 @@ export function OpenCommentBadge({ count, className }: { count: number; classNam
     <span
       title={`${count} open comment${count === 1 ? "" : "s"} pinned on the sheet`}
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-700",
+        "inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-50 px-1.5 py-0.5 text-caption-s font-medium text-primary-700",
         className,
       )}
     >

@@ -76,11 +76,11 @@ export function ViewerBanners({ activeSheet, tool, selectedRow, redrawing, onTog
       <DetectionBanners detect={tools.detect} />
       <AreaFallbackAction visible={tools.detect.noRoomFound} onDrawArea={tools.detect.fallbackToArea} />
       {tools.overlayOn && tools.previous.status === "ready" ? (
-        <p className="border-b border-red-100 bg-red-50 px-3 py-1 text-xs text-red-700">
+        <p className="border-b border-error-100 bg-error-50 px-3 py-1 text-xs text-error-600">
           Overlay: the previous revision{tools.previous.revision ? ` (rev ${tools.previous.revision})` : ""} in red under this sheet. O to hide.
         </p>
       ) : null}
-      {banner ? <p className="border-b border-amber-100 bg-amber-50 px-3 py-1 text-xs text-amber-700">{banner}</p> : null}
+      {banner ? <p className="border-b border-warning-100 bg-warning-50 px-3 py-1 text-xs text-warning-500">{banner}</p> : null}
     </>
   );
 }

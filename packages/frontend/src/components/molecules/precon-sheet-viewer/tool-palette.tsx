@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/atoms/button";
 import { PRECON_TOOL_BY_KEY, PRECON_TOOL_GROUPS, PRECON_TOOL_META, type PreconTool, type PreconToolMeta } from "@/lib/precon-meta";
 import { TOOL_ICONS } from "./tool-icons";
 import { ToolPicker } from "./tool-picker";
@@ -52,8 +53,10 @@ function useScrollEdges(ref: React.RefObject<HTMLElement | null>) {
 function PaletteButton({ meta, active, blocked, onChoose }: { meta: PreconToolMeta; active: boolean; blocked: string | null; onChoose: () => void }) {
   const Icon = TOOL_ICONS[meta.key];
   return (
-    <button
+    <Button
       type="button"
+      size="sm"
+      variant="ghost"
       data-tool-key={meta.key}
       title={toolTooltip(meta, blocked)}
       aria-label={blocked ? `${meta.label} (${meta.shortcut}) — ${blocked}` : `${meta.label} (${meta.shortcut})`}
@@ -63,8 +66,8 @@ function PaletteButton({ meta, active, blocked, onChoose }: { meta: PreconToolMe
       aria-disabled={blocked ? true : undefined}
       onClick={onChoose}
       className={cn(
-        "relative flex w-full flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px]",
-        active ? "bg-primary-50 font-semibold text-primary-700" : "font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+        "relative h-auto w-full flex-col gap-0.5 px-1 py-1.5",
+        active ? "bg-primary-50 font-semibold text-primary-700 hover:bg-primary-50" : "font-medium text-ink-muted hover:text-ink",
         // Dim the icon, never the name: `opacity-40` on the button measured 2.5:1 on the label.
         blocked && "cursor-not-allowed font-normal text-ink-muted hover:bg-transparent hover:text-ink-muted",
       )}
@@ -72,11 +75,11 @@ function PaletteButton({ meta, active, blocked, onChoose }: { meta: PreconToolMe
       <Icon className={cn("size-4 shrink-0", blocked && "opacity-40")} aria-hidden="true" />
       <span className="w-full text-balance break-words text-center leading-tight">{meta.label}</span>
       {meta.deferred ? (
-        <span className="absolute right-0.5 top-0.5 rounded bg-gray-100 px-0.5 text-[8px] font-semibold text-gray-500" aria-hidden="true">
+        <span className="absolute right-0.5 top-0.5 rounded-none bg-grey-100 px-0.5 text-caption-s font-semibold text-ink-muted" aria-hidden="true">
           {meta.deferred}
         </span>
       ) : null}
-    </button>
+    </Button>
   );
 }
 PaletteButton.displayName = "PaletteButton";
@@ -84,38 +87,42 @@ PaletteButton.displayName = "PaletteButton";
 function RailScrollButton({ dir, onClick }: { dir: "up" | "down"; onClick: () => void }) {
   const Icon = dir === "up" ? ChevronUp : ChevronDown;
   return (
-    <button
+    <Button
       type="button"
+      size="sm"
+      variant="ghost"
       data-tool-scroll={dir}
       aria-label={dir === "up" ? "Scroll tools up" : "Scroll tools down"}
       onClick={onClick}
       className={cn(
-        "flex h-6 shrink-0 items-center justify-center bg-white text-gray-600 hover:bg-gray-100",
+        "h-6 w-full shrink-0 bg-white px-0 text-ink-muted",
         dir === "up" ? "border-b border-line" : "border-t border-line",
       )}
     >
       <Icon className="size-4" aria-hidden="true" />
-    </button>
+    </Button>
   );
 }
 RailScrollButton.displayName = "RailScrollButton";
 
 function PickerTrigger({ onOpen, className }: { onOpen: () => void; className?: string }) {
   return (
-    <button
+    <Button
       type="button"
+      size="sm"
+      variant="ghost"
       data-tool-picker-trigger="true"
       aria-haspopup="dialog"
       aria-label={`All tools (${TOTAL_TOOLS})`}
       onClick={onOpen}
       className={cn(
-        "flex shrink-0 flex-col items-center gap-0.5 border-t border-line px-1 py-1.5 text-[10px] font-medium text-gray-600 hover:bg-gray-100",
+        "h-auto shrink-0 flex-col gap-0.5 border-t border-line px-1 py-1.5 font-medium text-ink-muted",
         className,
       )}
     >
       <LayoutGrid className="size-4 shrink-0" aria-hidden="true" />
       <span className="w-full text-balance break-words text-center leading-tight">All tools</span>
-    </button>
+    </Button>
   );
 }
 PickerTrigger.displayName = "PickerTrigger";

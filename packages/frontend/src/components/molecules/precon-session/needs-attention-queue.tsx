@@ -49,8 +49,8 @@ export function NeedsAttentionQueue({ sessionId, rows, sheetByRow, selectedRowId
     <section className="border-b border-line">
       <div className="flex items-center justify-between gap-2 px-3 py-2">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="size-3.5 text-amber-600" aria-hidden="true" />
-          <h3 className="text-xs font-semibold text-gray-900">Needs attention</h3>
+          <AlertTriangle className="size-3.5 text-warning-500" aria-hidden="true" />
+          <h3 className="text-caption-m font-semibold text-ink">Needs attention</h3>
           <Badge tone={queue.length > 0 ? "warning" : "success"}>{queue.length}</Badge>
         </div>
         {canVerify && confident.length > 0 ? (
@@ -75,7 +75,7 @@ export function NeedsAttentionQueue({ sessionId, rows, sheetByRow, selectedRowId
         ) : null}
       </div>
       {queue.length === 0 ? (
-        <p className="px-3 pb-3 text-xs text-gray-500">Nothing flagged. Confident drafts sit in the bill below; verify them one by one or in bulk.</p>
+        <p className="px-3 pb-3 text-caption-m text-ink-muted">Nothing flagged. Confident drafts sit in the bill below; verify them one by one or in bulk.</p>
       ) : (
         <ul className="max-h-48 overflow-y-auto">
           {queue.map((row) => {
@@ -87,12 +87,12 @@ export function NeedsAttentionQueue({ sessionId, rows, sheetByRow, selectedRowId
                   type="button"
                   onClick={() => onSelectRow(selected ? null : row.id, sheetByRow.get(row.id) ?? null)}
                   className={cn(
-                    "flex w-full items-center gap-2 border-l-2 px-3 py-1.5 text-left text-xs hover:bg-amber-50/60",
+                    "flex w-full items-center gap-2 border-l-2 px-3 py-1.5 text-left text-caption-m hover:bg-warning-50/60",
                     selected ? "border-primary-600 bg-primary-50/50" : "border-transparent",
                   )}
                 >
-                  <span className="min-w-0 flex-1 truncate text-gray-800">{row.description}</span>
-                  <span className="shrink-0 tabular-nums text-gray-500">
+                  <span className="min-w-0 flex-1 truncate text-ink">{row.description}</span>
+                  <span className="shrink-0 tabular-nums text-ink-muted">
                     {row.qty ?? "—"} {row.unit ?? ""}
                   </span>
                   <Badge tone={row.confidence === "low" ? "warning" : "neutral"} size="sm">

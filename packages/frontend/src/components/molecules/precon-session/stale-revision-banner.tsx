@@ -59,7 +59,7 @@ export function StaleRevisionBanner({ session }: Props) {
 
   return (
     <>
-      <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+      <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-none border border-warning-100 bg-warning-50 px-3 py-2 text-caption-m text-warning-600">
         <span className="inline-flex items-center gap-2">
           <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
           The drawing has a newer revision ({revLabel}) — re-measure on it. These lines stay as measured on the revision they were drawn against.

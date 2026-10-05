@@ -27,7 +27,7 @@ function TitleCell({ session }: { session: PreconSession }) {
   const meta = [originLabel(session), describeScope(session.scope), session.planId ? `Rev ${session.revision}` : null].filter(Boolean);
   return (
     <span className="flex min-w-0 flex-col">
-      <span className="truncate font-medium text-gray-900">{session.title}</span>
+      <span className="truncate font-medium text-ink">{session.title}</span>
       <span className="truncate text-xs text-ink-muted">{meta.join(" · ")}</span>
     </span>
   );
@@ -45,12 +45,12 @@ function StateCell({ session }: { session: PreconSession }) {
         {PRECON_STATUS_LABEL[session.status]}
       </Badge>
       {running ? (
-        <span className="flex items-center gap-1 text-xs text-gray-500">
+        <span className="flex items-center gap-1 text-xs text-ink-muted">
           <Spinner size="xs" />
           <span className="truncate">{latest?.message ?? "Waiting for a worker…"}</span>
         </span>
       ) : session.status === "failed" ? (
-        <span className="line-clamp-1 text-xs text-red-600" title={session.error ?? undefined}>
+        <span className="line-clamp-1 text-xs text-error-500" title={session.error ?? undefined}>
           {session.error ?? "Panda AI could not measure this drawing."}
         </span>
       ) : null}
@@ -62,10 +62,10 @@ StateCell.displayName = "StateCell";
 // Verified out of total, with the lines still needing a decision beside it.
 function LinesCell({ session }: { session: PreconSession }) {
   const lines = session.lines;
-  if (!lines || lines.total === 0) return <span className="text-gray-400">0</span>;
+  if (!lines || lines.total === 0) return <span className="text-black-300">0</span>;
   return (
     <span className="inline-flex items-center justify-end gap-2 tabular-nums">
-      <span className="text-gray-700">
+      <span className="text-ink-subtle">
         {lines.verified} of {lines.total}
       </span>
       {lines.attention > 0 ? <Badge tone="warning">{lines.attention} to check</Badge> : null}
@@ -110,7 +110,7 @@ const COLUMNS: DataGridColumn<PreconSession>[] = [
     accessor: (s) => s.createdAt,
     sortable: true,
     width: "9rem",
-    cell: (s) => <span className="text-gray-600">{formatTimeAgo(s.createdAt)}</span>,
+    cell: (s) => <span className="text-ink-muted">{formatTimeAgo(s.createdAt)}</span>,
   },
   { id: "actions", header: "", accessor: () => null, align: "right", width: "9rem", cell: (s) => <ActionsCell session={s} /> },
 ];

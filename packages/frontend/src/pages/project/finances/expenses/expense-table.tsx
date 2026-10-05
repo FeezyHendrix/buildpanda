@@ -10,12 +10,11 @@ import type { Transaction } from "@/lib/project-types";
 import { CategoryBadge } from "./expense-dialogs";
 
 /**
- * What stops this figure being read as plain final cost: a credit is money
- * coming back, a recoverable deposit comes back at the end of the job, and a
- * pre-contract cost is legitimate but not recoverable under the contract.
+ * Credits and recoverable deposits affect how the amount should be read.
+ * Date context belongs beside the expense date, separate from stage attribution.
  */
 function ExpenseFlags({ tx }: { tx: Transaction }) {
-  if (!tx.credit && !tx.recoverable && !tx.preContract) return null;
+  if (!tx.credit && !tx.recoverable) return null;
   return (
     <div className="mt-1.5 flex flex-wrap gap-1.5">
       {tx.credit ? (
@@ -26,11 +25,6 @@ function ExpenseFlags({ tx }: { tx: Transaction }) {
       {tx.recoverable ? (
         <Badge tone="info" size="sm" dot>
           Recoverable
-        </Badge>
-      ) : null}
-      {tx.preContract ? (
-        <Badge tone="warning" size="sm" dot>
-          Before site possession
         </Badge>
       ) : null}
     </div>
@@ -61,8 +55,13 @@ function ExpenseRow({
       <TableCell>
         <CategoryBadge categoryLabel={tx.categoryLabel} categoryColor={tx.categoryColor} />
       </TableCell>
-      <TableCell className="whitespace-nowrap">{formatDayMonth(tx.transactedAt)}</TableCell>
-      <TableCell className="text-ink-subtle">{tx.stageName || "—"}</TableCell>
+      <TableCell>
+        <div className="whitespace-nowrap">{formatDayMonth(tx.transactedAt)}</div>
+        {tx.preContract ? (
+          <div className="mt-1 max-w-36 text-xs text-ink-muted">Expense date is before project start.</div>
+        ) : null}
+      </TableCell>
+      <TableCell className="text-ink-subtle">{tx.stageName || "No stage"}</TableCell>
       <TableCell align="right" className="font-medium text-ink tabular-nums">
         {tx.credit ? "−" : ""}
         {formatCurrency(tx.amount, currency)}
@@ -132,8 +131,8 @@ export function ExpenseTable({
             <tr>
               <TableHeaderCell>Name</TableHeaderCell>
               <TableHeaderCell>Category</TableHeaderCell>
-              <TableHeaderCell>Date</TableHeaderCell>
-              <TableHeaderCell>Stage</TableHeaderCell>
+              <TableHeaderCell>Expense date</TableHeaderCell>
+              <TableHeaderCell>Build stage</TableHeaderCell>
               <TableHeaderCell align="right">Amount</TableHeaderCell>
               <TableHeaderCell>Created</TableHeaderCell>
               <TableHeaderCell className="w-[100px]">

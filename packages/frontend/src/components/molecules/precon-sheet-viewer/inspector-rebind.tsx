@@ -43,14 +43,14 @@ export function InspectorRebind({ row, sheet, geometryId, binding, commands }: P
 
   return (
     <div data-rebind>
-      <p className="text-xs text-gray-600">
-        Measured against <span className="font-medium text-gray-800">{current}</span>
+      <p className="text-caption-m text-ink-muted">
+        Measured against <span className="font-medium text-black-500">{current}</span>
       </p>
       {open ? (
-        <div className="mt-1 rounded-md border border-line p-2">
-          <label className="block text-xs font-medium text-gray-600">
+        <div className="mt-1 rounded-none border border-line p-2">
+          <label className="block text-caption-m font-medium text-ink-muted">
             Re-measure against
-            <select aria-label="Rebind scale source" className="mt-1 h-8 w-full rounded-md border border-line px-2 text-sm" value={choice} onChange={(e) => setChoice(e.target.value)}>
+            <select aria-label="Rebind scale source" className="mt-1 h-8 w-full rounded-none border border-line px-2 text-caption-l" value={choice} onChange={(e) => setChoice(e.target.value)}>
               <option value="">choose a scale…</option>
               {options.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -59,7 +59,7 @@ export function InspectorRebind({ row, sheet, geometryId, binding, commands }: P
               ))}
             </select>
           </label>
-          <p className="mt-1.5 text-xs text-gray-500" data-rebind-preview>
+          <p className="mt-1.5 text-caption-m text-ink-muted" data-rebind-preview>
             Now {row.qty ?? "—"} {row.unit ?? ""}. The server re-measures the shape and re-cuts its openings on apply — the new figure is
             computed there, and the line returns for review if it moves.
           </p>
@@ -73,9 +73,9 @@ export function InspectorRebind({ row, sheet, geometryId, binding, commands }: P
           </div>
         </div>
       ) : (
-        <button type="button" className="text-xs text-primary-600 underline" onClick={() => setOpen(true)}>
+        <Button type="button" variant="ghost" size="sm" className="px-0 text-primary-600 underline" onClick={() => setOpen(true)}>
           Change scale binding…
-        </button>
+        </Button>
       )}
       <ConfirmDialog
         open={confirming}

@@ -19,16 +19,16 @@ export function OverlayControls({ ovl }: { ovl: ReturnType<typeof useOverlaySuit
         : `Pair ${ovl.pairs.length + 1} of 3: click a feature on the red ghost`
     : null;
   return (
-    <div className="absolute left-1/2 top-3 z-20 w-[26rem] -translate-x-1/2 rounded-xl border border-line bg-white p-3 shadow-lg" data-overlay-controls>
+    <div className="absolute left-1/2 top-3 z-20 w-[26rem] -translate-x-1/2 rounded-none border border-line bg-white p-3 shadow-lg" data-overlay-controls>
       <div className="flex items-center gap-2">
-        <p className="text-sm font-semibold text-gray-900">Revision overlay</p>
+        <p className="text-caption-l font-semibold text-ink">Revision overlay</p>
         {ovl.saving ? <Spinner size="sm" /> : null}
-        {ovl.persisted ? <span className="text-xs text-gray-500">saved alignment on this sheet</span> : null}
+        {ovl.persisted ? <span className="text-caption-m text-ink-muted">saved alignment on this sheet</span> : null}
       </div>
-      <label className="mt-2 block text-xs font-medium text-gray-600">
+      <label className="mt-2 block text-caption-m font-medium text-ink-muted">
         Compare against
         <select
-          className="mt-0.5 w-full rounded-md border border-line px-2 py-1 text-sm"
+          className="mt-0.5 w-full rounded-none border border-line px-2 py-1 text-caption-l"
           value={ovl.chosenSourceId ?? ""}
           onChange={(e) => ovl.setSourceSheetId(e.target.value || null)}
         >
@@ -40,7 +40,7 @@ export function OverlayControls({ ovl }: { ovl: ReturnType<typeof useOverlaySuit
           ))}
         </select>
       </label>
-      <label className="mt-2 block text-xs font-medium text-gray-600">
+      <label className="mt-2 block text-caption-m font-medium text-ink-muted">
         Opacity · {Math.round(ovl.opacity * 100)}%
         <input
           type="range"
@@ -78,7 +78,7 @@ export function OverlayControls({ ovl }: { ovl: ReturnType<typeof useOverlaySuit
           </Button>
         ) : null}
       </div>
-      {alignHint ? <p className="mt-1.5 text-xs font-medium text-primary-700">{alignHint}</p> : null}
+      {alignHint ? <p className="mt-1.5 text-caption-m font-medium text-primary-700">{alignHint}</p> : null}
     </div>
   );
 }

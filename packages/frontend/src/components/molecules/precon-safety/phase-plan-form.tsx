@@ -68,19 +68,19 @@ export function PhasePlanForm({ proposalId }: Props) {
     );
   }
   if (isError) {
-    return <p className="px-4 py-6 text-sm text-red-600">{getApiErrorMessage(error, "Could not load the phase plan.")}</p>;
+    return <p className="px-4 py-6 text-caption-l text-error-500">{getApiErrorMessage(error, "Could not load the phase plan.")}</p>;
   }
 
   return (
-    <section className="rounded-lg border border-line bg-white">
+    <section className="rounded-none border border-line bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-hair px-4 py-3">
         <div className="flex items-center gap-2">
           <div>
-            <p className="text-sm font-semibold text-gray-900">Construction phase plan</p>
-            <p className="text-xs text-gray-500">Site-specific arrangements before the first day on site.</p>
+            <p className="text-caption-l font-semibold text-black-500">Construction phase plan</p>
+            <p className="text-caption-m text-ink-muted">Site-specific arrangements before the first day on site.</p>
           </div>
           {plan ? <DraftStateChip state={plan.status} /> : null}
-          {dirty ? <span className="text-xs text-amber-700">Unsaved changes</span> : null}
+          {dirty ? <span className="text-caption-m text-warning-500">Unsaved changes</span> : null}
         </div>
         <div className="flex items-center gap-2">
           <DraftButton
@@ -116,7 +116,7 @@ export function PhasePlanForm({ proposalId }: Props) {
 
       <div className="grid gap-4 p-4 lg:grid-cols-2">
         {TEXT_FIELDS.map((field) => (
-          <label key={field.key} className="text-xs font-medium text-gray-600">
+          <label key={field.key} className="text-caption-m font-medium text-ink-subtle">
             {field.label}
             <textarea
               className={cn(cellTextareaClass, "mt-1 min-h-20")}
@@ -127,19 +127,21 @@ export function PhasePlanForm({ proposalId }: Props) {
           </label>
         ))}
         <div>
-          <p className="mb-1 text-xs font-medium text-gray-600">Main hazards</p>
+          <p className="mb-1 text-caption-m font-medium text-ink-subtle">Main hazards</p>
           <StringListEditor values={form.hazards} onChange={(hazards) => setForm((f) => ({ ...f, hazards }))} placeholder="e.g. Deep excavation next to the boundary wall" addLabel="Add hazard" />
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <p className="text-xs font-medium text-gray-600">Emergency contacts</p>
-            <button
+            <p className="text-caption-m font-medium text-ink-subtle">Emergency contacts</p>
+            <Button
               type="button"
-              className="text-xs font-semibold text-primary-700 hover:underline"
+              size="sm"
+              variant="ghost"
+              className="text-primary-700"
               onClick={() => setForm((f) => ({ ...f, emergencyContacts: [...f.emergencyContacts, { name: "", role: "", phone: "" }] }))}
             >
               + Add contact
-            </button>
+            </Button>
           </div>
           <div className="flex flex-col gap-1.5">
             {form.emergencyContacts.map((contact, index) => (
@@ -147,12 +149,12 @@ export function PhasePlanForm({ proposalId }: Props) {
                 <input aria-label="Name" className={cellInputClass} placeholder="Name" value={contact.name} onChange={(e) => setContact(index, { name: e.target.value })} />
                 <input aria-label="Role" className={cellInputClass} placeholder="Role" value={contact.role} onChange={(e) => setContact(index, { role: e.target.value })} />
                 <input aria-label="Phone" className={cellInputClass} placeholder="Phone" value={contact.phone} onChange={(e) => setContact(index, { phone: e.target.value })} />
-                <button type="button" className="text-xs text-gray-400 hover:text-red-600" onClick={() => setForm((f) => ({ ...f, emergencyContacts: f.emergencyContacts.filter((_, i) => i !== index) }))}>
+                <Button type="button" size="sm" variant="ghost" className="text-black-300 hover:text-error-500" onClick={() => setForm((f) => ({ ...f, emergencyContacts: f.emergencyContacts.filter((_, i) => i !== index) }))}>
                   Remove
-                </button>
+                </Button>
               </div>
             ))}
-            {form.emergencyContacts.length === 0 ? <p className="text-xs text-gray-400">Site manager, first aider, nearest hospital.</p> : null}
+            {form.emergencyContacts.length === 0 ? <p className="text-caption-m text-black-300">Site manager, first aider, nearest hospital.</p> : null}
           </div>
         </div>
       </div>

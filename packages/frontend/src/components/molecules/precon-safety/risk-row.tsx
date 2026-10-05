@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { RISK_LEVELS_3, RISK_STATUSES, type ProposalRisk, type RiskInput } from "@/api/precon-safety";
 import { cn } from "@/lib/utils";
@@ -12,8 +13,9 @@ interface Props {
   saving: boolean;
 }
 
-const SCORE_TONE = (score: number | null) =>
-  score === null ? "bg-surface-alt text-ink-muted" : score >= 6 ? "bg-negative-50 text-negative-500" : score >= 3 ? "bg-warning-50 text-warning-500" : "bg-success-50 text-success-500";
+// WCAG 1.4.1: the score text carries the severity; the tone is a second cue only.
+const SCORE_TONE = (score: number | null): BadgeTone =>
+  score === null ? "neutral" : score >= 6 ? "danger" : score >= 3 ? "warning" : "success";
 
 // Every field commits on its own: text on blur, selects on change. The row
 // never holds unsaved state longer than one field, so a refresh loses nothing.
@@ -45,9 +47,9 @@ export function RiskRow({ risk, onSave, onConfirm, onDelete, saving }: Props) {
         />
         <EnumSelect ariaLabel="Likelihood" value={risk.likelihood} options={RISK_LEVELS_3} placeholder="Likelihood" onChange={(v) => onSave({ likelihood: v })} />
         <EnumSelect ariaLabel="Impact" value={risk.impact} options={RISK_LEVELS_3} placeholder="Impact" onChange={(v) => onSave({ impact: v })} />
-        <span className={cn("flex h-8 items-center justify-center rounded-lg text-xs font-medium tabular-nums", SCORE_TONE(risk.score))} title="Likelihood × impact">
+        <Badge tone={SCORE_TONE(risk.score)} className="h-8 w-full justify-center tabular-nums" title="Likelihood × impact">
           {risk.score ?? "—"}
-        </span>
+        </Badge>
         <input
           aria-label="Owner"
           className={cellInputClass}
@@ -71,13 +73,13 @@ export function RiskRow({ risk, onSave, onConfirm, onDelete, saving }: Props) {
               Confirm
             </Button>
           ) : null}
-          <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={onDelete}>
+          <Button size="sm" variant="ghost" className="text-error-500 hover:bg-error-50" onClick={onDelete}>
             Remove
           </Button>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs font-medium uppercase text-ink-muted">
+        <label className="text-caption-m font-medium uppercase text-ink-muted">
           Cause and effect
           <textarea
             className={cn(cellTextareaClass, "mt-1 font-normal normal-case tracking-normal")}
@@ -86,7 +88,7 @@ export function RiskRow({ risk, onSave, onConfirm, onDelete, saving }: Props) {
             onBlur={() => commitText("description", description, risk.description)}
           />
         </label>
-        <label className="text-xs font-medium uppercase text-ink-muted">
+        <label className="text-caption-m font-medium uppercase text-ink-muted">
           Mitigation
           <textarea
             className={cn(cellTextareaClass, "mt-1 font-normal normal-case tracking-normal")}

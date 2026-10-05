@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/atoms/spinner";
 import { cn } from "@/lib/utils";
-import type { PreconBoqRow, PreconGeometry, PreconSheet } from "@/api/precon";
+import type { PreconBoqRow } from "@/api/precon";
+import type { PreconSheetViewerProps } from "./precon-sheet-viewer/viewer-types";
+export type { PreconSheetViewerProps } from "./precon-sheet-viewer/viewer-types";
 import { usePreconSnapIndex } from "@/hooks/use-precon";
 import { PRECON_TOOL_BY_KEY, type PreconTool, type PreconToolMeta } from "@/lib/precon-meta";
 import { SheetToolbar } from "./precon-sheet-viewer/sheet-toolbar";
@@ -52,7 +54,7 @@ export type { PreconTool };
 // sheet sticks to the top of the scrolling column and keeps a height it can be
 // measured on, so picking a bill line never scrolls away the drawing it marks.
 const VIEWER_SHELL =
-  "flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-white max-lg:sticky max-lg:top-0 max-lg:z-20 max-lg:h-[32rem]";
+  "flex min-h-0 flex-col overflow-hidden rounded-none border border-line bg-white max-lg:sticky max-lg:top-0 max-lg:z-20 max-lg:h-[32rem]";
 
 const FLASH_MS = 1600;
 /** Tools that take a mousedown-drag-mouseup box. */
@@ -60,33 +62,6 @@ const DRAG_TOOLS = new Set<PreconTool>(["area", "volume", "viewports", "find_sym
 /** Tools that never add a point on click (toggles, popovers, the pin layer's own click). */
 const NON_DRAWING_TOOLS = new Set<PreconTool>(["select", "legend", "magnifier", "overlay", "typical", "comment", "pen", "find_symbol"]);
 
-export interface PreconSheetViewerProps {
-  sessionId: string;
-  sheets: PreconSheet[];
-  activeSheet: PreconSheet | null;
-  onSelectSheet: (sheetId: string) => void;
-  geometries: PreconGeometry[];
-  rows: PreconBoqRow[];
-  selectedRowId: string | null;
-  onSelectRow: (rowId: string | null) => void;
-  tool: PreconTool;
-  onToolChange: (tool: PreconTool) => void;
-  zoomRequest?: { seq: number; kind: "in" | "out" | "fit" } | null;
-  /**
-   * Which annotation to put handles on, when a bill line has more than one and
-   * the person has chosen. `seq` carries by value so choosing the same shape
-   * twice re-frames it, exactly as `zoomRequest` does.
-   */
-  focusGeometry?: { seq: number; geometryId: string } | null;
-  /** A line drawn by hand has been added to the bill (it is also selected). */
-  onMeasurementCreated?: (row: PreconBoqRow) => void;
-  /**
-   * False while another surface owns the keyboard — the workbook grid, in
-   * split view. Without this, typing `A` into a cell would also switch the
-   * canvas to the Area tool behind it.
-   */
-  shortcutsEnabled?: boolean;
-}
 
 /**
  * The sheet canvas with its palette. With no bill line selected the measuring
@@ -285,7 +260,7 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
         />
         <div
           ref={containerRef}
-          className={cn("relative min-h-0 flex-1 overflow-hidden bg-gray-100", tool === "select" ? "cursor-grab" : magnifierOn ? "cursor-none" : "cursor-crosshair")}
+          className={cn("relative min-h-0 flex-1 overflow-hidden bg-grey-100", tool === "select" ? "cursor-grab" : magnifierOn ? "cursor-none" : "cursor-crosshair")}
           onMouseDown={(e) => {
             select.notePress(e);
             onMouseDown(e);

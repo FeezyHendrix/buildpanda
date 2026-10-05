@@ -4,7 +4,7 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import type { PreconBoqRow } from "@/api/precon";
 import type { useRowCommands } from "./use-row-commands";
 
-const FIELD = "mt-1 h-8 w-full rounded-md border border-line px-2 text-sm";
+const FIELD = "mt-1 h-8 w-full rounded-none border border-line px-2 text-caption-l";
 
 interface Props {
   row: PreconBoqRow;
@@ -31,29 +31,42 @@ export function InspectorRepeats({ row, commands }: Props) {
 
   return (
     <div data-repeats>
-      <button type="button" className="text-xs font-semibold text-gray-900 underline-offset-2 hover:underline" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="h-auto px-0 py-0 text-caption-m font-semibold text-black-500 underline-offset-2 hover:bg-transparent hover:underline"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
         Named repetitions (×{typical}) {open ? "▾" : "▸"}
-      </button>
+      </Button>
       {open ? (
-        <div className="mt-1 rounded-md border border-line p-2">
-          <label className="block text-xs font-medium text-gray-600">
+        <div className="mt-1 rounded-none border border-line p-2">
+          <label className="block text-caption-m font-medium text-ink-muted">
             One name per line — the count of names IS the ×N, measured instance included
-            <textarea aria-label="Repeat labels" className={`${FIELD} h-24 resize-y font-mono text-xs`} value={labelsRaw} onChange={(e) => setLabelsRaw(e.target.value)} />
+            <textarea aria-label="Repeat labels" className={`${FIELD} h-24 resize-y font-mono text-caption-m`} value={labelsRaw} onChange={(e) => setLabelsRaw(e.target.value)} />
           </label>
           <div className="mt-1.5 flex items-center gap-2">
             <Button size="sm" loading={commands.saving} disabled={labels.length < 1} onClick={() => commands.setRepeatLabels(row, labels)}>
               Apply ×{Math.max(labels.length, 1)}
             </Button>
-            <span className="text-xs text-gray-500">net = (gross − deductions) × {Math.max(labels.length, 1)}</span>
+            <span className="text-caption-m text-ink-muted">net = (gross − deductions) × {Math.max(labels.length, 1)}</span>
           </div>
           {labels.length > 1 ? (
             <ul className="mt-2 space-y-0.5">
               {labels.slice(1).map((label) => (
-                <li key={label} className="flex items-center justify-between gap-2 text-xs text-gray-700">
+                <li key={label} className="flex items-center justify-between gap-2 text-caption-m text-black-500">
                   <span className="min-w-0 truncate">{label}</span>
-                  <button type="button" className="shrink-0 text-primary-600 underline" onClick={() => setSplitting(label)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-auto shrink-0 px-0 py-0 text-caption-m font-normal text-primary-600 underline hover:bg-transparent"
+                    onClick={() => setSplitting(label)}
+                  >
                     Bill separately
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

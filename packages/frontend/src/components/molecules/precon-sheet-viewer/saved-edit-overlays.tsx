@@ -45,7 +45,7 @@ export function SavedEditOverlays({ savedEdit, select, editScale }: Props) {
         role="status"
         aria-live="polite"
         aria-label="Shape being edited"
-        className="absolute left-1/2 top-16 z-20 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-md border border-line bg-white px-2.5 py-1 text-center text-xs font-medium tabular-nums text-gray-800 shadow-sm"
+        className="absolute left-1/2 top-16 z-20 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-none border border-line bg-white px-2.5 py-1 text-center text-caption-m font-medium tabular-nums text-black-500 shadow-sm"
       >
         {analytic ?? workingCopyReadout(edit.vertices.length, savedEdit.dirty)}
       </p>

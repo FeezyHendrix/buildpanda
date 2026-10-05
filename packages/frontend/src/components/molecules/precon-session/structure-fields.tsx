@@ -56,11 +56,11 @@ export function StructureFields({ session, onClose }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-line bg-white p-3">
+    <div className="rounded-none border border-line bg-white p-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold text-gray-900">Structure reading</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-caption-m font-semibold text-ink">Structure reading</p>
+          <p className="text-caption-m text-ink-muted">
             {ctx ? (
               <>
                 {ctx.confidence === "high" ? "Confirmed" : "Read by Panda AI, low confidence"}
@@ -73,14 +73,14 @@ export function StructureFields({ session, onClose }: Props) {
         </div>
         <div className="flex items-center gap-2">
           {ctx ? <Badge tone={ctx.confidence === "high" ? "success" : "warning"}>{ctx.confidence === "high" ? "Confirmed" : "Low confidence"}</Badge> : null}
-          <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-gray-700">
+          <Button type="button" size="sm" variant="ghost" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
-        <label className="block text-xs text-gray-500">
+        <label className="block text-caption-m text-ink-muted">
           Class
           <select className={FIELD} value={structureClass} onChange={(e) => setStructureClass(e.target.value as StructureClass)}>
             {STRUCTURE_CLASS_OPTIONS.map((o) => (
@@ -90,15 +90,15 @@ export function StructureFields({ session, onClose }: Props) {
             ))}
           </select>
         </label>
-        <label className="block text-xs text-gray-500">
+        <label className="block text-caption-m text-ink-muted">
           Building type
           <input className={FIELD} value={buildingType} onChange={(e) => setBuildingType(e.target.value)} placeholder="bungalow, duplex, office…" />
         </label>
-        <label className="block text-xs text-gray-500">
+        <label className="block text-caption-m text-ink-muted">
           Storeys
           <input className={FIELD} inputMode="numeric" value={storeys} onChange={(e) => setStoreys(e.target.value)} placeholder="1" />
         </label>
-        <label className="block text-xs text-gray-500">
+        <label className="block text-caption-m text-ink-muted">
           Structural system
           <select className={FIELD} value={structuralSystem} onChange={(e) => setStructuralSystem(e.target.value as StructuralSystem)}>
             {STRUCTURAL_SYSTEM_OPTIONS.map((o) => (
@@ -108,7 +108,7 @@ export function StructureFields({ session, onClose }: Props) {
             ))}
           </select>
         </label>
-        <label className="block text-xs text-gray-500">
+        <label className="block text-caption-m text-ink-muted">
           Foundation
           <select className={FIELD} value={foundationType} onChange={(e) => setFoundationType(e.target.value as FoundationType)}>
             {FOUNDATION_TYPE_OPTIONS.map((o) => (
@@ -139,7 +139,7 @@ export function StructureFields({ session, onClose }: Props) {
         >
           Redraft unverified lines
         </Button>
-        {saved ? <span className="text-xs text-gray-500">Saved. Redraft to apply it to the bill.</span> : null}
+        {saved ? <span className="text-caption-m text-ink-muted">Saved. Redraft to apply it to the bill.</span> : null}
       </div>
     </div>
   );

@@ -36,11 +36,11 @@ export function MethodStatementsPanel({ proposalId, programmeTasks }: Props) {
   const fail = (fallback: string) => (err: unknown) => toast(getApiErrorMessage(err, fallback), "error");
 
   return (
-    <section className="rounded-lg border border-line bg-white">
+    <section className="rounded-none border border-line bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-hair px-4 py-3">
         <div>
-          <p className="text-sm font-semibold text-gray-900">Method statements</p>
-          <p className="text-xs text-gray-500">One per high-risk activity in the programme. Hazards, steps, controls and PPE, all editable.</p>
+          <p className="text-caption-l font-semibold text-black-500">Method statements</p>
+          <p className="text-caption-m text-ink-muted">One per high-risk activity in the programme. Hazards, steps, controls and PPE, all editable.</p>
         </div>
         <div className="flex items-center gap-2">
           <DraftButton
@@ -77,9 +77,9 @@ export function MethodStatementsPanel({ proposalId, programmeTasks }: Props) {
           <Spinner size="sm" />
         </div>
       ) : isError ? (
-        <p className="px-4 py-6 text-sm text-red-600">{getApiErrorMessage(error, "Could not load method statements.")}</p>
+        <p className="px-4 py-6 text-caption-l text-error-500">{getApiErrorMessage(error, "Could not load method statements.")}</p>
       ) : statements.length === 0 ? (
-        <p className="px-4 py-8 text-center text-sm text-gray-500">
+        <p className="px-4 py-8 text-center text-caption-l text-ink-muted">
           No method statements yet. Draft them from the programme, or write the first one by hand.
         </p>
       ) : (
@@ -91,8 +91,8 @@ export function MethodStatementsPanel({ proposalId, programmeTasks }: Props) {
                   type="button"
                   onClick={() => setSelectedId(statement.id)}
                   className={cn(
-                    "flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm outline-none focus-visible:shadow-focus",
-                    selected?.id === statement.id ? "bg-primary-50 text-primary-800" : "text-gray-800 hover:bg-gray-50",
+                    "flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-caption-l outline-none focus-visible:shadow-focus",
+                    selected?.id === statement.id ? "bg-primary-50 text-primary-800" : "text-ink hover:bg-grey-50",
                   )}
                 >
                   <span className="truncate font-medium">{statement.activityName}</span>

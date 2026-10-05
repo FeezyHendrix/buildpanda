@@ -22,8 +22,8 @@ export function PreconWorkbook(props: WorkbookPanelProps) {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-line bg-surface">
-          <span className="inline-flex items-center gap-2 text-xs text-ink-muted">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-none border border-line bg-surface">
+          <span className="inline-flex items-center gap-2 text-caption-m text-ink-muted">
             <Spinner size="sm" />
             Opening the workbook…
           </span>

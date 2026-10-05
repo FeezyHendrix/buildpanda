@@ -72,43 +72,45 @@ export function ProgrammeTaskRow({ task, tasks, index, isParent, selected, onSel
       )}
     >
       <div
-        className={cn("grid grid-cols-[1fr_72px_120px_64px_112px] items-center gap-2 py-1.5 pr-2 text-sm", INDENT[task.outlineLevel] ?? "pl-20")}
+        className={cn("grid grid-cols-[1fr_72px_120px_64px_112px] items-center gap-2 py-1.5 pr-2 text-caption-l", INDENT[task.outlineLevel] ?? "pl-20")}
         onClick={() => onSelect(task.id)}
       >
         <div className="flex min-w-0 items-center gap-1.5">
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant="ghost"
             aria-label={open ? "Collapse task" : "Expand task"}
             aria-expanded={open}
-            className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100"
+            className="h-6 w-6 shrink-0 px-0 text-black-300"
             onClick={(e) => {
               e.stopPropagation();
               setOpen((v) => !v);
             }}
           >
             {open ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
-          </button>
-          {task.isMilestone ? <span aria-hidden="true" className="shrink-0 text-amber-600">◆</span> : null}
-          <span className={cn("truncate", isParent ? "font-semibold text-gray-900" : "text-gray-800", task.status === "rejected" && "line-through")}>
+          </Button>
+          {task.isMilestone ? <span aria-hidden="true" className="shrink-0 text-warning-400">◆</span> : null}
+          <span className={cn("truncate", isParent ? "font-semibold text-black-500" : "text-ink", task.status === "rejected" && "line-through")}>
             {task.name}
           </span>
           {task.origin !== "ai" ? (
-            <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            <span className="shrink-0 rounded-none bg-grey-100 px-1.5 py-0.5 text-caption-s font-medium uppercase tracking-wide text-ink-muted">
               {task.origin === "prompt" ? "Prompted" : "Edited"}
             </span>
           ) : null}
         </div>
-        <span className="text-right text-xs tabular-nums text-gray-600">{task.isMilestone ? "—" : `${task.durationDays} d`}</span>
-        <span className="text-right text-xs tabular-nums text-gray-500">
+        <span className="text-right text-caption-m tabular-nums text-ink-subtle">{task.isMilestone ? "—" : `${task.durationDays} d`}</span>
+        <span className="text-right text-caption-m tabular-nums text-ink-muted">
           {formatDay(task.startAt)} → {formatDay(task.finishAt)}
         </span>
-        <span className="text-right text-xs tabular-nums">
+        <span className="text-right text-caption-m tabular-nums">
           {task.isCritical ? (
-            <span className="font-semibold text-red-600">critical</span>
+            <span className="font-semibold text-error-500">critical</span>
           ) : task.totalFloatDays === null ? (
             "—"
           ) : (
-            <span className="text-gray-500">{task.totalFloatDays} d float</span>
+            <span className="text-ink-muted">{task.totalFloatDays} d float</span>
           )}
         </span>
         <span className="text-right">
@@ -120,13 +122,13 @@ export function ProgrammeTaskRow({ task, tasks, index, isParent, selected, onSel
       </div>
 
       {open ? (
-        <div className={cn("space-y-3 border-t border-line-hair bg-gray-50 py-3 pr-3", INDENT[task.outlineLevel] ?? "pl-20")}>
+        <div className={cn("space-y-3 border-t border-line-hair bg-grey-50 py-3 pr-3", INDENT[task.outlineLevel] ?? "pl-20")}>
           <div className="grid gap-3 sm:grid-cols-[1fr_120px_140px]">
-            <label className="text-xs text-gray-500">
+            <label className="text-caption-m text-ink-muted">
               Task name
               <input className={inputClass + " mt-1"} defaultValue={task.name} disabled={!canEdit} onBlur={commitText("name")} />
             </label>
-            <label className="text-xs text-gray-500">
+            <label className="text-caption-m text-ink-muted">
               Duration (working days)
               <input
                 className={inputClass + " mt-1 text-right"}
@@ -136,7 +138,7 @@ export function ProgrammeTaskRow({ task, tasks, index, isParent, selected, onSel
                 onBlur={commitDuration}
               />
             </label>
-            <div className="text-xs text-gray-500">
+            <div className="text-caption-m text-ink-muted">
               Milestone
               <Switcher
                 className="mt-1"
@@ -145,7 +147,7 @@ export function ProgrammeTaskRow({ task, tasks, index, isParent, selected, onSel
               />
             </div>
           </div>
-          <label className="block text-xs text-gray-500">
+          <label className="block text-caption-m text-ink-muted">
             Basis for the duration
             <input className={inputClass + " mt-1"} defaultValue={task.basis ?? ""} disabled={!canEdit} placeholder="e.g. 186 m² of blockwork at 12 m²/day, two gangs" onBlur={commitText("basis")} />
           </label>
@@ -174,7 +176,7 @@ export function ProgrammeTaskRow({ task, tasks, index, isParent, selected, onSel
               <Plus className="mr-1 size-3.5" aria-hidden="true" />
               Add below
             </Button>
-            <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" disabled={!canEdit} onClick={() => actions.remove(task)}>
+            <Button size="sm" variant="ghost" className="text-error-500 hover:bg-error-50" disabled={!canEdit} onClick={() => actions.remove(task)}>
               <Trash2 className="mr-1 size-3.5" aria-hidden="true" />
               Delete
             </Button>

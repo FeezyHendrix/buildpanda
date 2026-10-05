@@ -44,9 +44,9 @@ function formatDim(value: number | null): string {
 export function ExtractionSummary({ summary }: { summary: GeoSummary }) {
   const pct = Math.round(summary.coverage.measuredShare * 100);
   return (
-    <div className="space-y-1.5 rounded-lg border border-line-hair bg-gray-50 p-2.5 text-xs text-gray-600">
+    <div className="space-y-1.5 rounded-none border border-line-hair bg-grey-50 p-2.5 text-caption-m text-ink-muted">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-semibold text-gray-800">What Panda AI found</span>
+        <span className="font-semibold text-ink">What Panda AI found</span>
         <Badge tone={unitsTone(summary.units.confidence)} size="sm">
           {UNIT_LABEL[summary.units.unit] ?? summary.units.unit} · {summary.units.basis}
         </Badge>
@@ -55,12 +55,12 @@ export function ExtractionSummary({ summary }: { summary: GeoSummary }) {
         {summary.totals.segments.toLocaleString()} lines · {summary.totals.shapes.toLocaleString()} closed shapes · {summary.totals.inserts.toLocaleString()} blocks ·{" "}
         {summary.totals.dimensions.toLocaleString()} dimensions · {summary.totals.texts.toLocaleString()} texts
       </p>
-      <p className={cn(pct < 50 ? "text-amber-700" : "text-gray-600")}>
+      <p className={cn(pct < 50 ? "text-warning-500" : "text-ink-muted")}>
         {pct}% of the geometry sits on a layer a measuring rule reads
         {summary.unreadable > 0 ? ` · ${summary.unreadable.toLocaleString()} entities not readable` : ""}
       </p>
       {summary.warnings.length > 0 ? (
-        <ul className="list-disc space-y-0.5 pl-4 text-amber-700">
+        <ul className="list-disc space-y-0.5 pl-4 text-warning-500">
           {summary.warnings.map((w) => (
             <li key={w}>{w}</li>
           ))}
@@ -73,8 +73,8 @@ ExtractionSummary.displayName = "ExtractionSummary";
 
 function LayerTable({ layers }: { layers: ExtractionReport["layers"] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-line">
-      <Table className="text-xs">
+    <div className="overflow-hidden rounded-none border border-line">
+      <Table className="text-caption-m">
         <TableHead>
           <tr>
             <TableHeaderCell className="px-3 py-1.5">Layer</TableHeaderCell>
@@ -86,9 +86,9 @@ function LayerTable({ layers }: { layers: ExtractionReport["layers"] }) {
         <TableBody>
           {layers.map((layer) => (
             <TableRow key={layer.name}>
-              <TableCell className="px-3 py-1.5 font-mono text-xs text-gray-800">{layer.name}</TableCell>
-              <TableCell align="right" className="px-3 py-1.5 text-xs tabular-nums text-gray-700">{layer.count.toLocaleString()}</TableCell>
-              <TableCell className="px-3 py-1.5 text-xs text-gray-500">
+              <TableCell className="px-3 py-1.5 font-mono text-caption-m text-ink">{layer.name}</TableCell>
+              <TableCell align="right" className="px-3 py-1.5 text-caption-m tabular-nums text-ink-subtle">{layer.count.toLocaleString()}</TableCell>
+              <TableCell className="px-3 py-1.5 text-caption-m text-ink-muted">
                 {Object.entries(layer.byType)
                   .sort((a, b) => b[1] - a[1])
                   .map(([type, n]) => `${n} ${type}`)
@@ -114,8 +114,8 @@ export function ExtractionReportPanel({ report, title }: { report: ExtractionRep
     <Card className="space-y-4 p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">What Panda AI found{title ? ` · ${title}` : ""}</h3>
-          <p className="text-xs text-gray-500">Recorded before anything is measured, so nothing can be dropped silently.</p>
+          <h3 className="text-caption-l font-semibold text-ink">What Panda AI found{title ? ` · ${title}` : ""}</h3>
+          <p className="text-caption-m text-ink-muted">Recorded before anything is measured, so nothing can be dropped silently.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={unitsTone(report.units.confidence)}>
@@ -124,9 +124,9 @@ export function ExtractionReportPanel({ report, title }: { report: ExtractionRep
           <Badge tone={pct >= 50 ? "success" : "warning"}>{pct}% of geometry measurable</Badge>
         </div>
       </div>
-      <p className="text-xs text-gray-500">{report.units.note}</p>
+      <p className="text-caption-m text-ink-muted">{report.units.note}</p>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-3 lg:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-caption-m sm:grid-cols-3 lg:grid-cols-6">
         {(
           [
             ["Lines", report.totals.segments],
@@ -138,14 +138,14 @@ export function ExtractionReportPanel({ report, title }: { report: ExtractionRep
           ] as const
         ).map(([label, value]) => (
           <div key={label}>
-            <dt className="text-gray-500">{label}</dt>
-            <dd className="font-mono text-sm tabular-nums text-gray-900">{value.toLocaleString()}</dd>
+            <dt className="text-ink-muted">{label}</dt>
+            <dd className="font-mono text-caption-l tabular-nums text-ink">{value.toLocaleString()}</dd>
           </div>
         ))}
       </dl>
 
       {report.warnings.length > 0 ? (
-        <ul className="list-disc space-y-0.5 rounded-lg bg-amber-50 px-6 py-2 text-xs text-amber-800">
+        <ul className="list-disc space-y-0.5 rounded-none bg-warning-50 px-6 py-2 text-caption-m text-warning-600">
           {report.warnings.map((w) => (
             <li key={w}>{w}</li>
           ))}
@@ -153,42 +153,42 @@ export function ExtractionReportPanel({ report, title }: { report: ExtractionRep
       ) : null}
 
       <div>
-        <h4 className="mb-1.5 text-xs font-semibold text-gray-700">Layers</h4>
+        <h4 className="mb-1.5 text-caption-m font-semibold text-ink-subtle">Layers</h4>
         <LayerTable layers={report.layers} />
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 text-caption-m text-black-300">
           "Treated as" is what today's measuring rules do with the layer. Ignored layers are not measured. Measured layers: {report.coverage.measuredLayers.join(", ") || "none"}.
         </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div>
-          <h4 className="mb-1.5 text-xs font-semibold text-gray-700">Blocks</h4>
+          <h4 className="mb-1.5 text-caption-m font-semibold text-ink-subtle">Blocks</h4>
           {report.blocks.length === 0 ? (
-            <p className="text-xs text-gray-400">No block inserts.</p>
+            <p className="text-caption-m text-black-300">No block inserts.</p>
           ) : (
-            <ul className="space-y-0.5 text-xs">
+            <ul className="space-y-0.5 text-caption-m">
               {report.blocks.slice(0, 12).map((b) => (
                 <li key={b.name} className="flex justify-between gap-2">
-                  <span className="truncate font-mono text-xs text-gray-800">{b.name}</span>
-                  <span className="shrink-0 tabular-nums text-gray-500">×{b.inserts}</span>
+                  <span className="truncate font-mono text-caption-m text-ink">{b.name}</span>
+                  <span className="shrink-0 tabular-nums text-ink-muted">×{b.inserts}</span>
                 </li>
               ))}
             </ul>
           )}
         </div>
         <div>
-          <h4 className="mb-1.5 text-xs font-semibold text-gray-700">Dimensions</h4>
-          <p className="text-xs text-gray-600">
+          <h4 className="mb-1.5 text-caption-m font-semibold text-ink-subtle">Dimensions</h4>
+          <p className="text-caption-m text-ink-muted">
             {report.dimensions.count.toLocaleString()} found
             {report.dimensions.count > 0 ? ` · ${formatDim(report.dimensions.min)} to ${formatDim(report.dimensions.max)} · median ${formatDim(report.dimensions.median)}` : ""}
           </p>
           {report.extents ? (
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-caption-m text-ink-muted">
               Extents {formatDim(report.extents.width)} × {formatDim(report.extents.height)} {report.units.unit === "unknown" ? "pt" : report.units.unit}
             </p>
           ) : null}
-          <h4 className="mb-1.5 mt-3 text-xs font-semibold text-gray-700">Frequent text</h4>
-          <p className="text-xs text-gray-600">
+          <h4 className="mb-1.5 mt-3 text-caption-m font-semibold text-ink-subtle">Frequent text</h4>
+          <p className="text-caption-m text-ink-muted">
             {report.texts
               .slice(0, 10)
               .map((t) => `${t.text}${t.count > 1 ? ` ×${t.count}` : ""}`)
@@ -196,14 +196,14 @@ export function ExtractionReportPanel({ report, title }: { report: ExtractionRep
           </p>
         </div>
         <div>
-          <h4 className="mb-1.5 text-xs font-semibold text-gray-700">Not readable</h4>
+          <h4 className="mb-1.5 text-caption-m font-semibold text-ink-subtle">Not readable</h4>
           {report.unreadable.length === 0 ? (
-            <p className="text-xs text-gray-400">Everything in the model space was read.</p>
+            <p className="text-caption-m text-black-300">Everything in the model space was read.</p>
           ) : (
-            <ul className="space-y-1 text-xs text-gray-600">
+            <ul className="space-y-1 text-caption-m text-ink-muted">
               {report.unreadable.map((u) => (
                 <li key={u.what}>
-                  <span className="font-mono text-xs text-gray-800">{u.what}</span> ×{u.count.toLocaleString()} · {u.note}
+                  <span className="font-mono text-caption-m text-ink">{u.what}</span> ×{u.count.toLocaleString()} · {u.note}
                 </li>
               ))}
             </ul>
