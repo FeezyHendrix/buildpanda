@@ -4,12 +4,14 @@ import { NotFoundError, BadRequestError } from "../../../../lib/errors.ts";
 import { preconRepository, type PreconRepository, type RerunToken } from "../repository.ts";
 import { SHEET_KIND, type DimUnit, type MeasuredBoqItem, type PreconBillRow } from "../types.ts";
 import { buildSnapIndex } from "./pdf-extract.ts";
-import { contextFromPages, extractAllPages } from "./measure-file.ts";
+import { contextFromPages } from "./measure-file.ts";
+import { readSessionDrawings } from "./read-drawings.ts";
+import { classifyDrawingPage, drawingPageContext } from "./drawing-evidence.ts";
 import { fromPdf } from "../../geometry/from-pdf.ts";
 import { buildReport, summarise } from "../../geometry/report.ts";
 import { calibrate } from "./calibrate.ts";
 import { countDoorArcs } from "./measure.ts";
-import { classifySheet, measureSheetRegions, withTempFile } from "./measure-sheet.ts";
+import { measureSheetRegions } from "./measure-sheet.ts";
 import { draftBoq } from "./boq-draft.ts";
 import { measureRoofPlan } from "./roof-measure.ts";
 import { measureSheetViaVision } from "./vision-takeoff.ts";
@@ -69,14 +71,15 @@ export async function remeasureSheet(
   // until the write phase. Applying it here would leave a drawing re-scaled and
   // its lines un-re-measured if the run then failed or was superseded.
   let restated: SheetRestatement | null = null;
-  const items = await withTempFile(sheet.storage_path, "pdf", async (file): Promise<MeasuredBoqItem[]> => {
-    const doc = await pdfjs.getDocument({ url: file, useSystemFonts: true }).promise;
-    // the whole file is read so this sheet's wall heights still come from the
-    // level marks on the other sheets
-    const extractedPages = await extractAllPages(doc, pdfjs.OPS);
-    const document = contextFromPages(extractedPages);
-    const extracted = extractedPages[pageNo - 1]!.extracted;
-    await doc.cleanup();
+  const items = await (async (): Promise<MeasuredBoqItem[]> => {
+    const files = await readSessionDrawings(sheets.filter((s) => /\.pdf$/i.test(s.file_name)), progress);
+    const targetFile = files.find((file) => file.sheet.storage_path === sheet.storage_path);
+    const targetPage = targetFile?.pages[pageNo - 1];
+    if (!targetPage) throw new BadRequestError(targetFile?.error ?? "Drawing page could not be read");
+    const pages = files.flatMap((file) => file.pages);
+    const drawingContext = pages.map(drawingPageContext).join("\n\n");
+    const document = contextFromPages(pages);
+    const extracted = targetPage.extracted;
     const geoSummary = summarise(buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never)));
     // a scale the reviewer typed or drew (confidence 1) beats the engine's guess
     const userScale: Calibration | null =
@@ -85,11 +88,7 @@ export async function remeasureSheet(
         : null;
     const calibration: Calibration | null = userScale ?? calibrate(extracted.texts, extracted.segments);
     const doorProbe = countDoorArcs(extracted.curves, calibration?.mmPerPt ?? 17.68);
-    const classified = classifySheet(
-      extracted.texts,
-      doorProbe.count > 0,
-      /bed\s*room|kitchen|living|lounge/i.test(extracted.texts.map((t) => t.str).join(" ")),
-    );
+    const classified = classifyDrawingPage(targetPage, doorProbe.count > 0);
     const kind = sheet.kind !== "unknown" ? sheet.kind : classified.kind;
     const title = sheet.title ?? classified.title;
     restated = {
@@ -107,7 +106,7 @@ export async function remeasureSheet(
     };
     if (kind === SHEET_KIND.ROOF_PLAN) {
       const visionItems = await measureSheetViaVision(
-        { storagePath: sheet.storage_path, pageNumber: pageNo, globalPage: sheet.page_number, sheetLabel: label, focus: "roof" },
+        { storagePath: sheet.storage_path, pageNumber: pageNo, globalPage: sheet.page_number, sheetLabel: label, focus: "roof", drawingContext },
         visionBudget,
       );
       return visionItems?.filter((item) => item.elementGroup === "Roof")
@@ -128,7 +127,7 @@ export async function remeasureSheet(
     return calibration.confidence < 0.7
       ? measured.items.map((i) => ({ ...i, confidence: "low" as const, confidenceReason: i.confidenceReason ?? "scale" }))
       : measured.items;
-  });
+  })();
 
   // The reading is done; everything past here is destructive, so it commits as
   // one unit inside the session lock and only while this is still the current

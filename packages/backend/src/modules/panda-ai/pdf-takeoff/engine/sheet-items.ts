@@ -62,7 +62,9 @@ export function wallItems(m: RegionMeasurement, ctx: ItemContext): MeasuredBoqIt
     if (!m.dimensionCheck.ok) reasons.push(m.dimensionCheck.note);
     if (unknown.length) reasons.push(`${unknown.length} openings of unknown type not deducted`);
     if (pairs.length < 2) reasons.push("a single wall pair");
-    const heightNote = document.storeyHeightBasis === "level-marks" ? `${document.storeyHeightM}m storey height from level marks` : `${document.storeyHeightM}m assumed height`;
+    const heightNote = document.storeyHeightBasis === "assumed"
+      ? `${document.storeyHeightM}m assumed height`
+      : `${document.storeyHeightM}m storey height from ${document.storeyHeightBasis === "level-marks" ? "level marks" : "drawing note"}${document.storeyHeightSource ? ` on ${document.storeyHeightSource}` : ""}`;
     items.push({
       elementGroup: "Internal and external walls",
       workSection: { code: "F10", title: "BRICK/BLOCK WALLING" },

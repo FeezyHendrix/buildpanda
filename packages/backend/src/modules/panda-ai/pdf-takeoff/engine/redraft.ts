@@ -1,7 +1,6 @@
 import type { Knex } from "knex";
 import { NotFoundError, BadRequestError } from "../../../../lib/errors.ts";
-import { isLlmConfigured } from "../../../../lib/llm.ts";
-import { chatLongJsonValidated } from "../../../../lib/llm-long-text.ts";
+import { chatLongJsonValidated, longTextProvider } from "../../../../lib/llm-long-text.ts";
 import { preconRepository, type RerunToken } from "../repository.ts";
 import type { MeasuredBoqItem, PreconBoqRowRow } from "../types.ts";
 import { FULL_TAKEOFF_SCOPE } from "../types.ts";
@@ -11,6 +10,8 @@ import { draftBoq } from "./boq-draft.ts";
 import type { ProgressFn } from "./run.ts";
 import { besmmResolverFor } from "./besmm-resolver.ts";
 import { measuredBillFor } from "./remeasure.ts";
+import { readSessionDrawings } from "./read-drawings.ts";
+import { drawingPageContext } from "./drawing-evidence.ts";
 
 // Measured and verified lines are the anchors the agents build from; the
 // engine's own measurement basis travels with them so descriptions stay honest.
@@ -45,7 +46,7 @@ export async function redraftBill(
   progress: ProgressFn = () => {},
   token?: RerunToken,
 ): Promise<{ lines: number }> {
-  if (!isLlmConfigured()) throw new BadRequestError("Panda AI build-up is not configured on this server");
+  if (!longTextProvider()) throw new BadRequestError("Panda AI build-up is not configured on this server");
   const repo = preconRepository(db);
   const session = await repo.sessionById(sessionId);
   if (!session) throw new NotFoundError("Preconstruction session");
@@ -66,10 +67,14 @@ export async function redraftBill(
     foundationType: structure.foundationType,
   }).filter((brief) => scope.kind !== "sections" || scope.elements.includes(brief.element));
 
+  const drawings = await readSessionDrawings(sheets.filter((sheet) => /\.pdf$/i.test(sheet.file_name)), progress);
+  const drawingContext = drawings.flatMap((file) => file.pages.map(drawingPageContext)).join("\n\n");
+  const context = `Requested scope: ${JSON.stringify(scope)}\nStructure: ${JSON.stringify(structure)}\nSheets: ${sheets.map((s) => `${s.code}: ${s.title}`).join("; ")}\nSupporting drawing information:\n${drawingContext}`;
+
   await progress("building", `Redrafting ${briefs.length} elements against ${structure.structureClass}${structure.buildingType ? ` (${structure.buildingType})` : ""}`);
   const outcome = await buildUpBill(
     anchors,
-    `${sheets.length} sheets; anchors from verified and measured lines only`,
+    context,
     async (messages, schema) => chatLongJsonValidated(messages, schema),
     (message) => void progress("building", message),
     briefs,
