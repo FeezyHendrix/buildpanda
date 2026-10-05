@@ -28,6 +28,7 @@ const TAKEOFF = "src/modules/panda-ai/pdf-takeoff";
 
 /** Real-database and pure suites for the editor, run under the backend tsconfig. */
 const BACKEND_SUITES: readonly string[] = [
+  `${TAKEOFF}/drawing-evidence.test.ts`,
   `${TAKEOFF}/editor-measurement-maths.test.ts`,
   `${TAKEOFF}/editor-locked-writes.test.ts`,
   `${TAKEOFF}/editor-restructure-rerun.test.ts`,

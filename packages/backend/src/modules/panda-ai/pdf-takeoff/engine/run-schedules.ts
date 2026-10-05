@@ -15,8 +15,7 @@ import {
   readSchedules,
 } from "./schedule.ts";
 import { bbsToItems, pileScheduleToItems, provisionalRebarItem, readBbs, readPileSchedule } from "./structural-schedule.ts";
-import { chatLongJsonValidated } from "../../../../lib/llm-long-text.ts";
-import { isLlmConfigured } from "../../../../lib/llm.ts";
+import { chatLongJsonValidated, longTextProvider } from "../../../../lib/llm-long-text.ts";
 import type { MeasuredBoqItem, TextRun } from "../types.ts";
 import type { ProgressFn } from "./run.ts";
 
@@ -97,7 +96,7 @@ export async function applyScheduleSheets(
   }
 
   let scheduleSummary = "";
-  if (!areasOnly && isLlmConfigured() && scheduleSheets.length > 0) {
+  if (!areasOnly && longTextProvider() && scheduleSheets.length > 0) {
     await progress("schedules", `Reading ${scheduleSheets.length} schedule sheet(s)`);
     try {
       let schedules = await readSchedules(scheduleSheets, async (messages, schema) =>

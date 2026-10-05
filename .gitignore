@@ -53,7 +53,8 @@ coverage/
 # with that manifest — do NOT widen this to un-ignore tests generally, and do
 # NOT un-ignore a historical worktree to pick a suite up.
 #
-# packages/backend/src/modules/panda-ai/pdf-takeoff — 43
+# packages/backend/src/modules/panda-ai/pdf-takeoff — 44
+!/packages/backend/src/modules/panda-ai/pdf-takeoff/drawing-evidence.test.ts
 !/packages/backend/src/modules/panda-ai/pdf-takeoff/apply-to-estimate-locks.test.ts
 !/packages/backend/src/modules/panda-ai/pdf-takeoff/apply-to-estimate.test.ts
 !/packages/backend/src/modules/panda-ai/pdf-takeoff/editor-audit-restore.test.ts

@@ -1,11 +1,9 @@
 import { z } from "zod";
 import { chatVision, isVisionConfigured } from "../../../../lib/llm-vision.ts";
 import { openStoredFile, streamToBuffer } from "../../../../lib/file-storage.ts";
-import { renderPdfPagesToPng, pngToDataUrl } from "../../../../lib/document-render.ts";
+import { renderPdfPageViews, pngToDataUrl } from "../../../../lib/document-render.ts";
 import type { MeasuredBoqItem } from "../types.ts";
-
-export const VISION_MAX_SHEETS_PER_SESSION = 6;
-const VISION_DPI = 150;
+import { DRAWING_VIEWS_DESCRIPTION } from "./drawing-evidence.ts";
 
 export interface VisionBudget {
   remainingSheets: number;
@@ -17,6 +15,7 @@ export interface VisionTakeoffInput {
   globalPage: number;
   sheetLabel: string;
   focus?: "roof";
+  drawingContext?: string;
 }
 
 const UNITS = ["m", "m2", "m3", "nr", "kg", "sum"] as const;
@@ -91,16 +90,16 @@ export async function measureSheetViaVision(
   let pngs: Buffer[];
   try {
     const buffer = await streamToBuffer(await openStoredFile(input.storagePath));
-    pngs = await renderPdfPagesToPng(buffer, { maxPages: input.pageNumber, dpi: VISION_DPI });
+    pngs = await renderPdfPageViews(buffer, input.pageNumber);
   } catch {
     return null;
   }
-  const png = pngs[input.pageNumber - 1];
-  if (!png) return null;
+  if (pngs.length === 0) return null;
 
   budget.remainingSheets -= 1;
 
-  const raw = await chatVision(`${input.focus === "roof" ? ROOF_PROMPT : PROMPT}\n\nDrawing: ${input.sheetLabel}`, [pngToDataUrl(png)], {
+  const evidence = `${DRAWING_VIEWS_DESCRIPTION}\nSupporting information from the drawing set:\n${input.drawingContext ?? "None supplied"}\nUse sections, elevations and details to resolve dimensions and specifications of this sheet's elements. Do not count supporting detail views as additional instances. Conflicting or unreadable information stays uncertain.`;
+  const raw = await chatVision(`${input.focus === "roof" ? ROOF_PROMPT : PROMPT}\n\n${evidence}\n\nDrawing: ${input.sheetLabel}`, pngs.map(pngToDataUrl), {
     detail: "high",
   });
   if (!raw) return null;
