@@ -220,7 +220,7 @@ export function InkLayer({ sessionId, sheetId, widthPx, heightPx, toPx, toPt, cs
                   type="button"
                   data-ink-delete
                   style={{ transform: `scale(${1 / cssZoom})`, transformOrigin: "top left" }}
-                  className="rounded-md border border-line bg-white px-2 py-0.5 text-xs text-red-600 shadow-sm"
+                  className="rounded-none border border-line bg-white px-2 py-0.5 text-caption-m text-error-500 shadow-sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     deleteSelected();

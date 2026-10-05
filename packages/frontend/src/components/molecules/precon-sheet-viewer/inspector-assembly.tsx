@@ -26,13 +26,13 @@ function factorSentence(assembly: AssemblySnapshot, base: Props["base"]): string
  */
 export function InspectorAssembly({ assembly, base }: Props) {
   return (
-    <div className="rounded-md border border-line-hair bg-surface-alt p-2" data-assembly-line data-assembly-id={assembly.assemblyId}>
-      <p className="text-xs font-semibold text-gray-900">Independent assembly line</p>
-      <p className="mt-0.5 text-xs text-gray-600">
-        Drawn as <span className="font-medium text-gray-800">{assembly.description}</span> from the assembly{" "}
-        <span className="font-medium text-gray-800">{assembly.assemblyName}</span> — {factorSentence(assembly, base)}.
+    <div className="rounded-none border border-line-hair bg-surface-alt p-2" data-assembly-line data-assembly-id={assembly.assemblyId}>
+      <p className="text-caption-m font-semibold text-ink">Independent assembly line</p>
+      <p className="mt-0.5 text-caption-m text-ink-muted">
+        Drawn as <span className="font-medium text-black-500">{assembly.description}</span> from the assembly{" "}
+        <span className="font-medium text-black-500">{assembly.assemblyName}</span> — {factorSentence(assembly, base)}.
       </p>
-      <p className="mt-1 text-xs text-gray-600">
+      <p className="mt-1 text-caption-m text-ink-muted">
         That recipe was copied onto this line when it was drawn. Editing, re-measuring or deleting this line changes only this line; the
         assembly&rsquo;s other lines keep their own recorded basis, and later changes to the assembly do not restate it.
       </p>

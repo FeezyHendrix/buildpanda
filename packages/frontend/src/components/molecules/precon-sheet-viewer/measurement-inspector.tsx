@@ -11,14 +11,14 @@ import { InspectorRepeats } from "./inspector-repeats";
 import { InspectorLegacy } from "./inspector-legacy";
 import { useRowCommands } from "./use-row-commands";
 
-const FIELD = "mt-1 h-8 w-full rounded-md border border-line px-2 text-sm tabular-nums";
-const LABEL = "block text-xs font-medium text-gray-600";
+const FIELD = "mt-1 h-8 w-full rounded-none border border-line px-2 text-caption-l tabular-nums";
+const LABEL = "block text-caption-m font-medium text-ink-muted";
 // The panel is bounded OUT of the band the floating control dock occupies at the
 // foot of the canvas, so it can never sit over Save/Cancel/Undo; on a short pane
 // it scrolls instead. The dock wraps to more rows the narrower the canvas gets,
 // hence the deeper reserve below sm (three rows) than above it (two).
 const INSPECTOR_PANEL =
-  "absolute right-3 top-3 z-20 flex max-h-[calc(100%-11rem)] w-72 max-w-[calc(100%-1.5rem)] flex-col gap-2 overflow-y-auto rounded-lg border border-line bg-white p-3 shadow-lg sm:max-h-[calc(100%-7.5rem)]";
+  "absolute right-3 top-3 z-20 flex max-h-[calc(100%-11rem)] w-72 max-w-[calc(100%-1.5rem)] flex-col gap-2 overflow-y-auto rounded-none border border-line bg-white p-3 shadow-lg sm:max-h-[calc(100%-7.5rem)]";
 
 interface Definition {
   tool?: string;
@@ -87,20 +87,20 @@ export function MeasurementInspector({ sessionId, row, sheet, rowGeometries, onL
       onClick={(e) => e.stopPropagation()}
     >
       <div>
-        <p className="truncate text-sm font-semibold text-gray-900">{row.description}</p>
-        <p className="text-xs text-gray-500">
+        <p className="truncate text-caption-l font-semibold text-black-500">{row.description}</p>
+        <p className="text-caption-m text-ink-muted">
           {tool ?? "Legacy · basis unconfirmed"} · {row.unit ?? "no unit"}
           {sheet?.scaleMmPerPt ? ` · 1:${scaleRatioOf(sheet.scaleMmPerPt)}` : " · no sheet scale"}
           <span data-row-version> · v{row.version}</span>
         </p>
-        {row.measurementBasis ? <p className="mt-0.5 text-xs text-gray-500" data-basis>{row.measurementBasis}</p> : null}
+        {row.measurementBasis ? <p className="mt-0.5 text-caption-m text-ink-muted" data-basis>{row.measurementBasis}</p> : null}
       </div>
 
       {assemblyShape?.definition?.assembly ? (
         <InspectorAssembly assembly={assemblyShape.definition.assembly} base={{ quantity: assemblyShape.quantity, unit: assemblyShape.unit }} />
       ) : null}
 
-      <p className="rounded-md bg-primary-50 px-2 py-1.5 text-sm font-semibold tabular-nums text-primary-800" data-formula>
+      <p className="rounded-none bg-primary-50 px-2 py-1.5 text-caption-l font-semibold tabular-nums text-primary-800" data-formula>
         {formulaParts({ gross: row.qtyGross, deductions: deducted, typical, net: row.qty, unit: row.unit })}
       </p>
 
@@ -147,13 +147,13 @@ export function MeasurementInspector({ sessionId, row, sheet, rowGeometries, onL
           Apply
         </Button>
       </div>
-      {typicalError ? <p className="text-xs text-red-600" data-typical-error>{typicalError}</p> : null}
+      {typicalError ? <p className="text-caption-m text-error-500" data-typical-error>{typicalError}</p> : null}
 
       {rowGeometries.map((g, i) =>
         g.definition?.scale && g.definition.tool !== "count" ? (
           <div key={g.id} data-rebind-shape={g.id}>
             {rowGeometries.length > 1 ? (
-              <p className="text-xs font-semibold text-gray-700">
+              <p className="text-caption-m font-semibold text-black-500">
                 Shape {i + 1} of {rowGeometries.length} · {g.definition.tool}
               </p>
             ) : null}
@@ -165,7 +165,7 @@ export function MeasurementInspector({ sessionId, row, sheet, rowGeometries, onL
 
       <InspectorDeductions row={row} parentTool={tool ?? "area"} commands={commands} />
 
-      {commands.error ? <p className="rounded-md bg-red-50 px-2 py-1 text-xs text-red-700" data-inspector-error>{commands.error}</p> : null}
+      {commands.error ? <p className="rounded-none bg-error-50 px-2 py-1 text-caption-m text-error-500" data-inspector-error>{commands.error}</p> : null}
     </div>
   );
 }

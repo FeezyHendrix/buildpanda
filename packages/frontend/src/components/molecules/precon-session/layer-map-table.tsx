@@ -60,15 +60,15 @@ export function LayerMapTable({ sessionId }: Props) {
   return (
     <div className="space-y-2 border-t border-line-hair pt-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-900">Layer map</p>
-        <p className="text-xs text-gray-500">{layers.length} layers</p>
+        <p className="text-caption-m font-semibold text-ink">Layer map</p>
+        <p className="text-caption-m text-ink-muted">{layers.length} layers</p>
       </div>
-      <div className="max-h-48 overflow-y-auto rounded-md border border-line-hair">
-        <Table className="text-xs">
+      <div className="max-h-48 overflow-y-auto rounded-none border border-line-hair">
+        <Table className="text-caption-m">
           <TableBody>
             {layers.map((layer) => (
               <TableRow key={layer}>
-                <TableCell className="max-w-28 truncate px-2 py-1 font-mono text-xs text-gray-700" title={layer}>
+                <TableCell className="max-w-28 truncate px-2 py-1 font-mono text-caption-m text-ink-subtle" title={layer}>
                   {layer}
                 </TableCell>
                 <TableCell className="px-1 py-1">
@@ -96,9 +96,9 @@ export function LayerMapTable({ sessionId }: Props) {
           Save and re-measure
         </Button>
         {dirty ? (
-          <button type="button" className="text-xs text-gray-500 hover:text-gray-800" onClick={() => setDraft(null)}>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setDraft(null)}>
             Discard
-          </button>
+          </Button>
         ) : null}
       </div>
     </div>

@@ -46,7 +46,7 @@ export function TypicalPopover({ sessionId, row, onClose }: Props) {
 
   return (
     <form
-      className="absolute right-3 top-3 z-20 flex w-72 flex-col gap-3 rounded-lg border border-line bg-white p-4 shadow-lg"
+      className="absolute right-3 top-3 z-20 flex w-72 flex-col gap-3 rounded-none border border-line bg-white p-4 shadow-lg"
       onSubmit={(e) => {
         e.preventDefault();
         apply();
@@ -57,18 +57,18 @@ export function TypicalPopover({ sessionId, row, onClose }: Props) {
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-gray-900">Same on N floors or areas</p>
-          <p className="text-xs text-gray-500">“{row.description}” — net = (gross − deductions) × N, stated in the basis.</p>
+          <p className="text-caption-l font-semibold text-black-500">Same on N floors or areas</p>
+          <p className="text-caption-m text-ink-muted">“{row.description}” — net = (gross − deductions) × N, stated in the basis.</p>
         </div>
-        <button type="button" aria-label="Close" className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={onClose}>
+        <Button type="button" size="sm" variant="ghost" aria-label="Close" className="size-8 shrink-0 px-0 text-ink-muted" onClick={onClose}>
           <X className="size-4" aria-hidden="true" />
-        </button>
+        </Button>
       </div>
-      <label className="block text-xs font-medium text-gray-600">
+      <label className="block text-caption-m font-medium text-ink-muted">
         Typical × N
         <input autoFocus className={FIELD} inputMode="numeric" min={1} value={raw} onChange={(e) => setRaw(e.target.value)} />
       </label>
-      <p className="rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-800">
+      <p className="rounded-none bg-primary-50 px-3 py-2 text-caption-l text-primary-800">
         {preview !== null ? (
           <>
             {formatQty(gross)}

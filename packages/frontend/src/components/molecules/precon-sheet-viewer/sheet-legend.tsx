@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, Eye, EyeOff, ZoomIn } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/atoms/button";
 import type { PreconBoqRow, PreconGeometry } from "@/api/precon";
 import { getElementStyle } from "./element-styles";
 import { formatQty, unitLabel } from "./measure-maths";
@@ -94,18 +95,20 @@ function ScopeTotals({ entries, allRows, selectionRowIds }: { entries: LegendEnt
     <div className="border-t border-line-hair px-2 py-1.5" data-legend-totals>
       <div className="flex gap-1">
         {SCOPES.map((s) => (
-          <button
+          <Button
             key={s.id}
             type="button"
+            size="sm"
+            variant="ghost"
             aria-pressed={scope === s.id}
             onClick={() => setScope(s.id)}
-            className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase", scope === s.id ? "bg-primary-50 text-primary-700" : "text-gray-400 hover:text-gray-600")}
+            className={cn("h-6 px-1.5 uppercase", scope === s.id ? "bg-primary-50 text-primary-700 hover:bg-primary-50" : "text-ink-muted")}
           >
             {s.label}
-          </button>
+          </Button>
         ))}
       </div>
-      <p className="mt-1 text-xs tabular-nums text-gray-700" data-scope={scope}>
+      <p className="mt-1 text-caption-m tabular-nums text-black-500" data-scope={scope}>
         {scope === "selection" && selectionRowIds.size === 0 ? "Nothing selected" : legendScopeTotal(rows)}
       </p>
     </div>
@@ -119,20 +122,22 @@ export function SheetLegend({ entries, open, onToggle, activeGroup, onPickGroup,
   const hiddenCount = hiddenGroups ? entries.filter((e) => hiddenGroups.has(e.group)).length : 0;
   return (
     <div
-      className="absolute bottom-14 left-3 z-10 flex max-w-64 flex-col rounded-lg border border-line bg-white/95 shadow-sm backdrop-blur"
+      className="absolute bottom-14 left-3 z-10 flex max-w-64 flex-col rounded-none border border-line bg-white/95 shadow-sm backdrop-blur"
       onMouseDown={(e) => e.stopPropagation()}
       onMouseMove={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="ghost"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex items-center justify-between px-2 py-1.5 text-[10px] font-semibold uppercase text-gray-500 hover:text-gray-700"
+        className="w-full justify-between px-2 uppercase text-ink-muted"
       >
         Legend
         <ChevronDown className={cn("ml-2 size-3 transition-transform", open && "rotate-180")} aria-hidden="true" />
-      </button>
+      </Button>
       {open ? (
         <ul className="flex max-h-48 flex-col overflow-y-auto border-t border-line-hair p-1">
           {entries.map((entry) => {
@@ -140,38 +145,42 @@ export function SheetLegend({ entries, open, onToggle, activeGroup, onPickGroup,
             const hidden = hiddenGroups?.has(entry.group) ?? false;
             return (
               <li key={entry.group} className="group/legend flex items-center">
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  variant="ghost"
                   aria-pressed={active}
                   title={active ? "Show every group again" : `Highlight ${entry.group} and dim the rest`}
                   onClick={() => onPickGroup(active ? null : entry.group)}
                   className={cn(
-                    "flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-gray-100",
+                    "h-7 min-w-0 flex-1 justify-start gap-1.5 px-1.5 text-left",
                     active && "bg-primary-50 text-primary-700 hover:bg-primary-50",
                     hidden && "opacity-50",
                   )}
                 >
-                  <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: entry.color }} />
-                  <span className="min-w-0 flex-1 truncate text-gray-700">{entry.group}</span>
-                  <span className="shrink-0 text-gray-400">{entry.shapes}</span>
-                  <span className="shrink-0 tabular-nums text-gray-600">{entry.total}</span>
-                </button>
+                  <span className="size-2.5 shrink-0 rounded-none" style={{ backgroundColor: entry.color }} />
+                  <span className="min-w-0 flex-1 truncate text-black-500">{entry.group}</span>
+                  <span className="shrink-0 text-ink-muted">{entry.shapes}</span>
+                  <span className="shrink-0 tabular-nums text-ink-muted">{entry.total}</span>
+                </Button>
                 {onZoomGroup ? (
-                  <button type="button" title={`Zoom to ${entry.group}`} aria-label={`Zoom to ${entry.group}`} className="shrink-0 rounded p-0.5 text-gray-400 hover:text-gray-700" onClick={() => onZoomGroup(new Set(entry.rowIds))}>
+                  <Button type="button" size="sm" variant="ghost" title={`Zoom to ${entry.group}`} aria-label={`Zoom to ${entry.group}`} className="size-6 shrink-0 px-0 text-ink-muted" onClick={() => onZoomGroup(new Set(entry.rowIds))}>
                     <ZoomIn className="size-3" aria-hidden="true" />
-                  </button>
+                  </Button>
                 ) : null}
                 {onToggleHidden ? (
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="ghost"
                     aria-pressed={hidden}
                     title={hidden ? `Show ${entry.group} again` : `Hide ${entry.group} on the canvas (still counted)`}
                     aria-label={`${hidden ? "Show" : "Hide"} ${entry.group}`}
-                    className="shrink-0 rounded p-0.5 text-gray-400 hover:text-gray-700"
+                    className="size-6 shrink-0 px-0 text-ink-muted"
                     onClick={() => onToggleHidden(entry.group)}
                   >
                     {hidden ? <EyeOff className="size-3" aria-hidden="true" /> : <Eye className="size-3" aria-hidden="true" />}
-                  </button>
+                  </Button>
                 ) : null}
               </li>
             );
@@ -179,7 +188,7 @@ export function SheetLegend({ entries, open, onToggle, activeGroup, onPickGroup,
         </ul>
       ) : null}
       {open && hiddenCount > 0 ? (
-        <p className="px-2 pb-1 text-[10px] text-amber-700">
+        <p className="px-2 pb-1 text-caption-s text-warning-500">
           {hiddenCount} group{hiddenCount === 1 ? "" : "s"} hidden — still counted in totals and the bill.
         </p>
       ) : null}

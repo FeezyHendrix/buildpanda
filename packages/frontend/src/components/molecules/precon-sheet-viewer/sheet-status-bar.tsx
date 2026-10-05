@@ -53,7 +53,7 @@ export function SheetStatusBar({ sheet, tool, selectedRow, redrawing, onToggleRe
   // leave the bar blank — the unscaled sheet used to state nothing at all.
   const toolLine = hint ?? (tool === "select" ? null : meta.unit ? `${meta.label} · ${meta.unit}` : meta.label);
   return (
-    <p className="flex flex-wrap items-center gap-x-2 border-b border-line-hair px-3 py-1 text-xs text-ink-muted">
+    <p className="flex flex-wrap items-center gap-x-2 border-b border-line-hair px-3 py-1 text-caption-m text-ink-muted">
       <span>
         {sheet.scaleMmPerPt ? `1:${scaleRatioOf(sheet.scaleMmPerPt)} · dims in ${sheet.dimUnit ?? "mm"} · ${calibration}` : "no sheet scale yet — measuring needs one"}
         {viewport ? (

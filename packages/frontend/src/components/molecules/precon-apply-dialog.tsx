@@ -30,11 +30,11 @@ const qty = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
 function PreviewRow({ item }: { item: ApplyPreviewItem }) {
   const meta = CHANGE_META[item.change];
   return (
-    <li className="flex items-center justify-between gap-3 py-1.5 text-xs">
-      <span className="min-w-0 truncate text-gray-800">{item.description}</span>
-      <span className="flex shrink-0 items-center gap-2 font-mono text-xs text-gray-600">
+    <li className="flex items-center justify-between gap-3 py-1.5 text-caption-m">
+      <span className="min-w-0 truncate text-ink">{item.description}</span>
+      <span className="flex shrink-0 items-center gap-2 font-mono text-caption-m text-ink-subtle">
         {item.previous && item.change === "changed" ? (
-          <span className="text-gray-400 line-through">
+          <span className="text-black-300 line-through">
             {qty.format(item.previous.qty)} {item.previous.unit}
           </span>
         ) : null}
@@ -150,7 +150,7 @@ export function PreconApplyDialog({ open, onOpenChange, sessionId, proposalId }:
       className="w-[min(640px,calc(100vw-2rem))]"
     >
       {!canApply ? (
-        <p className="text-sm text-gray-600" data-no-apply-permission>
+        <p className="text-caption-l text-ink-subtle" data-no-apply-permission>
           You can view this take-off, but recording it on an estimate needs the take-off apply permission. Ask an owner or estimator.
         </p>
       ) : workspacePending ? (
@@ -158,14 +158,14 @@ export function PreconApplyDialog({ open, onOpenChange, sessionId, proposalId }:
           <Spinner size="sm" />
         </div>
       ) : !estimate ? (
-        <div className="flex flex-col items-start gap-3 text-sm text-gray-600">
+        <div className="flex flex-col items-start gap-3 text-caption-l text-ink-subtle">
           <p>This proposal has no estimate yet. Create the first revision to receive these lines.</p>
           <Button size="sm" loading={createEstimate.isPending} onClick={() => createEstimate.mutate({})}>
             Create estimate
           </Button>
         </div>
       ) : !editable ? (
-        <p className="text-sm text-gray-600" data-estimate-locked>
+        <p className="text-caption-l text-ink-subtle" data-estimate-locked>
           {estimate.revisionLabel} is {estimate.status.toLowerCase()} and refuses every write. Create a new revision on the Estimate tab first.
         </p>
       ) : !preview ? (
@@ -174,18 +174,18 @@ export function PreconApplyDialog({ open, onOpenChange, sessionId, proposalId }:
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-gray-500">
+          <p className="text-caption-m font-medium text-ink-muted">
             {estimate.revisionLabel} · {summary}
           </p>
           {review ? (
-            <p className="text-xs text-gray-500" data-review-summary>
+            <p className="text-caption-m text-ink-muted" data-review-summary>
               Review: {review.verified} verified · {review.needsReview} needing review · {review.aiGenerated} AI-drafted
             </p>
           ) : null}
           {staleReasons ? (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2" data-stale-reasons>
-              <p className="text-xs font-semibold text-amber-800">This preview is out of date — nothing was written.</p>
-              <ul className="mt-1 list-disc pl-4 text-xs text-amber-800">
+            <div className="rounded-none border border-warning-300 bg-warning-50 px-3 py-2" data-stale-reasons>
+              <p className="text-caption-m font-semibold text-warning-600">This preview is out of date — nothing was written.</p>
+              <ul className="mt-1 list-disc pl-4 text-caption-m text-warning-600">
                 {staleReasons.map((reason) => (
                   <li key={reason}>{reason}</li>
                 ))}
@@ -196,22 +196,22 @@ export function PreconApplyDialog({ open, onOpenChange, sessionId, proposalId }:
             </div>
           ) : null}
           {visible.length === 0 ? (
-            <p className="rounded-lg bg-gray-50 px-3 py-4 text-center text-sm text-gray-500">The estimate already matches this take-off.</p>
+            <p className="rounded-none bg-grey-50 px-3 py-4 text-center text-caption-l text-ink-muted">The estimate already matches this take-off.</p>
           ) : (
-            <ul className="max-h-60 divide-y divide-line-hair overflow-y-auto rounded-lg border border-line px-3">
+            <ul className="max-h-60 divide-y divide-line-hair overflow-y-auto rounded-none border border-line px-3">
               {visible.map((item) => (
                 <PreviewRow key={`${item.boqItemId ?? item.description}-${item.change}`} item={item} />
               ))}
             </ul>
           )}
           {needsAck && !staleReasons ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2">
-              <p className="text-xs text-amber-800">
+            <div className="rounded-none border border-warning-200 bg-warning-50/60 px-3 py-2">
+              <p className="text-caption-m text-warning-600">
                 {unverifiedIds.length} line{unverifiedIds.length === 1 ? " has" : "s have"} not been verified
                 {unverifiedItems.length > 0 ? `: ${unverifiedItems.map((i) => i.description).slice(0, 4).join(", ")}${unverifiedItems.length > 4 ? "…" : ""}` : ""}.
                 Verify them on the Review step first, or acknowledge that they flow to the estimate as drafted.
               </p>
-              <label className="mt-1.5 flex items-start gap-2 text-xs font-medium text-gray-800">
+              <label className="mt-1.5 flex items-start gap-2 text-caption-m font-medium text-ink">
                 <input
                   type="checkbox"
                   data-ack-unverified

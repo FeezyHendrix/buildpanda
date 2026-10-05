@@ -7,8 +7,8 @@ import { metersToPt } from "./saved-edit-model";
 import type { useBatchOps } from "./use-batch-ops";
 import type { useBatchSelect } from "./use-batch-select";
 
-const FIELD = "h-7 w-16 rounded-md border border-line px-1.5 text-xs tabular-nums";
-const LABEL = "flex items-center gap-1 text-xs text-gray-600";
+const FIELD = "h-7 w-16 rounded-none border border-line px-1.5 text-caption-m tabular-nums";
+const LABEL = "flex items-center gap-1 text-caption-m text-ink-muted";
 
 interface Props {
   batch: ReturnType<typeof useBatchSelect>;
@@ -114,8 +114,8 @@ export function BatchActionBar({ batch, ops, rows, sheets, activeSheet, rowById,
   };
 
   return (
-    <div className="absolute inset-x-3 top-3 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-white p-2 shadow-lg" data-batch-bar onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-      <span className="text-xs font-semibold text-gray-900" data-batch-summary>
+    <div className="absolute inset-x-3 top-3 z-20 flex flex-wrap items-center gap-2 rounded-none border border-line bg-white p-2 shadow-lg" data-batch-bar onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+      <span className="text-caption-m font-semibold text-ink" data-batch-summary>
         {batch.totals.shapes} shape{batch.totals.shapes === 1 ? "" : "s"} on {batch.totals.rows} line{batch.totals.rows === 1 ? "" : "s"}
         {batch.totals.quantities ? ` · ${batch.totals.quantities}` : ""}
       </span>
@@ -184,10 +184,10 @@ export function BatchActionBar({ batch, ops, rows, sheets, activeSheet, rowById,
       <Button size="sm" variant="danger" loading={ops.busy} onClick={remove}>
         Delete
       </Button>
-      <button type="button" className="text-xs underline" onClick={batch.clear}>
+      <Button type="button" variant="ghost" size="sm" onClick={batch.clear}>
         Clear selection
-      </button>
-      {ops.note ? <p className="w-full text-xs text-gray-700" data-batch-note>{ops.note}</p> : null}
+      </Button>
+      {ops.note ? <p className="w-full text-caption-m text-ink-subtle" data-batch-note>{ops.note}</p> : null}
     </div>
   );
 }

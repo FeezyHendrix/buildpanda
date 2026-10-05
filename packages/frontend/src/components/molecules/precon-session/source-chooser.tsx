@@ -52,12 +52,12 @@ export function SourceChooser({
         role="dialog"
         aria-label={`Measurements behind ${choice.label}`}
         tabIndex={-1}
-        className="w-full max-w-md overflow-hidden rounded-lg border border-line bg-surface shadow-drawer outline-none"
+        className="w-full max-w-md overflow-hidden rounded-none border border-line bg-surface shadow-drawer outline-none"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b border-line px-4 py-3">
-          <p className="text-sm font-semibold text-ink">Which measurement?</p>
-          <p className="mt-0.5 text-xs text-ink-muted">
+          <p className="text-caption-l font-semibold text-ink">Which measurement?</p>
+          <p className="mt-0.5 text-caption-m text-ink-muted">
             {choice.geometries.length} measurements add up to &ldquo;{choice.label}&rdquo;. Choose the one to open.
           </p>
         </div>
@@ -68,13 +68,13 @@ export function SourceChooser({
                 type="button"
                 className={cn(
                   "flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left outline-none",
-                  "hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                  "hover:bg-grey-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
                 )}
                 onClick={() => onPick(geometry)}
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-[13px] text-ink">{describe(geometry)}</span>
-                  <span className="block text-[11px] text-black-300">{sheetCodeOf(geometry.sheetId)}</span>
+                  <span className="block truncate text-caption-l text-ink">{describe(geometry)}</span>
+                  <span className="block text-caption-m text-black-300">{sheetCodeOf(geometry.sheetId)}</span>
                 </span>
                 <Badge size="sm" tone={geometry.source === "manual" ? "info" : "neutral"}>
                   {geometry.source === "manual" ? "Drawn" : "Panda AI"}

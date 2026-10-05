@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/atoms/button";
 import { PreconBoqPanel } from "@/components/molecules/precon-boq-panel";
 import { PreconSheetViewer, type PreconTool } from "@/components/molecules/precon-sheet-viewer";
 import { PreconWorkbook, type SourceAction } from "@/components/molecules/precon-workbook";
@@ -106,20 +107,22 @@ export function PreconWorkspace({
           <WorkspaceModeControl mode={view.mode} splitAvailable={canSplit(frameWidth)} onChange={onModeChange} />
         ) : null}
         {resolved.splitCollapsed ? (
-          <span className="text-[11px] leading-snug text-ink-muted">
+          <span className="text-caption-m leading-snug text-ink-muted">
             Not enough room for both panes — showing the {resolved.showWorkbook ? "workbook" : "drawing"}.
           </span>
         ) : null}
         {structureOpen ? null : hasDrawings && !manual ? (
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant="ghost"
             onClick={() => setStructureOpen(true)}
-            className="text-xs font-medium text-primary-600 hover:underline sm:ml-auto"
+            className="text-primary-600 sm:ml-auto"
           >
             {session.structureContext?.confidence === "high"
               ? "Structure reading confirmed · edit"
               : "Check the structure reading Panda AI used"}
-          </button>
+          </Button>
         ) : null}
       </div>
       {structureOpen ? <StructureFields session={session} onClose={() => setStructureOpen(false)} /> : null}

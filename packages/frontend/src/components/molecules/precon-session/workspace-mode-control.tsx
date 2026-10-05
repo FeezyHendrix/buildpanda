@@ -1,4 +1,5 @@
 import { Columns2, PencilRuler, Table2 } from "lucide-react";
+import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";
 import { WORKBOOK_MODES, type WorkspaceMode } from "./workspace-mode";
 
@@ -29,22 +30,22 @@ export function WorkspaceModeControl({ mode, splitAvailable, onChange }: Props) 
     <div
       role="group"
       aria-label="What to show"
-      className="inline-flex shrink-0 items-center gap-0.5 rounded-lg bg-surface-alt p-0.5"
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-none bg-surface-alt p-0.5"
     >
       {WORKBOOK_MODES.map((candidate) => {
         const { label, Icon } = MODE_META[candidate];
         const blocked = candidate === "split" && !splitAvailable;
         return (
-          <button
+          <Button
             key={candidate}
             type="button"
+            size="sm"
+            variant={mode === candidate ? "primary" : "ghost"}
             aria-pressed={mode === candidate}
             aria-disabled={blocked || undefined}
             title={blocked ? BLOCKED_REASON : label}
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-semibold outline-none sm:px-2.5",
-              "focus-visible:ring-2 focus-visible:ring-gray-900/10",
-              mode === candidate ? "bg-surface text-ink shadow-card" : "text-ink-muted hover:text-ink",
+              "gap-1.5",
               // Not `opacity-50` — at this size that drops the label under the
               // 4.5:1 contrast floor. The reason is spelled out beside it.
               blocked && "text-ink-disabled",
@@ -55,7 +56,7 @@ export function WorkspaceModeControl({ mode, splitAvailable, onChange }: Props) 
           >
             <Icon className="size-3.5 shrink-0" aria-hidden="true" />
             {label}
-          </button>
+          </Button>
         );
       })}
     </div>

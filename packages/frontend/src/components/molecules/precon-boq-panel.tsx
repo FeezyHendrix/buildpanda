@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ProgressBar } from "@/components/atoms/progress-bar";
+import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";
 import { useCreatePreconBill } from "@/hooks/use-precon";
@@ -13,11 +14,12 @@ import { usePreconPresence } from "@/hooks/use-precon";
 import { useSession } from "@/stores/auth";
 import type { PreconBoqRow, PreconRowStatus, PreconSnapshot, PresenceUser } from "@/api/precon";
 
-const STATUS_META: Record<PreconRowStatus, { label: string; mark: string }> = {
-  ai_generated: { label: "AI draft", mark: "◇" },
-  needs_review: { label: "Needs review", mark: "▲" },
-  verified: { label: "Verified", mark: "✓" },
-  rejected: { label: "Rejected", mark: "✕" },
+// WCAG 1.4.1: every status keeps a mark, so the tone is never the only cue.
+const STATUS_META: Record<PreconRowStatus, { label: string; mark: string; tone: BadgeTone; pop: boolean }> = {
+  ai_generated: { label: "AI draft", mark: "◇", tone: "info", pop: false },
+  needs_review: { label: "Needs review", mark: "▲", tone: "warning", pop: false },
+  verified: { label: "Verified", mark: "✓", tone: "success", pop: true },
+  rejected: { label: "Rejected", mark: "✕", tone: "danger", pop: true },
 };
 
 const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
@@ -46,19 +48,17 @@ function RowStatusDot({ status }: { status: PreconRowStatus | null }) {
   if (!status) return null;
   const meta = STATUS_META[status];
   return (
-    <span
+    <Badge
       key={status}
+      tone={meta.tone}
       title={meta.label}
       className={cn(
-        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] leading-none",
-        status === "verified" && "bg-emerald-100 text-emerald-700 animate-pop motion-reduce:animate-none",
-        status === "needs_review" && "bg-amber-100 text-amber-700",
-        status === "ai_generated" && "bg-primary-100 text-primary-700",
-        status === "rejected" && "bg-red-100 text-red-600 animate-pop motion-reduce:animate-none",
+        "h-4 w-4 shrink-0 justify-center px-0 text-caption-s leading-none",
+        meta.pop && "animate-pop motion-reduce:animate-none",
       )}
     >
       {meta.mark}
-    </span>
+    </Badge>
   );
 }
 RowStatusDot.displayName = "RowStatusDot";
@@ -83,13 +83,13 @@ function BillRow({
 }) {
   if (row.rowType === "heading" || row.rowType === "work_section") {
     return (
-      <li className={cn("px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-gray-500", row.rowType === "work_section" && "text-gray-400")}>
+      <li className={cn("px-3 pb-1 pt-3 text-caption-m font-medium uppercase tracking-wide text-ink-muted", row.rowType === "work_section" && "text-black-300")}>
         {row.description}
       </li>
     );
   }
   if (row.rowType === "spec_note") {
-    return <li className="px-3 py-1 text-xs italic text-gray-400">{row.description}</li>;
+    return <li className="px-3 py-1 text-caption-m italic text-black-300">{row.description}</li>;
   }
   const reason = row.status !== "verified" ? confidenceReasonLabel(row.confidenceReason) : null;
   return (
@@ -99,21 +99,21 @@ function BillRow({
         onClick={onSelect}
         title={reason ?? row.provenance ?? undefined}
         className={cn(
-          "flex w-full items-center gap-2 border-l-2 px-3 py-2 text-left text-xs hover:bg-gray-50",
+          "flex w-full items-center gap-2 border-l-2 px-3 py-2 text-left text-caption-m hover:bg-grey-50",
           selected ? "border-primary-600 bg-primary-50/50" : "border-transparent",
           row.status === "rejected" && "opacity-50",
         )}
       >
         <RowStatusDot status={row.status} />
-        <span className="w-14 shrink-0 font-mono text-[10px] text-gray-400">{row.code}</span>
-        <span className={cn("min-w-0 flex-1 truncate text-gray-800", row.status === "rejected" && "line-through")}>{row.description}</span>
-        {reason ? <span className="hidden shrink-0 text-[10px] text-amber-700 xl:inline">{reason}</span> : null}
+        <span className="w-14 shrink-0 font-mono text-caption-s text-black-300">{row.code}</span>
+        <span className={cn("min-w-0 flex-1 truncate text-ink", row.status === "rejected" && "line-through")}>{row.description}</span>
+        {reason ? <span className="hidden shrink-0 text-caption-s text-warning-500 xl:inline">{reason}</span> : null}
         <OpenCommentBadge count={openComments} />
         <RowFocusAvatars users={focusedBy} />
-        <span className="shrink-0 tabular-nums text-gray-600">
+        <span className="shrink-0 tabular-nums text-ink-subtle">
           {row.qty ?? "—"} {row.unit ?? ""}
         </span>
-        <span className="w-20 shrink-0 text-right tabular-nums text-gray-500">{row.amount !== null ? naira.format(row.amount) : "unpriced"}</span>
+        <span className="w-20 shrink-0 text-right tabular-nums text-ink-muted">{row.amount !== null ? naira.format(row.amount) : "unpriced"}</span>
       </button>
       {selected ? (
         <div className="px-3 pb-3" ref={(el) => el?.scrollIntoView({ block: "nearest", behavior: "smooth" })}>
@@ -129,16 +129,16 @@ BillRow.displayName = "BillRow";
 function ManualEmptyState() {
   return (
     <div className="px-3 py-6 text-center">
-      <p className="text-xs font-medium text-gray-700">Nothing measured yet — pick a tool and draw on the sheet.</p>
+      <p className="text-caption-m font-medium text-ink-subtle">Nothing measured yet — pick a tool and draw on the sheet.</p>
       <ul className="mt-3 flex flex-wrap justify-center gap-1.5">
         {MEASURING_TOOLS.map((meta) => (
-          <li key={meta.key} className="flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
-            <kbd className="rounded bg-white px-1 font-mono text-[10px] font-semibold text-gray-800 shadow-sm">{meta.shortcut}</kbd>
+          <li key={meta.key} className="flex items-center gap-1 rounded-none bg-grey-100 px-1.5 py-0.5 text-caption-m text-ink-subtle">
+            <kbd className="rounded-none bg-white px-1 font-mono text-caption-s font-semibold text-ink shadow-sm">{meta.shortcut}</kbd>
             {meta.label}
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-xs text-gray-400">Enter finishes a shape and asks for its name. Esc goes back to Select.</p>
+      <p className="mt-2 text-caption-m text-black-300">Enter finishes a shape and asks for its name. Esc goes back to Select.</p>
     </div>
   );
 }
@@ -176,33 +176,33 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
   const showQueue = hasLines && (!manual || attentionRows(snapshot.rows).length > 0 || confidentDrafts(snapshot.rows).length > 0);
 
   return (
-    <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-white">
+    <aside className="flex min-h-0 flex-col overflow-hidden rounded-none border border-line bg-white">
       <div className="border-b border-line p-3">
         <div className="mb-2 flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">Bill of quantities</h2>
-          <span className="text-xs text-gray-500">
+          <h2 className="text-caption-l font-semibold text-black-500">Bill of quantities</h2>
+          <span className="text-caption-m text-ink-muted">
             {snapshot.progress.verified}/{snapshot.progress.total} verified
           </span>
         </div>
-        <ProgressBar value={snapshot.progress.verified} max={snapshot.progress.total} tone="success" size="md" className="mt-2 bg-gray-100" />
+        <ProgressBar value={snapshot.progress.verified} max={snapshot.progress.total} tone="success" size="md" className="mt-2 bg-grey-100" />
       </div>
 
       {showQueue ? (
         <NeedsAttentionQueue sessionId={sessionId} rows={snapshot.rows} sheetByRow={sheetByRow} selectedRowId={selectedRowId} onSelectRow={onSelectRow} />
       ) : null}
 
-      {conflictNote ? <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{conflictNote}</p> : null}
+      {conflictNote ? <p className="border-b border-warning-200 bg-warning-50 px-3 py-2 text-caption-m text-warning-600">{conflictNote}</p> : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {!hasLines && manual ? <ManualEmptyState /> : null}
         {!hasLines && !manual ? (
-          <p className="px-3 py-6 text-center text-xs text-gray-500">
+          <p className="px-3 py-6 text-center text-caption-m text-ink-muted">
             Nothing measured yet. Add a line by hand below, set a sheet's scale and re-measure it, or measure into a line with the drawing tools.
           </p>
         ) : null}
         {snapshot.bills.map((bill) => (
           <section key={bill.id}>
-            <h3 className="sticky top-0 z-10 border-b border-line-hair bg-surface-alt px-3 py-2 text-xs font-medium uppercase text-ink">{bill.title}</h3>
+            <h3 className="sticky top-0 z-10 border-b border-line-hair bg-surface-alt px-3 py-2 text-caption-m font-medium uppercase text-ink">{bill.title}</h3>
             <ul>
               {(rowsByBill.get(bill.id) ?? []).map((row) => (
                 <BillRow
@@ -236,12 +236,12 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
         </div>
       </div>
 
-      <div className="border-t border-line bg-gray-50 p-3">
+      <div className="border-t border-line bg-grey-50 p-3">
         <div className="flex items-baseline justify-between">
-          <span className="text-xs uppercase tracking-wide text-gray-500">Draft total</span>
-          <span className="text-lg font-medium text-gray-900">{naira.format(snapshot.summary.grandTotal)}</span>
+          <span className="text-caption-m uppercase tracking-wide text-ink-muted">Draft total</span>
+          <span className="text-body-m font-medium text-black-500">{naira.format(snapshot.summary.grandTotal)}</span>
         </div>
-        <p className="text-xs text-gray-400">
+        <p className="text-caption-m text-black-300">
           Incl. prelims {snapshot.settings.prelimsPct}%, contingency {snapshot.settings.contingencyPct}%, VAT {snapshot.settings.vatPct}%
         </p>
       </div>

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Spinner } from "@/components/atoms/spinner";
@@ -138,12 +138,16 @@ function SalesSidebar({
   open,
   onClose,
   onOpen,
+  collapsed,
+  onToggleCollapsed,
 }: {
   user: SidebarUser;
   onLogout: () => void;
   open: boolean;
   onClose: () => void;
   onOpen: () => void;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
 }) {
   const { data: flagsData } = useFeatureFlags();
   const { data: permissionsData } = useOrgPermissions();
@@ -187,7 +191,8 @@ function SalesSidebar({
           "relative",
           "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out",
           open ? "translate-x-0" : "-translate-x-full",
-          "lg:relative lg:inset-auto lg:z-auto lg:translate-x-0 lg:max-h-full lg:shrink-0",
+          "lg:relative lg:inset-auto lg:translate-x-0 lg:max-h-full lg:shrink-0 lg:transition-[width]",
+          collapsed ? "lg:w-0" : "lg:w-[240px]",
         )}
       >
         {/* Pull-tab */}
@@ -205,11 +210,34 @@ function SalesSidebar({
           <ChevronRightIcon />
         </button>
 
-        <aside className="flex h-full w-[240px] flex-col border-r border-line-disabled bg-surface-alt">
-          <div className="flex flex-col gap-3 px-3 pb-4 pt-5">
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label="Show sidebar"
+            aria-expanded={false}
+            aria-controls="sales-sidebar"
+            className="absolute left-0 top-3 z-30 hidden size-9 items-center justify-center rounded-r-lg border border-l-0 border-line-disabled bg-surface-alt text-gray-500 shadow-sm hover:bg-gray-100 lg:flex"
+          >
+            <ChevronRightIcon />
+          </button>
+        ) : null}
+
+        <aside id="sales-sidebar" className={cn("flex h-full w-[240px] flex-col border-r border-line-disabled bg-surface-alt", collapsed && "lg:invisible")}>
+          <div className="flex items-center justify-between gap-3 px-3 pb-4 pt-5">
             <Link to="/sales" className="px-1" aria-label="BuildPanda home">
               <img src={logo} alt="BuildPanda" className="h-8 w-auto" />
             </Link>
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              aria-label="Hide sidebar"
+              aria-expanded={true}
+              aria-controls="sales-sidebar"
+              className="hidden size-8 shrink-0 rotate-180 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 lg:flex"
+            >
+              <ChevronRightIcon />
+            </button>
           </div>
 
           <div className="px-3 pb-1">
@@ -256,6 +284,10 @@ export default function SalesLayout() {
   const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { key: locationKey } = useLocation();
+  const reviewingTakeoff = useMatch("/sales/takeoff/:sessionId") !== null;
+  const [sidebarPreference, setSidebarPreference] = useState<{ locationKey: string; collapsed: boolean } | null>(null);
+  const collapsed = sidebarPreference?.locationKey === locationKey ? sidebarPreference.collapsed : reviewingTakeoff;
   const notificationsEnabled = useFeatureFlag("collaboration.notifications");
 
   // Stamp the last suite so HomeRedirect returns here for company users
@@ -283,8 +315,10 @@ export default function SalesLayout() {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onOpen={() => setSidebarOpen(true)}
+        collapsed={collapsed}
+        onToggleCollapsed={() => setSidebarPreference({ locationKey, collapsed: !collapsed })}
       />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Navbar showLogo={false} sticky showNotifications={notificationsEnabled} />
         <main className="flex-1 overflow-y-auto bg-white no-scrollbar">
           <ErrorBoundary>

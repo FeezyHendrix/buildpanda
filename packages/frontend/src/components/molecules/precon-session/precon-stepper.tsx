@@ -39,36 +39,36 @@ export function PreconStepper({ steps, active, reachable, onSelect }: Props) {
         const clickable = reachable.has(step.key) && !current;
         return (
           <div key={step.key} className="flex items-center gap-2">
-            {index > 0 ? <span className={cn("h-px w-8", done || current ? "bg-primary-300" : "bg-gray-200")} /> : null}
+            {index > 0 ? <span className={cn("h-px w-8", done || current ? "bg-primary-300" : "bg-grey-200")} /> : null}
             <button
               type="button"
               disabled={!clickable}
               aria-current={current ? "step" : undefined}
               onClick={() => onSelect(step.key)}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-2 py-1 text-left outline-none transition-colors",
+                "flex items-center gap-2 rounded-none px-2 py-1 text-left outline-none transition-colors",
                 "focus-visible:shadow-focus",
-                clickable && "hover:bg-gray-50",
+                clickable && "hover:bg-grey-50",
                 !clickable && !current && "cursor-default",
               )}
             >
               <span
                 className={cn(
-                  "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+                  "flex size-6 shrink-0 items-center justify-center rounded-full text-caption-m font-medium",
                   done
                     ? "bg-primary-500 text-white"
                     : current
                       ? "border-2 border-primary-500 text-primary-600"
-                      : "border-2 border-line text-gray-400",
+                      : "border-2 border-line text-black-300",
                 )}
               >
                 {done ? <Check className="size-3.5" aria-hidden="true" /> : index + 1}
               </span>
               <span className="flex flex-col">
-                <span className={cn("text-xs font-semibold", current ? "text-primary-700" : done ? "text-gray-900" : "text-gray-400")}>
+                <span className={cn("text-caption-m font-semibold", current ? "text-primary-700" : done ? "text-ink" : "text-black-300")}>
                   {step.label}
                 </span>
-                <span className="hidden text-xs text-gray-400 sm:block">{step.hint}</span>
+                <span className="hidden text-caption-m text-black-300 sm:block">{step.hint}</span>
               </span>
             </button>
           </div>

@@ -63,10 +63,10 @@ export function MethodStatementEditor({ statement, programmeTasks, saving, onSav
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <DraftStateChip state={statement.status} />
-          {dirty ? <span className="text-xs text-amber-700">Unsaved changes</span> : null}
+          {dirty ? <span className="text-caption-m text-warning-500">Unsaved changes</span> : null}
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={onDelete}>
+          <Button size="sm" variant="ghost" className="text-error-500 hover:bg-error-50" onClick={onDelete}>
             Delete
           </Button>
           {statement.status !== "confirmed" && !dirty ? (
@@ -93,11 +93,11 @@ export function MethodStatementEditor({ statement, programmeTasks, saving, onSav
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs font-medium text-gray-600">
+        <label className="text-caption-m font-medium text-ink-subtle">
           Activity
           <input className={cn(cellInputClass, "mt-1")} value={activityName} onChange={(e) => setActivityName(e.target.value)} />
         </label>
-        <label className="text-xs font-medium text-gray-600">
+        <label className="text-caption-m font-medium text-ink-subtle">
           Programme task
           <select
             className={cn(cellInputClass, "mt-1")}
@@ -115,42 +115,44 @@ export function MethodStatementEditor({ statement, programmeTasks, saving, onSav
       </div>
 
       <div>
-        <p className="mb-1 text-xs font-medium text-gray-600">Hazards</p>
+        <p className="mb-1 text-caption-m font-medium text-ink-subtle">Hazards</p>
         <StringListEditor values={hazards} onChange={setHazards} placeholder="e.g. Collapse of trench sides" addLabel="Add hazard" />
       </div>
 
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <p className="text-xs font-medium text-gray-600">Sequence of work</p>
-          <button
+          <p className="text-caption-m font-medium text-ink-subtle">Sequence of work</p>
+          <Button
             type="button"
-            className="text-xs font-semibold text-primary-700 hover:underline"
+            size="sm"
+            variant="ghost"
+            className="text-primary-700"
             onClick={() => setSteps((prev) => [...prev, blankStep(prev.length + 1)])}
           >
             + Add step
-          </button>
+          </Button>
         </div>
         <ol className="flex flex-col gap-2">
           {steps.map((step, index) => (
-            <li key={index} className="grid grid-cols-[28px_minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-line-hair p-2">
-              <span className="pt-1.5 text-center text-xs font-medium text-gray-400">{index + 1}</span>
+            <li key={index} className="grid grid-cols-[28px_minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-none border border-line-hair p-2">
+              <span className="pt-1.5 text-center text-caption-m font-medium text-black-300">{index + 1}</span>
               <textarea aria-label="Step" className={cellTextareaClass} placeholder="What is done" value={step.text} onChange={(e) => updateStep(index, { text: e.target.value })} />
               <textarea aria-label="Controls" className={cellTextareaClass} placeholder="Control measures" value={step.controls} onChange={(e) => updateStep(index, { controls: e.target.value })} />
               <textarea aria-label="PPE" className={cellTextareaClass} placeholder="PPE" value={step.ppe} onChange={(e) => updateStep(index, { ppe: e.target.value })} />
               <div className="flex flex-col gap-1">
-                <button type="button" aria-label="Move up" className="rounded p-1 text-gray-400 hover:bg-gray-100 disabled:opacity-30" disabled={index === 0} onClick={() => moveStep(index, -1)}>
+                <Button type="button" size="sm" variant="ghost" aria-label="Move up" className="h-7 w-7 px-0 text-black-300" disabled={index === 0} onClick={() => moveStep(index, -1)}>
                   <ArrowUp className="size-3.5" />
-                </button>
-                <button type="button" aria-label="Move down" className="rounded p-1 text-gray-400 hover:bg-gray-100 disabled:opacity-30" disabled={index === steps.length - 1} onClick={() => moveStep(index, 1)}>
+                </Button>
+                <Button type="button" size="sm" variant="ghost" aria-label="Move down" className="h-7 w-7 px-0 text-black-300" disabled={index === steps.length - 1} onClick={() => moveStep(index, 1)}>
                   <ArrowDown className="size-3.5" />
-                </button>
-                <button type="button" aria-label="Remove step" className="rounded p-1 text-xs text-gray-400 hover:text-red-600" onClick={() => setSteps((prev) => renumber(prev.filter((_, i) => i !== index)))}>
+                </Button>
+                <Button type="button" size="sm" variant="ghost" aria-label="Remove step" className="h-7 w-7 px-0 text-black-300 hover:text-error-500" onClick={() => setSteps((prev) => renumber(prev.filter((_, i) => i !== index)))}>
                   ×
-                </button>
+                </Button>
               </div>
             </li>
           ))}
-          {steps.length === 0 ? <li className="text-sm text-gray-500">No steps yet.</li> : null}
+          {steps.length === 0 ? <li className="text-caption-l text-ink-muted">No steps yet.</li> : null}
         </ol>
       </div>
     </div>

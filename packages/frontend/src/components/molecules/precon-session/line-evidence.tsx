@@ -35,9 +35,9 @@ function toneOf(check: string): CheckTone {
 }
 
 const CHECK_ICON: Record<CheckTone, { Icon: typeof CheckCircle2; className: string }> = {
-  agree: { Icon: CheckCircle2, className: "text-green-600" },
-  warn: { Icon: CircleAlert, className: "text-amber-600" },
-  note: { Icon: CircleDashed, className: "text-gray-400" },
+  agree: { Icon: CheckCircle2, className: "text-success-500" },
+  warn: { Icon: CircleAlert, className: "text-warning-400" },
+  note: { Icon: CircleDashed, className: "text-black-300" },
 };
 
 function CheckLine({ check }: { check: string }) {
@@ -62,12 +62,12 @@ export function LineEvidence({ row }: { row: PreconBoqRow }) {
   if (!source && !basis && checks.length === 0) return null;
   return (
     <div className="space-y-2 text-xs">
-      {source ? <p className="text-gray-700">{source}</p> : null}
+      {source ? <p className="text-ink-subtle">{source}</p> : null}
       {basis ? (
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Basis</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-black-300">Basis</p>
           {sentences(basis).map((s) => (
-            <p key={s} className="mt-0.5 text-gray-600">
+            <p key={s} className="mt-0.5 text-ink-muted">
               {s}
             </p>
           ))}
@@ -75,8 +75,8 @@ export function LineEvidence({ row }: { row: PreconBoqRow }) {
       ) : null}
       {checks.length > 0 ? (
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Checks</p>
-          <ul className="mt-0.5 space-y-0.5 text-gray-600">
+          <p className="text-xs font-medium uppercase tracking-wide text-black-300">Checks</p>
+          <ul className="mt-0.5 space-y-0.5 text-ink-muted">
             {checks.map((c) => (
               <CheckLine key={c} check={c} />
             ))}

@@ -37,7 +37,7 @@ function PhaseRow({
   return (
     <li className={cn("relative flex gap-4 transition-opacity duration-300", state === "pending" ? "opacity-40" : "opacity-100")}>
       {last ? null : (
-        <span className={cn("absolute left-2.5 top-6 -ml-px h-full w-px", state === "done" ? "bg-primary-500" : "bg-gray-200")} />
+        <span className={cn("absolute left-2.5 top-6 -ml-px h-full w-px", state === "done" ? "bg-primary-500" : "bg-grey-200")} />
       )}
       <span className="z-10 flex-none bg-white pt-0.5">
         {state === "done" ? (
@@ -49,15 +49,15 @@ function PhaseRow({
             <Spinner size="xs" />
           </span>
         ) : (
-          <span className="block size-5 rounded-full border-2 border-gray-300 bg-white" />
+          <span className="block size-5 rounded-full border-2 border-grey-300 bg-white" />
         )}
       </span>
       <div className="flex-1 pb-1">
-        <p className={cn("text-sm font-medium", state === "active" ? "text-primary-700" : state === "done" ? "text-gray-900" : "text-gray-500")}>
+        <p className={cn("text-caption-l font-medium", state === "active" ? "text-primary-700" : state === "done" ? "text-ink" : "text-ink-muted")}>
           {phase.label}
         </p>
         {state === "active" ? (
-          <p key={message ?? phase.hint} className="mt-1 text-xs text-gray-500 animate-slide-up motion-reduce:animate-none">
+          <p key={message ?? phase.hint} className="mt-1 text-caption-m text-ink-muted animate-slide-up motion-reduce:animate-none">
             {message ?? phase.hint}
           </p>
         ) : null}
@@ -77,8 +77,8 @@ export function PreconGenerateFeed({ session, justCompleted, itemsCount, billsCo
         <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-success-100 animate-pop motion-reduce:animate-none">
           <Check className="size-6 text-success-700" aria-hidden="true" />
         </span>
-        <h2 className="text-xl font-semibold text-gray-900">{areas ? "Areas ready" : "Draft ready"}</h2>
-        <p className="mt-2 text-sm text-gray-600">
+        <h2 className="text-body-l font-semibold text-ink">{areas ? "Areas ready" : "Draft ready"}</h2>
+        <p className="mt-2 text-caption-l text-ink-muted">
           {areas ? `${itemsCount} spaces measured` : `${itemsCount} items across ${billsCount} bills`}
         </p>
       </Card>
@@ -88,14 +88,14 @@ export function PreconGenerateFeed({ session, justCompleted, itemsCount, billsCo
   if (session.status === "failed") {
     return (
       <Card className="mx-auto max-w-2xl p-8 text-center">
-        <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-red-100">
-          <X className="size-6 text-red-600" aria-hidden="true" />
+        <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-error-100">
+          <X className="size-6 text-error-500" aria-hidden="true" />
         </span>
-        <h3 className="mt-4 text-sm font-semibold text-red-700">Panda AI could not finish</h3>
-        <p className="mt-2 text-sm text-gray-600">
+        <h3 className="mt-4 text-caption-l font-semibold text-error-600">Panda AI could not finish</h3>
+        <p className="mt-2 text-caption-l text-ink-muted">
           {session.error ?? "An unexpected error occurred while measuring your drawings."}
         </p>
-        <p className="mt-1 text-xs text-gray-400">Retrying starts the run again from the drawings. Nothing you uploaded is lost.</p>
+        <p className="mt-1 text-caption-m text-black-300">Retrying starts the run again from the drawings. Nothing you uploaded is lost.</p>
         <div className="mt-6">
           <Button loading={retrying} onClick={onRetry}>
             Retry take-off
@@ -111,8 +111,8 @@ export function PreconGenerateFeed({ session, justCompleted, itemsCount, billsCo
   return (
     <Card className="mx-auto max-w-2xl p-8">
       <div className="mb-8 text-center">
-        <h2 className="text-lg font-semibold text-gray-900">Panda AI is working</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-body-m font-semibold text-ink">Panda AI is working</h2>
+        <p className="mt-1 text-caption-l text-ink-muted">
           You can leave this page — progress is saved and the Plans tab shows it too.
         </p>
       </div>

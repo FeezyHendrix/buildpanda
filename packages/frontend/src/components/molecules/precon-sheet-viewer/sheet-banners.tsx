@@ -8,15 +8,15 @@ const UNITS: ScaleUnit[] = ["mm", "cm", "m"];
 /** Shown when a sheet has no scale: the two ways to give it one. */
 export function NoScaleBanner({ message, onOpenSettings, onDrawScale }: { message: string; onOpenSettings: () => void; onDrawScale: () => void }) {
   return (
-    <p className="flex flex-wrap items-center gap-2 border-b border-amber-100 bg-amber-50 px-3 py-1 text-xs text-amber-700">
+    <p className="flex flex-wrap items-center gap-2 border-b border-warning-100 bg-warning-50 px-3 py-1 text-caption-m text-warning-500">
       {message}
-      <button type="button" className="font-semibold underline" onClick={onOpenSettings}>
+      <Button type="button" variant="ghost" size="sm" className="px-1 underline" onClick={onOpenSettings}>
         Set the scale
-      </button>
+      </Button>
       <span>or</span>
-      <button type="button" className="font-semibold underline" onClick={onDrawScale}>
+      <Button type="button" variant="ghost" size="sm" className="px-1 underline" onClick={onDrawScale}>
         draw a known dimension
-      </button>
+      </Button>
     </p>
   );
 }
@@ -43,7 +43,7 @@ export function ScalePromptBanner({
   onRedraw: () => void;
 }) {
   return (
-    <div className="border-b border-primary-100 bg-primary-50 px-3 py-1.5 text-xs text-primary-800" data-scale-prompt>
+    <div className="border-b border-primary-100 bg-primary-50 px-3 py-1.5 text-caption-m text-primary-800" data-scale-prompt>
       <div className="flex flex-wrap items-center gap-2">
         <span>These two points are</span>
         <input
@@ -69,11 +69,11 @@ export function ScalePromptBanner({
         <Button size="sm" loading={previewing} onClick={onPreview}>
           Preview new scale
         </Button>
-        <button type="button" className="underline" onClick={onRedraw}>
+        <Button type="button" variant="ghost" size="sm" onClick={onRedraw}>
           Redraw
-        </button>
+        </Button>
       </div>
-      {error ? <p className="mt-1 text-red-700" data-scale-error>{error}</p> : null}
+      {error ? <p className="mt-1 text-error-600" data-scale-error>{error}</p> : null}
     </div>
   );
 }

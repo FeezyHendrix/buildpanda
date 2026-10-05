@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/atoms/button";
 import type { SavedEditConflict, SavedEditState } from "./use-saved-edit";
 
-const PANEL = "absolute left-3 top-3 z-20 w-64 rounded-lg border border-line bg-white p-3 shadow-lg";
-const LABEL = "block text-xs font-medium text-gray-600";
-const FIELD = "mt-1 h-8 w-full rounded-md border border-line px-2 text-sm tabular-nums";
+const PANEL = "absolute left-3 top-3 z-20 w-64 rounded-none border border-line bg-white p-3 shadow-lg";
+const LABEL = "block text-caption-m font-medium text-ink-muted";
+const FIELD = "mt-1 h-8 w-full rounded-none border border-line px-2 text-caption-l tabular-nums";
 
 interface VertexPanelProps {
   edit: SavedEditState;
@@ -34,7 +34,7 @@ export function VertexInputsPanel({ edit, mmPerPt, onMoveSelectedTo, onExtendBy 
     <div className={PANEL} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
       {selected ? (
         <div>
-          <p className="text-xs font-semibold text-gray-900">Point {edit.selectedVertex! + 1} — exact position (sheet pt)</p>
+          <p className="text-caption-m font-semibold text-ink">Point {edit.selectedVertex! + 1} — exact position (sheet pt)</p>
           <div className="mt-1 grid grid-cols-3 items-end gap-2">
             <label className={LABEL}>
               X<input aria-label="Vertex X (sheet points)" className={FIELD} value={x} onChange={(e) => setX(e.target.value)} />
@@ -50,7 +50,7 @@ export function VertexInputsPanel({ edit, mmPerPt, onMoveSelectedTo, onExtendBy 
       ) : null}
       {canExtend ? (
         <div className={cn(selected && "mt-3 border-t border-line-hair pt-2")}>
-          <p className="text-xs font-semibold text-gray-900">
+          <p className="text-caption-m font-semibold text-ink">
             Extend from the {edit.addingAt === "start" || edit.selectedVertex === 0 ? "start" : "end"}
           </p>
           <div className="mt-1 grid grid-cols-3 items-end gap-2">
@@ -93,22 +93,22 @@ export function ConflictPanel({ conflict, localVertexCount, onReapply, onDiscard
   // is nothing to reapply ONTO, so only discarding is offered.
   const rowGone = conflict.serverVersion <= 0;
   return (
-    <div className={cn(PANEL, "w-80 border-amber-200")} data-conflict-panel role="alertdialog" aria-label="This line changed while you edited it" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-      <p className="text-sm font-semibold text-gray-900">This line changed while you edited it</p>
-      <p className="mt-1 text-xs text-gray-600">{conflict.message}</p>
-      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 rounded-md bg-amber-50 p-2 text-xs">
-        <dt className="text-gray-500">You started from</dt>
-        <dd className="text-right tabular-nums text-gray-900" data-conflict-base>
+    <div className={cn(PANEL, "w-80 border-warning-200")} data-conflict-panel role="alertdialog" aria-label="This line changed while you edited it" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+      <p className="text-caption-l font-semibold text-ink">This line changed while you edited it</p>
+      <p className="mt-1 text-caption-m text-ink-muted">{conflict.message}</p>
+      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 rounded-none bg-warning-50 p-2 text-caption-m">
+        <dt className="text-ink-muted">You started from</dt>
+        <dd className="text-right tabular-nums text-ink" data-conflict-base>
           {conflict.baseVersion === null ? "—" : `v${conflict.baseVersion}`}
         </dd>
-        <dt className="text-gray-500">On the server now</dt>
-        <dd className="text-right tabular-nums text-gray-900" data-conflict-server>
+        <dt className="text-ink-muted">On the server now</dt>
+        <dd className="text-right tabular-nums text-ink" data-conflict-server>
           {rowGone ? "deleted" : `${conflict.serverQty ?? "—"} · v${conflict.serverVersion} · ${conflict.serverStatus ?? "—"}`}
         </dd>
-        <dt className="text-gray-500">Your unsaved shape</dt>
-        <dd className="text-right tabular-nums text-gray-900">{localVertexCount} points (dashed on the sheet)</dd>
+        <dt className="text-ink-muted">Your unsaved shape</dt>
+        <dd className="text-right tabular-nums text-ink">{localVertexCount} points (dashed on the sheet)</dd>
       </dl>
-      <p className="mt-2 text-xs text-gray-600">
+      <p className="mt-2 text-caption-m text-ink-muted">
         {rowGone
           ? "That line is no longer on the bill, so this edit cannot be reapplied."
           : "Reapply sends the same change on the version above. Nothing is sent until you choose."}

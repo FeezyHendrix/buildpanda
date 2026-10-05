@@ -96,14 +96,27 @@ export function StringListEditor({
             placeholder={placeholder}
             onChange={(e) => update(index, e.target.value)}
           />
-          <button type="button" className="text-xs text-gray-400 hover:text-red-600" onClick={() => remove(index)} aria-label="Remove">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="text-black-300 hover:text-error-500"
+            onClick={() => remove(index)}
+            aria-label="Remove"
+          >
             Remove
-          </button>
+          </Button>
         </div>
       ))}
-      <button type="button" className="w-fit text-xs font-semibold text-primary-700 hover:underline" onClick={() => onChange([...values, ""])}>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="w-fit text-primary-700"
+        onClick={() => onChange([...values, ""])}
+      >
         + {addLabel}
-      </button>
+      </Button>
     </div>
   );
 }

@@ -36,11 +36,11 @@ export function RiskRegisterTable({ proposalId }: Props) {
   const confirmedCount = risks.filter((r) => r.editState === "confirmed").length;
 
   return (
-    <section className="rounded-lg border border-line bg-white">
+    <section className="rounded-none border border-line bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-hair px-4 py-3">
         <div>
-          <p className="text-sm font-semibold text-gray-900">Risk register</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-caption-l font-semibold text-black-500">Risk register</p>
+          <p className="text-caption-m text-ink-muted">
             Panda AI drafts from the brief, structure and programme. Every cell is editable; confirming a row signs it off.
             {risks.length > 0 ? ` ${confirmedCount} of ${risks.length} confirmed.` : ""}
           </p>
@@ -77,14 +77,14 @@ export function RiskRegisterTable({ proposalId }: Props) {
           <Spinner size="sm" />
         </div>
       ) : isError ? (
-        <p className="px-4 py-6 text-sm text-red-600">{getApiErrorMessage(error, "Could not load the register.")}</p>
+        <p className="px-4 py-6 text-caption-l text-error-500">{getApiErrorMessage(error, "Could not load the register.")}</p>
       ) : risks.length === 0 ? (
-        <p className="px-4 py-8 text-center text-sm text-gray-500">
+        <p className="px-4 py-8 text-center text-caption-l text-ink-muted">
           No risks yet. Draft a register with Panda AI or add the first one by hand.
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-[minmax(0,2fr)_110px_110px_64px_minmax(0,1fr)_120px_130px_auto] gap-2 border-b border-line-hair bg-gray-50 px-4 py-2 text-xs font-medium uppercase text-ink-muted">
+          <div className="grid grid-cols-[minmax(0,2fr)_110px_110px_64px_minmax(0,1fr)_120px_130px_auto] gap-2 border-b border-line-hair bg-grey-50 px-4 py-2 text-caption-m font-medium uppercase text-ink-muted">
             {HEADERS.map((h, i) => (
               <span key={i}>{h}</span>
             ))}

@@ -6,8 +6,8 @@ import type { DeductionMode } from "@/api/precon-editor";
 import { InspectorStatedDeduction } from "./inspector-stated-deduction";
 import type { useRowCommands } from "./use-row-commands";
 
-const FIELD = "mt-1 h-8 w-full rounded-md border border-line px-2 text-sm tabular-nums";
-const LABEL = "block text-xs font-medium text-gray-600";
+const FIELD = "mt-1 h-8 w-full rounded-none border border-line px-2 text-caption-l tabular-nums";
+const LABEL = "block text-caption-m font-medium text-ink-muted";
 
 /**
  * Which stated dimensions each mode takes, named for what they measure — a
@@ -73,19 +73,21 @@ export function InspectorDeductions({ row, parentTool, commands }: Props) {
 
   return (
     <div data-deductions>
-      <p className="text-xs font-semibold text-gray-900">Deductions</p>
-      {row.deductions.length === 0 ? <p className="mt-1 text-xs text-gray-500">None taken off this line.</p> : null}
+      <p className="text-caption-m font-semibold text-black-500">Deductions</p>
+      {row.deductions.length === 0 ? <p className="mt-1 text-caption-m text-ink-muted">None taken off this line.</p> : null}
       <ul className="mt-1 space-y-1">
         {row.deductions.map((deduction, index) => (
-          <li key={`${deduction.geometryId ?? deduction.label}-${index}`} className="flex items-center justify-between gap-2 rounded-md bg-surface-alt px-2 py-1 text-xs">
-            <span className="min-w-0 truncate text-gray-800">{deduction.label}</span>
-            <span className="shrink-0 tabular-nums text-gray-600">−{deduction.qty}</span>
+          <li key={`${deduction.geometryId ?? deduction.label}-${index}`} className="flex items-center justify-between gap-2 rounded-none bg-surface-alt px-2 py-1 text-caption-m">
+            <span className="min-w-0 truncate text-black-500">{deduction.label}</span>
+            <span className="shrink-0 tabular-nums text-ink-muted">−{deduction.qty}</span>
             {deduction.geometryId ? (
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="ghost"
                 aria-label={`Edit ${deduction.label}`}
                 title="Restate this cutout's dimensions"
-                className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="size-6 shrink-0 px-0 text-ink-muted"
                 onClick={() => {
                   setEditingId(deduction.geometryId);
                   setAdding(true);
@@ -95,28 +97,32 @@ export function InspectorDeductions({ row, parentTool, commands }: Props) {
                 }}
               >
                 <Pencil className="size-3.5" aria-hidden="true" />
-              </button>
+              </Button>
             ) : null}
             {deduction.geometryId ? (
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="ghost"
                 aria-label={`Remove ${deduction.label}`}
                 title="Remove this cutout (reversible)"
-                className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                className="size-6 shrink-0 px-0 text-ink-muted hover:bg-error-50 hover:text-error-500"
                 onClick={() => commands.removeDeduction(row, deduction.geometryId!)}
               >
                 <Trash2 className="size-3.5" aria-hidden="true" />
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="ghost"
                 data-stated-edit={index}
                 title="A stated legacy figure with no drawn shape and an unconfirmed unit — re-enter or remove it"
-                className="shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-200"
+                className="h-5 shrink-0 bg-warning-100 px-1 text-caption-s font-semibold text-warning-600 hover:bg-warning-200"
                 onClick={() => setStatedIndex(statedIndex === index ? null : index)}
               >
                 stated · fix
-              </button>
+              </Button>
             )}
           </li>
         ))}
@@ -131,8 +137,8 @@ export function InspectorDeductions({ row, parentTool, commands }: Props) {
         />
       ) : null}
       {adding ? (
-        <div className="mt-2 rounded-md border border-line p-2">
-          <p className="text-xs font-medium text-gray-700">{editingId ? `Restate “${label}”` : spec.title}</p>
+        <div className="mt-2 rounded-none border border-line p-2">
+          <p className="text-caption-m font-medium text-black-500">{editingId ? `Restate “${label}”` : spec.title}</p>
           {editingId ? null : (
             <label className={`${LABEL} mt-1`}>
               Name

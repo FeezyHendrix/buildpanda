@@ -36,7 +36,7 @@ interface Props {
 }
 
 const FIELD = cn(INPUT_SM_CLASS, "mt-1");
-const LABEL = "block text-xs font-medium text-gray-600";
+const LABEL = "block text-caption-m font-medium text-ink-muted";
 const STANDARD_GROUPS: string[] = TAKEOFF_SECTIONS.flatMap((section) => [...section.elements]);
 
 function parsePositive(raw: string): number | undefined {
@@ -47,14 +47,14 @@ function parsePositive(raw: string): number | undefined {
 /** WS-M3B: what one drawn quantity becomes when an assembly names the lines. */
 function AssemblyItemsPreview({ assembly, gross }: { assembly: Assembly; gross: number | null }) {
   return (
-    <ul className="divide-y divide-line-hair rounded-lg border border-line text-xs">
+    <ul className="divide-y divide-line-hair rounded-none border border-line text-caption-m">
       {assembly.items.map((item, index) => (
         <li key={`${item.description}-${index}`} className="flex items-center justify-between gap-2 px-3 py-1.5">
-          <span className="min-w-0 truncate text-gray-800">
+          <span className="min-w-0 truncate text-black-500">
             {item.description}
-            {item.code ? <span className="ml-1 font-mono text-[10px] text-gray-400">{item.code}</span> : null}
+            {item.code ? <span className="ml-1 font-mono text-caption-s text-ink-muted">{item.code}</span> : null}
           </span>
-          <span className="shrink-0 tabular-nums text-gray-500">
+          <span className="shrink-0 tabular-nums text-ink-muted">
             × {item.factor}
             {gross !== null ? ` = ${formatQty(gross * item.factor)} ${unitLabel(item.unit)}` : ` ${unitLabel(item.unit)}`}
           </span>
@@ -183,7 +183,7 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
   // sheet while it is named, and the sheet can still be panned behind it.
   return (
     <form
-      className="absolute right-3 top-3 z-20 flex w-[22rem] max-h-[calc(100%-1.5rem)] flex-col gap-3 overflow-y-auto rounded-lg border border-line bg-white p-4 shadow-lg"
+      className="absolute right-3 top-3 z-20 flex w-[22rem] max-h-[calc(100%-1.5rem)] flex-col gap-3 overflow-y-auto rounded-none border border-line bg-white p-4 shadow-lg"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -194,14 +194,14 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-gray-900">Name this {meta.label.toLowerCase()}</p>
-          <p className="text-xs text-gray-500">On {sheet.code ?? sheet.fileName}. It joins the bill as a verified line with the drawn shape as evidence.</p>
+          <p className="text-caption-l font-semibold text-black-500">Name this {meta.label.toLowerCase()}</p>
+          <p className="text-caption-m text-ink-muted">On {sheet.code ?? sheet.fileName}. It joins the bill as a verified line with the drawn shape as evidence.</p>
         </div>
-        <button type="button" aria-label="Discard this shape" className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={onClose}>
+        <Button type="button" size="sm" variant="ghost" aria-label="Discard this shape" className="size-8 shrink-0 px-0 text-ink-muted" onClick={onClose}>
           <X className="size-4" aria-hidden="true" />
-        </button>
+        </Button>
       </div>
-      <p className="rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-800">
+      <p className="rounded-none bg-primary-50 px-3 py-2 text-caption-l text-primary-800">
         {preview ? (
           <>
             <span className="font-semibold tabular-nums">
@@ -308,7 +308,7 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
           </label>
         </div>
       )}
-      {error ? <p className="text-xs text-red-600" data-composer-error>{error}</p> : null}
+      {error ? <p className="text-caption-m text-error-500" data-composer-error>{error}</p> : null}
       {crossesScales ? (
         <label className={LABEL} data-scale-choice>
           Measure the whole shape at
@@ -327,7 +327,7 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
               </option>
             ))}
           </select>
-          <span className="mt-0.5 block text-[10px] text-gray-500">Then press Add to bill again — the stated scale is recorded with the line.</span>
+          <span className="mt-0.5 block text-caption-s text-ink-muted">Then press Add to bill again — the stated scale is recorded with the line.</span>
         </label>
       ) : null}
       <div className="flex justify-end gap-2">

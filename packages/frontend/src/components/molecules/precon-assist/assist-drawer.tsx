@@ -38,12 +38,12 @@ const SURFACE_HINT: Record<AssistSurface, string> = {
 
 function PlanList({ plan }: { plan: string[] }) {
   return (
-    <section className="rounded-lg border border-line bg-white px-4 py-3">
+    <section className="rounded-none border border-line bg-white px-4 py-3">
       <div className="mb-1.5 flex items-center gap-2">
         <Sparkles className="size-3.5 text-primary-600" aria-hidden="true" />
-        <p className="text-xs font-medium uppercase text-ink-muted">Plan</p>
+        <p className="text-caption-m font-medium uppercase text-ink-muted">Plan</p>
       </div>
-      <ol className="list-decimal space-y-1 pl-5 text-sm text-gray-800">
+      <ol className="list-decimal space-y-1 pl-5 text-caption-l text-ink">
         {plan.map((step, index) => (
           <li key={index}>{step}</li>
         ))}
@@ -105,25 +105,25 @@ export function AssistDrawer({ open, onOpenChange, sessionId, surface, surfaceLa
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/20 transition-opacity data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
         <Dialog.Popup
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-[min(520px,100vw)] flex-col border-l border-line bg-gray-50 shadow-drawer outline-none",
+            "fixed inset-y-0 right-0 z-50 flex w-[min(520px,100vw)] flex-col border-l border-line bg-grey-50 shadow-drawer outline-none",
             "transition-transform duration-300 ease-out data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
           )}
         >
           <header className="flex items-center gap-3 border-b border-line bg-white px-5 py-4">
             <Sparkles className="size-4 text-primary-600" aria-hidden="true" />
-            <Dialog.Title className="text-base font-semibold text-gray-900">Ask Panda AI</Dialog.Title>
+            <Dialog.Title className="text-body-s font-semibold text-ink">Ask Panda AI</Dialog.Title>
             <Badge tone="accent">{surfaceLabel}</Badge>
             <Dialog.Close
               aria-label="Close"
-              className="ml-auto flex size-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 focus-visible:shadow-focus"
+              className="ml-auto flex size-8 items-center justify-center rounded-none text-ink-muted hover:bg-grey-100 focus-visible:shadow-focus"
             >
               <X className="size-4" aria-hidden="true" />
             </Dialog.Close>
           </header>
 
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
-            <section className="rounded-lg border border-line bg-white px-4 py-3">
-              <label className="text-xs font-medium uppercase text-ink-muted" htmlFor="assist-prompt">
+            <section className="rounded-none border border-line bg-white px-4 py-3">
+              <label className="text-caption-m font-medium uppercase text-ink-muted" htmlFor="assist-prompt">
                 What should change?
               </label>
               <textarea
@@ -139,7 +139,7 @@ export function AssistDrawer({ open, onOpenChange, sessionId, surface, surfaceLa
                 className={cn(INPUT_CLASS, "mt-1.5 h-auto min-h-24 resize-none py-3", !editing && "text-ink-muted")}
               />
               <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="text-xs text-gray-400">{editing ? "⌘↩ to send" : "Read the plan below before applying."}</p>
+                <p className="text-caption-m text-black-300">{editing ? "⌘↩ to send" : "Read the plan below before applying."}</p>
                 {editing ? (
                   <Button size="sm" loading={propose.isPending} disabled={prompt.trim().length < 3} onClick={submit}>
                     Preview changes
@@ -164,7 +164,7 @@ export function AssistDrawer({ open, onOpenChange, sessionId, surface, surfaceLa
             </section>
 
             {propose.isPending ? (
-              <p className="px-1 text-sm text-gray-500">Panda AI is reading the {surfaceLabel.toLowerCase()} and drafting a plan…</p>
+              <p className="px-1 text-caption-l text-ink-muted">Panda AI is reading the {surfaceLabel.toLowerCase()} and drafting a plan…</p>
             ) : null}
 
             {changeSet ? (

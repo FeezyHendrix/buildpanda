@@ -81,16 +81,18 @@ export function PreconRowComposer({ sessionId, billId, onError }: Props) {
   if (!open) {
     return (
       <div className="px-3 py-2">
-        <button
+        <Button
           type="button"
+          size="sm"
+          variant="ghost"
           onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          className="gap-1.5 text-ink-muted"
         >
-          <span aria-hidden className="text-sm leading-none">
+          <span aria-hidden className="text-caption-l leading-none">
             +
           </span>
           Add row
-        </button>
+        </Button>
       </div>
     );
   }
@@ -98,7 +100,7 @@ export function PreconRowComposer({ sessionId, billId, onError }: Props) {
   return (
     <div className="space-y-2 border-l-2 border-primary-600 bg-primary-50/40 px-3 py-3">
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs text-gray-500">
+        <label className="text-caption-m text-ink-muted">
           Type
           <select
             className={FIELD_CLASS}
@@ -112,7 +114,7 @@ export function PreconRowComposer({ sessionId, billId, onError }: Props) {
             ))}
           </select>
         </label>
-        <label className="text-xs text-gray-500">
+        <label className="text-caption-m text-ink-muted">
           Code
           <input
             className={FIELD_CLASS}
@@ -123,7 +125,7 @@ export function PreconRowComposer({ sessionId, billId, onError }: Props) {
         </label>
       </div>
 
-      <label className="block text-xs text-gray-500">
+      <label className="block text-caption-m text-ink-muted">
         Description
         <input
           autoFocus
@@ -139,7 +141,7 @@ export function PreconRowComposer({ sessionId, billId, onError }: Props) {
 
       {priced ? (
         <div className="grid grid-cols-3 gap-2">
-          <label className="text-xs text-gray-500">
+          <label className="text-caption-m text-ink-muted">
             Qty
             <input
               className={FIELD_CLASS}
@@ -148,11 +150,11 @@ export function PreconRowComposer({ sessionId, billId, onError }: Props) {
               onChange={(e) => setQty(e.target.value)}
             />
           </label>
-          <label className="text-xs text-gray-500">
+          <label className="text-caption-m text-ink-muted">
             Unit
             <UnitInput value={unit} onChange={setUnit} className={FIELD_CLASS} />
           </label>
-          <label className="text-xs text-gray-500">
+          <label className="text-caption-m text-ink-muted">
             Rate (₦)
             <input
               className={FIELD_CLASS}

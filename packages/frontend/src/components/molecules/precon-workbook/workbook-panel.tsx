@@ -18,7 +18,7 @@ import type { WorkbookEngine } from "./univer-engine";
 // resolves to zero and the engine renders into a 0px canvas. The fixed height
 // is what keeps the grid a grid on a phone — as `VIEWER_SHELL` does for the sheet.
 const WORKBOOK_SHELL =
-  "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface " +
+  "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none border border-line bg-surface " +
   "max-lg:h-[34rem] max-lg:flex-none";
 
 export interface WorkbookPanelProps {
@@ -135,7 +135,7 @@ export function WorkbookPanel({ sessionId, active, compact, onSourceAction, onFo
 
   if (editor.loading) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-line bg-surface">
+      <div className="flex min-h-0 flex-1 items-center justify-center rounded-none border border-line bg-surface">
         <Spinner size="md" />
       </div>
     );
@@ -143,7 +143,7 @@ export function WorkbookPanel({ sessionId, active, compact, onSourceAction, onFo
 
   if (!document) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-line bg-surface p-6">
+      <div className="flex min-h-0 flex-1 items-center justify-center rounded-none border border-line bg-surface p-6">
         <EmptyState
           title="Workbook unavailable"
           description={getApiErrorMessage(editor.error, "This take-off's workbook could not be opened.")}
@@ -211,13 +211,13 @@ export function WorkbookPanel({ sessionId, active, compact, onSourceAction, onFo
       ) : null}
 
       {editor.heldBack ? (
-        <p className="border-b border-primary-100 bg-primary-50 px-3 py-1.5 text-xs text-primary-800" role="status">
+        <p className="border-b border-primary-100 bg-primary-50 px-3 py-1.5 text-caption-m text-primary-800" role="status">
           This take-off has moved since you started editing. Save your work, or discard it, to pick up the new figures.
         </p>
       ) : null}
 
       {editor.refusal ? (
-        <p className="border-b border-warning-100 bg-warning-50 px-3 py-1.5 text-xs text-warning-800" role="status">
+        <p className="border-b border-warning-100 bg-warning-50 px-3 py-1.5 text-caption-m text-warning-800" role="status">
           {editor.refusal.reason}
         </p>
       ) : null}

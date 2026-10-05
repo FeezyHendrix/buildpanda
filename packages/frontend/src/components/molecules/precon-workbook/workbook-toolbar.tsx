@@ -16,7 +16,7 @@ const STATUS: Readonly<Record<SaveState, { label: string; dot: string; text: str
 export function SaveStatus({ state, version }: { state: SaveState; version: number }) {
   const status = STATUS[state];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-[11px]", status.text)} role="status">
+    <span className={cn("inline-flex items-center gap-1.5 text-caption-m", status.text)} role="status">
       <span className={cn("size-1.5 rounded-full", status.dot)} aria-hidden="true" />
       {status.label}
       {version > 0 && state === "clean" ? <span className="text-black-200">· v{version}</span> : null}
