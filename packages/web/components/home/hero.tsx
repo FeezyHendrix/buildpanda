@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { ButtonLink } from "@/components/ui";
 import { DeviceCluster } from "@/components/home/devices";
 
@@ -6,6 +7,12 @@ import { DeviceCluster } from "@/components/home/devices";
  * on the left, the product on the right. The reference fills the foot of its
  * panel with client logos; ours carries the second product instead, because we
  * have no customer logos and will not borrow any.
+ *
+ * The NVIDIA Inception badge closing the left column is not an exception to
+ * that: it is a programme BuildPanda is admitted to, so it is our own credential
+ * rather than somebody else's logo standing in for a customer we do not have. It
+ * sits after the offer because a credential is what you check once you are
+ * interested, not the first thing that should meet the eye.
  */
 export function Hero() {
   return (
@@ -37,6 +44,8 @@ export function Hero() {
               Explore the software
             </ButtonLink>
           </div>
+
+          <InceptionBadge />
         </div>
 
         <div className="lg:pl-4">
@@ -57,6 +66,43 @@ export function Hero() {
       </div>
       <div id="hero-end" aria-hidden="true" />
     </section>
+  );
+}
+
+/**
+ * NVIDIA's official member badge in the all-white colourway their identity
+ * guidelines specify for dark backgrounds. `-white.svg` is the shipped artwork
+ * with only its three fills set to white — the path geometry is untouched,
+ * because redrawing or recreating the mark is forbidden. Keeping the green eye
+ * was the other sanctioned dark-background option, but green manages only about
+ * 4.5:1 on this blue against the 1:10 NVIDIA ask for, so white it is.
+ *
+ * Measured, white lands on rgb(3,64,196) here for 8.3:1 — comfortably past WCAG
+ * AAA, still short of that 1:10. Closing the gap means darkening this end of the
+ * gradient or dropping the row into the near-navy foot of the panel, which is a
+ * hero-wide design call rather than something to fix by nudging this component.
+ *
+ * Two things not to undo:
+ *  - Do not shrink it. The minimum reproduction width is 1.25in (~120px); h-16
+ *    puts the frame at ~133px, and one step down drops under it.
+ *  - Eager but not `priority`. It is in the first viewport so it must not
+ *    lazy-load and pop in, but a preload would bid against the hero's real LCP.
+ */
+function InceptionBadge() {
+  return (
+    <div className="flex items-center gap-4 self-stretch border-t border-white/15 pt-6 sm:gap-5">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+        Backed by
+      </span>
+      <Image
+        src="/nvidia-inception-program-badge-white.svg"
+        alt="BuildPanda is a member of the NVIDIA Inception Program"
+        width={501}
+        height={216}
+        loading="eager"
+        className="h-16 w-auto"
+      />
+    </div>
   );
 }
 
