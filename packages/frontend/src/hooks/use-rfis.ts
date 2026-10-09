@@ -6,10 +6,10 @@ import type { RfiStatus } from "@/lib/project-types";
 
 export type { RfiCreateInput, RfiUpdateInput };
 
-export function useProjectRfis(projectId: string | undefined, status?: RfiStatus) {
+export function useProjectRfis(projectId: string | undefined, status?: RfiStatus, stageId?: string) {
   return useQuery({
-    queryKey: rfiKeys.list(projectId ?? "__none__", status),
-    queryFn: () => rfisApi.list(projectId!, status),
+    queryKey: rfiKeys.list(projectId ?? "__none__", status, stageId),
+    queryFn: () => rfisApi.list(projectId!, status, stageId),
     enabled: Boolean(projectId),
   });
 }

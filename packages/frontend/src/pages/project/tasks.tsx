@@ -24,6 +24,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { useStageScope } from "@/contexts/stage-scope-context";
 import {
   useTaskBoard,
   useAssignableUsers,
@@ -45,13 +46,14 @@ import { UpsertTaskDialog } from "./tasks/upsert-task-dialog";
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
+  const { selectedStageId } = useStageScope();
   const canAddTasks = Boolean(access && canResourceAction(access, "tasks", "add"));
   const canRemoveTasks = Boolean(access && canResourceAction(access, "tasks", "remove"));
   const canManage = canAddTasks;
   const canSeeAllTasks = canRemoveTasks;
   const [boardScope, setBoardScope] = useUrlState<TaskBoardScope>("scope", "all", ["all", "assigned"]);
   const requestedScope: TaskBoardScope = canSeeAllTasks ? boardScope : "assigned";
-  const { data: board, isLoading, error, refetch } = useTaskBoard(project.id, requestedScope, Boolean(access), selectedBuildingId);
+  const { data: board, isLoading, error, refetch } = useTaskBoard(project.id, requestedScope, Boolean(access), selectedBuildingId, selectedStageId);
   const { data: assignable = [] } = useAssignableUsers(project.id);
 
   const createTask = useCreateTask(project.id);

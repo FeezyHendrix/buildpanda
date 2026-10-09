@@ -1,17 +1,21 @@
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { cn } from "@/lib/utils";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import type { PhaseStatus, ProjectPhase } from "@/lib/project-types";
 
 export function TimelineStepper({ phases }: { phases: ProjectPhase[] }) {
+  const { selectedStageId } = useStageScope();
+  const visible = phases.filter((phase) => matchesStage(phase.id, selectedStageId));
   return (
     <div className="overflow-x-auto pb-2 no-scrollbar">
       <ol className="flex min-w-max flex-row">
-        {phases.map((phase, idx) => (
+        {visible.map((phase, idx) => (
           <TimelineStep
             key={phase.id}
             phase={phase}
-            prevPhase={idx > 0 ? phases[idx - 1] : undefined}
+            prevPhase={idx > 0 ? visible[idx - 1] : undefined}
             isFirst={idx === 0}
           />
         ))}

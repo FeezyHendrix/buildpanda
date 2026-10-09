@@ -22,6 +22,8 @@ import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
 import { BuildingScopeProvider } from "@/contexts/building-scope-context";
+import { StageScopeProvider } from "@/contexts/stage-scope-context";
+import { ProjectStageFilter } from "@/components/molecules/project-stage-filter";
 import { useProjectBreadcrumbs } from "./use-project-breadcrumbs";
 import type { Session } from "@/stores/auth";
 import type { Project, ProjectAccess } from "@/lib/project-types";
@@ -81,6 +83,7 @@ export default function ProjectLayout() {
 
   return (
     <BuildingScopeProvider projectId={project.id}>
+    <StageScopeProvider key={project.id} projectId={project.id} access={access}>
     <AppShell session={session} onLogout={logout}>
       <div className="flex flex-1 overflow-hidden no-scrollbar">
         <ProjectSidebar
@@ -90,7 +93,7 @@ export default function ProjectLayout() {
           onClose={() => setSidebarOpen(false)}
           onOpen={() => setSidebarOpen(true)}
         />
-        <main className="flex flex-1 flex-col overflow-y-auto no-scrollbar">
+        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto no-scrollbar">
           <ProjectBreadcrumbs project={project} access={access} />
           <div className="relative flex min-h-0 flex-1 flex-col">
             <ErrorBoundary>
@@ -109,6 +112,7 @@ export default function ProjectLayout() {
           )}
       </div>
     </AppShell>
+    </StageScopeProvider>
     </BuildingScopeProvider>
   );
 }
@@ -121,8 +125,9 @@ interface ProjectBreadcrumbsProps {
 function ProjectBreadcrumbs({ project, access }: ProjectBreadcrumbsProps) {
   const items = useProjectBreadcrumbs(project, access?.relationship !== "company");
   return (
-    <div className="shrink-0 px-4 pt-6 sm:px-10 lg:px-6">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 pt-6 sm:px-10 lg:px-6">
       <Breadcrumbs items={items} />
+      <ProjectStageFilter />
     </div>
   );
 }

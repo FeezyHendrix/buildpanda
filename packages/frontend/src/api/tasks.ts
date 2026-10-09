@@ -41,10 +41,10 @@ export interface UpdateTaskInput {
 }
 
 export const taskApi = {
-  board: (projectId: string, scope?: "all" | "assigned", buildingId?: string) =>
+  board: (projectId: string, scope?: "all" | "assigned", buildingId?: string, stageId?: string) =>
     api
       .get<TaskBoard>(`/projects/${projectId}/tasks/board`, {
-        params: { ...(scope ? { scope } : {}), ...(buildingId ? { buildingId } : {}) },
+        params: { scope, buildingId, stageId },
       })
       .then((r) => r.data),
 

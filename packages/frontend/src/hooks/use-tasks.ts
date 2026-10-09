@@ -16,10 +16,11 @@ export function useTaskBoard(
   scope: "all" | "assigned" = "all",
   enabled = true,
   buildingId?: string,
+  stageId?: string,
 ) {
   return useQuery({
-    queryKey: taskKeys.board(projectId, scope, buildingId),
-    queryFn: () => taskApi.board(projectId, scope, buildingId),
+    queryKey: taskKeys.board(projectId, scope, buildingId, stageId),
+    queryFn: () => taskApi.board(projectId, scope, buildingId, stageId),
     enabled: Boolean(projectId) && enabled,
   });
 }

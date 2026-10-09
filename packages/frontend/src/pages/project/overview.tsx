@@ -6,6 +6,7 @@ import { ProgressBar } from "@/components/atoms/progress-bar";
 import { PageHeader } from "@/components/molecules/page-header";
 import { TourGuide } from "@/components/molecules/tour-guide";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
 import { useProjectUpdates } from "@/hooks/use-updates";
 import { useBuildings } from "@/hooks/use-buildings";
 import { useFeatureFlagState } from "@/hooks/use-feature-flags";
@@ -76,8 +77,9 @@ function BuildingCard({ building, projectId }: { building: Building; projectId: 
 
 export default function ProjectOverview() {
   const { project } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const { data: session } = useSession();
-  const { data: updates = [] } = useProjectUpdates(project.id);
+  const { data: updates = [] } = useProjectUpdates(project.id, selectedStageId);
   const { data: risks = [] } = useProjectRiskFactors(project.id);
   const snapshot = useReportingSnapshot(project.id);
   const multiBuilding = useFeatureFlagState("projects.multiBuilding");

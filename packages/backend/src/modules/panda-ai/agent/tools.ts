@@ -17,6 +17,7 @@ import { stageCostsService } from "../../finances/stage-costs.ts";
 import { purchaseOrdersRepository } from "../../purchase-orders/repository.ts";
 import { transactionsRepository } from "../../transactions/repository.ts";
 import { financeTools } from "./finance-tools.ts";
+import { updateTools } from "./update-tools.ts";
 import { GET_PRECON_BOQ_DESCRIPTION, preconBoqLines } from "./precon-boq.ts";
 import { preconWorkbookNotes } from "./precon-workbook.ts";
 import { agentRepository } from "./repository.ts";
@@ -1120,6 +1121,7 @@ export function buildTools(): AgentTool[] {
     }),
 
     ...financeTools(),
+    ...updateTools(),
 
     tool(fn("navigate", "Point the user to a page in the app. Returns a navigation target the UI shows as a button. Use when the user asks to go somewhere or you reference a page they should open.", { target: { type: "string", description: `One of: ${Object.keys(NAV_TARGETS).join(", ")}` } }, ["target"]), async (ctx, args) => {
       const key = String(args.target ?? "").toLowerCase();

@@ -261,8 +261,8 @@ export interface SendInvoiceInput {
 }
 
 export const invoicesApi = {
-  list: (projectId: string) => 
-    api.get<Invoice[]>(`/projects/${projectId}/invoices`).then(r => r.data),
+  list: (projectId: string, stageId?: string) =>
+    api.get<Invoice[]>(`/projects/${projectId}/invoices`, { params: { stageId } }).then(r => r.data),
   
   detail: (projectId: string, invoiceId: string) => 
     api.get<Invoice>(`/projects/${projectId}/invoices/${invoiceId}`).then(r => r.data),

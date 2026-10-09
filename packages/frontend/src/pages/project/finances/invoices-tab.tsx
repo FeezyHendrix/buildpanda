@@ -9,7 +9,8 @@ import { QueryError } from "@/components/molecules/query-error";
 import { UnavailableRecord } from "@/components/molecules/unavailable-record";
 import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectInvoices, type Invoice, type InvoiceScanResult } from "@/hooks/use-invoices";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { useInvoiceDetail, useProjectInvoices, type Invoice, type InvoiceScanResult } from "@/hooks/use-invoices";
 import { canResourceAction } from "@/lib/project-types";
 import { InvoiceComposer } from "../invoices/invoice-composer";
 import { PERIOD_PATTERN } from "./contract/billing-sheet-model";
@@ -31,11 +32,12 @@ const STATUS_VALUES = INVOICE_STATUS_FILTERS.map(filter => filter.value);
  */
 export function InvoicesTab() {
   const { project, access } = useProjectContext();
+  const { selectedStageId, setSelectedStageId } = useStageScope();
   const [searchParams, setSearchParams] = useSearchParams();
   const canManage = canResourceAction(access, "finances", "manage");
   const canRecordPayment = canResourceAction(access, "finances", "approve");
   const currency = project.currency;
-  const { data: invoices = EMPTY_INVOICES, isPending, isSuccess, error, refetch } = useProjectInvoices(project.id);
+  const { data: invoices = EMPTY_INVOICES, isPending, error, refetch } = useProjectInvoices(project.id, selectedStageId);
   const pdf = useDownloadInvoicePdf(project.id);
 
   const [search, setSearch] = useUrlState<string>("q", "");
@@ -64,10 +66,11 @@ export function InvoicesTab() {
   }, []);
 
   const visible = useMemo(() => filterInvoices(invoices, status, search), [invoices, status, search]);
-  // The drawer reads the live invoice so a payment or status change shows at once.
-  const viewed = useMemo(() => invoices.find((invoice) => invoice.id === viewId) ?? null, [invoices, viewId]);
-  const isFiltered = status !== "all" || search.trim().length > 0;
-  const unavailable = Boolean(viewId) && isSuccess && !viewed;
+  // A saved stage filter must not hide an invoice opened from a direct link.
+  const detail = useInvoiceDetail(project.id, viewId ?? undefined);
+  const viewed = detail.data ?? invoices.find((invoice) => invoice.id === viewId) ?? null;
+  const isFiltered = Boolean(selectedStageId) || status !== "all" || search.trim().length > 0;
+  const unavailable = Boolean(viewId) && detail.isError && !viewed;
 
   function openComposer(): void {
     setScanResult(null);
@@ -76,6 +79,7 @@ export function InvoicesTab() {
   }
 
   function clearFilters(): void {
+    setSelectedStageId(undefined);
     setSearchParams(previous => {
       const next = new URLSearchParams(previous);
       next.delete("status");

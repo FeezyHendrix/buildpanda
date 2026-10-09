@@ -21,7 +21,7 @@ import {
   RFI_PRIORITIES,
   RFI_STATUSES,
   type Rfi,
-  type RfiStatus,
+  type RfiListQuery,
 } from "./types.ts";
 
 const TRANSITION_TARGETS = ["Closed", "Void", "Open"] as const;
@@ -44,6 +44,7 @@ const listQuery = {
   properties: {
     status: { type: "string", enum: RFI_STATUSES },
     ballInCourt: { type: "string", enum: ["mine"] },
+    stageId: { type: "string", minLength: 1, maxLength: 200 },
   },
 } as const;
 
@@ -215,7 +216,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     }).catch(() => undefined);
   }
 
-  fastify.get<{ Params: { id: string }; Querystring: { status?: RfiStatus; ballInCourt?: "mine" } }>(
+  fastify.get<{ Params: { id: string }; Querystring: RfiListQuery }>(
     "/projects/:id/rfis",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
@@ -223,6 +224,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       return service.list(project.id, {
         status: request.query.status,
+        stageId: request.query.stageId,
         ballInCourtId: request.query.ballInCourt === "mine" ? user.id : undefined,
         sharedOnly: !isCompanyCaller(request, project),
       });

@@ -1,6 +1,6 @@
+import { registerTaskBoardRoutes } from "./board-routes.ts";
+import { canSeeFullTaskBoard, assertCompanyTaskAccess } from "./access.ts";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { canProjectPermission } from "../../lib/authorization.ts";
-import { isEmployeeRole } from "../../lib/permissions.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
 import { buildingsRepository } from "../buildings/repository.ts";
 import { tasksRepository } from "./repository.ts";
@@ -37,15 +37,6 @@ const projectIdParams = {
   properties: { id: { type: "string", minLength: 1 } },
   required: ["id"],
   additionalProperties: false,
-} as const;
-
-const boardQuery = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    scope: { type: "string", enum: ["all", "assigned"] },
-    buildingId: { type: "string", minLength: 1, maxLength: 100 },
-  },
 } as const;
 
 const taskParams = {
@@ -105,49 +96,11 @@ const moveBody = {
   },
 } as const;
 
-const columnParams = {
-  type: "object",
-  required: ["id", "columnId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    columnId: { type: "string", minLength: 1 },
-  },
-} as const;
-
-const createColumnBody = {
-  type: "object",
-  required: ["name"],
-  additionalProperties: false,
-  properties: { name: { type: "string", minLength: 1, maxLength: 60 } },
-} as const;
-
 const commentBody = {
   type: "object",
   required: ["body"],
   additionalProperties: false,
   properties: { body: { type: "string", minLength: 1, maxLength: 2000 } },
-} as const;
-
-const renameColumnBody = {
-  type: "object",
-  required: ["name"],
-  additionalProperties: false,
-  properties: { name: { type: "string", minLength: 1, maxLength: 60 } },
-} as const;
-
-const reorderColumnsBody = {
-  type: "object",
-  required: ["columnIds"],
-  additionalProperties: false,
-  properties: {
-    columnIds: {
-      type: "array",
-      items: { type: "string", minLength: 1, maxLength: 100 },
-      minItems: 1,
-      maxItems: 50,
-    },
-  },
 } as const;
 
 const subtaskParams = {
@@ -219,39 +172,6 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (projectId) =>
     (await buildings.soleRealBuildingId(projectId)) ?? (await buildings.firstRealBuildingId(projectId)));
 
-  function canSeeFullTaskBoard(request: FastifyRequest, project: ProjectRow): boolean {
-    const user = request.requireAuth();
-    if (project.owner_id === user.id) return true;
-
-    // Company managers (any non-viewer org role on this project) manage the whole
-    // board — this mirrors the isCompanyManager capability the client uses to
-    // enable drag, so the UI and API agree. Employees are scoped to assigned
-    // tasks; org viewers and external participants never get the full board.
-    const orgId = project.organization_id;
-    const orgRole = orgId ? request.orgRoles.get(orgId) : undefined;
-    if (orgRole && orgRole !== "viewer" && !isEmployeeRole(orgRole)) return true;
-
-    return canProjectPermission(
-      { id: project.id, ownerId: project.owner_id, organizationId: orgId },
-      {
-        userId: user.id,
-        orgRoles: request.orgRoles,
-        projectRoles: request.projectRoles,
-        projectSectionPermissions: request.projectSectionPermissions,
-        orgPermissions: request.orgPermissions,
-      },
-      "tasks",
-      "remove",
-    );
-  }
-
-  function assertCompanyTaskAccess(request: FastifyRequest, project: ProjectRow): void {
-    const user = request.requireAuth();
-    if (project.owner_id === user.id) return;
-    if (project.organization_id && request.orgRoles.has(project.organization_id)) return;
-    throw new ForbiddenError("Only company team members can access the task board");
-  }
-
   async function assertTaskVisibleToRequester(
     request: FastifyRequest,
     project: ProjectRow,
@@ -263,73 +183,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     throw new ForbiddenError("You can only access tasks assigned to you");
   }
 
-  fastify.get<{ Params: { id: string }; Querystring: { scope?: "all" | "assigned"; buildingId?: string } }>(
-    "/projects/:id/tasks/board",
-    { schema: { params: projectIdParams, querystring: boardQuery } },
-    async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
-      const user = request.requireAuth();
-      assertCompanyTaskAccess(request, project);
-      const fullBoard = canSeeFullTaskBoard(request, project);
-      const assigneeId = request.query.scope === "assigned" || !fullBoard ? user.id : undefined;
-      return service.getDefaultBoard(project.id, user.id, assigneeId, request.query.buildingId);
-    },
-  );
-
-  fastify.get<{ Params: { id: string } }>(
-    "/projects/:id/tasks/assignable",
-    { schema: { params: projectIdParams } },
-    async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
-      const user = request.requireAuth();
-      assertCompanyTaskAccess(request, project);
-      return service.listAssignable(
-        project.id,
-        project.organization_id,
-        project.owner_id,
-        user.id,
-      );
-    },
-  );
-
-  fastify.post<{ Params: { id: string }; Body: { name: string } }>(
-    "/projects/:id/tasks/columns",
-    { schema: { params: projectIdParams, body: createColumnBody } },
-    async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
-      const user = request.requireAuth();
-      const column = await service.addColumn(project.id, request.body.name, user.id);
-      return reply.status(201).send(column);
-    },
-  );
-
-  fastify.patch<{ Params: { id: string; columnId: string }; Body: { name: string } }>(
-    "/projects/:id/tasks/columns/:columnId",
-    { schema: { params: columnParams, body: renameColumnBody } },
-    async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
-      return service.renameColumn(project.id, request.params.columnId, request.body.name);
-    },
-  );
-
-  fastify.delete<{ Params: { id: string; columnId: string } }>(
-    "/projects/:id/tasks/columns/:columnId",
-    { schema: { params: columnParams } },
-    async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
-      await service.deleteColumn(project.id, request.params.columnId);
-      return reply.status(204).send();
-    },
-  );
-
-  fastify.patch<{ Params: { id: string }; Body: { columnIds: string[] } }>(
-    "/projects/:id/tasks/columns/reorder",
-    { schema: { params: projectIdParams, body: reorderColumnsBody } },
-    async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
-      return service.reorderColumns(project.id, request.body.columnIds);
-    },
-  );
+  registerTaskBoardRoutes(fastify, service);
 
   fastify.post<{ Params: { id: string }; Body: CreateTaskInput }>(
     "/projects/:id/tasks",

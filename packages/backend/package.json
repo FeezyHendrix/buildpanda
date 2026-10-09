@@ -13,6 +13,7 @@
     "db:make-migration": "tsx ./node_modules/knex/bin/cli.js migrate:make --knexfile knexfile.ts -x ts",
     "db:make-seed": "tsx ./node_modules/knex/bin/cli.js seed:make --knexfile knexfile.ts -x ts",
     "lint": "eslint src/",
+    "test:stage-filter": "tsx --test src/lib/stage-filter.test.ts src/modules/panda-ai/agent/tool-permissions-gate.test.ts ../frontend/src/hooks/stage-scope-cache.test.ts",
     "test:takeoff-editor": "tsx scripts/takeoff-suites.ts",
     "test:user-deletion": "tsx --test src/modules/admin/user-deletion.test.ts"
   },

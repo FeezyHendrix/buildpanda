@@ -5,6 +5,8 @@ import { Spinner } from "@/components/atoms/spinner";
 import { Table, TableBody, TableEmptyRow, TableHead } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { useContracts } from "@/hooks/use-contracts";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { useProjectFinances, useStageCosts } from "@/hooks/use-finances";
 import { useProjectScheduleOfValues, useStages } from "@/hooks/use-stages";
 import type { Currency, Stage } from "@/lib/project-types";
@@ -62,6 +64,7 @@ export function BillingSheet({
   onEditValue,
   onOpenSchedule,
 }: BillingSheetProps) {
+  const { selectedStageId } = useStageScope();
   const { data: stages = [], isPending } = useStages(projectId);
   const { data: lines } = useProjectScheduleOfValues(projectId);
   const { data: finances } = useProjectFinances(projectId);
@@ -84,9 +87,8 @@ export function BillingSheet({
   );
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return rows;
-    return rows.filter((row) => row.stage.name.toLowerCase().includes(query));
-  }, [rows, search]);
+    return rows.filter((row) => matchesStage(row.stage.id, selectedStageId) && row.stage.name.toLowerCase().includes(query));
+  }, [rows, search, selectedStageId]);
   const changeOrderIds = useMemo(
     () => new Set(contracts.filter((c) => c.kind === "change_order").map((c) => c.id)),
     [contracts],

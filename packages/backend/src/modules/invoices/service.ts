@@ -71,8 +71,8 @@ export function invoicesService(repository: InvoicesRepository, deps: InvoicesDe
   }
 
   return {
-    async listByProject(projectId: string): Promise<Invoice[]> {
-      const rows = await repository.listByProject(projectId);
+    async listByProject(projectId: string, stageId?: string): Promise<Invoice[]> {
+      const rows = await repository.listByProject(projectId, stageId);
       const invoiceIds = rows.map((r) => r.id);
       const [paymentRows, itemRows] = await Promise.all([
         repository.listPaymentsForInvoices(invoiceIds),

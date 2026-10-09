@@ -27,6 +27,8 @@ import {
 } from "@/components/molecules/upsert-key-date-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStageActivity, stageActivityIds } from "@/lib/stage-filter";
 import {
   useCreateKeyDate,
   useDeleteKeyDate,
@@ -77,6 +79,7 @@ function keyDateFor(kd: KeyDate, view: DateView): string | null {
 export default function ProjectKeyDates() {
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
+  const { selectedStageId } = useStageScope();
   const canManage = Boolean(access && canResourceAction(access, "key-dates", "manage"));
   const { data: keyDates = [], isLoading } = useKeyDates(project.id, selectedBuildingId);
   // A key date that names no activity can never move with the programme, which
@@ -116,7 +119,9 @@ export default function ProjectKeyDates() {
   );
 
   const filtered = useMemo(() => {
+    const stageActivities = stageActivityIds(activities, selectedStageId);
     return keyDates
+      .filter((keyDate) => matchesStageActivity(keyDate.linkedActivityId, selectedStageId, stageActivities))
       .filter((k) =>
         statusFilter === "all" ||
         (statusFilter === "met" && k.status === "Met") ||
@@ -134,7 +139,7 @@ export default function ProjectKeyDates() {
         if (dateTo && dateStr > dateTo) return false;
         return true;
       });
-  }, [keyDates, statusFilter, search, dateView, dateFrom, dateTo]);
+  }, [keyDates, statusFilter, search, dateView, dateFrom, dateTo, activities, selectedStageId]);
 
   function handleCreate(values: UpsertKeyDateValues): void {
     createKd.mutate(

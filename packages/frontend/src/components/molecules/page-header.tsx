@@ -38,7 +38,7 @@ function PageHeader({
       </div>
       {badges}
       {actions && (
-        <div className="flex shrink-0 items-center gap-2 order-1 self-end lg:order-2 lg:self-auto">
+        <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2 order-1 self-end lg:order-2 lg:self-auto">
           {actions}
         </div>
       )}

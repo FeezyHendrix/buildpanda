@@ -3,6 +3,7 @@ import { assertCanModifyProject } from "../../lib/authorization.ts";
 import { aiDraftService } from "./ai-draft.ts";
 import { dailyDigestService, isoDate } from "./daily-digest.ts";
 import { updatesRepository } from "./repository.ts";
+import type { UpdateListFilters } from "./types.ts";
 import {
   updatesService,
   type AddCommentInput,
@@ -75,6 +76,7 @@ const createUpdateBody = {
   required: ["category", "title", "description"],
   additionalProperties: false,
   properties: {
+    stageId: { type: ["string", "null"], minLength: 1, maxLength: 200 },
     category: { type: "string", enum: [...updateCategoryEnum] },
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: "string", minLength: 1, maxLength: 2000 },
@@ -88,6 +90,7 @@ const editUpdateBody = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
+    stageId: { type: ["string", "null"], minLength: 1, maxLength: 200 },
     category: { type: "string", enum: [...updateCategoryEnum] },
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: "string", minLength: 1, maxLength: 2000 },
@@ -109,9 +112,16 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
   const aiDraft = aiDraftService(fastify.db);
   const dailyDigest = dailyDigestService(fastify.db);
 
-  fastify.get<{ Params: { id: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: UpdateListFilters }>(
     "/projects/:id/updates",
-    { schema: { params: projectIdParams } },
+    { schema: {
+      params: projectIdParams,
+      querystring: {
+        type: "object",
+        additionalProperties: false,
+        properties: { stageId: { type: "string", minLength: 1, maxLength: 200 } },
+      },
+    } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "updates", "view");
       const user = request.requireAuth();
@@ -127,7 +137,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
       } catch {
         includeDrafts = false;
       }
-      return service.listByProject(project.id, { includeDrafts });
+      return service.listByProject(project.id, { includeDrafts, stageId: request.query.stageId });
     },
   );
 

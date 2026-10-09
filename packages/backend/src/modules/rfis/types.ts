@@ -1,6 +1,19 @@
 export const RFI_STATUSES = ["Draft", "Open", "InReview", "Answered", "Closed", "Void"] as const;
 export type RfiStatus = (typeof RFI_STATUSES)[number];
 
+export interface RfiListQuery {
+  status?: RfiStatus;
+  ballInCourt?: "mine";
+  stageId?: string;
+}
+
+export interface RfiListFilters {
+  status?: RfiStatus;
+  ballInCourtId?: string;
+  sharedOnly?: boolean;
+  stageId?: string;
+}
+
 export const RFI_PRIORITIES = ["Low", "Normal", "High"] as const;
 export type RfiPriority = (typeof RFI_PRIORITIES)[number];
 

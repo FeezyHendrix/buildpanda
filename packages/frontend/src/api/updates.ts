@@ -13,6 +13,7 @@ export interface UpdateMediaInput {
 }
 
 export interface CreateUpdateInput {
+  stageId?: string | null;
   category: UpdateCategory;
   title: string;
   description: string;
@@ -20,6 +21,7 @@ export interface CreateUpdateInput {
 }
 
 export interface EditUpdateInput {
+  stageId?: string | null;
   category?: UpdateCategory;
   title?: string;
   description?: string;
@@ -27,8 +29,8 @@ export interface EditUpdateInput {
 }
 
 export const updatesApi = {
-  list: (projectId: string) =>
-    api.get<ProjectUpdate[]>(`/projects/${projectId}/updates`).then((r) => r.data),
+  list: (projectId: string, stageId?: string) =>
+    api.get<ProjectUpdate[]>(`/projects/${projectId}/updates`, { params: { stageId } }).then((r) => r.data),
 
   getComments: (projectId: string, updateId: string) =>
     api.get<UpdateComment[]>(`/projects/${projectId}/updates/${updateId}/comments`).then((r) => r.data),
