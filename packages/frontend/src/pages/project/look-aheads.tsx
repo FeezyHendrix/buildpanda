@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -13,6 +13,8 @@ import {
 } from "@/components/molecules/upsert-look-ahead-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { stageActivityIds } from "@/lib/stage-filter";
 import {
   useAutoWindow,
   useCreateLookAhead,
@@ -46,17 +48,24 @@ function formatDate(iso: string): string {
 export default function ProjectLookAheads() {
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
+  const { selectedStageId } = useStageScope();
   const canManage = canResourceAction(access, "schedule", "manage");
 
-  const { data: lookAheads = [], isLoading } = useLookAheads(
+  const { data: allLookAheads = [], isLoading } = useLookAheads(
     project.id,
     {
       ...(selectedBuildingId ? { buildingId: selectedBuildingId } : {}),
     },
   );
-  const { data: autoWindow, isLoading: autoWindowLoading } = useAutoWindow(project.id, 4);
+  const { data: allAutoWindow, isLoading: autoWindowLoading } = useAutoWindow(project.id, 4);
   const { data: stock = [] } = useMaterialStock(project.id);
   const { data: activities = [] } = useProjectActivities(project.id);
+  const stageActivities = stageActivityIds(activities, selectedStageId);
+  const lookAheads = allLookAheads.filter((plan) => !selectedStageId || plan.activities.some((activity) => stageActivities.has(activity.activityId)));
+  const autoWindow = allAutoWindow && {
+    ...allAutoWindow,
+    activities: allAutoWindow.activities.filter((activity) => !selectedStageId || stageActivities.has(activity.activityId)),
+  };
   const lowStock = stock.filter((s) => s.lowStock);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -134,17 +143,14 @@ export default function ProjectLookAheads() {
         title="Look aheads"
         actions={
           canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                setEditTarget(null);
-                setFormOpen(true);
-              }}
-            >
-              <PlusIcon className="size-4" />
+            <CreateButton
+       onClick={() => {
+        setEditTarget(null);
+        setFormOpen(true);
+       }}
+      >
               Add look ahead
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

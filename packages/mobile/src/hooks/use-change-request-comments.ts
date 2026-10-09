@@ -1,3 +1,4 @@
+import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
 import { changeRequestsApi } from "@/api/change-requests";
@@ -17,13 +18,15 @@ import { flushOutbox } from "@/db/outbox";
  * fetch upserts (never over a pending row) and the live query re-runs on its own.
  */
 export function useChangeRequestComments(db: Db, projectId: string, changeRequestId: string) {
+  const { isOnline } = useSyncState();
   const query = useMemo(
     () => changeRequestCommentsRepository.listQuery(db, changeRequestId),
     [db, changeRequestId],
   );
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
+    if (!isOnline) return;
     // A queued request has no server id yet, so there is nothing to fetch.
     if (changeRequestId.startsWith("local_")) return;
     let cancelled = false;
@@ -43,10 +46,10 @@ export function useChangeRequestComments(db: Db, projectId: string, changeReques
     return () => {
       cancelled = true;
     };
-  }, [db, projectId, changeRequestId]);
+  }, [db, projectId, changeRequestId, isOnline]);
 
   const data = useMemo(() => (live.data ?? []).map(toChangeRequestComment), [live.data]);
-  return { data, isPending: live.data === undefined };
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
 export function useAddChangeRequestComment(db: Db | null, projectId: string | undefined) {

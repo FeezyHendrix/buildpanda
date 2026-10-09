@@ -1,17 +1,26 @@
 import type { Knex } from "knex";
 import { generateId } from "../../../../lib/ids.ts";
 import { NotFoundError, BadRequestError } from "../../../../lib/errors.ts";
-import { preconRepository } from "../repository.ts";
-import type { DimUnit, MeasuredBoqItem, PreconBillRow } from "../types.ts";
+import { preconRepository, type PreconRepository, type RerunToken } from "../repository.ts";
+import { SHEET_KIND, type DimUnit, type MeasuredBoqItem, type PreconBillRow } from "../types.ts";
 import { buildSnapIndex } from "./pdf-extract.ts";
-import { contextFromPages, extractAllPages } from "./measure-file.ts";
+import { contextFromPages } from "./measure-file.ts";
+import { readSessionDrawings } from "./read-drawings.ts";
+import { classifyDrawingPage, drawingPageContext } from "./drawing-evidence.ts";
 import { fromPdf } from "../../geometry/from-pdf.ts";
 import { buildReport, summarise } from "../../geometry/report.ts";
 import { calibrate } from "./calibrate.ts";
 import { countDoorArcs } from "./measure.ts";
-import { classifySheet, measureSheetRegions, withTempFile } from "./measure-sheet.ts";
+import { measureSheetRegions } from "./measure-sheet.ts";
 import { draftBoq } from "./boq-draft.ts";
+import { measureRoofPlan } from "./roof-measure.ts";
+import { measureSheetViaVision } from "./vision-takeoff.ts";
 import type { ProgressFn } from "./run.ts";
+
+interface SheetRestatement {
+  geoSummary: Parameters<PreconRepository["updateSheetGeoSummary"]>[1];
+  patch: Parameters<PreconRepository["updateSheet"]>[1];
+}
 
 interface Calibration {
   mmPerPt: number;
@@ -23,10 +32,7 @@ interface Calibration {
 
 // The measured-works bill is where re-measured and redrafted lines land. A
 // session always has one after generate; a hand-built one may not.
-export async function measuredBillFor(
-  repo: ReturnType<typeof preconRepository>,
-  sessionId: string,
-): Promise<PreconBillRow> {
+export async function measuredBillFor(repo: PreconRepository, sessionId: string): Promise<PreconBillRow> {
   const bills = await repo.billsBySession(sessionId);
   const existing = bills.find((b) => /measured/i.test(b.title)) ?? bills[bills.length - 1];
   if (existing) return existing;
@@ -42,7 +48,12 @@ export async function measuredBillFor(
  * Re-read one sheet after a reviewer changed its type or scale. Replaces the
  * sheet's unverified AI lines; verified and hand-entered lines are untouched.
  */
-export async function remeasureSheet(db: Knex, sheetId: string, progress: ProgressFn = () => {}): Promise<{ lines: number }> {
+export async function remeasureSheet(
+  db: Knex,
+  sheetId: string,
+  progress: ProgressFn = () => {},
+  token?: RerunToken,
+): Promise<{ lines: number }> {
   const repo = preconRepository(db);
   const sheet = await repo.sheetById(sheetId);
   if (!sheet) throw new NotFoundError("Sheet");
@@ -52,18 +63,24 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
   const siblings = sheets.filter((s) => s.storage_path === sheet.storage_path).sort((a, b) => a.page_number - b.page_number);
   const pageNo = siblings.findIndex((s) => s.id === sheetId) + 1;
   const label = `${sheet.file_name} p${pageNo}`;
+  const visionBudget = { remainingSheets: 1 };
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   await progress("reading", `Re-reading ${label}`);
-  const items = await withTempFile(sheet.storage_path, "pdf", async (file): Promise<MeasuredBoqItem[]> => {
-    const doc = await pdfjs.getDocument({ url: file, useSystemFonts: true }).promise;
-    // the whole file is read so this sheet's wall heights still come from the
-    // level marks on the other sheets
-    const extractedPages = await extractAllPages(doc, pdfjs.OPS);
-    const document = contextFromPages(extractedPages);
-    const extracted = extractedPages[pageNo - 1]!.extracted;
-    await doc.cleanup();
-    await repo.updateSheetGeoSummary(sheetId, summarise(buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never))));
+  // Everything the sheet learned about itself while it was being read, held
+  // until the write phase. Applying it here would leave a drawing re-scaled and
+  // its lines un-re-measured if the run then failed or was superseded.
+  let restated: SheetRestatement | null = null;
+  const items = await (async (): Promise<MeasuredBoqItem[]> => {
+    const files = await readSessionDrawings(sheets.filter((s) => /\.pdf$/i.test(s.file_name)), progress);
+    const targetFile = files.find((file) => file.sheet.storage_path === sheet.storage_path);
+    const targetPage = targetFile?.pages[pageNo - 1];
+    if (!targetPage) throw new BadRequestError(targetFile?.error ?? "Drawing page could not be read");
+    const pages = files.flatMap((file) => file.pages);
+    const drawingContext = pages.map(drawingPageContext).join("\n\n");
+    const document = contextFromPages(pages);
+    const extracted = targetPage.extracted;
+    const geoSummary = summarise(buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never)));
     // a scale the reviewer typed or drew (confidence 1) beats the engine's guess
     const userScale: Calibration | null =
       sheet.scale_confidence === 1 && sheet.scale_mm_per_pt
@@ -71,24 +88,32 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
         : null;
     const calibration: Calibration | null = userScale ?? calibrate(extracted.texts, extracted.segments);
     const doorProbe = countDoorArcs(extracted.curves, calibration?.mmPerPt ?? 17.68);
-    const classified = classifySheet(
-      extracted.texts,
-      doorProbe.count > 0,
-      /bed\s*room|kitchen|living|lounge/i.test(extracted.texts.map((t) => t.str).join(" ")),
-    );
+    const classified = classifyDrawingPage(targetPage, doorProbe.count > 0);
     const kind = sheet.kind !== "unknown" ? sheet.kind : classified.kind;
     const title = sheet.title ?? classified.title;
-    await repo.updateSheet(sheetId, {
-      kind,
-      title,
-      status: calibration ? "measured" : "unmeasurable",
-      scale_mm_per_pt: calibration?.mmPerPt ?? null,
-      scale_confidence: calibration?.confidence ?? null,
-      dim_unit: calibration?.dimUnit ?? null,
-      snap_index: buildSnapIndex(extracted.segments),
-      error: calibration ? null : "No reliable scale — set one by typing it or drawing a known dimension",
-    });
-    if (!calibration || kind !== "floor-plan") return [];
+    restated = {
+      geoSummary,
+      patch: {
+        kind,
+        title,
+        status: calibration ? "measured" : "unmeasurable",
+        scale_mm_per_pt: calibration?.mmPerPt ?? null,
+        scale_confidence: calibration?.confidence ?? null,
+        dim_unit: calibration?.dimUnit ?? null,
+        snap_index: buildSnapIndex(extracted.segments),
+        error: calibration ? null : "No reliable scale — set one by typing it or drawing a known dimension",
+      },
+    };
+    if (kind === SHEET_KIND.ROOF_PLAN) {
+      const visionItems = await measureSheetViaVision(
+        { storagePath: sheet.storage_path, pageNumber: pageNo, globalPage: sheet.page_number, sheetLabel: label, focus: "roof", drawingContext },
+        visionBudget,
+      );
+      return visionItems?.filter((item) => item.elementGroup === "Roof")
+        ?? (calibration ? measureRoofPlan(extracted, calibration.mmPerPt, calibration.confidence, sheet.page_number, label) : []);
+    }
+    if (!calibration) return [];
+    if (kind !== SHEET_KIND.FLOOR_PLAN) return [];
     const measured = measureSheetRegions(
       extracted,
       calibration.mmPerPt,
@@ -102,24 +127,45 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
     return calibration.confidence < 0.7
       ? measured.items.map((i) => ({ ...i, confidence: "low" as const, confidenceReason: i.confidenceReason ?? "scale" }))
       : measured.items;
-  });
+  })();
 
-  const stale = await repo.aiRowIdsOnSheet(sheetId);
-  await repo.deleteRows(stale);
-  const bill = await measuredBillFor(repo, sheet.session_id);
-  const drafted = draftBoq(
-    sheet.session_id,
-    items,
-    new Map([[sheet.page_number, sheetId]]),
-    new Map([[sheet.page_number, sheet.code ?? `p${sheet.page_number}`]]),
-  );
-  const draftedBillId = drafted.bills[1]!.id;
-  const start = await repo.nextRowSort(bill.id);
-  const rows = drafted.rows
-    .filter((r) => r.bill_id === draftedBillId)
-    .map((r, i) => ({ ...r, bill_id: bill.id, sort: start + i }));
-  await repo.insertBoqRows(rows);
-  await repo.insertGeometries(drafted.geometries);
-  await progress("draft", `Re-measured ${label}: ${items.length} lines replaced ${stale.length}`);
+  // The reading is done; everything past here is destructive, so it commits as
+  // one unit inside the session lock and only while this is still the current
+  // re-run. A redelivered job finds its generation spent and changes nothing,
+  // which is what stops the same drafted lines landing twice.
+  const applyToken = token ?? (await repo.beginRerun(sheet.session_id));
+  const replaced = await repo.applyRerun(applyToken, async (trx) => {
+    const tx = preconRepository(trx);
+    if (restated) {
+      await tx.updateSheetGeoSummary(sheetId, restated.geoSummary);
+      await tx.updateSheet(sheetId, restated.patch);
+    }
+    // Re-read inside the lock: a line corrected while the drawing was being
+    // read has been corrected, and a list taken before it would delete it.
+    const [onSheet, manualEvidence] = await Promise.all([
+      tx.aiRowIdsOnSheet(sheetId),
+      tx.rowIdsWithManualEvidence(sheet.session_id),
+    ]);
+    const keep = new Set(manualEvidence);
+    const stale = onSheet.filter((id) => !keep.has(id));
+    await tx.deleteRows(stale);
+
+    const bill = await measuredBillFor(tx, sheet.session_id);
+    const drafted = draftBoq(
+      sheet.session_id,
+      items,
+      new Map([[sheet.page_number, sheetId]]),
+      new Map([[sheet.page_number, sheet.code ?? `p${sheet.page_number}`]]),
+    );
+    const draftedBillId = drafted.bills[1]!.id;
+    const start = await tx.nextRowSort(bill.id);
+    const rows = drafted.rows
+      .filter((r) => r.bill_id === draftedBillId)
+      .map((r, i) => ({ ...r, bill_id: bill.id, sort: start + i }));
+    await tx.insertBoqRows(rows);
+    await tx.insertGeometries(drafted.geometries);
+    return stale.length;
+  });
+  await progress("draft", `Re-measured ${label}: ${items.length} lines replaced ${replaced}`);
   return { lines: items.length };
 }

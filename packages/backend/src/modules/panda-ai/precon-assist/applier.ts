@@ -1,3 +1,4 @@
+import { generateId } from "../../../lib/ids.ts";
 import type { preconService } from "../pdf-takeoff/service.ts";
 import type { CreateRowBody, PreconBoqRowDto, PreconProgrammeTask, RowType } from "../pdf-takeoff/types.ts";
 import {
@@ -74,20 +75,11 @@ async function applyBoqRow(index: number, change: AssistChange, live: LiveState,
   const row = change.id ? live.rows.get(change.id) : undefined;
   if (!row) return skip(index, "Line no longer exists");
   if (change.op === "delete") {
-    await precon.removeRow(row.id, actor);
-    return done(index, {
-      kind: "recreate",
-      before: {
-        billId: row.billId,
-        rowType: row.rowType,
-        description: row.description,
-        elementGroup: row.elementGroup,
-        code: row.code,
-        unit: row.unit,
-        qty: row.qty,
-        rate: row.rate,
-      },
-    });
+    await precon.removeRow(row.id, actor, { operationId: generateId("pop") });
+    // Undone by RESTORING the tombstone, never by creating a replacement. A
+    // recreated line gets a fresh id, which orphans estimate_items.boq_item_id
+    // and every audit entry that names the withdrawn one.
+    return done(index, { kind: "restore", id: row.id });
   }
   const { status, ...fields } = change.after;
   let version = row.version;
@@ -180,21 +172,8 @@ export async function undoChange(step: UndoStep, entity: AssistChange["entity"],
     if (live.rows.has(step.id)) await precon.removeRow(step.id, actor);
     return "applied";
   }
-  if (step.kind === "recreate" && step.before) {
-    const b = step.before;
-    await precon.createRow(
-      String(b["billId"]),
-      {
-        description: String(b["description"] ?? ""),
-        rowType: (b["rowType"] as RowType | undefined) ?? "item",
-        elementGroup: typeof b["elementGroup"] === "string" ? b["elementGroup"] : undefined,
-        code: typeof b["code"] === "string" ? b["code"] : undefined,
-        unit: typeof b["unit"] === "string" ? b["unit"] : undefined,
-        qty: numberOrUndefined(b["qty"]),
-        rate: numberOrUndefined(b["rate"]),
-      },
-      actor,
-    );
+  if (step.kind === "restore" && step.id) {
+    await precon.restoreRow(step.id, actor, { operationId: generateId("pop") });
     return "applied";
   }
   if (!step.id) return "skipped";

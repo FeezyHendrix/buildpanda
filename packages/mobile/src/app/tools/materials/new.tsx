@@ -1,4 +1,7 @@
-import { router } from "expo-router";
+import { StageField } from "@/components/molecules/stage-field";
+import { useStageScope } from "@/lib/stage-scope";
+import { goBack } from "@/lib/navigation";
+
 import { useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Text } from "@/components/atoms";
@@ -11,6 +14,8 @@ import { useSyncState } from "@/lib/sync-provider";
 
 export default function NewMaterialOrder() {
   const { projectId } = useFieldSession();
+  const scope = useStageScope();
+  const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
   const { db } = useLocalDb();
   const create = useCreateMaterialOrder(db, projectId);
   const { isOnline } = useSyncState();
@@ -26,7 +31,7 @@ export default function NewMaterialOrder() {
 
   // The API rejects an order with no quantity or no needed-by date, so the
   // form refuses them too instead of queuing a write that can never land.
-  const quantityValue = Number.parseFloat(quantity);
+  const quantityValue = Number(quantity.trim());
   const isQuantityValid = Number.isFinite(quantityValue) && quantityValue > 0;
   const isNeededByValid = isIsoDate(neededBy.trim());
   const canSubmit =
@@ -44,13 +49,14 @@ export default function NewMaterialOrder() {
     try {
       await create({
         title: title.trim(),
+        phaseId: stageId,
         materialName: materialName.trim(),
         quantity: quantityValue,
         unit: unit.trim(),
         neededBy: neededBy.trim(),
         supplier: supplier.trim() || null,
       });
-      router.back();
+      goBack();
     } catch (err) {
       setSaving(false);
       setError(err instanceof Error ? err.message : "Could not save this order.");
@@ -60,7 +66,7 @@ export default function NewMaterialOrder() {
   return (
     <Page
       title="New material order"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={submit} disabled={!canSubmit} loading={saving}>
           Raise order
@@ -84,6 +90,7 @@ export default function NewMaterialOrder() {
       ) : null}
 
       <View className="gap-5">
+        <StageField value={stageId} onChange={setStageId} />
         <Field label="Title" value={title} onChangeText={setTitle} placeholder="What is this for?" autoFocus />
         <Field label="Material" value={materialName} onChangeText={setMaterialName} placeholder="e.g. Cement" />
         <View className="flex-row gap-3">

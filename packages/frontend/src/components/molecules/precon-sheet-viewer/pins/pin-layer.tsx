@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MARKUP_KIND, type DrawingMarkup } from "@/api/drawing-markup";
 import type { PreconBoqRow } from "@/api/precon";
 import { useAbility } from "@/contexts/ability-context";
 import { useAddPreconMarkupComment, useCreatePreconMarkup, usePreconMarkups } from "@/hooks/use-precon-markups";
+import { newOperationId, useEditorOperation } from "@/hooks/use-precon-editor";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { CommentPin } from "@/components/molecules/comment-pin";
@@ -78,6 +79,38 @@ export function PinLayer({
   const canEdit = useAbility().can("edit", "takeoffs");
   const { data: markups = [] } = usePreconMarkups(sessionId);
   const createMarkup = useCreatePreconMarkup(sessionId);
+  const operation = useEditorOperation(sessionId);
+  const dragRef = useRef<{ markup: DrawingMarkup; startClient: [number, number]; moved: boolean } | null>(null);
+
+  // Moving a pin is a versioned envelope edit — a receipt, refused when stale.
+  const startPinDrag = (markup: DrawingMarkup) => (e: React.PointerEvent) => {
+    if (!canEdit || placing || e.button !== 0) return;
+    e.stopPropagation();
+    dragRef.current = { markup, startClient: [e.clientX, e.clientY], moved: false };
+    const onMove = (ev: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      if (Math.hypot(ev.clientX - drag.startClient[0], ev.clientY - drag.startClient[1]) > 4) drag.moved = true;
+    };
+    const onUp = (ev: PointerEvent) => {
+      const drag = dragRef.current;
+      dragRef.current = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      if (!drag?.moved || drag.markup.geometry.kind !== MARKUP_KIND.PIN) return;
+      const start = toPx([drag.markup.geometry.at.x, drag.markup.geometry.at.y]);
+      const [nx, ny] = toPt(start[0] + (ev.clientX - drag.startClient[0]) / cssZoom, start[1] + (ev.clientY - drag.startClient[1]) / cssZoom);
+      operation.mutate(
+        {
+          operationId: newOperationId(),
+          command: { kind: "edit-markup", markupId: drag.markup.id, version: drag.markup.version ?? 1, geometry: { kind: MARKUP_KIND.PIN, at: { x: nx, y: ny } } },
+        },
+        { onError: (err) => toast(getApiErrorMessage(err, "Could not move the pin."), "error") },
+      );
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
   const addComment = useAddPreconMarkupComment(sessionId);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [open, setOpen] = useState<{ id: string; anchor: PopoverAnchor } | null>(null);
@@ -147,8 +180,8 @@ export function PinLayer({
               color={markup.resolvedAt ? RESOLVED_COLOR : markup.color || OPEN_COLOR}
               label={pinLabel(markup)}
               selected={open?.id === markup.id}
-              draggable={false}
-              onPointerDown={(e) => e.stopPropagation()}
+              draggable={canEdit && !placing}
+              onPointerDown={startPinDrag(markup)}
               onClick={(e) => openThread(e, markup)}
             />
           </div>

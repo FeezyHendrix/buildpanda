@@ -3,6 +3,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import type { PreconBoqRow } from "@/api/precon";
 import { isVersionConflict, useDeletePreconRow, useRejectPreconRow, useUpdatePreconRow, useVerifyPreconRow } from "@/hooks/use-precon";
+import { useAbility } from "@/contexts/ability-context";
 import { ROW_ORIGIN_LABEL } from "@/lib/precon-meta";
 import { LineEvidence } from "./line-evidence";
 import { formatShortDate } from "@/lib/formatters";
@@ -22,6 +23,9 @@ const FIELD = cn(INPUT_SM_CLASS, "mt-0.5");
  * it, the gross-to-net breakdown, editable quantity and rate, and sign-off.
  */
 export function LineDetail({ row, sessionId, onConflict }: Props) {
+  // Sign-off is a grant, not a presentation choice: without takeoffs:verify
+  // the buttons are absent, and the backend refuses regardless.
+  const canVerify = useAbility().can("verify", "takeoffs");
   const verify = useVerifyPreconRow(sessionId);
   const reject = useRejectPreconRow(sessionId);
   const update = useUpdatePreconRow(sessionId);
@@ -141,15 +145,17 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
       {row.rateSource ? <p className="text-xs text-gray-400">Rate from {row.rateSource}</p> : null}
 
       <div className="flex gap-2">
-        <Button
-          size="sm"
-          loading={verify.isPending}
-          disabled={row.status === "verified"}
-          onClick={() => verify.mutate({ rowId: row.id, version: row.version }, { onError: handleError })}
-        >
-          {row.status === "verified" ? "Verified" : "Verify"}
-        </Button>
-        {measuredByAi ? (
+        {canVerify ? (
+          <Button
+            size="sm"
+            loading={verify.isPending}
+            disabled={row.status === "verified"}
+            onClick={() => verify.mutate({ rowId: row.id, version: row.version }, { onError: handleError })}
+          >
+            {row.status === "verified" ? "Verified" : "Verify"}
+          </Button>
+        ) : null}
+        {canVerify && measuredByAi ? (
           <Button
             size="sm"
             variant="secondary"

@@ -1,7 +1,8 @@
-import { FileText, Image as ImageIcon, PencilRuler, Sparkles, Pencil, Upload } from "lucide-react";
+import { FileText, Image as ImageIcon, PencilRuler } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
 import type { ProposalPlan } from "@/api/proposals";
 import type { PreconSession } from "@/api/precon";
 import { filesApi } from "@/api/files";
@@ -14,9 +15,8 @@ interface Props {
   sessions: PreconSession[];
   /** A take-off exists on a revision this plan supersedes: it needs re-measuring. */
   staleSessions: PreconSession[];
+  /** Opens the measure dialog, where who measures and what is chosen. */
   onMeasure: (plan: ProposalPlan) => void;
-  /** Open the sheets with no engine measurement; the person draws every line. */
-  onMeasureByHand: (plan: ProposalPlan) => void;
   onDetails: (plan: ProposalPlan) => void;
   onNewRevision: (plan: ProposalPlan) => void;
   onRemove: (plan: ProposalPlan) => void;
@@ -60,26 +60,21 @@ function MeasuredBadges({ sessions, staleSessions }: { sessions: PreconSession[]
   return (
     <span className="flex flex-wrap items-center gap-1">
       {currentPerScope(sessions).map((s) => (
-        <Link key={s.id} to={`/sales/takeoff/${s.id}`} className="rounded-full focus:outline-none focus:shadow-focus" title="Open the current take-off">
+        <Link key={s.id} to={`/sales/takeoff/${s.id}`} className="rounded-full focus:outline-none focus:shadow-focus" title="Open the take-off">
           <Badge tone={s.status === "failed" ? "danger" : "success"}>
-            {s.takeoffKind === "manual" ? "Measured by hand" : "Measured"} · {describeScope(s.scope)}
+            {s.takeoffKind === "manual" ? "By hand" : "Panda AI"} · {describeScope(s.scope)}
             {s.revision > 1 ? ` · Rev ${s.revision}` : ""}
           </Badge>
         </Link>
       ))}
-      {staleSessions.length > 0 ? (
-        <Badge tone="warning">
-          Measured on an earlier revision · re-measure
-        </Badge>
-      ) : null}
+      {staleSessions.length > 0 ? <Badge tone="warning">Measured on an earlier revision</Badge> : null}
     </span>
   );
 }
 MeasuredBadges.displayName = "MeasuredBadges";
 
-export function PlanRow({ plan, sessions, staleSessions, onMeasure, onMeasureByHand, onDetails, onNewRevision, onRemove }: Props) {
-  const measurable = MEASURABLE_PLAN.test(plan.fileName);
-  const handMeasurable = HAND_MEASURABLE_PLAN.test(plan.fileName);
+export function PlanRow({ plan, sessions, staleSessions, onMeasure, onDetails, onNewRevision, onRemove }: Props) {
+  const measurable = HAND_MEASURABLE_PLAN.test(plan.fileName);
   const meta = [
     plan.sheetCode,
     plan.discipline ? PLAN_DISCIPLINE_LABEL[plan.discipline] : null,
@@ -110,27 +105,19 @@ export function PlanRow({ plan, sessions, staleSessions, onMeasure, onMeasureByH
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {measurable ? (
-          <Button size="sm" variant="secondary" className="text-primary-700" onClick={() => onMeasure(plan)}>
-            <Sparkles className="mr-1.5 size-3.5" aria-hidden="true" />
-            Measure with Panda AI
-          </Button>
-        ) : null}
-        {handMeasurable ? (
-          <Button size="sm" variant="secondary" onClick={() => onMeasureByHand(plan)} title={measurable ? undefined : "A picture: set the scale from two known points, then measure"}>
+          <Button size="sm" variant="secondary" onClick={() => onMeasure(plan)}>
             <PencilRuler className="mr-1.5 size-3.5" aria-hidden="true" />
-            Measure by hand
+            Measure
           </Button>
         ) : null}
-        <Button size="sm" variant="ghost" onClick={() => onNewRevision(plan)} aria-label="Upload a new revision">
-          <Upload className="mr-1.5 size-3.5" aria-hidden="true" />
-          New revision
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => onDetails(plan)} aria-label="Edit drawing details">
-          <Pencil className="size-3.5" aria-hidden="true" />
-        </Button>
-        <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => onRemove(plan)}>
-          Remove
-        </Button>
+        <RowActionsMenu
+          ariaLabel={`Actions for ${plan.fileName}`}
+          items={[
+            { label: "Upload new revision", onSelect: () => onNewRevision(plan) },
+            { label: "Edit details", onSelect: () => onDetails(plan) },
+            { label: "Remove", onSelect: () => onRemove(plan), tone: "danger" },
+          ]}
+        />
       </div>
     </li>
   );

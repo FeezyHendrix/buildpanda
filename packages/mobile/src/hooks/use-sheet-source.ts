@@ -14,6 +14,7 @@ const IMAGE_MIME: Record<string, string> = {
   gif: "image/gif",
   webp: "image/webp",
   bmp: "image/bmp",
+  svg: "image/svg+xml",
 };
 
 export interface SheetSource {
@@ -32,20 +33,30 @@ export function useSheetSource(
   sheetId: string | undefined,
   fileName: string,
   onError: (message: string) => void,
-): { source: SheetSource | null; reset: () => void } {
-  const [source, setSource] = useState<SheetSource | null>(null);
+  versionId: string | null,
+): { source: SheetSource | null; retry: () => void } {
+  const [loaded, setLoaded] = useState<{ sheetId: string; versionId: string; source: SheetSource } | null>(null);
+  const source = loaded?.sheetId === sheetId && loaded?.versionId === versionId ? loaded.source : null;
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!sheetId || !fileName) return;
+    if (!sheetId || !fileName || !versionId) return;
     let cancelled = false;
-    setSource(null);
+    setLoaded(null);
+    onError("");
     (async () => {
-      const uri = await cacheDocument(db, projectId, sheetId);
+      const uri = await cacheDocument(db, projectId, sheetId, versionId);
       if (!uri || cancelled) return;
       const base64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
       if (cancelled) return;
       const mime = IMAGE_MIME[extensionOf(fileName)];
-      setSource(mime ? { pdfBase64: null, imageDataUri: `data:${mime};base64,${base64}` } : { pdfBase64: base64, imageDataUri: null });
+      setLoaded({
+        sheetId,
+        versionId,
+        source: mime
+          ? { pdfBase64: null, imageDataUri: `data:${mime};base64,${base64}` }
+          : { pdfBase64: base64, imageDataUri: null },
+      });
     })().catch((err: unknown) => {
       if (cancelled) return;
       console.error("plan review sheet load failed", err);
@@ -60,7 +71,7 @@ export function useSheetSource(
     };
     // onError is a setState from the screen; re-running on its identity would reload the sheet
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, projectId, sheetId, fileName]);
+  }, [db, projectId, sheetId, fileName, versionId, attempt]);
 
-  return { source, reset: () => setSource(null) };
+  return { source, retry: () => setAttempt((value) => value + 1) };
 }

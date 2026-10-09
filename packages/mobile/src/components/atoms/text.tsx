@@ -7,21 +7,22 @@ type TextTone = "default" | "secondary" | "muted" | "brand" | "danger" | "invers
 interface TextProps extends RNTextProps {
   weight?: TextWeight;
   tone?: TextTone;
+  variant?: "body" | "heading";
   className?: string;
 }
 
 const weightFamily: Record<TextWeight, string> = {
-  regular: "font-jakarta",
-  medium: "font-jakarta-medium",
-  semibold: "font-jakarta-semibold",
-  bold: "font-jakarta-bold",
-  extrabold: "font-jakarta-extrabold",
+  regular: "font-inter",
+  medium: "font-inter-medium",
+  semibold: "font-inter-semibold",
+  bold: "font-inter-bold",
+  extrabold: "font-inter-extrabold",
 };
 
 const toneColor: Record<TextTone, string> = {
-  default: "text-black-500",
-  secondary: "text-grey-400",
-  muted: "text-grey-300",
+  default: "text-ink",
+  secondary: "text-ink-muted",
+  muted: "text-ink-muted",
   brand: "text-primary-500",
   danger: "text-error-600",
   inverse: "text-white",
@@ -30,11 +31,21 @@ const toneColor: Record<TextTone, string> = {
 export function Text({
   weight = "regular",
   tone = "default",
+  variant = "body",
   className,
   ...props
 }: TextProps) {
   return (
-    <RNText className={cn(weightFamily[weight], toneColor[tone], className)} {...props} />
+    <RNText
+      accessibilityRole={variant === "heading" ? "header" : undefined}
+      className={cn(
+        variant === "heading"
+          ? weight === "bold" || weight === "extrabold" ? "font-heading-bold" : "font-heading-semibold"
+          : weightFamily[weight],
+        toneColor[tone], className,
+      )}
+      {...props}
+    />
   );
 }
 

@@ -13,6 +13,7 @@ import { useProjectActivities } from "@/hooks/use-activities";
 import { useKeyDates } from "@/hooks/use-key-dates";
 import { useStages } from "@/hooks/use-stages";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { useStageScope } from "@/contexts/stage-scope-context";
 import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
@@ -27,11 +28,13 @@ import {
   GANTT_ZOOM,
 } from "./schedule/schedule-utils";
 import { buildGanttData } from "./schedule/schedule-gantt-data";
+import { filterGanttByStage } from "./schedule/schedule-stage-filter";
 import { ScheduleReportPanel } from "./schedule/schedule-report-panel";
 
 export default function ProjectSchedule() {
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
+  const { selectedStageId } = useStageScope();
   const canViewStages = Boolean(access && canResourceAction(access, "stages", "view"));
   const canViewKeyDates = Boolean(access && canResourceAction(access, "key-dates", "view"));
 
@@ -49,8 +52,8 @@ export default function ProjectSchedule() {
   const { attach, undo, redo, canUndo, canRedo } = useScheduleEditor(project.id, activities);
 
   const { tasks, links, rangeStart, rangeEnd, delays, criticalCount } = useMemo(
-    () => buildGanttData(activities, project.timeline, stages, keyDates),
-    [activities, project.timeline, stages, keyDates],
+    () => filterGanttByStage(buildGanttData(activities, project.timeline, stages, keyDates), activities, keyDates, selectedStageId),
+    [activities, project.timeline, stages, keyDates, selectedStageId],
   );
   const markers = useMemo(() => [{ start: new Date(), text: "Today" }], []);
 
@@ -106,7 +109,7 @@ export default function ProjectSchedule() {
                 </Button>
               )}
               <Button variant="secondary" size="md" onClick={downloadReport}>
-                Export report
+                Export project report
               </Button>
             </div>
           }

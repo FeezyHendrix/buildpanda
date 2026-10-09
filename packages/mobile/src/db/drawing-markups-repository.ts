@@ -1,6 +1,6 @@
 import { randomUUID } from "expo-crypto";
 import { discardStagedMedia } from "@/lib/stage-media";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { DrawingMarkup, DrawingMarkupComment, MarkupKind } from "@/api/drawing-markup";
 import type { MarkupGeometry } from "@/components/plan-review/markup-types";
 import { palette } from "@/constants/colors";
@@ -92,6 +92,12 @@ export function toComment(row: DrawingMarkupCommentRow): DrawingMarkupComment & 
 }
 
 export const drawingMarkupsRepository = {
+  pageQuery: (db: Db, versionId: string, pageNo: number) =>
+    db.select().from(drawingMarkups).where(and(eq(drawingMarkups.documentVersionId, versionId), eq(drawingMarkups.pageNo, pageNo))),
+  pageCommentsQuery: (db: Db, versionId: string, pageNo: number) =>
+    db.select().from(drawingMarkupComments).where(inArray(drawingMarkupComments.markupId,
+      db.select({ id: drawingMarkups.id }).from(drawingMarkups).where(and(eq(drawingMarkups.documentVersionId, versionId), eq(drawingMarkups.pageNo, pageNo)))
+    )).orderBy(asc(drawingMarkupComments.createdAt)),
   /** Every markup on one page of one sheet revision, with its comments. */
   async pageWithComments(db: Db, documentVersionId: string, pageNo: number) {
     const rows = await db
@@ -127,8 +133,8 @@ export const drawingMarkupsRepository = {
   /** Writes the markup and queues its push in one transaction. */
   async createLocal(db: Db, input: LocalMarkupInput): Promise<string> {
     const id = `local_${randomUUID()}`;
-    await db.transaction(async (tx) => {
-      await tx.insert(drawingMarkups).values({
+    await db.transaction((tx) => {
+      tx.insert(drawingMarkups).values({
         id,
         projectId: input.projectId,
         documentId: input.documentId,
@@ -139,15 +145,15 @@ export const drawingMarkupsRepository = {
         color: input.color ?? palette.primary500,
         isPendingSync: true,
         updatedAt: Date.now(),
-      });
-      await tx.insert(outbox).values({
+      }).run();
+      tx.insert(outbox).values({
         id: randomUUID(),
         resource: RESOURCE,
         entityId: id,
         projectId: input.projectId,
         operation: "create",
         nextAttemptAt: 0,
-      });
+      }).run();
     });
     return id;
   },
@@ -161,17 +167,17 @@ export const drawingMarkupsRepository = {
    * push waits on this id, so it must change in the same write.
    */
   async reconcileCreate(db: Db, localId: string, serverId: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      await tx
+    await db.transaction((tx) => {
+      tx
         .update(drawingMarkups)
         .set({ id: serverId, isPendingSync: false, updatedAt: Date.now() })
-        .where(eq(drawingMarkups.id, localId));
-      await tx.update(drawingMarkupComments).set({ markupId: serverId }).where(eq(drawingMarkupComments.markupId, localId));
-      await tx.update(rfis).set({ sourceMarkupId: serverId }).where(eq(rfis.sourceMarkupId, localId));
-      await tx
+        .where(eq(drawingMarkups.id, localId)).run();
+      tx.update(drawingMarkupComments).set({ markupId: serverId }).where(eq(drawingMarkupComments.markupId, localId)).run();
+      tx.update(rfis).set({ sourceMarkupId: serverId }).where(eq(rfis.sourceMarkupId, localId)).run();
+      tx
         .update(materialApprovals)
         .set({ sourceMarkupId: serverId })
-        .where(eq(materialApprovals.sourceMarkupId, localId));
+        .where(eq(materialApprovals.sourceMarkupId, localId)).run();
     });
   },
 
@@ -182,23 +188,24 @@ export const drawingMarkupsRepository = {
     pageNo: number,
     rows: (LocalMarkupInput & { id: string; resolvedAt?: string | null; comments?: DrawingMarkupComment[] })[],
   ): Promise<void> {
-    await db.transaction(async (tx) => {
-      const existing = await tx
+    await db.transaction((tx) => {
+      const existing = tx
         .select()
         .from(drawingMarkups)
-        .where(and(eq(drawingMarkups.documentVersionId, documentVersionId), eq(drawingMarkups.pageNo, pageNo)));
+        .where(and(eq(drawingMarkups.documentVersionId, documentVersionId), eq(drawingMarkups.pageNo, pageNo))).all();
       const pending = new Set(existing.filter((r) => r.isPendingSync).map((r) => r.id));
+      const deleted = new Set(tx.select().from(outbox).where(and(eq(outbox.resource, RESOURCE), eq(outbox.operation, "delete"))).all().map((row) => row.entityId));
       for (const row of existing) {
         if (pending.has(row.id)) continue;
-        await tx.delete(drawingMarkups).where(eq(drawingMarkups.id, row.id));
+        tx.delete(drawingMarkups).where(eq(drawingMarkups.id, row.id)).run();
         // a comment still queued outlives the markup row being refreshed under it
-        await tx
+        tx
           .delete(drawingMarkupComments)
-          .where(and(eq(drawingMarkupComments.markupId, row.id), eq(drawingMarkupComments.isPendingSync, false)));
+          .where(and(eq(drawingMarkupComments.markupId, row.id), eq(drawingMarkupComments.isPendingSync, false))).run();
       }
       for (const row of rows) {
-        if (pending.has(row.id)) continue;
-        await tx.insert(drawingMarkups).values({
+        if (pending.has(row.id) || deleted.has(row.id)) continue;
+        tx.insert(drawingMarkups).values({
           id: row.id,
           projectId: row.projectId,
           documentId: row.documentId,
@@ -210,9 +217,9 @@ export const drawingMarkupsRepository = {
           resolvedAt: row.resolvedAt ?? null,
           isPendingSync: false,
           updatedAt: Date.now(),
-        });
+        }).run();
         for (const comment of row.comments ?? []) {
-          await tx.insert(drawingMarkupComments).values({
+          tx.insert(drawingMarkupComments).values({
             id: comment.id,
             markupId: row.id,
             projectId: row.projectId,
@@ -224,7 +231,7 @@ export const drawingMarkupsRepository = {
             authorName: comment.authorName ?? "",
             isPendingSync: false,
             createdAt: Date.parse(comment.createdAt) || Date.now(),
-          });
+          }).run();
         }
       }
     });
@@ -239,12 +246,12 @@ export const drawingMarkupsRepository = {
     if (id.startsWith("local_")) {
       throw new Error("This markup hasn't reached the server yet. It can be resolved once it has synced.");
     }
-    await db.transaction(async (tx) => {
-      await tx
+    await db.transaction((tx) => {
+      tx
         .update(drawingMarkups)
         .set({ resolvedAt: resolved ? new Date().toISOString() : null, isPendingSync: true, updatedAt: Date.now() })
-        .where(eq(drawingMarkups.id, id));
-      await reviveOrQueue(tx as never, {
+        .where(eq(drawingMarkups.id, id)).run();
+      reviveOrQueue(tx, {
         resource: RESOURCE,
         entityId: id,
         projectId,
@@ -262,14 +269,14 @@ export const drawingMarkupsRepository = {
   async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
     if (id.startsWith("local_")) return this.removeLocal(db, id);
     const comments = await db.select().from(drawingMarkupComments).where(eq(drawingMarkupComments.markupId, id));
-    await db.transaction(async (tx) => {
-      await tx.delete(drawingMarkups).where(eq(drawingMarkups.id, id));
-      await tx.delete(drawingMarkupComments).where(eq(drawingMarkupComments.markupId, id));
+    await db.transaction((tx) => {
+      tx.delete(drawingMarkups).where(eq(drawingMarkups.id, id)).run();
+      tx.delete(drawingMarkupComments).where(eq(drawingMarkupComments.markupId, id)).run();
       for (const comment of comments) {
-        await tx.delete(outbox).where(and(eq(outbox.resource, COMMENT_RESOURCE), eq(outbox.entityId, comment.id)));
+        tx.delete(outbox).where(and(eq(outbox.resource, COMMENT_RESOURCE), eq(outbox.entityId, comment.id))).run();
       }
       // drops any queued resolve for this markup too, then queues the delete
-      await enqueueDelete(tx as never, RESOURCE, id, projectId, randomUUID());
+      enqueueDelete(tx, RESOURCE, id, projectId, randomUUID());
     });
     for (const comment of comments) discardStagedMedia(comment.stagedMediaUri);
   },
@@ -277,12 +284,12 @@ export const drawingMarkupsRepository = {
   /** Drops a markup that never reached the server, with its comments and queued pushes. */
   async removeLocal(db: Db, id: string): Promise<void> {
     const comments = await db.select().from(drawingMarkupComments).where(eq(drawingMarkupComments.markupId, id));
-    await db.transaction(async (tx) => {
-      await tx.delete(drawingMarkups).where(eq(drawingMarkups.id, id));
-      await tx.delete(drawingMarkupComments).where(eq(drawingMarkupComments.markupId, id));
-      await tx.delete(outbox).where(and(eq(outbox.resource, RESOURCE), eq(outbox.entityId, id)));
+    await db.transaction((tx) => {
+      tx.delete(drawingMarkups).where(eq(drawingMarkups.id, id)).run();
+      tx.delete(drawingMarkupComments).where(eq(drawingMarkupComments.markupId, id)).run();
+      tx.delete(outbox).where(and(eq(outbox.resource, RESOURCE), eq(outbox.entityId, id))).run();
       for (const comment of comments) {
-        await tx.delete(outbox).where(and(eq(outbox.resource, COMMENT_RESOURCE), eq(outbox.entityId, comment.id)));
+        tx.delete(outbox).where(and(eq(outbox.resource, COMMENT_RESOURCE), eq(outbox.entityId, comment.id))).run();
       }
     });
     for (const comment of comments) discardStagedMedia(comment.stagedMediaUri);
@@ -315,8 +322,8 @@ export const drawingMarkupsRepository = {
     },
   ): Promise<string> {
     const id = `local_${randomUUID()}`;
-    await db.transaction(async (tx) => {
-      await tx.insert(drawingMarkupComments).values({
+    await db.transaction((tx) => {
+      tx.insert(drawingMarkupComments).values({
         id,
         markupId,
         projectId,
@@ -327,15 +334,15 @@ export const drawingMarkupsRepository = {
         assigneeId: input.assigneeId ?? null,
         isPendingSync: true,
         createdAt: Date.now(),
-      });
-      await tx.insert(outbox).values({
+      }).run();
+      tx.insert(outbox).values({
         id: randomUUID(),
         resource: COMMENT_RESOURCE,
         entityId: id,
         projectId,
         operation: "create",
         nextAttemptAt: 0,
-      });
+      }).run();
     });
     return id;
   },

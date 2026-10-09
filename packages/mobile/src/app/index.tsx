@@ -26,5 +26,5 @@ export default function Index() {
   if (!user) return <Redirect href="/sign-in" />;
   if (!organizationId) return <Redirect href="/select-workspace" />;
   if (!projectId) return <Redirect href="/select-project" />;
-  return <Redirect href="/(tabs)" />;
+  return <Redirect href="/(tabs)/overview" />;
 }

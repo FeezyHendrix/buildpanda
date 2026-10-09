@@ -618,23 +618,7 @@ export interface UpdateAction {
   takenBy: { id: string; name: string } | null;
 }
 
-export interface ProjectUpdate {
-  id: string;
-  projectId: string;
-  activityId: string | null;
-  author: Person;
-  category: UpdateCategory;
-  title: string;
-  description: string;
-  media: MediaItem[];
-  cta: { label: string; tone: "primary" | "secondary" };
-  secondaryAction?: { label: string };
-  status: UpdateStatus;
-  action: UpdateAction;
-  isDraft: boolean;
-  generatedKind: string | null;
-  createdAt: string;
-}
+export type { ProjectUpdate } from "@/api/update-types";
 
 export interface UpdateComment {
   id: string;

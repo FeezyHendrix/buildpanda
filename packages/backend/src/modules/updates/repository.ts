@@ -6,6 +6,7 @@ import type {
   UpdateCategory,
   UpdateCommentRow,
   UpdateMediaRow,
+  UpdateListOptions,
   UpdateRow,
   UpdateStatus,
 } from "./types.ts";
@@ -26,6 +27,7 @@ export interface NewUpdateRecord {
   author_role: string;
   author_initials_tone: Tone;
   activity_id?: string | null;
+  stage_id?: string | null;
   category: UpdateCategory;
   title: string;
   description: string;
@@ -39,6 +41,7 @@ export interface NewUpdateRecord {
 }
 
 export interface UpdateContentPatch {
+  stage_id?: string | null;
   title?: string;
   description?: string;
   description_html?: string | null;
@@ -56,14 +59,28 @@ export interface StatusTransition {
 
 export function updatesRepository(db: Knex) {
   return {
+    async stageBelongsToProject(projectId: string, stageId: string): Promise<boolean> {
+      return Boolean(await db("project_phases").where({ id: stageId, project_id: projectId }).first("id"));
+    },
     listByProject(
       projectId: string,
-      options: { includeDrafts?: boolean } = {},
+      options: UpdateListOptions = {},
     ): Promise<UpdateRow[]> {
       return db<UpdateRow>("project_updates")
         .where({ project_id: projectId })
         .modify((query) => {
           if (!options.includeDrafts) query.where({ is_draft: false });
+          if (options.stageId) {
+            query.where((scoped) => scoped
+              .where("project_updates.stage_id", options.stageId)
+              .orWhere((linked) => linked.whereNull("project_updates.stage_id").whereExists(
+                db("activities")
+                  .select("id")
+                  .where("activities.id", db.ref("project_updates.activity_id"))
+                  .where("activities.project_id", projectId)
+                  .where("activities.phase_id", options.stageId),
+              )));
+          }
         })
         .orderBy("created_at", "desc");
     },

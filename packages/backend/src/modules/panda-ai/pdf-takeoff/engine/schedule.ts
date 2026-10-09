@@ -52,7 +52,7 @@ export function readingOrderLines(texts: TextRun[], rowTolerancePt = 4): string[
 
 export function looksLikeScheduleSheet(texts: TextRun[]): boolean {
   const joined = texts.map((t) => t.str).join(" ");
-  return /window schedule|door schedule/i.test(joined);
+  return /(?:window|door|opening|vent(?:ilation)?|louvre|pile|reinforcement|bar[ -]?bending)\s+schedule|schedule\s+of\s+(?:windows|doors|openings|piles|reinforcement)|\bBBS\b/i.test(joined);
 }
 
 function normalizeType(raw: string): string | null {

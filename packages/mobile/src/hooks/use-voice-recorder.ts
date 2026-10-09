@@ -68,45 +68,72 @@ export function useVoiceRecorder(): VoiceRecorder {
   // the last duration seen while running; the state resets as the recorder stops
   const lastSeconds = useRef(0);
   const running = useRef(false);
+  const starting = useRef(false);
+  const mounted = useRef(true);
+  const generation = useRef(0);
 
   const seconds = Math.floor((state.durationMillis ?? 0) / 1000);
   if (state.isRecording && seconds > 0) lastSeconds.current = seconds;
   running.current = state.isRecording || isPaused;
 
   const start = useCallback(async () => {
+    if (starting.current || running.current) return;
+    starting.current = true;
+    const attempt = ++generation.current;
     setError(null);
     setIsPaused(false);
     lastSeconds.current = 0;
-    const permission = await requestRecordingPermissionsAsync();
-    if (!permission.granted) {
-      setError("Microphone access is off. Enable it in Settings to record a note.");
-      return;
+    try {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!mounted.current || attempt !== generation.current) return;
+      if (!permission.granted) {
+        setError("Microphone access is off. Enable it in Settings to record a note.");
+        return;
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      if (!mounted.current || attempt !== generation.current) {
+        await setAudioModeAsync({ allowsRecording: false });
+        return;
+      }
+      recorder.record();
+      running.current = true;
+    } catch {
+      if (mounted.current) setError("Could not start the microphone. Close other recording apps and try again.");
+      await setAudioModeAsync({ allowsRecording: false }).catch(() => undefined);
+    } finally {
+      starting.current = false;
     }
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
   }, [recorder]);
 
   const pause = useCallback(() => {
-    recorder.pause();
-    setIsPaused(true);
+    try { recorder.pause(); setIsPaused(true); }
+    catch { setError("Could not pause the recording. Try stopping it instead."); }
   }, [recorder]);
 
   const resume = useCallback(() => {
-    recorder.record();
-    setIsPaused(false);
+    try { recorder.record(); setIsPaused(false); }
+    catch { setError("Could not resume the recording. Try recording again."); }
   }, [recorder]);
 
   const stop = useCallback(async (): Promise<Recording | null> => {
     const measured = lastSeconds.current;
-    await recorder.stop();
-    setIsPaused(false);
-    running.current = false;
-    const uri = recorder.uri;
-    return uri ? { uri, durationSeconds: measured } : null;
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      return uri ? { uri, durationSeconds: measured } : null;
+    } catch {
+      setError("Could not finish this recording. Try recording again.");
+      return null;
+    } finally {
+      setIsPaused(false);
+      running.current = false;
+      await setAudioModeAsync({ allowsRecording: false }).catch(() => undefined);
+    }
   }, [recorder]);
 
   const discard = useCallback(async () => {
+    generation.current += 1;
     if (!running.current) return;
     try {
       await recorder.stop();
@@ -115,12 +142,18 @@ export function useVoiceRecorder(): VoiceRecorder {
     }
     setIsPaused(false);
     running.current = false;
+    await setAudioModeAsync({ allowsRecording: false }).catch(() => undefined);
   }, [recorder]);
 
   // leaving the screen mid-recording must not leave the mic open
   useEffect(() => {
+    mounted.current = true;
     return () => {
-      if (running.current) void recorder.stop().catch(() => undefined);
+      mounted.current = false;
+      if (running.current) {
+        void recorder.stop().catch(() => undefined)
+          .then(() => setAudioModeAsync({ allowsRecording: false })).catch(() => undefined);
+      }
     };
   }, [recorder]);
 

@@ -1,4 +1,5 @@
-import { Mic, UserRound, Video } from "lucide-react";
+import { useState } from "react";
+import { Mic, Pencil, UserRound, Video } from "lucide-react";
 import { MEDIA_KIND, type DrawingMarkupComment, type MediaKind } from "@/api/drawing-markup";
 import { Spinner } from "@/components/atoms/spinner";
 import { MediaNotePlayer } from "@/components/molecules/comment-pin";
@@ -50,13 +51,60 @@ MediaNote.displayName = "MediaNote";
  * and when, the text (rich or plain), the voice/video note, and who it was
  * handed to.
  */
-export function MarkupCommentItem({ comment }: { comment: DrawingMarkupComment }) {
+export function MarkupCommentItem({
+  comment,
+  canEditOwn = false,
+  onEdit,
+}: {
+  comment: DrawingMarkupComment;
+  /** True when the viewer authored this comment and an edit path is wired. */
+  canEditOwn?: boolean;
+  onEdit?: (comment: DrawingMarkupComment, body: string) => void;
+}) {
   const body = comment.body.trim();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(body);
+  if (editing) {
+    return (
+      <li className="rounded-lg bg-surface-alt px-2.5 py-2" data-comment-editing>
+        <textarea aria-label="Edit comment" rows={2} className="w-full rounded-md border border-line px-2 py-1 text-sm" value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <div className="mt-1 flex justify-end gap-1.5 text-xs">
+          <button type="button" className="underline" onClick={() => setEditing(false)}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="font-semibold text-primary-700"
+            disabled={draft.trim() === ""}
+            onClick={() => {
+              onEdit?.(comment, draft.trim());
+              setEditing(false);
+            }}
+          >
+            Save edit
+          </button>
+        </div>
+      </li>
+    );
+  }
   return (
     <li className="rounded-lg bg-surface-alt px-2.5 py-2">
       <p className="flex items-baseline gap-2 text-xs text-gray-500">
         <span className="font-medium text-gray-800">{comment.authorName ?? "Someone"}</span>
         <time dateTime={comment.createdAt}>{formatTimeAgo(comment.createdAt)}</time>
+        {canEditOwn && onEdit ? (
+          <button
+            type="button"
+            aria-label="Edit your comment"
+            className="ml-auto text-gray-400 hover:text-gray-700"
+            onClick={() => {
+              setDraft(body);
+              setEditing(true);
+            }}
+          >
+            <Pencil size={11} aria-hidden="true" />
+          </button>
+        ) : null}
       </p>
       {comment.bodyHtml ? (
         <div

@@ -1,34 +1,46 @@
 import { drizzle } from "drizzle-orm/expo-sqlite";
-import { openDatabaseSync, type SQLiteDatabase } from "expo-sqlite";
+import { openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 import * as schema from "./schema";
 
-/**
- * One database file per signed-in user.
- *
- * Partitioning by file name rather than a `userId` column means a missed filter
- * can't leak one crew member's rows to the next person on a shared site tablet,
- * and signing out is a file delete rather than a cascade of deletes.
- */
-let current: { ownerId: string; db: ReturnType<typeof drizzle>; raw: SQLiteDatabase } | null = null;
+function createDatabase(raw: SQLiteDatabase) {
+  return drizzle(raw, { schema });
+}
+
+export type Db = ReturnType<typeof createDatabase>;
+
+// Keep unsynced work in its owner's file when another person signs in.
+const databases = new Map<string, Db>();
+const owners = new WeakMap<Db, string>();
+const opening = new Map<string, Promise<Db>>();
 
 function fileNameFor(ownerId: string): string {
   return `buildpanda_${ownerId.replace(/[^a-zA-Z0-9_-]/g, "")}.db`;
 }
 
-export function getDb(ownerId: string) {
-  if (current?.ownerId === ownerId) return current.db;
-
-  const raw = openDatabaseSync(fileNameFor(ownerId), { enableChangeListener: true });
-  raw.execSync("PRAGMA foreign_keys = ON;");
-  const db = drizzle(raw, { schema });
-  current = { ownerId, db, raw };
-  return db;
+/** Open without blocking rendering or a web worker's startup; reuse per owner. */
+export function openDb(ownerId: string): Promise<Db> {
+  const existing = databases.get(ownerId);
+  if (existing) return Promise.resolve(existing);
+  const pending = opening.get(ownerId);
+  if (pending) return pending;
+  const request = (async () => {
+    const raw = await openDatabaseAsync(fileNameFor(ownerId), { enableChangeListener: true });
+    try {
+      await raw.execAsync("PRAGMA foreign_keys = ON;");
+      const db = createDatabase(raw);
+      databases.set(ownerId, db);
+      owners.set(db, ownerId);
+      return db;
+    } catch (error) {
+      await raw.closeAsync().catch(() => undefined);
+      throw error;
+    }
+  })().finally(() => opening.delete(ownerId));
+  opening.set(ownerId, request);
+  return request;
 }
 
-/** The raw handle, for `useMigrations` and change listeners. */
-export function getRawDb(ownerId: string): SQLiteDatabase {
-  getDb(ownerId);
-  return current!.raw;
+/** Lets a running sync stop when the device switches accounts. */
+export function getDbOwner(db: Db): string | undefined {
+  return owners.get(db);
 }
-
-export type Db = ReturnType<typeof getDb>;

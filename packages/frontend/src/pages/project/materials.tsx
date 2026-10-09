@@ -2,8 +2,9 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
-import { ChevronRightIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
 import { ImportBoqDialog } from "@/components/molecules/import-boq-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
@@ -12,6 +13,8 @@ import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
 import { errorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { useUpdateMaterialOrder } from "@/hooks/use-materials-equipment";
 import { formatCurrency } from "@/lib/formatters";
 import type { MaterialOrder, MaterialOrderStatus } from "@/lib/project-types";
@@ -37,12 +40,14 @@ function isLive(order: MaterialOrder): boolean {
 
 export default function ProjectMaterials() {
   const { project, access } = useProjectContext();
+  const { selectedStageId, setSelectedStageId } = useStageScope();
   const canRequest = canResourceAction(access, "materials", "request");
   const canApprove = canResourceAction(access, "materials", "approve");
   const canRaisePurchaseOrder = canResourceAction(access, "finances", "manage");
   // The whole register is fetched once; status, supplier, late and search all
   // narrow it here so the KPI strip and the "x of y" count stay stable.
-  const { data: orders = [], isLoading } = useMaterialOrders(project.id);
+  const { data: allOrders = [], isLoading } = useMaterialOrders(project.id);
+  const orders = allOrders.filter((order) => matchesStage(order.phaseId, selectedStageId));
 
   const [status, setStatus] = useUrlState<MaterialOrderStatus | "all">("status", "all");
   const [search, setSearch] = useUrlState<string>("q", "");
@@ -69,9 +74,10 @@ export default function ProjectMaterials() {
     .filter((order) => matchesOrderSearch(order, search));
 
   const isFiltered =
-    status !== "all" || supplier !== ALL_SUPPLIERS || lateFilter !== "all" || search.trim() !== "";
+    Boolean(selectedStageId) || status !== "all" || supplier !== ALL_SUPPLIERS || lateFilter !== "all" || search.trim() !== "";
 
   function clearFilters(): void {
+    setSelectedStageId(undefined);
     setStatus("all");
     setSupplier(ALL_SUPPLIERS);
     setLateFilter("all");
@@ -116,10 +122,9 @@ export default function ProjectMaterials() {
               </Button>
             ) : null}
             {canRequest ? (
-              <Button variant="primary" size="md" onClick={() => setDialog({ kind: "create" })}>
-                <PlusIcon className="size-4" />
+              <CreateButton onClick={() => setDialog({ kind: "create" })}>
                 New material order
-              </Button>
+       </CreateButton>
             ) : null}
           </div>
         }

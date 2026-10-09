@@ -9,26 +9,21 @@ import {
   PROPOSAL_STATUS_LABEL as LABEL_MAP,
   PROPOSAL_STATUS_TONE as STATUS_TONE,
 } from "@/lib/project-meta";
-import { ActivityTab } from "./proposal-tabs/activity-tab";
 import { DrawingsTab } from "./proposal-tabs/drawings-tab";
 import { EstimateTab } from "./proposal-tabs/estimate-tab";
-import { MessagesTab } from "./proposal-tabs/messages-tab";
 import { OverviewTab } from "./proposal-tabs/overview-tab";
-import { PackTab } from "./proposal-tabs/pack-tab";
 import { TakeoffsTab } from "./proposal-tabs/takeoffs-tab";
-import { SafetyTab } from "./proposal-tabs/safety-tab";
 import { JOB_PROFILE_META } from "@/lib/precon-meta";
 
 // The take-off is the bill of quantities, so there is no separate BoQ grid.
-// Messages fold into Activity as internal notes.
+// Activity and internal notes live on the overview, the page you land on.
+// The pack and safety documents are off the page while the product focuses
+// on the take-off and the programme of work; their code and routes remain.
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "drawings", label: "Drawings" },
   { id: "takeoffs", label: "Take-offs" },
   { id: "estimate", label: "Estimate" },
-  { id: "pack", label: "Pack" },
-  { id: "safety", label: "Safety" },
-  { id: "activity", label: "Activity" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -118,17 +113,6 @@ export default function ProposalWorkspace() {
             validUntil={proposal.validUntil}
           />
         ) : null}
-        {tab === "pack" ? <PackTab proposalId={id} /> : null}
-        {tab === "activity" ? (
-          <div className="flex flex-col gap-8">
-            <ActivityTab proposalId={id} />
-            <section className="flex flex-col gap-3">
-              <h2 className="text-xs font-medium uppercase text-ink-muted">Internal notes</h2>
-              <MessagesTab proposalId={id} />
-            </section>
-          </div>
-        ) : null}
-        {tab === "safety" ? <SafetyTab proposalId={id} /> : null}
       </div>
     </div>
   );

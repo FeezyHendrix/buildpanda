@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { MeasurePlanDialog } from "@/components/molecules/proposal-plans/measure-plan-dialog";
-import type { PreconSession, TakeoffScope } from "@/api/precon";
+import type { PreconSession, TakeoffMode, TakeoffScope } from "@/api/precon";
 import { useCreatePreconSessionFromPlan, useCreatePreconSessionFromPlanWithMode, usePreconSessions } from "@/hooks/use-precon";
 import { useProposalPlans, useProposalWorkspace, useStartProposalTakeoff } from "@/hooks/use-proposals";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -37,12 +37,12 @@ export function StaleRevisionBanner({ session }: Props) {
   const manual = session.takeoffKind === "manual";
   const revLabel = stale.newerRevision ? `Rev ${stale.newerRevision}` : "a newer revision";
 
-  async function remeasure(scope: TakeoffScope) {
+  async function remeasure(scope: TakeoffScope, mode: TakeoffMode) {
     if (!newerPlan) return;
     setError(null);
     try {
       let nextId: string | null = null;
-      if (manual) {
+      if (mode === "manual") {
         nextId = (await measureByHand.mutateAsync({ planId: newerPlan.id, scope, mode: "manual" })).id;
       } else if (PDF_PLAN.test(newerPlan.fileName)) {
         nextId = (await measureAi.mutateAsync({ planId: newerPlan.id, scope })).id;
@@ -76,7 +76,7 @@ export function StaleRevisionBanner({ session }: Props) {
             if (!next) setError(null);
           }}
           plans={[{ id: newerPlan.id, fileName: newerPlan.fileName }]}
-          mode={manual ? "manual" : "ai"}
+          initialMode={manual ? "manual" : "ai"}
           initialScope={session.scope}
           jobProfile={workspace?.proposal.jobProfile ?? null}
           existing={sessions
@@ -84,7 +84,7 @@ export function StaleRevisionBanner({ session }: Props) {
             .map((s) => ({ title: s.title, revision: s.revision, scope: s.scope, takeoffKind: s.takeoffKind }))}
           submitting={measureAi.isPending || measureDwg.isPending || measureByHand.isPending}
           error={error}
-          onConfirm={(scope) => void remeasure(scope)}
+          onConfirm={(scope, mode) => void remeasure(scope, mode)}
         />
       ) : null}
     </>

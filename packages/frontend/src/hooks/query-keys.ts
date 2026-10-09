@@ -13,7 +13,7 @@ export const projectTemplateKeys = {
 
 export const updateKeys = {
   all: (projectId: string) => ["projects", projectId, "updates"] as const,
-  list: (projectId: string) => [...updateKeys.all(projectId), "list"] as const,
+  list: (projectId: string, stageId?: string) => [...updateKeys.all(projectId), "list", ...(stageId ? [{ stageId }] : [])] as const,
   comments: (projectId: string, updateId: string) =>
     [...updateKeys.all(projectId), updateId, "comments"] as const,
 };
@@ -115,7 +115,7 @@ export const lookAheadKeys = {
 
 export const invoiceKeys = {
   all: (projectId: string) => ["projects", projectId, "invoices"] as const,
-  list: (projectId: string) => [...invoiceKeys.all(projectId), "list"] as const,
+  list: (projectId: string, stageId?: string) => [...invoiceKeys.all(projectId), "list", ...(stageId ? [{ stageId }] : [])] as const,
   detail: (projectId: string, invoiceId: string) => [...invoiceKeys.all(projectId), "detail", invoiceId] as const,
   payApplication: (projectId: string, invoiceId: string) =>
     [...invoiceKeys.all(projectId), "pay-application", invoiceId] as const,
@@ -190,8 +190,8 @@ export const buildingKeys = {
 
 export const rfiKeys = {
   all: (projectId: string) => ["projects", projectId, "rfis"] as const,
-  list: (projectId: string, status?: string) =>
-    [...rfiKeys.all(projectId), "list", status ?? "all"] as const,
+  list: (projectId: string, status?: string, stageId?: string) =>
+    [...rfiKeys.all(projectId), "list", status ?? "all", ...(stageId ? [{ stageId }] : [])] as const,
   detail: (projectId: string, rfiId: string) =>
     [...rfiKeys.all(projectId), "detail", rfiId] as const,
   events: (projectId: string, rfiId: string) =>
@@ -360,8 +360,8 @@ export const messageKeys = {
 
 export const taskKeys = {
   all: (projectId: string) => ["projects", projectId, "tasks"] as const,
-  board: (projectId: string, scope: "all" | "assigned" = "all", buildingId?: string) =>
-    [...taskKeys.all(projectId), "board", scope, buildingId ?? "all"] as const,
+  board: (projectId: string, scope: "all" | "assigned" = "all", buildingId?: string, stageId?: string) =>
+    [...taskKeys.all(projectId), "board", scope, buildingId ?? "all", ...(stageId ? [{ stageId }] : [])] as const,
   assignable: (projectId: string) => [...taskKeys.all(projectId), "assignable"] as const,
   detail: (projectId: string, taskId: string) => [...taskKeys.all(projectId), "detail", taskId] as const,
 };
@@ -374,32 +374,8 @@ export const materialLedgerKeys = {
   catalog: (projectId: string) => [...materialLedgerKeys.all(projectId), "catalog"] as const,
 };
 
-export const preconKeys = {
-  all: ["precon"] as const,
-  sessions: () => [...preconKeys.all, "sessions"] as const,
-  snapshot: (sessionId: string) => [...preconKeys.all, "snapshot", sessionId] as const,
-  programme: (sessionId: string) => [...preconKeys.all, "programme", sessionId] as const,
-  progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
-  snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
-};
-
-export const preconAssistKeys = {
-  all: ["precon-assist"] as const,
-  forSession: (sessionId: string) => [...preconAssistKeys.all, "session", sessionId] as const,
-};
-
 export const proposalPackKeys = {
   all: (proposalId: string) => ["proposals", "detail", proposalId, "pack"] as const,
-};
-
-export const takeoffLinkKeys = {
-  lineStatuses: (sessionId: string) => ["precon", "line-statuses", sessionId] as const,
-};
-
-export const rateLibraryKeys = {
-  all: ["rate-library"] as const,
-  cards: () => [...rateLibraryKeys.all, "cards"] as const,
-  quotes: () => [...rateLibraryKeys.all, "quotes"] as const,
 };
 
 export const complianceDocKeys = {
@@ -412,27 +388,5 @@ export const proposalTemplateKeys = {
   list: () => [...proposalTemplateKeys.all, "list"] as const,
 };
 
-// WS-9: proposal-scoped safety pack (risk register, method statements, phase plan)
-export const preconSafetyKeys = {
-  all: (proposalId: string) => ["proposals", proposalId, "safety"] as const,
-  risks: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "risks"] as const,
-  statements: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "method-statements"] as const,
-  phasePlan: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "phase-plan"] as const,
-};
-
-// WS-M1D: pinned comments on take-off sheets (drawing-markup register, precon anchor)
-export const preconMarkupKeys = {
-  all: ["precon", "markups"] as const,
-  session: (sessionId: string) => [...preconMarkupKeys.all, sessionId] as const,
-};
-
-// WS-M3B: assemblies in the rate library, and who is on a take-off session
-export const preconAssemblyKeys = {
-  all: ["precon", "assemblies"] as const,
-  list: () => [...preconAssemblyKeys.all, "list"] as const,
-};
-
-export const preconPresenceKeys = {
-  all: ["precon", "presence"] as const,
-  session: (sessionId: string) => [...preconPresenceKeys.all, sessionId] as const,
-};
+// The take-off surface keeps its keys in one module of its own.
+export * from "./query-keys-precon";

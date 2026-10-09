@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
-import type { preconService } from "./service.ts";
+import { editorService } from "./editor-service.ts";
+import type { PublishFn, preconService } from "./service.ts";
 import { MEASURE_TOOLS } from "./types.ts";
 import type { CreateMeasurementBody } from "./types.ts";
 
@@ -43,10 +44,15 @@ const measurementBody = {
 
 interface ManualRoutesOptions {
   service: ReturnType<typeof preconService>;
+  publish: PublishFn;
 }
 
-// Lines drawn by a person, and the flat export of what was measured.
-export const manualRoutes: FastifyPluginAsync<ManualRoutesOptions> = async (fastify, { service }) => {
+// Lines drawn by a person, and the flat export of what was measured. The new
+// line goes through the editor's unit of work: its bill row, its geometry and
+// its audit entry are one write, so a half-created line cannot survive.
+export const manualRoutes: FastifyPluginAsync<ManualRoutesOptions> = async (fastify, { service, publish }) => {
+  const editor = editorService(fastify.db, publish);
+
   fastify.post<{ Params: { sessionId: string }; Body: CreateMeasurementBody }>(
     "/precon/sessions/:sessionId/measurements",
     { schema: { params: sessionParams, body: measurementBody } },
@@ -54,7 +60,7 @@ export const manualRoutes: FastifyPluginAsync<ManualRoutesOptions> = async (fast
       const user = request.requireAuth();
       const orgId = request.requireOrgPermission("takeoffs", "measure");
       await service.assertSessionOrg(request.params.sessionId, orgId);
-      const result = await service.createMeasurement(request.params.sessionId, request.body, user.id);
+      const result = await editor.createMeasurement(request.params.sessionId, request.body, user.id);
       return reply.status(201).send(result);
     },
   );

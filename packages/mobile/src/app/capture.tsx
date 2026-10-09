@@ -1,5 +1,7 @@
+import { applyVoiceActionBatch, type AppliedVoiceAction } from "@/lib/voice-action-batch";
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { requestVoiceReport } from "@/api/voice-report";
@@ -49,23 +51,41 @@ export default function Capture() {
   const [error, setError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
   const [awaitingCount, setAwaitingCount] = useState(0);
+  const completed = useRef(new Map<number, AppliedVoiceAction>());
+  const confirming = useRef(false);
+  const [appliedIndexes, setAppliedIndexes] = useState<ReadonlySet<number>>(new Set());
+  const [recordingUri, setRecordingUri] = useState(uri ?? null);
+  const processing = useRef<AbortController | null>(null);
 
-  const close = useCallback(() => router.back(), []);
+  useEffect(() => () => processing.current?.abort(), []);
+
+  const close = useCallback(() => goBack(), []);
 
   const transcribe = useCallback(
     async (audioUri: string) => {
       if (!projectId) return;
+      processing.current?.abort();
+      const controller = new AbortController();
+      processing.current = controller;
+      setRecordingUri(audioUri);
       setPhase("processing");
       setError(null);
       try {
-        const result = await requestVoiceReport(projectId, audioUri);
+        const result = await requestVoiceReport(projectId, audioUri, controller.signal);
+        if (controller.signal.aborted) return;
+        completed.current.clear();
+        setAppliedIndexes(new Set());
         setReport(result);
         setIncluded(new Set(result.actions.map((_, index) => index)));
         setFieldValues({});
         setPhase("review");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not process the recording.");
-        setPhase("record");
+        if (!controller.signal.aborted) {
+          setError(err instanceof Error ? err.message : "Could not process the recording.");
+          setPhase("record");
+        }
+      } finally {
+        if (processing.current === controller) processing.current = null;
       }
     },
     [projectId],
@@ -104,31 +124,41 @@ export default function Capture() {
   }, []);
 
   const handleConfirm = useCallback(async () => {
-    if (!report) return;
+    if (!report || confirming.current) return;
     if (outstandingCount(report.actions, included, fieldValues) > 0) return;
+    confirming.current = true;
     setPhase("saving");
     setError(null);
     try {
       const chosen = report.actions
         .map((action, index) => ({ action, index }))
         .filter((entry) => included.has(entry.index));
-      let awaiting = 0;
-      for (const { action, index } of chosen) {
-        const result = await applyAction(mergeMissingValues(action, fieldValues[index]));
-        if (result?.awaitingApproval) awaiting += 1;
-      }
-      setSavedCount(chosen.length);
-      setAwaitingCount(awaiting);
+      await applyVoiceActionBatch(
+        chosen.map(({ action, index }) => ({ index, action: mergeMissingValues(action, fieldValues[index]) })),
+        completed.current,
+        applyAction,
+      );
+      setSavedCount(completed.current.size);
+      setAwaitingCount([...completed.current.values()].filter((result) => result?.awaitingApproval).length);
       setPhase("done");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save these records.");
+      const count = completed.current.size;
+      setError(`${count > 0 ? `${count} already saved. Retry the remaining actions. ` : ""}${err instanceof Error ? err.message : "Could not save these records."}`);
       setPhase("review");
+    } finally {
+      confirming.current = false;
+      setAppliedIndexes(new Set(completed.current.keys()));
+      setIncluded((previous) => new Set([...previous].filter((index) => !completed.current.has(index))));
     }
+
   }, [report, included, fieldValues, applyAction]);
 
   if (phase === "processing") {
     return (
-      <Page title="Panda AI" showSync={false} scroll={false}>
+      <Page title="Panda AI" showSync={false} scroll={false} onBack={() => {
+        processing.current?.abort();
+        setPhase("record");
+      }}>
         <View className="flex-1 items-center justify-center">
           <Spinner size="md" />
           <Text weight="semibold" className="pt-4 text-base">
@@ -221,6 +251,7 @@ export default function Capture() {
             <VoiceActionsReview
               actions={report.actions}
               includedIndexes={included}
+              appliedIndexes={appliedIndexes}
               values={fieldValues}
               onToggle={toggle}
               onChangeField={changeField}
@@ -254,7 +285,7 @@ export default function Capture() {
           </Text>
           <Pressable
             onPress={recorder.isRecording ? handleStop : recorder.start}
-            disabled={!canRecord}
+            disabled={!canRecord && !recorder.isRecording}
             accessibilityRole="button"
             accessibilityLabel={recorder.isRecording ? "Stop recording" : "Start recording"}
             className={cn(
@@ -277,7 +308,12 @@ export default function Capture() {
           </Text>
         </View>
 
-        <View className="w-full px-4">
+        <View className="w-full gap-3 px-4">
+          {recordingUri && !recorder.isRecording ? (
+            <Button onPress={() => transcribe(recordingUri)} disabled={!isOnline || !projectId}>
+              Retry this recording
+            </Button>
+          ) : null}
           {!isOnline ? (
             <View className="rounded-xl bg-surface-alt px-4 py-3">
               <Text tone="secondary" className="text-center text-[13px]">

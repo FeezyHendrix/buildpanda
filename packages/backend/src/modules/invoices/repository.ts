@@ -183,9 +183,19 @@ export function invoicesRepository(db: Knex) {
   }
 
   return {
-    listByProject(projectId: string): Promise<InvoiceRow[]> {
+    listByProject(projectId: string, stageId?: string): Promise<InvoiceRow[]> {
       return db<InvoiceRow>("project_invoices")
         .where({ project_id: projectId })
+        .modify((query) => {
+          if (!stageId) return;
+          query.where((scoped) => scoped
+            .whereExists(db("invoice_stage_lines as line").select("line.invoice_id")
+              .where("line.invoice_id", db.ref("project_invoices.id"))
+              .where("line.project_id", projectId).where("line.stage_id", stageId))
+            .orWhereExists(db("purchase_orders as po").select("po.id")
+              .where("po.id", db.ref("project_invoices.po_reference_id"))
+              .where("po.project_id", projectId).where("po.stage_id", stageId)));
+        })
         .orderBy("created_at", "desc");
     },
 

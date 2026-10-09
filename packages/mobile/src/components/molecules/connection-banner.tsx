@@ -5,11 +5,10 @@ import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/atoms";
 import { ICON_INVERSE } from "@/constants/colors";
+import { TabBarHeight } from "@/constants/theme";
 import { useSyncState } from "@/lib/sync-provider";
 
 const BACK_ONLINE_MS = 5_000;
-/** Tab bar height, so the banner sits directly on top of it rather than over it. */
-const TAB_BAR_HEIGHT = 49;
 
 /**
  * Connectivity badge above the tab bar, following Ernest's two-banner split:
@@ -48,7 +47,7 @@ export const ConnectionBanner = memo(function ConnectionBanner() {
       pointerEvents="none"
       accessibilityLiveRegion="polite"
       className="absolute left-0 right-0 z-50 px-4"
-      style={{ bottom: insets.bottom + TAB_BAR_HEIGHT + 8 }}
+      style={{ bottom: insets.bottom + TabBarHeight + 8 }}
     >
       <View
         className={

@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
@@ -113,10 +112,9 @@ export default function ProjectSelections() {
         title="Selections"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               New selection
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />
@@ -139,7 +137,7 @@ export default function ProjectSelections() {
                 ? "Create a selection to ask the homeowner to choose a finish or fixture within an allowance."
                 : "Selections your builder asks you to make will appear here."
             }
-            action={canManage ? { label: "New selection", onClick: () => setCreateOpen(true), icon: <PlusIcon /> } : undefined}
+            action={canManage ? { label: "New selection", onClick: () => setCreateOpen(true) } : undefined}
           />
         ) : (
           selections.map((selection) => (

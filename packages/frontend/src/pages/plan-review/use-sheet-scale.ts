@@ -4,7 +4,7 @@ import { toast } from "@/lib/toast";
 import { type Markup } from "./plan-review-markup";
 import { CALIBRATED_LABEL } from "./plan-review-types";
 
-/** Fallback page aspect (w/h) before a sheet reports its real dimensions. */
+/** Fallback page aspect (h/w) before a sheet reports its real dimensions. */
 const DEFAULT_ASPECT = 0.775;
 
 interface SheetRenderState {
@@ -54,11 +54,12 @@ export function useSheetScale(onPageCount: (count: number) => void): SheetScaleC
   function calibrate(sheetId: string, measureMarkup: Markup | null): void {
     if (!measureMarkup || measureMarkup.tool !== MARKUP_KIND.MEASURE || !calibrateInput) return;
     const feet = Number.parseFloat(calibrateInput);
-    if (Number.isNaN(feet) || feet <= 0) return;
+    if (!Number.isFinite(feet) || feet <= 0) return;
 
     const dxPct = measureMarkup.b.x - measureMarkup.a.x;
     const dyPct = (measureMarkup.b.y - measureMarkup.a.y) * imgAspect;
     const distPct = Math.hypot(dxPct, dyPct);
+    if (!Number.isFinite(distPct) || distPct <= 0) return;
 
     setSheetScales((s) => ({ ...s, [sheetId]: feet / distPct }));
     setScaleLabels((s) => ({ ...s, [sheetId]: CALIBRATED_LABEL }));

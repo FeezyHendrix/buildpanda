@@ -269,6 +269,7 @@ export function UpdateCard({
         mode="edit"
         projectId={projectId}
         initial={{
+          stageId: update.stageId,
           category: update.category,
           title: update.title,
           description: update.description,

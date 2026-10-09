@@ -1,3 +1,4 @@
+import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
 import { rfisApi } from "@/api/rfis";
@@ -15,10 +16,12 @@ export type LocalRfiComment = ReturnType<typeof toComment>;
  * fetch upserts and the live query re-runs on its own.
  */
 export function useRfiComments(db: Db, projectId: string, rfiId: string) {
+  const { isOnline } = useSyncState();
   const query = useMemo(() => rfiCommentsRepository.listQuery(db, rfiId), [db, rfiId]);
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
+    if (!isOnline) return;
     // A queued RFI has no server id yet, so there is nothing to fetch.
     if (rfiId.startsWith("local_")) return;
     let cancelled = false;
@@ -33,10 +36,10 @@ export function useRfiComments(db: Db, projectId: string, rfiId: string) {
     return () => {
       cancelled = true;
     };
-  }, [db, projectId, rfiId]);
+  }, [db, projectId, rfiId, isOnline]);
 
   const data = useMemo(() => (live.data ?? []).map(toComment), [live.data]);
-  return { data, isPending: live.data === undefined };
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
 /**

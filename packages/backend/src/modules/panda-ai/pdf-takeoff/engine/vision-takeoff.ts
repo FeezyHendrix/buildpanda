@@ -1,11 +1,9 @@
 import { z } from "zod";
 import { chatVision, isVisionConfigured } from "../../../../lib/llm-vision.ts";
 import { openStoredFile, streamToBuffer } from "../../../../lib/file-storage.ts";
-import { renderPdfPagesToPng, pngToDataUrl } from "../../../../lib/document-render.ts";
+import { renderPdfPageViews, pngToDataUrl } from "../../../../lib/document-render.ts";
 import type { MeasuredBoqItem } from "../types.ts";
-
-export const VISION_MAX_SHEETS_PER_SESSION = 6;
-const VISION_DPI = 150;
+import { DRAWING_VIEWS_DESCRIPTION } from "./drawing-evidence.ts";
 
 export interface VisionBudget {
   remainingSheets: number;
@@ -16,6 +14,8 @@ export interface VisionTakeoffInput {
   pageNumber: number;
   globalPage: number;
   sheetLabel: string;
+  focus?: "roof";
+  drawingContext?: string;
 }
 
 const UNITS = ["m", "m2", "m3", "nr", "kg", "sum"] as const;
@@ -42,6 +42,8 @@ const VisionItem = z.object({
 
 const VisionResponse = z.object({
   scaleReadable: z.boolean(),
+  roofType: z.enum(["flat", "gable", "hipped", "mansard", "shed", "mixed", "unknown"]).nullable().optional(),
+  pitchDeg: z.number().nonnegative().max(89).nullable().optional(),
   items: z.array(VisionItem).max(200),
   notes: z.string().max(400).optional(),
 });
@@ -58,6 +60,18 @@ Rules:
 - Prefer counting (nr) over measuring when only symbols are visible (doors, WCs, columns).
 - qty is an ESTIMATE — err on the low side; never invent items you cannot see. Empty items is valid.
 - Max 200 items. description one line, <=240 chars.`;
+
+const ROOF_PROMPT = `You are a quantity surveyor reading a roof plan from an architectural drawing.
+Return ONLY JSON (no prose, no code fences) matching:
+{"scaleReadable": boolean, "roofType": "flat|gable|hipped|mansard|shed|mixed|unknown", "pitchDeg": number,
+ "items": [{"elementGroup": "roof", "workSectionCode": string, "workSectionTitle": string, "description": string,
+   "qty": number, "unit": "m|m2|nr", "basis": string}], "notes": string}
+Rules:
+- Identify the roof type from the outline and slope lines, rather than assuming every roof is gabled.
+- Read the roof outline, pitch, covering type, eaves, verges, ridges, hips, valleys, gutters, flashings and rooflights.
+- Return sloping roof covering in m2, eaves/ridges/hips/valleys in m, and countable rooflights in nr.
+- Use the named covering material in the description. If pitch or scale is unreadable, set scaleReadable=false and return no quantities.
+- Every item must use elementGroup=roof. Max 200 items.`;
 
 function stripFences(raw: string): string {
   return raw
@@ -76,16 +90,16 @@ export async function measureSheetViaVision(
   let pngs: Buffer[];
   try {
     const buffer = await streamToBuffer(await openStoredFile(input.storagePath));
-    pngs = await renderPdfPagesToPng(buffer, { maxPages: input.pageNumber, dpi: VISION_DPI });
+    pngs = await renderPdfPageViews(buffer, input.pageNumber);
   } catch {
     return null;
   }
-  const png = pngs[input.pageNumber - 1];
-  if (!png) return null;
+  if (pngs.length === 0) return null;
 
   budget.remainingSheets -= 1;
 
-  const raw = await chatVision(`${PROMPT}\n\nDrawing: ${input.sheetLabel}`, [pngToDataUrl(png)], {
+  const evidence = `${DRAWING_VIEWS_DESCRIPTION}\nSupporting information from the drawing set:\n${input.drawingContext ?? "None supplied"}\nUse sections, elevations and details to resolve dimensions and specifications of this sheet's elements. Do not count supporting detail views as additional instances. Conflicting or unreadable information stays uncertain.`;
+  const raw = await chatVision(`${input.focus === "roof" ? ROOF_PROMPT : PROMPT}\n\n${evidence}\n\nDrawing: ${input.sheetLabel}`, pngs.map(pngToDataUrl), {
     detail: "high",
   });
   if (!raw) return null;
@@ -98,8 +112,11 @@ export async function measureSheetViaVision(
   }
   if (!parsed.scaleReadable || parsed.items.length === 0) return null;
 
+  const roofContext = input.focus === "roof"
+    ? ` Roof type identified as ${parsed.roofType ?? "unknown"}${parsed.pitchDeg == null ? "" : ` at ${parsed.pitchDeg}°`}.`
+    : "";
   return parsed.items.map((it) => ({
-    elementGroup: it.elementGroup,
+    elementGroup: input.focus === "roof" ? "Roof" : it.elementGroup,
     workSection: { code: it.workSectionCode, title: it.workSectionTitle },
     specNote: null,
     code: null,
@@ -109,7 +126,7 @@ export async function measureSheetViaVision(
     deductions: [],
     qty: it.qty,
     confidence: "low",
-    measurementBasis: `Vision estimate (scanned drawing): ${it.basis}`,
+    measurementBasis: `Vision estimate: ${it.basis}.${roofContext}`,
     geometries: [],
     pageNumber: input.globalPage,
     provisional: true,

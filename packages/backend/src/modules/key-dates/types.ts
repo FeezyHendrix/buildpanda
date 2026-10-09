@@ -2,6 +2,7 @@ export const KEY_DATE_STATUSES = ["Upcoming", "Met", "Missed"] as const;
 export type KeyDateStatus = (typeof KEY_DATE_STATUSES)[number];
 
 export interface KeyDate {
+  buildingId: string;
   id: string;
   projectId: string;
   label: string;

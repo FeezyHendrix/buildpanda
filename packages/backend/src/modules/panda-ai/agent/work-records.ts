@@ -167,9 +167,17 @@ export function workRecordsRepository(db: Knex) {
      * delays, RFIs, change requests, risks, inspections and material orders
      * rather than leaving the model to guess a single domain tool.
      */
-    async workRecords(projectId: string, terms: string[]): Promise<WorkRecordHit[]> {
+    async workRecords(
+      projectId: string,
+      terms: string[],
+      kinds?: ReadonlyArray<WorkRecordHit["kind"]>,
+    ): Promise<WorkRecordHit[]> {
       if (terms.length === 0) return [];
-      const reads = workRecordsRepository(db).workRecordQueries(projectId, terms);
+      const allowed = kinds ? new Set<string>(kinds) : null;
+      const reads = workRecordsRepository(db)
+        .workRecordQueries(projectId, terms)
+        .filter((read) => allowed === null || allowed.has(read.kind));
+      if (reads.length === 0) return [];
       const results = await Promise.all(reads.map((r) => r.query));
       return reads.flatMap((read, index) =>
         (results[index] as Record<string, unknown>[]).map(

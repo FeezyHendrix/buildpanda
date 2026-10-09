@@ -5,6 +5,7 @@ export interface RfiPayload {
 }
 
 export interface DailyLogPayload {
+  buildingId?: string | null;
   bodyText: string;
 }
 
@@ -34,10 +35,11 @@ export interface MaterialLogPayload {
 }
 
 export interface LookAheadPayload {
+  buildingId?: string | null;
   name: string;
   description?: string | null;
-  startDate: string;
-  endDate: string;
+  startDate?: string | null;
+  endDate?: string | null;
   totalWorkers?: number | null;
 }
 
@@ -102,6 +104,7 @@ export interface LookAheadDeletePayload {
 }
 
 export interface DailyLogUpdatePayload {
+  buildingId?: string | null;
   totalHours: number;
 }
 
@@ -137,6 +140,7 @@ export interface DailyLogEntryVoidPayload {
 }
 
 export interface StageTransitionPayload {
+  buildingId?: string | null;
   stageId: string | null;
   status: "Pending" | "InProgress" | "Done" | null;
 }

@@ -1,4 +1,5 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { goBack } from "@/lib/navigation";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { CHANGE_STATUSES, type ChangeStatus } from "@/api/change-requests";
@@ -41,7 +42,9 @@ function EditorForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = title.trim().length > 0 && !saving;
+  const costNumber = cost.trim() ? Number(cost) : 0;
+  const daysNumber = days.trim() ? Number(days) : 0;
+  const canSubmit = title.trim().length > 0 && Number.isFinite(costNumber) && Number.isInteger(daysNumber) && !saving;
 
   async function submit() {
     if (!canSubmit) return;
@@ -53,10 +56,10 @@ function EditorForm({
         description: htmlToText(descriptionHtml).trim() || null,
         descriptionHtml: descriptionHtml.trim() || null,
         status,
-        costImpact: Number.parseFloat(cost) || 0,
-        timeImpactDays: Number.parseInt(days, 10) || 0,
+        costImpact: costNumber,
+        timeImpactDays: daysNumber,
       });
-      router.back();
+      goBack();
     } catch (err) {
       setSaving(false);
       setError(err instanceof Error ? err.message : "Could not save this change request.");
@@ -66,7 +69,7 @@ function EditorForm({
   return (
     <Page
       title="Edit change request"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={submit} disabled={!canSubmit} loading={saving}>
           Save changes
@@ -110,7 +113,7 @@ function Editor({ db, projectId, changeId }: { db: Db; projectId: string; change
 
   if (!existing) {
     return (
-      <Page title="Edit change request" onBack={() => router.back()}>
+      <Page title="Edit change request" onBack={() => goBack()}>
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>
@@ -144,7 +147,7 @@ export default function EditChangeRequest() {
 
   if (!(ready && db && projectId && id)) {
     return (
-      <Page title="Edit change request" onBack={() => router.back()}>
+      <Page title="Edit change request" onBack={() => goBack()}>
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>

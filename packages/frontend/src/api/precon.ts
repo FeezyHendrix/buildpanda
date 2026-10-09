@@ -1,367 +1,42 @@
+// Facade for the take-off API client. The DTOs live in `precon-types.ts` and
+// `precon-row-types.ts`; the row and geometry calls live in `precon-rows.ts`
+// and `precon-geometry.ts`. Everything is re-exported here, so every existing
+// `from "@/api/precon"` import keeps resolving.
 import api from "./client";
+import { preconRowsApi } from "./precon-rows";
+import { preconGeometryApi } from "./precon-geometry";
+import type {
+  CreateProgrammeTaskInput,
+  PreconProgramme,
+  PreconProgrammeTaskBase,
+  PreconSession,
+  PreconSheet,
+  PreconSnapshot,
+  PreconSummarySettings,
+  LayerMap,
+  TakeoffMode,
+  TakeoffScope,
+  UpdateProgrammeTaskInput,
+  UpdateSheetInput,
+  UpdateStructureInput,
+  SheetViewport,
+} from "./precon-types";
+import type {
+  ApplyPins,
+  ApplyPreview,
+  Assembly,
+  CreateAssemblyMeasurementBody,
+  CreateAssemblyMeasurementResult,
+  PreconBoqRow,
+  RoomAtResult,
+  SymbolMatchesResult,
+  UpsertAssemblyInput,
+} from "./precon-row-types";
 
-export const PRECON_ROW_STATUSES = ["ai_generated", "needs_review", "verified", "rejected"] as const;
-export type PreconRowStatus = (typeof PRECON_ROW_STATUSES)[number];
-
-export const PRECON_GEOMETRY_KINDS = ["area", "linear", "count", "deduction"] as const;
-export type PreconGeometryKind = (typeof PRECON_GEOMETRY_KINDS)[number];
-
-export const STRUCTURE_CLASSES = ["building", "road", "bridge", "airport", "infrastructure", "unknown"] as const;
-export type StructureClass = (typeof STRUCTURE_CLASSES)[number];
-
-export const STRUCTURAL_SYSTEMS = ["load-bearing-masonry", "reinforced-concrete-frame", "steel-frame", "composite", "unknown"] as const;
-export type StructuralSystem = (typeof STRUCTURAL_SYSTEMS)[number];
-
-export const FOUNDATION_TYPES = ["strip", "raft", "pad", "pile", "unknown"] as const;
-export type FoundationType = (typeof FOUNDATION_TYPES)[number];
-
-export interface StructureContext {
-  structureClass: StructureClass;
-  buildingType: string | null;
-  storeys: number | null;
-  structuralSystem: StructuralSystem;
-  foundationType: FoundationType;
-  confidence: "high" | "low";
-  signals: string[];
-}
-
-export type PreconSessionStatus = "uploading" | "generating" | "reviewing" | "output" | "failed";
-
-export const PRECON_PHASES = ["reading", "structure", "schedules", "building", "pricing", "draft"] as const;
-export type PreconPhase = (typeof PRECON_PHASES)[number];
-
-export interface PreconProgressEntry {
-  at: string;
-  phase: PreconPhase;
-  message: string;
-}
-
-export const TAKEOFF_SCOPE_KINDS = ["full", "sections", "areas", "materials", "early"] as const;
-export type TakeoffScopeKind = (typeof TAKEOFF_SCOPE_KINDS)[number];
-
-export interface TakeoffScope {
-  kind: TakeoffScopeKind;
-  elements: string[];
-}
-
-export const TAKEOFF_KINDS = ["pdf", "dwg", "manual", "early"] as const;
-export type TakeoffKind = (typeof TAKEOFF_KINDS)[number];
-
-export const ROW_ORIGINS = ["ai", "manual", "prompt", "migrated"] as const;
-export type RowOrigin = (typeof ROW_ORIGINS)[number];
-export type PreconSheetKind = "floor-plan" | "roof-plan" | "elevation" | "section" | "detail" | "schedule" | "unknown";
-
-export const PRECON_ROW_TYPES = ["heading", "work_section", "spec_note", "item", "provisional_sum"] as const;
-export type PreconRowType = (typeof PRECON_ROW_TYPES)[number];
-
-export const PRECON_PRICED_ROW_TYPES: readonly PreconRowType[] = ["item", "provisional_sum"];
-
-// ---- extraction report (mirrors backend geometry/types.ts) ----
-export type GeoUnit = "mm" | "cm" | "m" | "in" | "ft" | "unknown";
-export interface GeoUnits {
-  unit: GeoUnit;
-  basis: "header" | "dimensions" | "text" | "assumed";
-  confidence: number;
-  note: string;
-}
-export interface ExtractionTotals {
-  segments: number;
-  shapes: number;
-  arcs: number;
-  inserts: number;
-  texts: number;
-  dimensions: number;
-  all: number;
-}
-export interface ExtractionCoverage {
-  measuredShare: number;
-  measuredLayers: string[];
-  ignoredLayers: string[];
-}
-export interface ExtractionDimensions {
-  count: number;
-  min: number | null;
-  median: number | null;
-  max: number | null;
-}
-export interface ExtractionReport {
-  source: "dwg" | "pdf";
-  units: GeoUnits;
-  totals: ExtractionTotals;
-  layers: { name: string; count: number; color: number | null; element: LayerElement; byType: Record<string, number> }[];
-  blocks: { name: string; inserts: number; entities: number }[];
-  dimensions: ExtractionDimensions;
-  texts: { text: string; count: number }[];
-  unreadable: { what: string; count: number; note: string }[];
-  coverage: ExtractionCoverage;
-  extents: { width: number; height: number } | null;
-  warnings: string[];
-}
-export interface GeoSummary {
-  source: "dwg" | "pdf";
-  units: GeoUnits;
-  totals: ExtractionTotals;
-  coverage: ExtractionCoverage;
-  topLayers: { name: string; count: number; element: LayerElement }[];
-  dimensions: ExtractionDimensions;
-  unreadable: number;
-  warnings: string[];
-}
-export interface SessionExtraction {
-  sheets: Record<string, ExtractionReport>;
-  generatedAt: string;
-}
-
-export interface PreconSession {
-  id: string;
-  orgId: string;
-  projectId: string | null;
-  proposalId: string | null;
-  status: PreconSessionStatus;
-  title: string;
-  error: string | null;
-  phase: PreconPhase | null;
-  progressLog: PreconProgressEntry[];
-  scope: TakeoffScope;
-  planId: string | null;
-  takeoffKind: TakeoffKind;
-  /** What the parser found per sheet, before anything was measured. */
-  extraction: SessionExtraction | null;
-  structureContext: StructureContext | null;
-  /** DWG only: which element each layer holds, as proposed by the engine and corrected in review. */
-  layerMap?: LayerMap | null;
-  /** nth measurement of this drawing with this scope. */
-  revision: number;
-  /** Set when a later revision replaced this take-off; it stays readable. */
-  supersededBy: string | null;
-  /** Priced-line counts, present on the list endpoint. */
-  lines?: { total: number; verified: number; attention: number };
-  /** WS-M3B: the drawing this take-off measured has a newer revision; null when it is current. */
-  stale?: { newerPlanId: string; newerRevision: string | null } | null;
-  createdBy: string | null;
-  createdAt: string;
-}
-
-export const LAYER_ELEMENTS = [
-  "walls",
-  "columns",
-  "doors",
-  "windows",
-  "sanitary",
-  "stairs",
-  "roof",
-  "furniture",
-  "dimensions",
-  "text",
-  "grid",
-  "levels",
-  "ignore",
-  "auto",
-] as const;
-export type LayerElement = (typeof LAYER_ELEMENTS)[number];
-export type LayerMap = Record<string, LayerElement>;
-
-/** The window of the DWG model space a register sheet occupies, in drawing units. */
-export interface SheetBounds {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-}
-
-export interface PreconSheet {
-  id: string;
-  sessionId: string;
-  fileName: string;
-  pageNumber: number;
-  code: string | null;
-  title: string | null;
-  kind: PreconSheetKind;
-  status: "pending" | "measured" | "unmeasurable";
-  scaleMmPerPt: number | null;
-  scaleConfidence: number | null;
-  dimUnit: "mm" | "cm" | "m" | null;
-  geoSummary: GeoSummary | null;
-  bounds?: SheetBounds | null;
-  error: string | null;
-}
-
-export interface PreconDeduction {
-  label: string;
-  qty: number;
-  geometryId: string | null;
-}
-
-export interface PreconBoqRow {
-  id: string;
-  billId: string;
-  sort: number;
-  rowType: PreconRowType;
-  elementGroup: string | null;
-  code: string | null;
-  description: string;
-  unit: string | null;
-  qtyGross: number | null;
-  deductions: PreconDeduction[];
-  qty: number | null;
-  rate: number | null;
-  amount: number | null;
-  rateSource: string | null;
-  confidence: "high" | "low" | null;
-  status: PreconRowStatus | null;
-  version: number;
-  measurementBasis: string | null;
-  confidenceReason: string | null;
-  provenance: string | null;
-  /** DWG entity handles the engine computed this line from. */
-  evidence?: number[];
-  origin: RowOrigin;
-  editedAt: string | null;
-  editedBy: string | null;
-  verifiedBy: string | null;
-  verifiedAt: string | null;
-}
-
-export interface UpdateSheetInput {
-  kind?: PreconSheetKind;
-  title?: string | null;
-  scaleMmPerPt?: number | null;
-  dimUnit?: "mm" | "cm" | "m" | null;
-}
-
-export type UpdateStructureInput = Partial<Omit<StructureContext, "signals" | "confidence">>;
-
-export interface PreconGeometry {
-  id: string;
-  rowId: string;
-  sheetId: string;
-  kind: PreconGeometryKind;
-  vertices: number[][];
-  source: "ai" | "manual";
-  quantity: number | null;
-  unit: string | null;
-}
-
-export interface PreconBill {
-  id: string;
-  title: string;
-  sort: number;
-}
-
-export interface PreconSummarySettings {
-  prelimsPct: number;
-  contingencyPct: number;
-  vatPct: number;
-}
-
-export interface PreconSummary {
-  measuredTotal: number;
-  prelims: number;
-  constructionSum: number;
-  contingency: number;
-  subTotal: number;
-  vat: number;
-  grandTotal: number;
-}
-
-export interface PreconSnapshot {
-  session: PreconSession;
-  sheets: PreconSheet[];
-  bills: PreconBill[];
-  rows: PreconBoqRow[];
-  geometries: PreconGeometry[];
-  settings: PreconSummarySettings;
-  summary: PreconSummary;
-  progress: { total: number; verified: number };
-}
-
-export interface UpdateRowInput {
-  version: number;
-  changes: { description?: string; qty?: number; rate?: number; unit?: string };
-}
-
-export interface CreateRowInput {
-  rowType?: PreconRowType;
-  description: string;
-  elementGroup?: string;
-  code?: string;
-  unit?: string;
-  qty?: number;
-  rate?: number;
-}
-
-export const PROGRAMME_DEPENDENCY_TYPES = ["FS", "SS", "FF", "SF"] as const;
-export type ProgrammeDependencyType = (typeof PROGRAMME_DEPENDENCY_TYPES)[number];
-
-export interface ProgrammeDependency {
-  taskId: string;
-  type: ProgrammeDependencyType;
-  lagDays: number;
-}
-
-/** As stored: durations and links, with no calendar attached — what the task mutations answer with. */
-export interface PreconProgrammeTaskBase {
-  id: string;
-  sessionId: string;
-  sort: number;
-  name: string;
-  elementGroup: string | null;
-  wbsCode: string | null;
-  outlineLevel: number;
-  parentTaskId: string | null;
-  durationDays: number;
-  predecessors: ProgrammeDependency[];
-  isMilestone: boolean;
-  basis: string | null;
-  confidence: "high" | "low" | null;
-  status: PreconRowStatus;
-  version: number;
-  verifiedBy: string | null;
-  verifiedAt: string | null;
-  /** Working days the task can slip without moving the finish; from the scheduler's backward pass. */
-  totalFloatDays: number | null;
-  isCritical: boolean;
-  origin: ProgrammeTaskOrigin;
-}
-
-export const PROGRAMME_TASK_ORIGINS = ["ai", "manual", "prompt"] as const;
-export type ProgrammeTaskOrigin = (typeof PROGRAMME_TASK_ORIGINS)[number];
-
-/** Base plus the dates the server derives from the programme start date. */
-export interface PreconProgrammeTask extends PreconProgrammeTaskBase {
-  startAt: string;
-  finishAt: string;
-}
-
-export interface PreconProgramme {
-  sessionId: string;
-  startDate: string;
-  finishDate: string | null;
-  tasks: PreconProgrammeTask[];
-  progress: { total: number; verified: number };
-}
-
-export interface UpdateProgrammeTaskInput {
-  version: number;
-  name?: string;
-  durationDays?: number;
-  isMilestone?: boolean;
-  basis?: string;
-  outlineLevel?: number;
-  /** Target position in the list; the server renumbers everything else. */
-  sort?: number;
-  predecessors?: ProgrammeDependency[];
-}
-
-export interface CreateProgrammeTaskInput {
-  name: string;
-  durationDays: number;
-  isMilestone?: boolean;
-  basis?: string;
-  outlineLevel?: number;
-  afterTaskId?: string;
-  predecessors?: ProgrammeDependency[];
-}
+export * from "./precon-row-types";
+export * from "./precon-types";
+export { preconRowsApi } from "./precon-rows";
+export { preconGeometryApi } from "./precon-geometry";
 
 export const preconApi = {
   listSessions: (proposalId?: string) =>
@@ -407,41 +82,8 @@ export const preconApi = {
 
   snapshot: (sessionId: string) => api.get<PreconSnapshot>(`/precon/sessions/${sessionId}`).then((r) => r.data),
 
-  createBill: (sessionId: string, title: string) =>
-    api.post<PreconBill>(`/precon/sessions/${sessionId}/bills`, { title }).then((r) => r.data),
-
-  renameBill: (billId: string, title: string) =>
-    api.patch<PreconBill>(`/precon/bills/${billId}`, { title }).then((r) => r.data),
-
-  deleteBill: (billId: string) => api.delete(`/precon/bills/${billId}`).then((r) => r.data),
-
-  createRow: (billId: string, input: CreateRowInput) =>
-    api.post<PreconBoqRow>(`/precon/bills/${billId}/rows`, input).then((r) => r.data),
-
-  deleteRow: (rowId: string) => api.delete(`/precon/rows/${rowId}`).then((r) => r.data),
-
-  updateRow: (rowId: string, input: UpdateRowInput) =>
-    api.patch<PreconBoqRow>(`/precon/rows/${rowId}`, input).then((r) => r.data),
-
-  verifyRow: (rowId: string, version: number) =>
-    api.post<PreconBoqRow>(`/precon/rows/${rowId}/verify`, { version }).then((r) => r.data),
-
-  rejectRow: (rowId: string, version: number) =>
-    api.post<PreconBoqRow>(`/precon/rows/${rowId}/reject`, { version }).then((r) => r.data),
-
-  updateGeometry: (
-    rowId: string,
-    input: { version: number; kind: PreconGeometryKind; vertices: number[][]; sheetId?: string },
-  ) => api.put<PreconBoqRow>(`/precon/rows/${rowId}/geometry`, input).then((r) => r.data),
-
-  addDeduction: (
-    rowId: string,
-    input: { version: number; label: string; vertices: number[][]; sheetId?: string },
-  ) => api.post<PreconBoqRow>(`/precon/rows/${rowId}/deductions`, input).then((r) => r.data),
-
-  /** WS-M1B: a line drawn by hand becomes a verified manual bill row with its geometry. */
-  createMeasurement: (sessionId: string, body: CreateMeasurementBody) =>
-    api.post<CreateMeasurementResult>(`/precon/sessions/${sessionId}/measurements`, body).then((r) => r.data),
+  ...preconRowsApi,
+  ...preconGeometryApi,
 
   updateSettings: (sessionId: string, patch: Partial<PreconSummarySettings>) =>
     api.patch<PreconSummarySettings>(`/precon/sessions/${sessionId}/settings`, patch).then((r) => r.data),
@@ -489,43 +131,25 @@ export const preconApi = {
       .then((r) => r.data),
 };
 
-// ---- take-off → estimate (WS-3) ----
-
-export type ApplyMode = "preview" | "apply";
-export type ApplyChange = "added" | "changed" | "removed" | "unchanged";
-
-export interface ApplyPreviewItem {
-  groupLabel: string;
-  description: string;
-  qty: number;
-  unit: string;
-  unitRate: number;
-  boqItemId: string | null;
-  takeoffSessionId: string | null;
-  change: ApplyChange;
-  previous?: { qty: number; unit: string; description: string };
-}
-
-export interface ApplyPreview {
-  added: number;
-  changed: number;
-  removed: number;
-  unchanged: number;
-  items: ApplyPreviewItem[];
-  written?: number;
-}
-
 export const preconApplyApi = {
-  applyToEstimate: (sessionId: string, estimateId: string, mode: ApplyMode) =>
+  /** Writes nothing; returns the diff plus the pin material (fingerprints, expectedRows, review). */
+  previewApply: (sessionId: string, estimateId: string) =>
     api
-      .post<ApplyPreview>(`/precon/sessions/${sessionId}/apply-to-estimate`, { estimateId, mode })
+      .post<ApplyPreview>(`/precon/sessions/${sessionId}/apply-to-estimate`, { estimateId, mode: "preview" })
+      .then((r) => r.data),
+
+  /**
+   * Applies EXACTLY the previewed state: all four pins are required and must
+   * echo the stored preview (400 when any is missing, 409 on any drift —
+   * nothing is written in either case).
+   */
+  applyPinned: (sessionId: string, estimateId: string, pins: ApplyPins) =>
+    api
+      .post<ApplyPreview>(`/precon/sessions/${sessionId}/apply-to-estimate`, { estimateId, mode: "apply", ...pins })
       .then((r) => r.data),
 };
 
 // ---- WS-M1C · manual take-off entry points and CSV export ----
-/** Who draws the lines: the engine ("ai", the default) or a person ("manual"). */
-export const TAKEOFF_MODES = ["ai", "manual"] as const;
-export type TakeoffMode = (typeof TAKEOFF_MODES)[number];
 
 export const preconManualApi = {
   /**
@@ -541,65 +165,7 @@ export const preconManualApi = {
     api.get(`/precon/sessions/${sessionId}/export.csv`, { responseType: "blob" }).then((r) => r.data as Blob),
 };
 
-// ---- manual measurements (WS-M1B; body defined by WS-M1A in pdf-takeoff/types.ts) ----
-
-export const MEASURE_TOOLS = ["length", "polyline", "area", "count", "volume", "wall_area"] as const;
-export type MeasureTool = (typeof MEASURE_TOOLS)[number];
-
-export interface CreateMeasurementBody {
-  sheetId: string;
-  tool: MeasureTool;
-  /** Sheet points, the same space the viewer sends to `PUT /precon/rows/:rowId/geometry`. */
-  vertices: number[][];
-  description: string;
-  elementGroup: string;
-  code?: string;
-  /** Defaults by tool: length/polyline m, area m2, count nr, volume m3, wall_area m2. */
-  unit?: string;
-  /** wall_area needs heightM, volume needs depthM. */
-  factor?: { heightM?: number; depthM?: number };
-  /** × identical floors or areas; stated in the basis. Default 1. */
-  typical?: number;
-  rate?: number;
-}
-
-export interface CreateMeasurementResult {
-  row: PreconBoqRow;
-  geometry: PreconGeometry;
-}
-
 // ---- WS-M2B · viewer tools: typical, viewports, room fill, find symbol ----
-// Shapes come from scratchpad/CONTRACT-MANUAL-2.md (WS-M2A builds the endpoints).
-
-/** A window on a details sheet with its own scale; `rect` is [x1, y1, x2, y2] in sheet points. */
-export interface SheetViewport {
-  id: string;
-  label: string;
-  rect: [number, number, number, number];
-  scaleMmPerPt: number;
-}
-
-// Interface merging: the sheet and row DTOs gain the M2 columns without
-// touching their declarations above (this file is append-only for streams).
-export interface PreconSheet {
-  viewports?: SheetViewport[] | null;
-}
-export interface PreconBoqRow {
-  /** × identical floors or areas: net = (gross − deductions) × typical. */
-  typical?: number;
-}
-
-export interface RoomAtResult {
-  vertices: number[][];
-  label: string | null;
-  areaM2: number;
-}
-
-export interface SymbolMatchesResult {
-  points: number[][];
-  name: string | null;
-  count: number;
-}
 
 export const preconViewerApi = {
   /** The enclosed space around a point, or 404 "No enclosed space here" / 422 on a picture. */
@@ -617,53 +183,6 @@ export const preconViewerApi = {
   updateViewports: (sheetId: string, viewports: SheetViewport[]) =>
     api.patch<PreconSheet>(`/precon/sheets/${sheetId}`, { viewports }).then((r) => r.data),
 };
-
-// ---- WS-M3B · assemblies, presence and focus (endpoints built by WS-M3A) ----
-
-/** One line an assembly puts in the bill per drawn quantity: qty = base × factor. */
-export interface AssemblyItem {
-  description: string;
-  unit: string;
-  factor: number;
-  elementGroup: string;
-  rateId: string | null;
-  code: string | null;
-}
-
-/** An org-level recipe: draw one shape, get every line the trade prices with it. */
-export interface Assembly {
-  id: string;
-  orgId: string;
-  name: string;
-  /** The unit the drawn base quantity is in (m, m2, nr…). */
-  unit: string;
-  elementGroup: string;
-  items: AssemblyItem[];
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface UpsertAssemblyInput {
-  name: string;
-  unit: string;
-  elementGroup: string;
-  items: AssemblyItem[];
-}
-
-/** `CreateMeasurementBody` without the description: the assembly names each line. */
-export type CreateAssemblyMeasurementBody = Omit<CreateMeasurementBody, "description"> & { assemblyId: string };
-
-export interface CreateAssemblyMeasurementResult {
-  rows: PreconBoqRow[];
-  geometry: PreconGeometry;
-}
-
-/** Who is on the session right now and, if they have one selected, which bill row. */
-export interface PresenceUser {
-  id: string;
-  name: string;
-  rowId: string | null;
-}
 
 export const preconAssembliesApi = {
   list: () => api.get<Assembly[]>("/precon/assemblies").then((r) => r.data),

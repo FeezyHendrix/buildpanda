@@ -15,6 +15,7 @@ import type {
   RfiDistributionRow,
   RfiEvent,
   RfiEventRow,
+  RfiListFilters,
   RfiPriority,
   RfiRow,
   RfiStatus,
@@ -228,7 +229,7 @@ export function rfisService(
   return {
     async list(
       projectId: string,
-      filter: { status?: RfiStatus; ballInCourtId?: string; sharedOnly?: boolean },
+      filter: RfiListFilters,
     ): Promise<Rfi[]> {
       const rows = await repository.listByProject(projectId, filter);
       const counts = await repository.commentCounts(rows.map((r) => r.id));

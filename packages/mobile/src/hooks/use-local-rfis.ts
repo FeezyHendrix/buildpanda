@@ -1,11 +1,15 @@
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { useMemo } from "react";
-import type { RfiStatusTransition, UpsertRfiInput } from "@/api/rfis";
+import { useEffect, useMemo } from "react";
+import { rfisApi, type RfiStatusTransition, type UpsertRfiInput } from "@/api/rfis";
 import type { Db } from "@/db/client";
 import { flushOutbox } from "@/db/outbox";
 import { useLocalDb } from "@/db/provider";
 import { rfisRepository, toRfi } from "@/db/rfis-repository";
 import { useFieldSession } from "@/lib/field-session";
+import { useSyncState } from "@/lib/sync-provider";
+import { useStageScope } from "@/lib/stage-scope";
+import { usePersistentQuery } from "@/lib/persistent-query";
+import { useLocalChangeRequests } from "./use-local-change-requests";
 
 /**
  * RFIs straight from SQLite.
@@ -16,19 +20,44 @@ import { useFieldSession } from "@/lib/field-session";
  * project so an unrelated write doesn't re-render this list.
  */
 export function useLocalRfis(db: Db, projectId: string) {
+  const { isOnline } = useSyncState();
+  const { stageId } = useStageScope();
+  const { storageOwnerId } = useFieldSession();
+  const changes = useLocalChangeRequests(db, projectId, false);
+  const stageRfis = usePersistentQuery({
+    queryKey: ["rfis", projectId, "stage", stageId ?? "all"], ownerId: storageOwnerId,
+    queryFn: () => rfisApi.list(projectId, stageId), enabled: Boolean(stageId) && isOnline,
+  });
   const query = useMemo(() => rfisRepository.listQuery(db, projectId), [db, projectId]);
-  const live = useLiveQuery(query);
-  const data = useMemo(() => (live.data ?? []).map(toRfi), [live.data]);
-  return { data, isPending: live.data === undefined };
+  const live = useLiveQuery(query, [query]);
+  useEffect(() => {
+    if (!isOnline) return;
+    let cancelled = false;
+    rfisApi.list(projectId)
+      .then((rows) => {
+        if (!cancelled) return rfisRepository.upsertFromServer(db, projectId, rows);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [db, projectId, isOnline]);
+  const data = useMemo(() => {
+    const serverIds = new Set(stageRfis.data?.map((rfi) => rfi.id));
+    const changeStages = new Map(changes.data.map((change) => [change.id, change.stageId]));
+    return (live.data ?? []).map(toRfi).filter((row) => !stageId ||
+      (row.changeRequestId && changeStages.has(row.changeRequestId)
+        ? changeStages.get(row.changeRequestId) === stageId
+        : serverIds.has(row.id)));
+  }, [live.data, stageId, changes.data, stageRfis.data]);
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
 /** One RFI from SQLite; `null` once the query has run and found nothing. */
 export function useLocalRfi(db: Db, id: string) {
   const query = useMemo(() => rfisRepository.byIdQuery(db, id), [db, id]);
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
   const row = live.data?.[0];
   const data = useMemo(() => (row ? toRfi(row) : null), [row]);
-  return { data, isPending: live.data === undefined };
+  return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
 /**
@@ -38,7 +67,7 @@ export function useLocalRfi(db: Db, id: string) {
  */
 export function useLocalRfiForMarkup(db: Db, markupId: string) {
   const query = useMemo(() => rfisRepository.bySourceMarkupQuery(db, markupId), [db, markupId]);
-  const live = useLiveQuery(query);
+  const live = useLiveQuery(query, [query]);
   const row = live.data?.[0];
   return useMemo(() => (row ? toRfi(row) : null), [row]);
 }

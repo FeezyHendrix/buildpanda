@@ -15,7 +15,7 @@ import {
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "../config/index.ts";
-import { ServiceUnavailableError } from "./errors.ts";
+import { NotFoundError, ServiceUnavailableError } from "./errors.ts";
 import { generateId } from "./ids.ts";
 
 /**
@@ -52,6 +52,7 @@ export async function throughStorage<T>(operation: () => Promise<T>, message: st
   try {
     return await operation();
   } catch (error) {
+    if (error instanceof Error && error.name === "NoSuchKey") throw new NotFoundError("File");
     if (isStorageOutage(error)) throw new ServiceUnavailableError(message, "storage_unavailable");
     throw error;
   }

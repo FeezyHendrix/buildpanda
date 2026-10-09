@@ -15,7 +15,7 @@ import {
 // On a phone the drawing gets the screen and the controls are summoned. A
 // resident toolbar above the sheet costs a band of the plan on every screen,
 // so the rail floats over the drawing and folds away to a single button.
-// The tools are the web's (plan-review-toolbar.tsx) minus its mouse-only
+// The visible tools follow the web's simplified plan-review toolbar, minus its mouse-only
 // Select: a tap in Pan already opens a markup here.
 
 type Icon = keyof typeof Ionicons.glyphMap;
@@ -24,7 +24,6 @@ const TOOLS: { key: SheetTool; icon: Icon; label: string }[] = [
   { key: SHEET_TOOL.PAN, icon: "move-outline", label: "Pan" },
   { key: SHEET_TOOL.COMMENT, icon: "chatbubble-ellipses-outline", label: "Comment" },
   { key: SHEET_TOOL.PEN, icon: "pencil-outline", label: "Pen" },
-  { key: SHEET_TOOL.CLOUD, icon: "cloud-outline", label: "Cloud" },
   { key: SHEET_TOOL.MEASURE, icon: "resize-outline", label: "Measure" },
 ];
 

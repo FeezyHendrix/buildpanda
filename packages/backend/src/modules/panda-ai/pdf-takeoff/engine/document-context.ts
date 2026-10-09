@@ -14,7 +14,8 @@ export const DEFAULT_WINDOW_HEIGHT_M = 1.2;
 
 export interface DocumentContext {
   storeyHeightM: number;
-  storeyHeightBasis: "level-marks" | "assumed";
+  storeyHeightBasis: "level-marks" | "drawing-note" | "assumed";
+  storeyHeightSource?: string;
   levelMarksMm: number[];
   windowHeightM: number;
   windowHeightBasis: "elevation" | "assumed";
@@ -26,6 +27,7 @@ export interface ContextPage {
   texts: TextRun[];
   segments: Segment[];
   mmPerPt: number | null;
+  source?: string;
 }
 
 export const ASSUMED_CONTEXT: DocumentContext = {
@@ -47,7 +49,7 @@ export function levelMarks(texts: TextRun[]): number[] {
   const out = new Set<number>();
   for (const t of texts) {
     const m = parseLevelMark(t.str);
-    if (m && Math.abs(m.mm) >= 100) out.add(m.mm);
+    if (m) out.add(m.mm);
   }
   return [...out].sort((a, b) => a - b);
 }
@@ -80,10 +82,15 @@ const WINDOW_H_MM: [number, number] = [500, 2500];
 
 // Window outlines on an elevation are upright rectangles of window size; the
 // modal height is what the plan's window deductions use.
-export function windowHeightFromElevations(pages: ContextPage[], fallbackMmPerPt: number | null, storeyHeightM: number | null): number | null {
+export function windowHeightFromElevations(pages: ContextPage[], _fallbackMmPerPt: number | null, storeyHeightM: number | null): number | null {
   const heights: number[] = [];
   for (const page of pages) {
-    const mmPerPt = page.mmPerPt ?? fallbackMmPerPt;
+    // Floor-plan rectangles include doors, furniture and rooms. Only a
+    // calibrated elevation can establish a vertical opening dimension; a
+    // scale on another drawing is not evidence of this drawing's scale.
+    const titles = page.texts.map((t) => t.str).join(" ");
+    if (!/elevation/i.test(titles) || /floor\s*plan|roof\s*plan/i.test(titles)) continue;
+    const mmPerPt = page.mmPerPt;
     if (!mmPerPt) continue;
     for (const r of closedRects(page.segments, mmPerPt)) {
       if (r.wMm < WINDOW_W_MM[0] || r.wMm > WINDOW_W_MM[1] || r.hMm < WINDOW_H_MM[0] || r.hMm > WINDOW_H_MM[1]) continue;
@@ -97,14 +104,29 @@ export function windowHeightFromElevations(pages: ContextPage[], fallbackMmPerPt
 }
 
 export function buildDocumentContext(pages: ContextPage[]): DocumentContext {
-  const levels = levelMarks(pages.flatMap((p) => p.texts));
-  const storey = storeyHeightFromLevels(levels);
-  const calibrated = pages.map((p) => p.mmPerPt).filter((v): v is number => v !== null);
-  const fallback = mode(calibrated, 0.001);
-  const windowHeight = windowHeightFromElevations(pages, fallback, storey);
+  const texts = pages.flatMap((p) => p.texts);
+  const levels = levelMarks(texts);
+  const storeyFromLevels = storeyHeightFromLevels(levels);
+  const stated = new Set<number>();
+  for (const { str } of texts) {
+    const match = str.match(/\b(?:typical\s+)?(?:storey|story|floor[ -]to[ -]floor)\s+height\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(mm|m)\b/i);
+    if (!match) continue;
+    const height = Number(match[1]) * (match[2]!.toLowerCase() === "mm" ? 0.001 : 1);
+    if (height >= 2.4 && height <= 4.5) stated.add(height);
+  }
+  // A single explicit height can replace an assumption. Differing heights
+  // need allocation by floor, so do not pick the first note encountered.
+  const statedHeight = stated.size === 1 ? [...stated][0]! : null;
+  const storey = storeyFromLevels ?? statedHeight;
+  const windowHeight = windowHeightFromElevations(pages, null, storey);
+  const sources = pages.filter((page) => storeyFromLevels !== null
+    ? levelMarks(page.texts).length > 0
+    : statedHeight !== null && page.texts.some((t) => /(?:storey|story|floor[ -]to[ -]floor)\s+height/i.test(t.str)))
+    .flatMap((page) => page.source ? [page.source] : []);
   return {
     storeyHeightM: storey ?? DEFAULT_STOREY_HEIGHT_M,
-    storeyHeightBasis: storey === null ? "assumed" : "level-marks",
+    storeyHeightBasis: storeyFromLevels !== null ? "level-marks" : statedHeight !== null ? "drawing-note" : "assumed",
+    storeyHeightSource: [...new Set(sources)].join("; ") || undefined,
     levelMarksMm: levels,
     windowHeightM: windowHeight ?? DEFAULT_WINDOW_HEIGHT_M,
     windowHeightBasis: windowHeight === null ? "assumed" : "elevation",

@@ -1,3 +1,4 @@
+import { settleOutboxItem } from "./sync-write-state";
 import { eq } from "drizzle-orm";
 import { activitiesApi } from "@/api/activities";
 import { dailyLogsApi, isWeatherCondition } from "@/api/daily-logs";
@@ -32,11 +33,7 @@ async function pushDailyLog(db: Db, item: OutboxRow): Promise<OutboxHandlerResul
     summary: day.summary,
     buildingId: day.buildingId,
   });
-  await db
-    .update(dailyLogs)
-    .set({ isPendingSync: false, serverLastSyncedAt: Date.now() })
-    .where(eq(dailyLogs.id, day.id));
-  await db.delete(outbox).where(eq(outbox.id, item.id));
+  settleOutboxItem(db, item);
   return done(true);
 }
 
@@ -60,11 +57,7 @@ async function pushDailyLogActivity(db: Db, item: OutboxRow): Promise<OutboxHand
     });
   }
 
-  await db
-    .update(dailyLogActivities)
-    .set({ isPendingSync: false })
-    .where(eq(dailyLogActivities.id, logged.id));
-  await db.delete(outbox).where(eq(outbox.id, item.id));
+  settleOutboxItem(db, item);
   return done(true);
 }
 
@@ -86,9 +79,9 @@ async function pushDailyLogEntry(db: Db, item: OutboxRow): Promise<OutboxHandler
     entry.bodyText,
     entry.buildingId,
   );
-  await db.transaction(async (tx) => {
-    await tx.delete(dailyLogEntries).where(eq(dailyLogEntries.id, entry.id));
-    await tx.insert(dailyLogEntries).values({
+  await db.transaction((tx) => {
+    tx.delete(dailyLogEntries).where(eq(dailyLogEntries.id, entry.id)).run();
+    tx.insert(dailyLogEntries).values({
       id: server.id,
       projectId: item.projectId,
       logDate: entry.logDate,
@@ -99,7 +92,7 @@ async function pushDailyLogEntry(db: Db, item: OutboxRow): Promise<OutboxHandler
       voided: server.voided,
       createdAt: Date.parse(server.createdAt) || Date.now(),
       isPendingSync: false,
-    });
+    }).run();
   });
   await db.delete(outbox).where(eq(outbox.id, item.id));
   return done(true);

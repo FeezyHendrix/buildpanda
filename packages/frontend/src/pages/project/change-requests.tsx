@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { ClipboardIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { ClipboardIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs, VIEW_MODE_ITEMS } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -26,6 +26,8 @@ import {
   assigneeFooter,
 } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { useParticipants } from "@/hooks/use-participants";
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import {
@@ -67,6 +69,7 @@ const BOARD_ACTION: Partial<Record<ChangeStatus, ChangeAction>> = {
 
 export default function ProjectChangeRequests() {
   const { project, access } = useProjectContext();
+  const { selectedStageId, setSelectedStageId } = useStageScope();
   const canManage = canResourceAction(access, "change-requests", "manage");
   const [filter, setFilter] = useState<ChangeStatus | "all">("all");
   const [typeFilter, setTypeFilter] = useState<ChangeTypeFilter>("all");
@@ -94,8 +97,8 @@ export default function ProjectChangeRequests() {
 
   // The type filter is a client-side read of the loaded register: a QS wants
   // variations, omissions, time claims and provisional sums apart.
-  const shown = items.filter((cr) => typeFilter === "all" || cr.type === typeFilter);
-  const filtering = filter !== "all" || typeFilter !== "all";
+  const shown = items.filter((cr) => matchesStage(cr.stageId, selectedStageId) && (typeFilter === "all" || cr.type === typeFilter));
+  const filtering = Boolean(selectedStageId) || filter !== "all" || typeFilter !== "all";
   const approvedCost = shown
     .filter((i) => i.status === "Approved" || i.status === "Executed")
     .reduce((s, i) => s + i.costImpact, 0);
@@ -155,10 +158,9 @@ export default function ProjectChangeRequests() {
         title="Change orders"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               New change order
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />
@@ -250,6 +252,7 @@ export default function ProjectChangeRequests() {
                       onClick: () => {
                         setFilter("all");
                         setTypeFilter("all");
+                        setSelectedStageId(undefined);
                       },
                     }
                   : undefined

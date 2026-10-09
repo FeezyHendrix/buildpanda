@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { estimateItemsService } from "./estimate-items-service.ts";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
 import { proposalTemplatesRepository } from "./templates-repository.ts";
@@ -51,7 +52,7 @@ const fromTemplateBody = {
 // /proposals/from-template paths take precedence over /proposals/:id anyway.
 const proposalTemplateRoutes: FastifyPluginAsync = async (fastify) => {
   const proposalsRepo = proposalsRepository(fastify.db);
-  const proposals = proposalsService(proposalsRepo);
+  const proposals = proposalsService(proposalsRepo, estimateItemsService(fastify.db));
   const service = proposalTemplatesService(proposalTemplatesRepository(fastify.db), proposalsRepo, {
     createProposal: (orgId, userId, input) => proposals.createProposal(orgId, userId, input),
     createEstimateRevision: (proposalId, orgId, userId, opts) =>

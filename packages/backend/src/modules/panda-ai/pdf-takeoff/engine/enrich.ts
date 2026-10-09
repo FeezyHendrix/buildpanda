@@ -55,9 +55,8 @@ export function buildAnchors(items: MeasuredBoqItem[]): Anchors {
   for (const item of items) {
     if (item.code === "F10/125") {
       anchors["wall_area_m2"] = (anchors["wall_area_m2"] ?? 0) + item.qty;
-      // wall area was measured as centreline x 2.7m assumed height, so the
-      // centreline is the same measurement expressed in metres
-      anchors["wall_centreline_m"] = Math.round(((anchors["wall_area_m2"] ?? 0) / 2.7) * 100) / 100;
+      const centreline = wallCentreline(item.measurementBasis);
+      if (centreline !== null) anchors["wall_centreline_m"] = (anchors["wall_centreline_m"] ?? 0) + centreline;
     } else if (item.code === "M10") {
       anchors["floor_area_m2"] = (anchors["floor_area_m2"] ?? 0) + item.qty;
     } else if (item.code === "L20") {
@@ -73,6 +72,15 @@ export function buildAnchors(items: MeasuredBoqItem[]): Anchors {
   return anchors;
 }
 
+function wallCentreline(basis: string): number | null {
+  // Net wall area is not a length: deductions and actual storey heights make
+  // division by an assumed 2.7m wrong. Only reuse an explicitly measured length.
+  const match = basis.match(/^([\d.]+)\s*m\s+centreline\b/i);
+  if (!match || /summed across|typical floors/i.test(basis)) return null;
+  const length = Number(match[1]);
+  return Number.isFinite(length) ? length : null;
+}
+
 // Rebuild the anchor set from live bill rows so derived formulas can be
 // re-evaluated after a QS edits a measured quantity in review.
 export function anchorsFromRows(rows: PreconBoqRowRow[]): Anchors {
@@ -82,6 +90,8 @@ export function anchorsFromRows(rows: PreconBoqRowRow[]): Anchors {
     const qty = Number(row.qty);
     if (row.code === "F10/125") {
       anchors["wall_area_m2"] = (anchors["wall_area_m2"] ?? 0) + qty;
+      const centreline = wallCentreline(row.measurement_basis ?? "");
+      if (centreline !== null) anchors["wall_centreline_m"] = (anchors["wall_centreline_m"] ?? 0) + centreline;
     } else if (row.code === "M10") {
       anchors["floor_area_m2"] = (anchors["floor_area_m2"] ?? 0) + qty;
     } else if (row.code === "L20") {
@@ -93,9 +103,6 @@ export function anchorsFromRows(rows: PreconBoqRowRow[]): Anchors {
       if (match) anchors[`window_${match[1]!.toUpperCase()}`] = qty;
       anchors["window_total"] = (anchors["window_total"] ?? 0) + qty;
     }
-  }
-  if (anchors["wall_area_m2"] !== undefined) {
-    anchors["wall_centreline_m"] = Math.round((anchors["wall_area_m2"] / 2.7) * 100) / 100;
   }
   return anchors;
 }
@@ -203,6 +210,7 @@ function agentMessages(brief: ElementBrief, anchors: Anchors, sheetContext: stri
         "  - group: 'preamble' is the unnumbered MATERIAL SPECIFICATION paragraph carrying kind/quality/mix/fixing (this is where the rich text lives); 'heading' is an optional short group caption ('Formwork - Plain formwork', 'Reinforcement', 'Door Sets').",
         "  - items: SHORT particulars only — thickness/location/size-band; the spec is NOT repeated. Consecutive similar items start with 'Ditto;'. Finishes split width bands: 'less or equal to 600mm wide' in m, 'over 600mm wide' in m2. besmmRef holds the item reference (e.g. '2.1.1', '34.1.1*2') when the template shows one.",
         "HARD RULES — violations make the output unusable:",
+        "Consult ALL supplied drawing pages and every named region, including sections, elevations, schedules, details and notes beside the plans. Match their element/type/detail references to the measured anchors. Stated project dimensions and specifications override template assumptions. Cite the supporting drawing page/detail in particulars; do not confuse drawing pages with BESMM refPages. A detail or elevation of an already measured element supplies information, not another quantity. Keep conflicting or unmatched details provisional and explain the conflict.",
         "1. NEVER output a number as a quantity. For each item choose basis:",
         '   - "anchor": quantity IS one measured anchor; set "anchor" to its exact name.',
         '   - "derived": quantity is a formula over anchor names and constants, e.g. "2 * wall_area_m2" or "wall_area_m2 * 0.012"; set "formula". Only derive relationships a QS would defend (render both faces, paint follows render, one frame per door).',

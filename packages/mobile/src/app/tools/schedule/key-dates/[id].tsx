@@ -1,8 +1,10 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { goBack } from "@/lib/navigation";
+import { useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
 import { DetailFields } from "@/components/molecules/schedule/detail-fields";
+import { BuildingLabel } from "@/components/molecules/building-label";
 import { Page } from "@/components/molecules/page";
 import { useKeyDates } from "@/hooks/use-key-dates";
 import { formatDate } from "@/lib/dates";
@@ -11,7 +13,7 @@ import { useFieldSession } from "@/lib/field-session";
 export default function KeyDateDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
-  const query = useKeyDates(projectId);
+  const query = useKeyDates(projectId, true, null);
 
   const record = useMemo(
     () => (query.data ?? []).find((row) => row.id === id),
@@ -19,13 +21,14 @@ export default function KeyDateDetail() {
   );
 
   return (
-    <Page title="Key date" onBack={() => router.back()}>
+    <Page title="Key date" onBack={() => goBack()}>
       {query.isPending && !record ? (
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>
       ) : record ? (
         <View className="gap-4">
+          <BuildingLabel buildingId={record.buildingId} />
           <Text weight="bold" className="text-lg">
             {record.label}
           </Text>

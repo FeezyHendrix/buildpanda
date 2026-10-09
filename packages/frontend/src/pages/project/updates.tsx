@@ -2,13 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
+import { QueryError } from "@/components/molecules/query-error";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
   UpsertUpdateDialog,
   type UpsertUpdateValues,
 } from "@/components/molecules/upsert-update-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
 import {
   useCreateUpdate,
   useGenerateAiDraft,
@@ -27,9 +31,10 @@ import {
 
 export default function ProjectUpdates() {
   const { project, access } = useProjectContext();
+  const { selectedStageId, setSelectedStageId } = useStageScope();
   const canPost = Boolean(access && canResourceAction(access, "updates", "post"));
   const canManage = canPost;
-  const { data: updates = [] } = useProjectUpdates(project.id);
+  const { data: updates = [], isPending, error, refetch } = useProjectUpdates(project.id, selectedStageId);
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [createOpen, setCreateOpen] = useState(false);
   const [focusDraftId, setFocusDraftId] = useState<string | null>(null);
@@ -73,6 +78,8 @@ export default function ProjectUpdates() {
       { projectId: project.id },
       {
         onSuccess: (draft) => {
+          setSelectedStageId(undefined);
+          setFilters(INITIAL_FILTERS);
           setFocusDraftId(draft.id);
           setAutoEditDraftId(draft.id);
         },
@@ -85,6 +92,8 @@ export default function ProjectUpdates() {
       { projectId: project.id },
       {
         onSuccess: (digest) => {
+          setSelectedStageId(undefined);
+          setFilters(INITIAL_FILTERS);
           setFocusDraftId(digest.id);
           setAutoEditDraftId(digest.id);
         },
@@ -116,9 +125,7 @@ export default function ProjectUpdates() {
                 <ReactSVG src={icons.report} />
                 Today's team digest
               </Button>
-              <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                New update
-              </Button>
+              <CreateButton onClick={() => setCreateOpen(true)}>New update</CreateButton>
             </>
           ) : null
         }
@@ -168,7 +175,7 @@ export default function ProjectUpdates() {
                 Published
               </h2>
             ) : null}
-            {published.length === 0 ? (
+            {isPending ? <Spinner /> : error ? <QueryError error={error} retry={refetch} noun="updates" /> : published.length === 0 ? (
               <Card padding="lg" className="text-center text-sm text-gray-500">
                 No updates match the current filters.
               </Card>
@@ -191,6 +198,10 @@ export default function ProjectUpdates() {
             contractors={contractors}
             onChange={updateFilter}
           />
+          <Button variant="ghost" className="mt-3" onClick={() => {
+            setFilters(INITIAL_FILTERS);
+            setSelectedStageId(undefined);
+          }}>Clear filters</Button>
         </div>
       </div>
     </div>

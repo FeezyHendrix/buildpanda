@@ -1,4 +1,5 @@
-import { router } from "expo-router";
+import { goBack } from "@/lib/navigation";
+
 import { useState } from "react";
 import { View } from "react-native";
 import { RFI_PRIORITIES, type RfiPriority } from "@/api/rfis";
@@ -53,7 +54,7 @@ export default function NewRfi() {
         ballInCourtId: ballInCourt.id,
         ballInCourtName: ballInCourt.name,
       });
-      router.back();
+      goBack();
     } catch (err) {
       setSaving(false);
       setError(err instanceof Error ? err.message : "Could not save this RFI.");
@@ -63,7 +64,7 @@ export default function NewRfi() {
   return (
     <Page
       title="New RFI"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={handleSubmit} disabled={!canSubmit} loading={saving}>
           Raise RFI

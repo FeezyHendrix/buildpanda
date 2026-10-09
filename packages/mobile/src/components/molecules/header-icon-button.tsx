@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { memo } from "react";
 import { Pressable } from "react-native";
 import { Spinner } from "@/components/atoms";
-import { ICON_INVERSE } from "@/constants/colors";
+import { ICON_DEFAULT } from "@/constants/colors";
 
 interface HeaderIconButtonProps {
   icon: React.ComponentProps<typeof Ionicons>["name"];
@@ -13,7 +13,7 @@ interface HeaderIconButtonProps {
   disabled?: boolean;
 }
 
-/** The only way to put an action in the blue header — keeps size and colour uniform. */
+/** The only way to put an action in the page header — keeps size and colour uniform. */
 export const HeaderIconButton = memo(function HeaderIconButton({
   icon,
   label,
@@ -29,10 +29,10 @@ export const HeaderIconButton = memo(function HeaderIconButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: blocked, busy }}
-      className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
+      className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
       style={blocked && !busy ? { opacity: 0.5 } : undefined}
     >
-      {busy ? <Spinner size="xs" tone="current" /> : <Ionicons name={icon} size={24} color={ICON_INVERSE} />}
+      {busy ? <Spinner size="xs" tone="brand" /> : <Ionicons name={icon} size={24} color={ICON_DEFAULT} />}
     </Pressable>
   );
 });

@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import type { StageListQuery } from "../../lib/stage-filter-types.ts";
 import { assertProjectPermission } from "../../lib/authorization.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
@@ -101,12 +102,19 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     materialsLedger: materialsLedgerService(materialsLedgerRepository(fastify.db)),
   });
 
-  fastify.get<{ Params: { id: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: StageListQuery }>(
     "/projects/:id/invoices",
-    { schema: { params: projectIdParams } },
+    { schema: {
+      params: projectIdParams,
+      querystring: {
+        type: "object",
+        additionalProperties: false,
+        properties: { stageId: { type: "string", minLength: 1, maxLength: 200 } },
+      },
+    } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "finances", "view");
-      return service.listByProject(project.id);
+      return service.listByProject(project.id, request.query.stageId);
     },
   );
 

@@ -23,6 +23,7 @@ export function changeCurrency(value: string): ChangeCurrency {
 }
 
 export interface ChangeRequest {
+  stageId?: string | null;
   id: string;
   title: string;
   description: string | null;
@@ -40,6 +41,7 @@ export interface ChangeRequest {
  * PATCH for that reason.
  */
 export interface UpsertChangeRequestInput {
+  stageId?: string | null;
   title: string;
   description?: string | null;
   descriptionHtml?: string | null;

@@ -15,11 +15,12 @@ export default function Activities() {
       title="Site activity"
       isPending={activities.isPending}
       isStale={activities.isStale}
-      isEmpty={data.length === 0}
+      key={projectId}
+      data={data}
+      fields={(activity) => [activity.name, activity.phaseName, activity.location, activity.status]}
       emptyTitle="Nothing scheduled"
       emptyBody="Site activities for this project will appear here."
-    >
-      {data.map((activity) => (
+      renderItem={(activity) => (
         <Pressable
           key={activity.id}
           onPress={() => router.push(`/tools/schedule/activities/${activity.id}` as never)}
@@ -27,7 +28,7 @@ export default function Activities() {
         >
           <ActivityRow activity={activity} />
         </Pressable>
-      ))}
-    </ScheduleListScreen>
+      )}
+    />
   );
 }

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_BRAND, ICON_FAINT, ICON_SUCCESS } from "@/constants/colors";
-import { DOCUMENT_GROUP, type LocalDocument } from "@/db/documents-repository";
+import type { LocalDocument } from "@/db/documents-repository";
+import { isReviewableFile } from "@/lib/reviewable-file";
 import { cn } from "@/lib/utils";
 
 function iconFor(fileName: string): React.ComponentProps<typeof Ionicons>["name"] {
@@ -29,6 +30,7 @@ export function DocumentFileRow({
   onOpen: (id: string) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const missingFile = !doc.currentVersionId && !doc.isPendingSync;
 
   async function handlePress() {
     if (doc.isPendingSync) {
@@ -41,11 +43,13 @@ export function DocumentFileRow({
     setBusy(true);
     try {
       await onOpen(doc.id);
+    } catch {
+      return; // The browser shows the download error beside the file list.
     } finally {
       setBusy(false);
     }
     router.push(
-      (doc.group === DOCUMENT_GROUP.PLAN
+      (isReviewableFile(doc.fileName)
         ? `/tools/plan-review?documentId=${doc.id}`
         : `/tools/documents/${doc.id}`) as never,
     );
@@ -54,7 +58,7 @@ export function DocumentFileRow({
   return (
     <Pressable
       onPress={handlePress}
-      disabled={busy}
+      disabled={busy || missingFile}
       accessibilityRole="button"
       className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt"
     >
@@ -67,18 +71,28 @@ export function DocumentFileRow({
         </Text>
         <View className="flex-row items-center gap-2 pt-0.5">
           <Text tone="secondary" className="text-xs">
-            {[doc.category, doc.size, doc.versionNo > 0 ? `v${doc.versionNo}` : null].filter(Boolean).join(" · ")}
+            {[doc.size, doc.versionNo > 0 ? `v${doc.versionNo}` : null].filter(Boolean).join(" · ")}
           </Text>
           {doc.status ? (
             <View
               className={cn(
                 "rounded-full px-1.5 py-0.5",
-                doc.status === "Verified" ? "bg-success-50" : doc.status === "Expired" ? "bg-error-50" : "bg-surface-alt",
+                doc.status === "Verified"
+                  ? "bg-success-50"
+                  : doc.status === "Expired"
+                    ? "bg-error-50"
+                    : "bg-surface-alt",
               )}
             >
               <Text
                 weight="semibold"
-                tone={doc.status === "Verified" ? "brand" : doc.status === "Expired" ? "danger" : "secondary"}
+                tone={
+                  doc.status === "Verified"
+                    ? "brand"
+                    : doc.status === "Expired"
+                      ? "danger"
+                      : "secondary"
+                }
                 className="text-[9px] uppercase"
               >
                 {doc.status}
@@ -86,8 +100,15 @@ export function DocumentFileRow({
             </View>
           ) : null}
         </View>
+        <Text tone="secondary" className="pt-1 text-xs">
+          {missingFile
+            ? "No file attached"
+            : doc.isAvailableOffline || doc.stagedUri
+              ? "Available offline"
+              : "Not downloaded yet"}
+        </Text>
       </View>
-      {doc.isPendingSync ? (
+      {missingFile ? null : doc.isPendingSync ? (
         <PendingBadge />
       ) : busy ? (
         <Spinner size="xs" />

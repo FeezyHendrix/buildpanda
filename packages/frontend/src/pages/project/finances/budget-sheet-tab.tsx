@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { useStages } from "@/hooks/use-stages";
 import { formatCurrency } from "@/lib/formatters";
 import { Money } from "@/lib/money";
@@ -24,7 +26,9 @@ export function BudgetSheetTab() {
   const canBill = canResourceAction(access, "finances", "manage");
   // Cost columns are the contractor's internal position, never the client's.
   const showCosts = access?.capabilities?.canViewCosts ?? false;
-  const { data: stages = [] } = useStages(project.id);
+  const { selectedStageId } = useStageScope();
+  const { data: allStages = [] } = useStages(project.id);
+  const stages = allStages.filter((stage) => matchesStage(stage.id, selectedStageId));
 
   const [valueTarget, setValueTarget] = useState<Stage | null>(null);
   const [scheduleTarget, setScheduleTarget] = useState<Stage | null>(null);
@@ -51,7 +55,7 @@ export function BudgetSheetTab() {
         <KpiCard
           label="Scheduled contract value"
           value={formatCurrency(totals.value.round().toNumber(), project.currency)}
-          helper="Across every phase on this build"
+          helper={selectedStageId ? "For the selected build stage" : "Across every phase on this build"}
         />
         <KpiCard
           label="Phases priced"

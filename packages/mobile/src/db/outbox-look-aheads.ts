@@ -1,8 +1,9 @@
+import { settleOutboxItem } from "./sync-write-state";
 import { eq } from "drizzle-orm";
 import { lookAheadsApi } from "@/api/look-aheads";
 import type { Db } from "./client";
 import { lookAheadsRepository, parseActivityIds } from "./look-aheads-repository";
-import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
+import { done, skipped, PermanentOutboxError, type OutboxHandlerResult } from "./outbox-handler";
 import { outbox, type OutboxRow } from "./schema";
 
 export async function pushLookAheadOutboxItem(
@@ -23,26 +24,28 @@ export async function pushLookAheadOutboxItem(
     return done(false);
   }
 
-  if (item.operation === "update") {
-    // KNOWN LIMITATION: the PATCH takes assign/unassign deltas, but the device
-    // only holds the list as it stands now, not the list the server last had
-    // — the outbox carries no payload and fetching the server copy before a
-    // push is not allowed offline-first. So an edit pushes the whole local
-    // list as assignments and never unassigns; the server treats an already
-    // assigned activity as a no-op. Removing an activity from the window
-    // therefore sticks locally only until the next pull restores it. Taking
-    // an activity out of a look-ahead is done on the web.
-    await lookAheadsApi.update(item.projectId, row.id, {
-      name: row.name,
-      description: row.description,
-      startDate: row.startDate,
-      endDate: row.endDate,
-      totalWorkers: row.totalWorkers,
-      assignActivityIds: parseActivityIds(row.activityIds),
-      unassignActivityIds: [],
-    });
-    await lookAheadsRepository.markSynced(db, row.id);
-    await db.delete(outbox).where(eq(outbox.id, item.id));
+  if (item.operation === "update" || item.operation === "set-activities") {
+    if (item.operation === "set-activities") {
+      // The device can edit offline. Resolve the API's assignment deltas only
+      // when syncing, so removing an activity also reaches the server.
+      const current = (await lookAheadsApi.list(item.projectId)).find((entry) => entry.id === row.id);
+      if (!current) throw new PermanentOutboxError("This look ahead no longer exists on the server.");
+      const wanted = new Set(parseActivityIds(row.activityIds));
+      const assigned = new Set(current.activities.map((activity) => activity.activityId));
+      await lookAheadsApi.update(item.projectId, row.id, {
+        assignActivityIds: [...wanted].filter((id) => !assigned.has(id)),
+        unassignActivityIds: [...assigned].filter((id) => !wanted.has(id)),
+      });
+    } else {
+      await lookAheadsApi.update(item.projectId, row.id, {
+        name: row.name,
+        description: row.description,
+        startDate: row.startDate,
+        endDate: row.endDate,
+        totalWorkers: row.totalWorkers,
+      });
+    }
+    settleOutboxItem(db, item);
     return done(true);
   }
 

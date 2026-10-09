@@ -4,7 +4,8 @@ import type { PricedAssembly } from "../../rate-library/types.ts";
 import type { PreconRepository } from "./repository.ts";
 import type { manualService } from "./manual-service.ts";
 import { applyTypical, measureVertices, normaliseTypical } from "./measurements.ts";
-import { scaleAt, scaleClause } from "./viewports.ts";
+import { isScaleFree, mmPerPtOf, scaleClause, scaleForTool } from "./viewports.ts";
+import { measurementDefinition } from "./measurement-definition.ts";
 import type { AssemblyMeasurementResult, CreateAssemblyMeasurementBody, ManualQuantity, MeasureTool, PreconGeometryRow } from "./types.ts";
 
 interface Deps {
@@ -54,11 +55,13 @@ export function assemblyMeasurement({ repo, manual, loadAssembly }: Deps) {
       if (!session) throw new NotFoundError("Preconstruction session");
       const sheet = await repo.sheetById(body.sheetId);
       if (!sheet || sheet.session_id !== sessionId) throw new NotFoundError("Sheet");
-      if (!sheet.scale_mm_per_pt) throw new BadRequestError("Set the sheet scale first");
+      // Counting through an assembly is still counting: contract 24 names the
+      // assembly count path explicitly as one that must not require a scale.
+      if (!isScaleFree(body.tool) && !sheet.scale_mm_per_pt) throw new BadRequestError("Set the sheet scale first");
       const typical = normaliseTypical(body.typical);
       // the viewport under the first vertex sets the scale, else the sheet does
-      const pick = scaleAt(sheet, body.vertices);
-      const q = measureVertices(body.tool, body.vertices, pick.mmPerPt, body.factor);
+      const pick = scaleForTool(sheet, body.tool, body.vertices);
+      const q = measureVertices(body.tool, body.vertices, mmPerPtOf(pick), body.factor);
       assertAssemblyUnit(assembly, q, body.tool);
       const sheetCode = sheet.code ?? sheet.title ?? sheet.file_name;
       const measured = `${q.gross} ${q.unit} ${body.tool.replace("_", " ")} on ${sheetCode}${scaleClause(sheet, pick)}`;
@@ -86,6 +89,10 @@ export function assemblyMeasurement({ repo, manual, loadAssembly }: Deps) {
           actor,
         );
         rows.push(row);
+        // Each output line gets its OWN shape carrying its OWN frozen snapshot of
+        // the assembly item. That independence is the existing contract (4): a
+        // later edit to one line must not reach its siblings, and a later edit to
+        // the rate library must not restate any of them.
         geometries.push({
           id: generateId("pgeo"),
           row_id: row.id,
@@ -95,6 +102,13 @@ export function assemblyMeasurement({ repo, manual, loadAssembly }: Deps) {
           source: "manual",
           quantity: q.base,
           unit: q.baseUnit,
+          definition: measurementDefinition(body.tool, body.vertices, body.factor ?? {}, sheet, pick, {
+            assemblyId: assembly.id,
+            assemblyName: assembly.name,
+            factor: item.factor,
+            unit: item.unit,
+            description: item.description,
+          }),
         });
       }
       await repo.insertGeometries(geometries);

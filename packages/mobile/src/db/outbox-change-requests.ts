@@ -1,3 +1,4 @@
+import { settleOutboxItem } from "./sync-write-state";
 import { eq } from "drizzle-orm";
 import { changeCurrency, changeRequestsApi, changeStatus } from "@/api/change-requests";
 import type { Db } from "./client";
@@ -25,6 +26,9 @@ export async function pushChangeRequestOutboxItem(
 
   const status = changeStatus(row.status);
   const fields = {
+    // Older offline rows did not cache the stage. Do not clear a server
+    // assignment when replaying an edit that was queued before this upgrade.
+    ...(row.stageId ? { stageId: row.stageId } : {}),
     title: row.title,
     description: row.description,
     descriptionHtml: row.descriptionHtml,
@@ -36,8 +40,7 @@ export async function pushChangeRequestOutboxItem(
 
   if (item.operation === "update") {
     await changeRequestsApi.update(item.projectId, row.id, { ...fields, status });
-    await changeRequestsRepository.markSynced(db, row.id);
-    await db.delete(outbox).where(eq(outbox.id, item.id));
+    settleOutboxItem(db, item);
     return done(true);
   }
 
@@ -49,8 +52,10 @@ export async function pushChangeRequestOutboxItem(
   // on the server. A request submitted on site before it had signal is moved
   // on by a queued update against the new id — queued, not sent inline, so a
   // drop between the two calls retries the PATCH rather than the POST.
-  if (status !== server.status) {
-    await changeRequestsRepository.updateLocal(db, item.projectId, server.id, { status });
+  const latest = await changeRequestsRepository.findById(db, server.id);
+  const desiredStatus = latest?.isPendingSync ? changeStatus(latest.status) : status;
+  if (latest && desiredStatus !== server.status) {
+    await changeRequestsRepository.updateLocal(db, item.projectId, server.id, { status: desiredStatus });
   }
   return done(true);
 }

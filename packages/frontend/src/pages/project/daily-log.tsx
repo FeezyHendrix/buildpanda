@@ -1,16 +1,19 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { DateRangeFilter, formatDateRangeLabel } from "@/components/molecules/date-range-filter";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
+import { QueryError } from "@/components/molecules/query-error";
 import { DailyReportDialog } from "@/components/molecules/daily-report-dialog";
 import { UpsertDailyLogDialog } from "@/components/molecules/upsert-daily-log-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { useStageActivities } from "@/hooks/use-stage-activities";
 import { useSession } from "@/stores/auth";
 import {
   useDailyLogCoverage,
@@ -51,6 +54,8 @@ interface DrawerState {
 export default function ProjectDailyLog() {
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
+  const { selectedStageId } = useStageScope();
+  const { activityIds, isLoading: stagesPending, error: stagesError, refetch: refetchStages } = useStageActivities(project.id);
   const { data: session } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const canCreateEntry = Boolean(access && canResourceAction(access, "dailyLog", "create"));
@@ -82,7 +87,12 @@ export default function ProjectDailyLog() {
   const downloadReport = useDownloadDailyReport();
   const emailReport = useEmailDailyReport();
 
-  const allRows = useMemo(() => buildRows(days, today, range.to), [days, today, range.to]);
+  const allRows = useMemo(() => {
+    const rows = buildRows(days, today, range.to);
+    if (!selectedStageId) return rows;
+    const dates = new Set(days.filter((day) => day.activities.some((activity) => activityIds.has(activity.activityId))).map((day) => day.logDate));
+    return rows.filter((row) => dates.has(row.logDate));
+  }, [days, today, range.to, selectedStageId, activityIds]);
   const rows = useMemo(() => filterRows(allRows, filter, query), [allRows, filter, query]);
   const kpis = useMemo(() => computeKpis(allRows), [allRows]);
   // Missed days is a project fact counted on the project's own calendar, so it
@@ -137,10 +147,9 @@ export default function ProjectDailyLog() {
                 </Button>
               ) : null}
               {canCreateEntry ? (
-                <Button variant="primary" size="md" onClick={() => setPickDateOpen(true)}>
-                  <PlusIcon className="size-4" />
+                <CreateButton onClick={() => setPickDateOpen(true)}>
                   Add my log
-                </Button>
+        </CreateButton>
               ) : null}
             </div>
           ) : undefined
@@ -180,15 +189,15 @@ export default function ProjectDailyLog() {
         </div>
       </div>
 
-      <DailyLogTable
+      {stagesError ? <QueryError error={stagesError} retry={refetchStages} noun="stage activities" /> : <DailyLogTable
         rows={rows}
-        isPending={isPending}
+        isPending={isPending || stagesPending}
         hasAnyDays={days.length > 0}
         canCreateEntry={canCreateEntry}
         canGenerateReport={canGenerateReport}
         canVoidEntry={canVoidEntry}
         actions={rowActions}
-      />
+      />}
 
       <DailyLogDrawer
         open={drawer !== null}
