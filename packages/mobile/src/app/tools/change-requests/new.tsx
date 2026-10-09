@@ -1,3 +1,5 @@
+import { StageField } from "@/components/molecules/stage-field";
+import { useStageScope } from "@/lib/stage-scope";
 import { goBack } from "@/lib/navigation";
 
 import { useState } from "react";
@@ -13,6 +15,8 @@ import { htmlToText } from "@/lib/html";
 
 export default function NewChangeRequest() {
   const { projectId } = useFieldSession();
+  const scope = useStageScope();
+  const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
   const { db } = useLocalDb();
   const create = useCreateChangeRequest(db, projectId);
   const { isOnline } = useSyncState();
@@ -35,6 +39,7 @@ export default function NewChangeRequest() {
     try {
       await create({
         title: title.trim(),
+        stageId: stageId,
         description: htmlToText(descriptionHtml) || null,
         descriptionHtml: descriptionHtml || null,
         costImpact: costNumber,
@@ -74,6 +79,7 @@ export default function NewChangeRequest() {
       ) : null}
 
       <View className="gap-5">
+        <StageField value={stageId} onChange={setStageId} />
         <Field label="Title" value={title} onChangeText={setTitle} placeholder="What is changing?" autoFocus />
         <View className="gap-2">
           <FieldLabel>Description</FieldLabel>

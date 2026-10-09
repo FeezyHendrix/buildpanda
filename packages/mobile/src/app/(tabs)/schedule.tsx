@@ -257,7 +257,7 @@ export default function Schedule() {
   const isStale = activities.isStale || stages.isStale || keyDates.isStale;
 
   return (
-    <Page
+    <Page stageScope
       buildingScope
       title="Schedule"
       projectName={project?.name}

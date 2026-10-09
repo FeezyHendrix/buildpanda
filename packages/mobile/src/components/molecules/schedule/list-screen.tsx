@@ -24,7 +24,7 @@ export function ScheduleListScreen<T extends { id: string }>({
   renderItem: (row: T) => ReactElement;
 }) {
   return (
-    <Page buildingScope scroll={false} title={title} onBack={() => router.back()}>
+    <Page stageScope buildingScope scroll={false} title={title} onBack={() => router.back()}>
       {isStale ? <StaleBanner what="schedule" /> : null}
       <SearchableList
         data={data}

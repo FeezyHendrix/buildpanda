@@ -58,7 +58,7 @@ export default function Materials() {
   const { db, ready } = useLocalDb();
 
   return (
-    <Page
+    <Page stageScope
       scroll={false}
       title="Materials"
       onBack={() => goBack()}

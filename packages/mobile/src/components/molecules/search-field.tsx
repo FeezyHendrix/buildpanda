@@ -23,7 +23,7 @@ export function SearchField({
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
-        className="min-h-14 min-w-0 flex-1 font-jakarta text-base text-black-500"
+        className="min-h-14 min-w-0 flex-1 font-inter text-base text-black-500"
       />
       {value.length > 0 ? (
         <Pressable

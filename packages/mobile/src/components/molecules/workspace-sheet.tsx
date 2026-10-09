@@ -40,13 +40,9 @@ export function WorkspaceSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable
-        onPress={onClose}
-        accessibilityLabel="Dismiss"
-        className="flex-1 justify-end bg-black-900/40"
-      >
-        <Pressable
-          onPress={() => undefined}
+      <View className="flex-1 justify-end bg-black-900/40">
+        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Dismiss" className="absolute inset-0" />
+        <View
           className="rounded-t-3xl bg-surface"
           style={{ paddingBottom: insets.bottom + 12 }}
         >
@@ -55,7 +51,7 @@ export function WorkspaceSheet({
           </View>
 
           <View className="flex-row items-center px-5 pb-2 pt-4">
-            <Text weight="bold" className="flex-1 text-lg">
+            <Text variant="heading" weight="bold" className="flex-1 text-lg">
               {title}
             </Text>
             <Pressable
@@ -83,6 +79,7 @@ export function WorkspaceSheet({
                     onPress={() => onSelect(workspace.id)}
                     disabled={busyId === workspace.id}
                     accessibilityRole="button"
+                    accessibilityLabel={workspace.name}
                     accessibilityState={{ selected: isActive }}
                     className={cn(
                       "mb-2 min-h-16 flex-row items-center gap-3 rounded-2xl border px-4 py-3",
@@ -109,8 +106,8 @@ export function WorkspaceSheet({
               })}
             </ScrollView>
           )}
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

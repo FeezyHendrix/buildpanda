@@ -47,15 +47,15 @@ export default function SignIn() {
             source={logo}
             accessibilityLabel="BuildPanda"
             contentFit="contain"
-            className="h-9 w-[99px]"
+            style={{ height: 40, width: 118 }}
           />
 
           <View className="pt-8">
-            <Text weight="bold" className="text-2xl">
-              Field Tools
+            <Text variant="heading" weight="bold" className="text-3xl">
+              Welcome back
             </Text>
             <Text tone="secondary" className="pt-1 text-[15px]">
-              Sign in to record work from site.
+              Your project, from plans to progress.
             </Text>
           </View>
 
@@ -96,7 +96,7 @@ export default function SignIn() {
             />
 
             <Button onPress={handleSubmit} disabled={!canSubmit} loading={loading}>
-              Sign In
+              Sign in
             </Button>
           </View>
 

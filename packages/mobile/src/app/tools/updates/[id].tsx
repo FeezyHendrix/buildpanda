@@ -11,7 +11,7 @@ import { useFieldSession } from "@/lib/field-session";
 export default function UpdateDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
-  const { data, isPending } = useProjectUpdates(projectId);
+  const { data, isPending } = useProjectUpdates(projectId, false);
 
   const update = useMemo(() => (data ?? []).find((row) => row.id === id), [data, id]);
 

@@ -53,7 +53,7 @@ export default function ChangeRequests() {
   const { db, ready } = useLocalDb();
 
   return (
-    <Page
+    <Page stageScope
       scroll={false}
       title="Change requests"
       onBack={() => goBack()}

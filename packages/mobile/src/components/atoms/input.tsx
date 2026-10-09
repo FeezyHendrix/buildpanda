@@ -33,7 +33,7 @@ export function Field({ label, error, helperText, className, ...props }: FieldPr
       <FieldLabel>{label}</FieldLabel>
       <TextInput
         className={cn(
-          "min-h-14 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500",
+          "min-h-14 rounded-xl bg-surface-alt px-4 py-3 font-inter text-base text-black-500",
           props.multiline && "min-h-28",
           error && "border border-error-500",
         )}

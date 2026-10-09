@@ -7,6 +7,9 @@ import { useLocalDb } from "@/db/provider";
 import { rfisRepository, toRfi } from "@/db/rfis-repository";
 import { useFieldSession } from "@/lib/field-session";
 import { useSyncState } from "@/lib/sync-provider";
+import { useStageScope } from "@/lib/stage-scope";
+import { usePersistentQuery } from "@/lib/persistent-query";
+import { useLocalChangeRequests } from "./use-local-change-requests";
 
 /**
  * RFIs straight from SQLite.
@@ -18,6 +21,13 @@ import { useSyncState } from "@/lib/sync-provider";
  */
 export function useLocalRfis(db: Db, projectId: string) {
   const { isOnline } = useSyncState();
+  const { stageId } = useStageScope();
+  const { storageOwnerId } = useFieldSession();
+  const changes = useLocalChangeRequests(db, projectId, false);
+  const stageRfis = usePersistentQuery({
+    queryKey: ["rfis", projectId, "stage", stageId ?? "all"], ownerId: storageOwnerId,
+    queryFn: () => rfisApi.list(projectId, stageId), enabled: Boolean(stageId) && isOnline,
+  });
   const query = useMemo(() => rfisRepository.listQuery(db, projectId), [db, projectId]);
   const live = useLiveQuery(query, [query]);
   useEffect(() => {
@@ -30,7 +40,14 @@ export function useLocalRfis(db: Db, projectId: string) {
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [db, projectId, isOnline]);
-  const data = useMemo(() => (live.data ?? []).map(toRfi), [live.data]);
+  const data = useMemo(() => {
+    const serverIds = new Set(stageRfis.data?.map((rfi) => rfi.id));
+    const changeStages = new Map(changes.data.map((change) => [change.id, change.stageId]));
+    return (live.data ?? []).map(toRfi).filter((row) => !stageId ||
+      (row.changeRequestId && changeStages.has(row.changeRequestId)
+        ? changeStages.get(row.changeRequestId) === stageId
+        : serverIds.has(row.id)));
+  }, [live.data, stageId, changes.data, stageRfis.data]);
   return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 

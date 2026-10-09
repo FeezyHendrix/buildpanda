@@ -191,7 +191,7 @@ export default function ChangeRequestDetail() {
                 placeholder="Add a comment"
                 placeholderTextColor={ICON_SUBTLE}
                 multiline
-                className="max-h-28 min-h-14 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
+                className="max-h-28 min-h-14 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-inter text-base text-black-500"
               />
               <Pressable
                 onPress={handleSend}

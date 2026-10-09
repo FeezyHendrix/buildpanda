@@ -16,6 +16,7 @@ export const rfis = sqliteTable(
   {
     id: text("id").primaryKey(),
     projectId: text("project_id").notNull(),
+    changeRequestId: text("change_request_id"),
     number: integer("number").notNull().default(0),
     subject: text("subject").notNull(),
     question: text("question").notNull(),
@@ -222,6 +223,7 @@ export const changeRequests = sqliteTable(
   {
     id: text("id").primaryKey(),
     projectId: text("project_id").notNull(),
+    stageId: text("stage_id"),
     title: text("title").notNull(),
     description: text("description"),
     descriptionHtml: text("description_html"),

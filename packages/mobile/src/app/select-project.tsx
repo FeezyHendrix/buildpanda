@@ -18,7 +18,7 @@ export default function SelectProject() {
 
   function handleSelect(id: string) {
     selectProject(id);
-    router.replace("/(tabs)");
+    router.replace("/(tabs)/overview");
   }
 
   return (

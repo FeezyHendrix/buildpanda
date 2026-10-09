@@ -13,7 +13,7 @@ export default function ProjectUpdates() {
   const updates = data ?? [];
 
   return (
-    <Page scroll={false} title="Updates" onBack={() => goBack()}>
+    <Page stageScope scroll={false} title="Updates" onBack={() => goBack()}>
       {isStale ? <StaleBanner what="updates" /> : null}
 
       <SearchableList

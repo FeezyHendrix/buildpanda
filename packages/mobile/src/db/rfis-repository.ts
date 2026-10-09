@@ -24,6 +24,7 @@ export function toRfi(row: RfiRow): LocalRfi {
   return {
     id: row.id,
     number: row.number,
+    changeRequestId: row.changeRequestId ?? null,
     subject: row.subject,
     question: row.question,
     questionHtml: row.questionHtml,
@@ -43,6 +44,7 @@ export function toRfi(row: RfiRow): LocalRfi {
 function serverColumns(row: Rfi) {
   return {
     number: row.number,
+    changeRequestId: row.changeRequestId ?? null,
     subject: row.subject,
     question: row.question,
     questionHtml: row.questionHtml ?? null,

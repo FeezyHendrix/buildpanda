@@ -1,18 +1,20 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { useState, type ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import type { ReactNode } from "react";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SyncIndicator, Text } from "@/components/atoms";
-import { ICON_INVERSE } from "@/constants/colors";
+import { ICON_DEFAULT } from "@/constants/colors";
 import { useSyncState } from "@/lib/sync-provider";
 import { cn } from "@/lib/utils";
 import { BuildingSelector } from "./building-selector";
 import { useProjectBuilding } from "@/hooks/use-project-building";
 import { ScopeSelector } from "./scope-selector";
+import { StageSelector } from "./stage-selector";
+import { HeaderIconButton } from "./header-icon-button";
 
 interface PageProps {
-  /** `default` centres the title (Ernest's nav bar); `left` left-aligns it. */
+  /** Retained for callers; v2 headers use a leading title. */
   variant?: "default" | "left";
   title?: string;
   description?: string;
@@ -30,18 +32,12 @@ interface PageProps {
   footer?: ReactNode;
   className?: string;
   buildingScope?: boolean;
+  stageScope?: boolean;
   children: ReactNode;
 }
 
-/**
- * The single page chrome for every Field Tools screen: a BuildPanda-blue header
- * carrying the title, sync state and scope selector, over a light content area.
- *
- * The centred title is an absolutely-positioned overlay, so it stays optically
- * centred no matter how wide the switcher or button cluster on either side is.
- */
+/** Shared v2 page header, project switcher and offline-aware scope controls. */
 function PageContent({
-  variant = "default",
   title,
   description,
   onBack,
@@ -57,103 +53,41 @@ function PageContent({
   className,
   children,
   buildingScope = false,
+  stageScope = false,
 }: PageProps) {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const sync = useSyncState();
-  // Project names are long ("Marbella Modern Phase 2 Block C"); give the
-  // switcher just under half the bar, capped so a tablet does not stretch it.
-  const scopeWidth = Math.min(320, Math.round(width * 0.45));
-  const isCentred = variant === "default";
-  const hasBar = Boolean(onBack || title || rightButtons || showSync);
-  const hasScope = Boolean(projectName || workspaceName || projectPending);
-  const titleBelowScope = isCentred && (hasScope || Boolean(rightButtons)) && width < 600;
-  const [leftWidth, setLeftWidth] = useState(0);
-  const [rightWidth, setRightWidth] = useState(0);
+  const hasScope = Boolean(projectName || workspaceName || projectPending || onPressProject);
   const handleSyncPress = onPressSync ?? (() => router.push("/sync"));
 
   return (
     <View className="flex-1 bg-canvas">
-      <View className="bg-primary-500 px-4 pb-4" style={{ paddingTop: insets.top + 8 }}>
-        {hasBar ? (
-          <View className="relative min-h-11 flex-row items-center justify-between gap-2">
-            <View onLayout={(event) => setLeftWidth(event.nativeEvent.layout.width)} className={cn("min-w-0 flex-row items-center", !isCentred && "flex-1")}>
-              {onBack ? (
-                <Pressable
-                  onPress={onBack}
-                  accessibilityRole="button"
-                  accessibilityLabel="Go back"
-                  className="-ml-2 h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-                >
-                  <Ionicons name="chevron-back" size={24} color={ICON_INVERSE} />
-                </Pressable>
-              ) : null}
-              {hasScope ? (
-                <View className="min-w-0" style={{ maxWidth: scopeWidth }}>
-                  <ScopeSelector
-                    workspaceName={workspaceName}
-                    projectName={projectName}
-                    projectPending={projectPending}
-                    onPressProject={onPressProject}
-                    compact
-                  />
-                </View>
-              ) : null}
-              {!isCentred && title ? (
-                <View className="min-w-0 flex-1 items-start px-1">
-                  <Text weight="bold" tone="inverse" className="text-[17px]" numberOfLines={1}>
-                    {title}
-                  </Text>
-                  {description ? (
-                    <Text tone="inverse" className="text-xs opacity-80" numberOfLines={1}>
-                      {description}
-                    </Text>
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
-
-            <View onLayout={(event) => setRightWidth(event.nativeEvent.layout.width)} className="flex-row items-center justify-end gap-1">
-              {rightButtons}
-              {showSync ? (
-                <SyncIndicator
-                  state={sync.state}
-                  pendingCount={sync.pendingCount}
-                  onPress={handleSyncPress}
-                  onDark
-                />
-              ) : null}
-            </View>
-
-            {isCentred && !titleBelowScope && (title || description) ? (
-              <View
-                pointerEvents="none"
-                className="absolute inset-0 items-center justify-center"
-                style={{ paddingHorizontal: Math.max(leftWidth, rightWidth, 44) + 8 }}
-              >
-                {title ? (
-                  <Text weight="bold" tone="inverse" className="text-[17px]" numberOfLines={1}>
-                    {title}
-                  </Text>
-                ) : null}
-                {description ? (
-                  <Text tone="inverse" className="text-xs opacity-80" numberOfLines={1}>
-                    {description}
-                  </Text>
-                ) : null}
-              </View>
+      <View className="border-b border-line bg-surface px-4 pb-3" style={{ paddingTop: insets.top + 8 }}>
+        <View className="min-h-11 flex-row items-center gap-2">
+          {onBack ? (
+            <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Go back"
+              className="-ml-2 h-11 w-11 items-center justify-center rounded-lg active:bg-surface-alt">
+              <Ionicons name="chevron-back" size={22} color={ICON_DEFAULT} />
+            </Pressable>
+          ) : null}
+          <View className="min-w-0 flex-1">
+            {hasScope ? (
+              <ScopeSelector workspaceName={workspaceName} projectName={projectName} projectPending={projectPending} onPressProject={onPressProject} />
+            ) : title ? (
+              <Text variant="heading" weight="bold" className="text-xl" numberOfLines={2}>{title}</Text>
             ) : null}
           </View>
-        ) : null}
-        {titleBelowScope && title ? (
-          <View className="pt-3">
-            <Text weight="bold" tone="inverse" className="text-lg">{title}</Text>
-            {description ? <Text tone="inverse" className="pt-1 text-xs opacity-80">{description}</Text> : null}
+          <View className="flex-row flex-wrap items-center justify-end gap-1">
+            {rightButtons}
+            {!onBack && title !== "Account" ? <HeaderIconButton icon="person-circle-outline" label="Account and workspace settings" onPress={() => router.push("/(tabs)/account")} /> : null}
+            {showSync ? <SyncIndicator state={sync.state} pendingCount={sync.pendingCount} onPress={handleSyncPress} /> : null}
           </View>
-        ) : null}
+        </View>
+        {hasScope && title ? <Text variant="heading" weight="bold" className="pt-4 text-2xl">{title}</Text> : null}
+        {description ? <Text tone="secondary" className="pt-1 text-sm">{description}</Text> : null}
       </View>
-
       {buildingScope ? <BuildingSelector /> : null}
+      {stageScope ? <StageSelector /> : null}
 
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         {scroll ? (

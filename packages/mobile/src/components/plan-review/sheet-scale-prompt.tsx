@@ -54,7 +54,7 @@ export function ScalePrompt({
               placeholder="e.g. 3.6"
               placeholderTextColor={ICON_SUBTLE}
               accessibilityLabel="Real length in metres"
-              className="flex-1 font-jakarta text-base text-black-500"
+              className="flex-1 font-inter text-base text-black-500"
               onSubmitEditing={() => valid && onSave(metres)}
             />
             <Text tone="secondary" className="text-sm">

@@ -23,7 +23,7 @@ const spinnerTone: Record<ButtonVariant, SpinnerTone> = {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: "bg-primary-500 active:bg-primary-600",
-  secondary: "bg-grey-50 active:bg-grey-100",
+  secondary: "border border-line bg-surface active:bg-surface-alt",
   ghost: "bg-transparent active:bg-grey-50",
   danger: "bg-white border border-grey-50 active:bg-error-50",
 };

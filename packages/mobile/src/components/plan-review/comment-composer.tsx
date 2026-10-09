@@ -154,7 +154,7 @@ export function CommentComposer({
         placeholderTextColor={ICON_SUBTLE}
         multiline
         className="mt-2 max-h-24 min-h-11 rounded-xl bg-surface-alt px-3 py-2.5 text-[15px] text-black-500"
-        style={{ fontFamily: "PlusJakartaSans_400Regular" }}
+        style={{ fontFamily: "Inter_400Regular" }}
       />
 
       {mode === COMMENT_MODE.AUDIO ? (

@@ -39,6 +39,7 @@ interface PersistentQueryOptions<T> {
   ownerId: string | undefined;
   queryFn: () => Promise<T>;
   enabled?: boolean;
+  refetchInterval?: number | false;
 }
 
 export type PersistentQueryResult<T> = UseQueryResult<T> & { isStale: boolean };
@@ -48,6 +49,7 @@ export function usePersistentQuery<T>({
   ownerId,
   queryFn,
   enabled = true,
+  refetchInterval = false,
 }: PersistentQueryOptions<T>): PersistentQueryResult<T> {
   const key = cacheKey(ownerId, queryKey);
   const seeded = useMemo(() => readCache<T>(ownerId, queryKey), [key]);
@@ -65,6 +67,8 @@ export function usePersistentQuery<T>({
     initialDataUpdatedAt: 0,
     networkMode: "always",
     retry: 1,
+    refetchInterval,
+    refetchIntervalInBackground: false,
   });
 
   return { ...query, isStale: query.isError && query.data !== undefined } as PersistentQueryResult<T>;

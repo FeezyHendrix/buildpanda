@@ -128,7 +128,7 @@ export default function MaterialApprovals() {
   const [filter, setFilter] = useState<Filter>("all");
 
   return (
-    <Page
+    <Page stageScope
       scroll={false}
       title="Material approvals"
       onBack={() => goBack()}

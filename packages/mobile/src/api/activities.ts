@@ -1,6 +1,7 @@
 import { request } from "./client";
 
 export interface Activity {
+  phaseId?: string | null;
   buildingId?: string | null;
   id: string;
   name: string;

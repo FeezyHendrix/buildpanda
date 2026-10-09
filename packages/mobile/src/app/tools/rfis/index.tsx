@@ -84,7 +84,7 @@ export default function Rfis() {
   const { db, ready } = useLocalDb();
 
   return (
-    <Page
+    <Page stageScope
       scroll={false}
       title="RFIs"
       onBack={() => goBack()}

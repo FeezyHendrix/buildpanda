@@ -93,7 +93,7 @@ export default function DailyLogIndex() {
   const { db, ready } = useLocalDb();
 
   return (
-    <Page scroll={false} buildingScope title="Daily log" onBack={() => goBack()}>
+    <Page stageScope scroll={false} buildingScope title="Daily log" onBack={() => goBack()}>
       {ready && db && projectId ? (
         <DayList key={projectId} db={db} projectId={projectId} />
       ) : (
