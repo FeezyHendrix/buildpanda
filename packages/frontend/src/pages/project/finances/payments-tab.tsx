@@ -6,7 +6,8 @@ import { QueryError } from "@/components/molecules/query-error";
 import { UnavailableRecord } from "@/components/molecules/unavailable-record";
 import { useUrlState } from "@/hooks/use-url-state";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useInvoicePayments, useProjectInvoices, type Invoice } from "@/hooks/use-invoices";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { useInvoiceDetail, useInvoicePayments, useProjectInvoices, type Invoice } from "@/hooks/use-invoices";
 import { canResourceAction } from "@/lib/project-types";
 import { formatCurrency } from "@/lib/formatters";
 import { PaymentRequestsSection } from "../payments/payment-requests-section";
@@ -26,12 +27,13 @@ const EMPTY_INVOICES: Invoice[] = [];
  */
 export function PaymentsTab() {
   const { project, access } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const canManage = canResourceAction(access, "finances", "manage");
   // Recording a payment is an approval-level act: the backend checks finances:approve.
   const canRecordPayment = canResourceAction(access, "finances", "approve");
   const currency = project.currency;
-  const invoiceQuery = useProjectInvoices(project.id);
-  const paymentQuery = useInvoicePayments(project.id);
+  const invoiceQuery = useProjectInvoices(project.id, selectedStageId);
+  const paymentQuery = useInvoicePayments(selectedStageId ? undefined : project.id);
   const invoices = invoiceQuery.data ?? EMPTY_INVOICES;
   const pdf = useDownloadInvoicePdf(project.id);
 
@@ -42,10 +44,10 @@ export function PaymentsTab() {
   const [pending, setPending] = useState<{ invoice: Invoice; action: InvoiceAction } | null>(null);
 
   const { invoices: rows, totals } = useMemo(
-    () => normalisePayments(paymentQuery.data, invoices),
-    [paymentQuery.data, invoices],
+    () => normalisePayments(selectedStageId ? undefined : paymentQuery.data, invoices),
+    [paymentQuery.data, invoices, selectedStageId],
   );
-  const isFiltered = search.trim().length > 0;
+  const isFiltered = Boolean(selectedStageId) || search.trim().length > 0;
   const visible = useMemo(() => filterPaymentRows(rows, search), [rows, search]);
   // Manual toggles sit on top of the default (first open; all open while filtered).
   const expanded = useMemo(() => {
@@ -56,8 +58,9 @@ export function PaymentsTab() {
     }
     return base;
   }, [visible, isFiltered, toggled]);
-  const viewed = useMemo(() => invoices.find((invoice) => invoice.id === viewId) ?? null, [invoices, viewId]);
-  const unavailable = Boolean(viewId) && invoiceQuery.isSuccess && !viewed;
+  const detail = useInvoiceDetail(project.id, viewId ?? undefined);
+  const viewed = detail.data ?? invoices.find((invoice) => invoice.id === viewId) ?? null;
+  const unavailable = Boolean(viewId) && detail.isError && !viewed;
 
   function toggle(invoiceId: string): void {
     const isOpen = expanded.has(invoiceId);
@@ -87,7 +90,7 @@ export function PaymentsTab() {
         {invoiceQuery.error ? <QueryError error={invoiceQuery.error} retry={invoiceQuery.refetch} noun="invoices" /> : null}
         {unavailable ? <UnavailableRecord name="Invoice" returnLabel="Return to payments" onReturn={() => setViewId(null)} /> : null}
 
-        {paymentQuery.isSuccess ? <div aria-label="Payment totals" className="mb-6 grid gap-4 sm:grid-cols-3">
+        {(selectedStageId ? invoiceQuery.isSuccess : paymentQuery.isSuccess) ? <div aria-label="Payment totals" className="mb-6 grid gap-4 sm:grid-cols-3">
           <KpiCard label="Invoiced" value={formatCurrency(totals.invoiced, currency)} />
           <KpiCard label="Paid" value={formatCurrency(totals.paid, currency)} />
           <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding, currency)} />
@@ -96,7 +99,7 @@ export function PaymentsTab() {
         {!paymentQuery.error && !unavailable ? <InvoicePaymentsTable
           rows={visible}
           currency={currency}
-          isLoading={paymentQuery.isPending}
+          isLoading={selectedStageId ? invoiceQuery.isPending : paymentQuery.isPending}
           isFiltered={isFiltered}
           expanded={expanded}
           onToggle={toggle}
@@ -106,14 +109,14 @@ export function PaymentsTab() {
 
       <section aria-labelledby="payment-requests-heading">
         <h2 id="payment-requests-heading" className="mb-4 text-base font-semibold text-ink">
-          Payment requests
+          Project payment requests
         </h2>
         <PaymentRequestsSection />
       </section>
 
       <section aria-labelledby="stage-payments-heading">
         <h2 id="stage-payments-heading" className="mb-4 text-base font-semibold text-ink">
-          Stage payments
+          Project stage payments
         </h2>
         <StagePaymentsSection />
       </section>

@@ -13,7 +13,7 @@ export const projectTemplateKeys = {
 
 export const updateKeys = {
   all: (projectId: string) => ["projects", projectId, "updates"] as const,
-  list: (projectId: string) => [...updateKeys.all(projectId), "list"] as const,
+  list: (projectId: string, stageId?: string) => [...updateKeys.all(projectId), "list", ...(stageId ? [{ stageId }] : [])] as const,
   comments: (projectId: string, updateId: string) =>
     [...updateKeys.all(projectId), updateId, "comments"] as const,
 };
@@ -115,7 +115,7 @@ export const lookAheadKeys = {
 
 export const invoiceKeys = {
   all: (projectId: string) => ["projects", projectId, "invoices"] as const,
-  list: (projectId: string) => [...invoiceKeys.all(projectId), "list"] as const,
+  list: (projectId: string, stageId?: string) => [...invoiceKeys.all(projectId), "list", ...(stageId ? [{ stageId }] : [])] as const,
   detail: (projectId: string, invoiceId: string) => [...invoiceKeys.all(projectId), "detail", invoiceId] as const,
   payApplication: (projectId: string, invoiceId: string) =>
     [...invoiceKeys.all(projectId), "pay-application", invoiceId] as const,
@@ -190,8 +190,8 @@ export const buildingKeys = {
 
 export const rfiKeys = {
   all: (projectId: string) => ["projects", projectId, "rfis"] as const,
-  list: (projectId: string, status?: string) =>
-    [...rfiKeys.all(projectId), "list", status ?? "all"] as const,
+  list: (projectId: string, status?: string, stageId?: string) =>
+    [...rfiKeys.all(projectId), "list", status ?? "all", ...(stageId ? [{ stageId }] : [])] as const,
   detail: (projectId: string, rfiId: string) =>
     [...rfiKeys.all(projectId), "detail", rfiId] as const,
   events: (projectId: string, rfiId: string) =>
@@ -360,8 +360,8 @@ export const messageKeys = {
 
 export const taskKeys = {
   all: (projectId: string) => ["projects", projectId, "tasks"] as const,
-  board: (projectId: string, scope: "all" | "assigned" = "all", buildingId?: string) =>
-    [...taskKeys.all(projectId), "board", scope, buildingId ?? "all"] as const,
+  board: (projectId: string, scope: "all" | "assigned" = "all", buildingId?: string, stageId?: string) =>
+    [...taskKeys.all(projectId), "board", scope, buildingId ?? "all", ...(stageId ? [{ stageId }] : [])] as const,
   assignable: (projectId: string) => [...taskKeys.all(projectId), "assignable"] as const,
   detail: (projectId: string, taskId: string) => [...taskKeys.all(projectId), "detail", taskId] as const,
 };

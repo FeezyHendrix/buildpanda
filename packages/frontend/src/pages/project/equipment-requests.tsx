@@ -10,6 +10,8 @@ import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { ReasonDialog } from "@/components/molecules/reason-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import {
   useCreateEquipmentRequest,
   useDeleteEquipmentRequest,
@@ -50,6 +52,7 @@ type HireDialog =
  */
 export default function ProjectEquipmentRequests() {
   const { project, access } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const canRequest = canResourceAction(access, "materials", "request");
   const canApprove = canResourceAction(access, "materials", "approve");
   const params = useParams<{ bucket?: EquipmentBucket }>();
@@ -62,7 +65,8 @@ export default function ProjectEquipmentRequests() {
   const activeMeta =
     EQUIPMENT_BUCKETS.find((item) => item.bucket === activeBucket) ?? DEFAULT_EQUIPMENT_BUCKET;
 
-  const { data: requests = [], isLoading } = useEquipmentRequests(project.id, activeBucket);
+  const { data: allRequests = [], isLoading } = useEquipmentRequests(project.id, activeBucket);
+  const requests = allRequests.filter((request) => matchesStage(request.phaseId, selectedStageId));
 
   const [search, setSearch] = useState("");
   const [dialog, setDialog] = useState<HireDialog>(null);

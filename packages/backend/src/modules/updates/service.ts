@@ -11,6 +11,7 @@ import type {
   UpdateComment,
   UpdateCommentRow,
   UpdateMediaRow,
+  UpdateListOptions,
   UpdateRow,
   UpdateStatus,
 } from "./types.ts";
@@ -43,6 +44,7 @@ export interface MediaInput {
 }
 
 export interface CreateUpdateInput {
+  stageId?: string | null;
   category: UpdateCategory;
   title: string;
   description: string;
@@ -52,6 +54,7 @@ export interface CreateUpdateInput {
 }
 
 export interface EditUpdateInput {
+  stageId?: string | null;
   category?: UpdateCategory;
   title?: string;
   description?: string;
@@ -93,6 +96,7 @@ export function toUpdate(row: UpdateRow, media: UpdateMediaRow[]): ProjectUpdate
     id: row.id,
     projectId: row.project_id,
     activityId: row.activity_id,
+    stageId: row.stage_id ?? null,
     author: {
       id: row.author_id,
       name: row.author_name,
@@ -141,7 +145,7 @@ export function updatesService(repository: UpdatesRepository) {
   return {
     async listByProject(
       projectId: string,
-      options: { includeDrafts?: boolean } = {},
+      options: UpdateListOptions = {},
     ): Promise<ProjectUpdate[]> {
       const rows = await repository.listByProject(projectId, options);
       if (rows.length === 0) return [];
@@ -219,6 +223,9 @@ export function updatesService(repository: UpdatesRepository) {
       input: CreateUpdateInput,
       actor: { id: string; name: string },
     ): Promise<ProjectUpdate> {
+      if (input.stageId && !(await repository.stageBelongsToProject(projectId, input.stageId))) {
+        throw new BadRequestError("Build stage must belong to this project");
+      }
       const cta = CTA_DEFAULTS[input.category];
       const updateId = generateId("update");
       const mediaRows = buildMediaRows(updateId, input.media);
@@ -231,6 +238,7 @@ export function updatesService(repository: UpdatesRepository) {
           author_role: "Project Manager",
           author_initials_tone: "brand",
           activity_id: input.activityId ?? null,
+          stage_id: input.stageId ?? null,
           category: input.category,
           title: input.title,
           description: input.description,
@@ -251,8 +259,12 @@ export function updatesService(repository: UpdatesRepository) {
       input: EditUpdateInput,
     ): Promise<ProjectUpdate> {
       await loadUpdate(projectId, updateId);
+      if (input.stageId && !(await repository.stageBelongsToProject(projectId, input.stageId))) {
+        throw new BadRequestError("Build stage must belong to this project");
+      }
 
       const patch: UpdateContentPatch = {};
+      if (input.stageId !== undefined) patch.stage_id = input.stageId;
       if (input.title !== undefined) patch.title = input.title;
       if (input.description !== undefined) patch.description = input.description;
       if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;

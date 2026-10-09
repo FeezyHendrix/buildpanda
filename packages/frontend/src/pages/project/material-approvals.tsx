@@ -14,6 +14,8 @@ import {
   type UpsertMaterialApprovalValues,
 } from "@/components/molecules/upsert-material-approval-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { useAssignableUsers } from "@/hooks/use-tasks";
 import {
   useCreateMaterialApproval,
@@ -48,6 +50,7 @@ interface PendingDecision {
 
 export default function ProjectMaterialApprovals() {
   const { project, access } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const canRequest = canResourceAction(access, "materials", "request");
   const canApprove = canResourceAction(access, "materials", "approve");
   const canComment = canResourceAction(access, "comments", "post");
@@ -57,7 +60,8 @@ export default function ProjectMaterialApprovals() {
 
   // One fetch for the whole register; the status tabs narrow it here so the
   // counts on the tabs stay true whichever tab is open.
-  const { data: approvals = [], isPending } = useMaterialApprovals(project.id);
+  const { data: allApprovals = [], isPending } = useMaterialApprovals(project.id);
+  const approvals = allApprovals.filter((approval) => matchesStage(approval.phaseId, selectedStageId));
 
   const [filter, setFilter] = useState<ApprovalStatusFilter>("all");
   const [search, setSearch] = useState("");

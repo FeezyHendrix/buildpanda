@@ -5,6 +5,9 @@ export type CtaTone = "primary" | "secondary";
 export type MediaType = "photo" | "video";
 export type UpdateStatus = "Open" | "Approved" | "Inspected" | "Resolved" | "Escalated";
 
+export interface UpdateListFilters { stageId?: string }
+export interface UpdateListOptions extends UpdateListFilters { includeDrafts?: boolean }
+
 export interface MediaItem {
   id: string;
   type: MediaType;
@@ -29,6 +32,7 @@ export interface ProjectUpdate {
   id: string;
   projectId: string;
   activityId: string | null;
+  stageId: string | null;
   author: Person;
   category: UpdateCategory;
   title: string;
@@ -64,6 +68,7 @@ export interface UpdateRow {
   action_taken_by_id: string | null;
   action_taken_by_name: string | null;
   activity_id: string | null;
+  stage_id?: string | null;
   is_draft: boolean;
   generated_kind: string | null;
   created_at: Date | string;

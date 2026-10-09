@@ -13,6 +13,8 @@ import { InspectionOutcomeDialog } from "@/components/molecules/inspection-outco
 import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";
 import { UpsertInspectionDialog } from "@/components/molecules/upsert-inspection-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStageActivity, stageActivityIds } from "@/lib/stage-filter";
 import { useSession } from "@/stores/auth";
 import { useProjectActivities } from "@/hooks/use-activities";
 import { useParticipants } from "@/hooks/use-participants";
@@ -47,6 +49,7 @@ const STATUS_FILTERS = SERVICE_STATUS_TABS.map(tab => tab.value);
  */
 export default function ProjectInspections() {
   const { project, access } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const { data: session } = useSession();
   const userId = session?.user?.id;
   const isPlatformAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
@@ -98,7 +101,9 @@ export default function ProjectInspections() {
     [participants],
   );
 
+  const stageActivities = stageActivityIds(activities, selectedStageId);
   const filtered = inspections
+    .filter((report) => matchesStageActivity(report.activityId, selectedStageId, stageActivities))
     .filter((report) => statusFilter === "all" || report.serviceStatus === statusFilter)
     .filter((report) => matchesInspectionSearch(report, search));
 

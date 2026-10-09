@@ -40,10 +40,10 @@ export interface RfiRespondInput {
 }
 
 export const rfisApi = {
-  list: (projectId: string, status?: RfiStatus) =>
+  list: (projectId: string, status?: RfiStatus, stageId?: string) =>
     api
       .get<Rfi[]>(`/projects/${projectId}/rfis`, {
-        params: status ? { status } : undefined,
+        params: { status, stageId },
       })
       .then((r) => r.data),
 

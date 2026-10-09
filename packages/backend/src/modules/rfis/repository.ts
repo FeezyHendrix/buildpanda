@@ -4,6 +4,7 @@ import type {
   RfiDistributionRole,
   RfiDistributionRow,
   RfiEventRow,
+  RfiListFilters,
   RfiPriority,
   RfiRow,
   RfiStatus,
@@ -105,12 +106,17 @@ export function rfisRepository(db: Knex) {
   return {
     listByProject(
       projectId: string,
-      filter: { status?: RfiStatus; ballInCourtId?: string; sharedOnly?: boolean },
+      filter: RfiListFilters,
     ): Promise<RfiRow[]> {
       const q = base().where("r.project_id", projectId);
       if (filter.status) q.andWhere("r.status", filter.status);
       if (filter.ballInCourtId) q.andWhere("r.ball_in_court_id", filter.ballInCourtId);
       if (filter.sharedOnly) q.andWhere("r.visibility", "shared");
+      if (filter.stageId) q.whereExists(
+        db("change_requests as change").select("change.id")
+          .where("change.id", db.ref("r.change_request_id"))
+          .where("change.project_id", projectId).where("change.stage_id", filter.stageId),
+      );
       return q.select(...select).orderBy("r.number", "desc");
     },
 

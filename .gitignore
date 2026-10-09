@@ -34,6 +34,10 @@ coverage/
 /packages/backend/benchmark/
 /packages/backend/src/modules/panda-ai/benchmark/
 
+# Build-stage filtering, persistence and cache regression coverage.
+!/packages/backend/src/lib/stage-filter.test.ts
+!/packages/frontend/src/hooks/stage-scope-cache.test.ts
+
 # Exception: the take-off regression suites must travel with the branch. They
 # are the only proof that a saved measurement keeps its definition, its geometry
 # id, its basis sentence and its undo chain against a real database, and that a

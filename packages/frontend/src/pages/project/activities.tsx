@@ -29,6 +29,8 @@ import { useProjectRfis } from "@/hooks/use-rfis";
 import { useChangeRequests } from "@/hooks/use-change-requests";
 import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateActivity,
@@ -52,6 +54,7 @@ export default function ProjectActivities() {
   const [delayed, setDelayed] = useUrlState<string>("delayed", "");
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
+  const { selectedStageId } = useStageScope();
   const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const { data: activities = [], isPending } = useProjectActivities(project.id, selectedBuildingId);
   const focusedActivity = useProjectActivity(project.id, activityId);
@@ -92,12 +95,13 @@ export default function ProjectActivities() {
     .filter((choice) => choice.userId !== null)
     .map((choice) => ({ id: choice.userId as string, name: choiceLabel(choice) }));
 
-  const inProgressCount = activities.filter((a) => a.status === "InProgress").length;
-  const delayedCount = activities.filter((a) => a.isDelayed).length;
-  const completedCount = activities.filter((a) => a.status === "Completed").length;
+  const stageActivities = activities.filter((activity) => matchesStage(activity.phaseId, selectedStageId));
+  const inProgressCount = stageActivities.filter((a) => a.status === "InProgress").length;
+  const delayedCount = stageActivities.filter((a) => a.isDelayed).length;
+  const completedCount = stageActivities.filter((a) => a.status === "Completed").length;
 
   const focused = focusedActivity.data;
-  const filtered = activities
+  const filtered = stageActivities
     .filter(activity => !delayed || activity.isDelayed)
     .filter((a) => statusFilter === "all" || a.status === statusFilter)
     .filter((a) => matchesActivitySearch(a, search));
@@ -134,7 +138,7 @@ export default function ProjectActivities() {
       {delayed ? <Button variant="secondary" onClick={() => setDelayed("")}>Showing delayed activities · Clear</Button> : null}
       {activities.length > 0 ? (
         <section aria-label="Activity summary" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="Total activities" icon={icons.calendarSearch} value={activities.length} />
+          <KpiCard label="Total activities" icon={icons.calendarSearch} value={stageActivities.length} />
           <KpiCard label="In progress" icon={icons.penSquare} value={inProgressCount} />
           <KpiCard label="Delayed" icon={icons.hourglass} value={delayedCount} />
           <KpiCard label="Completed" icon={icons.verifiedCheck} value={completedCount} />

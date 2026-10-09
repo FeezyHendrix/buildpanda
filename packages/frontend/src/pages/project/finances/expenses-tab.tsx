@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { ComboSelect } from "@/components/molecules/combo-select";
 import { KpiCard } from "@/components/molecules/kpi-card";
+import { useStageScope } from "@/contexts/stage-scope-context";
 import {
   useDeleteTransaction,
   useExportTransactionsCsv,
@@ -29,10 +30,11 @@ import { TabActions } from "./finance-tabs";
 /** Expenses — site spend logged with its receipt. A record of money spent off-platform. */
 export function ExpensesTab() {
   const { project } = useProjectContext();
+  const { selectedStageId, setSelectedStageId } = useStageScope();
   const projectId = project.id;
   const currency = project.currency;
-
-  const [filters, setFilters] = useState<TransactionListFilters>({});
+  const [localFilters, setFilters] = useState<TransactionListFilters>({});
+  const filters = { ...localFilters, stageId: selectedStageId };
   const [draftSearch, setDraftSearch] = useState("");
 
   const { data: transactions = [], isPending: isLoadingTx } = useTransactions(projectId, filters);
@@ -47,9 +49,10 @@ export function ExpensesTab() {
   const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
 
   const categoryOptions = useMemo(() => toCategoryItems(categories), [categories]);
-  const isFiltered = Object.keys(filters).length > 0;
+  const isFiltered = Object.values(filters).some(Boolean);
 
   function handleClearFilters() {
+    setSelectedStageId(undefined);
     setFilters({});
     setDraftSearch("");
   }

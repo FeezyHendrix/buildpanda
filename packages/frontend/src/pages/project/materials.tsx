@@ -13,6 +13,8 @@ import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
 import { errorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { useUpdateMaterialOrder } from "@/hooks/use-materials-equipment";
 import { formatCurrency } from "@/lib/formatters";
 import type { MaterialOrder, MaterialOrderStatus } from "@/lib/project-types";
@@ -38,12 +40,14 @@ function isLive(order: MaterialOrder): boolean {
 
 export default function ProjectMaterials() {
   const { project, access } = useProjectContext();
+  const { selectedStageId, setSelectedStageId } = useStageScope();
   const canRequest = canResourceAction(access, "materials", "request");
   const canApprove = canResourceAction(access, "materials", "approve");
   const canRaisePurchaseOrder = canResourceAction(access, "finances", "manage");
   // The whole register is fetched once; status, supplier, late and search all
   // narrow it here so the KPI strip and the "x of y" count stay stable.
-  const { data: orders = [], isLoading } = useMaterialOrders(project.id);
+  const { data: allOrders = [], isLoading } = useMaterialOrders(project.id);
+  const orders = allOrders.filter((order) => matchesStage(order.phaseId, selectedStageId));
 
   const [status, setStatus] = useUrlState<MaterialOrderStatus | "all">("status", "all");
   const [search, setSearch] = useUrlState<string>("q", "");
@@ -70,9 +74,10 @@ export default function ProjectMaterials() {
     .filter((order) => matchesOrderSearch(order, search));
 
   const isFiltered =
-    status !== "all" || supplier !== ALL_SUPPLIERS || lateFilter !== "all" || search.trim() !== "";
+    Boolean(selectedStageId) || status !== "all" || supplier !== ALL_SUPPLIERS || lateFilter !== "all" || search.trim() !== "";
 
   function clearFilters(): void {
+    setSelectedStageId(undefined);
     setStatus("all");
     setSupplier(ALL_SUPPLIERS);
     setLateFilter("all");

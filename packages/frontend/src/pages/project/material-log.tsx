@@ -11,6 +11,8 @@ import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import {
   useApproveMaterialEntry,
   useMaterialStock,
@@ -46,6 +48,7 @@ import {
 
 export default function ProjectMaterialLog() {
   const { project, access } = useProjectContext();
+  const { selectedStageId, setSelectedStageId } = useStageScope();
   const canManage = canResourceAction(access, "materials", "manage");
   const { data: stock = [], isLoading: stockLoading } = useMaterialStock(project.id);
   const { data: entries = [], isLoading: ledgerLoading } = useMaterialLedger(project.id);
@@ -87,13 +90,15 @@ export default function ProjectMaterialLog() {
   ).length;
 
   const visibleEntries = entries
+    .filter((entry) => matchesStage(entry.stageId, selectedStageId))
     .filter((entry) => matchesLedgerFilter(entry, ledgerFilter))
     .filter((entry) => matchesApprovalFilter(entry, approvalFilter))
     .filter((entry) => matchesLedgerSearch(entry, search));
   const ledgerFiltered =
-    ledgerFilter !== "all" || approvalFilter !== "all" || search.trim() !== "";
+    Boolean(selectedStageId) || ledgerFilter !== "all" || approvalFilter !== "all" || search.trim() !== "";
 
   function clearLedgerFilters(): void {
+    setSelectedStageId(undefined);
     setLedgerFilter("all");
     setApprovalFilter("all");
     setSearch("");

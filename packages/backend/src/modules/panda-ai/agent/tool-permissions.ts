@@ -57,6 +57,7 @@ export const TOOL_PERMISSIONS: Record<string, ToolPermission | null> = {
   get_transaction_summary: { resource: "finances", action: "viewCosts" },
 
   // Site records
+  get_project_updates: { resource: "updates", action: "view" },
   get_daily_logs: { resource: "dailyLog", action: "view" },
   get_inspections: { resource: "inspections", action: "view" },
   get_risks: { resource: "risks", action: "view" },

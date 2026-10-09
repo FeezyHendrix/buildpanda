@@ -4,6 +4,8 @@ import type { StageBudgetLine } from "@/hooks/use-finances";
 import { CONTRACTS_PHASES_PATH, financeTabPath } from "@/lib/finance-routes";
 import { formatCompactCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { OverviewCard, OverviewEmpty } from "./overview-cards";
 
 /**
@@ -74,7 +76,8 @@ interface PhaseSpendCardProps {
 }
 
 export function PhaseSpendCard({ projectId, currency, phases, className }: PhaseSpendCardProps) {
-  const rows = useMemo(() => rankPhasesBySpend(phases), [phases]);
+  const { selectedStageId } = useStageScope();
+  const rows = useMemo(() => rankPhasesBySpend(phases.filter((phase) => matchesStage(phase.stageId, selectedStageId))), [phases, selectedStageId]);
 
   return (
     <OverviewCard title="Phase spend" to={`/project/${projectId}/${financeTabPath(CONTRACTS_PHASES_PATH, "phases")}`} className={className}>

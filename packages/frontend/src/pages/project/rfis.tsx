@@ -15,6 +15,7 @@ import {
 } from "@/components/molecules/upsert-rfi-dialog";
 import { RfiDetailDialog } from "@/components/molecules/rfi-detail-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
 import { useCreateRfi, useProjectRfis, useUpdateRfi } from "@/hooks/use-rfis";
 import { useParticipants } from "@/hooks/use-participants";
 import { useProjectTeam } from "@/hooks/use-team";
@@ -40,6 +41,7 @@ const EMPTY_RFIS: Rfi[] = [];
 
 export default function ProjectRfis() {
   const { project, access } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const canManage = canResourceAction(access, "rfis", "manage");
   const canRaise = canResourceAction(access, "rfis", "create");
   const canRespond = canResourceAction(access, "rfis", "respond");
@@ -47,7 +49,7 @@ export default function ProjectRfis() {
   const [filter, setFilter] = useUrlState<RfiFilter>("status", "all", FILTER_VALUES);
   // Overdue is derived, so the list is always fetched unfiltered for it.
   const statusParam = filter === "all" || filter === "overdue" ? undefined : filter;
-  const { data: rfis = EMPTY_RFIS, isLoading, error, refetch } = useProjectRfis(project.id, statusParam);
+  const { data: rfis = EMPTY_RFIS, isLoading, error, refetch } = useProjectRfis(project.id, statusParam, selectedStageId);
   const createRfi = useCreateRfi();
   const updateRfi = useUpdateRfi();
 
@@ -128,11 +130,11 @@ export default function ProjectRfis() {
         ) : visible.length === 0 ? (
           <EmptyState
             icon={<MessageCircleQuestion />}
-            title={filter === "all" ? "No RFIs yet" : "No RFIs match this filter"}
+            title={filter === "all" && !selectedStageId ? "No RFIs yet" : "No RFIs match this filter"}
             description={
-              filter === "all"
+              filter === "all" && !selectedStageId
                 ? "Requests for information raised against this project will appear here."
-                : "Choose another status or return to all RFIs."
+                : "Choose another status or build stage, or return to all RFIs."
             }
             action={
               filter !== "all" ? { label: "Clear filter", onClick: () => setFilter("all") } : canRaise
