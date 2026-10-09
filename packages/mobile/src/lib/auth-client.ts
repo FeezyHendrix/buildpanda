@@ -16,7 +16,7 @@ import { storage } from "./storage";
 // is confined to dev and a release build without it fails loudly instead.
 function resolveApiBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL;
-  if (configured) return configured;
+  if (configured?.trim()) return configured.trim().replace(/\/+$/, "");
   if (__DEV__) return "http://localhost:3000";
   throw new Error(
     "EXPO_PUBLIC_API_URL was not set when this build was bundled — it has no backend to talk to.",
@@ -27,6 +27,7 @@ export const API_BASE_URL = resolveApiBaseUrl();
 
 export const authClient = createAuthClient({
   baseURL: API_BASE_URL,
+  fetchOptions: { timeout: 15_000 },
   plugins: [
     expoClient({
       scheme: "buildpanda",

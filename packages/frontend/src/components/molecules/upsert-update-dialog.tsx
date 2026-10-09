@@ -7,6 +7,7 @@ import { errorMessage, isStorageUnavailable } from "@/lib/api-error";
 import type { MediaType, UpdateCategory } from "@/lib/project-types";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
+import { useStageScope } from "@/contexts/stage-scope-context";
 
 export interface UpsertUpdateMedia {
   type: MediaType;
@@ -14,6 +15,7 @@ export interface UpsertUpdateMedia {
 }
 
 export interface UpsertUpdateValues {
+  stageId?: string | null;
   category: UpdateCategory;
   title: string;
   description: string;
@@ -52,6 +54,8 @@ function UpsertUpdateDialog({
   isSubmitting = false,
   error,
 }: UpsertUpdateDialogProps) {
+  const { stages, selectedStageId, canFilterStages } = useStageScope();
+  const [stageId, setStageId] = useState("");
   const [category, setCategory] = useState<UpdateCategory>("Progress");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -68,6 +72,7 @@ function UpsertUpdateDialog({
   useEffect(() => {
     if (open) {
       setCategory(initial?.category ?? "Progress");
+      setStageId(initial?.stageId ?? (mode === "create" ? selectedStageId : undefined) ?? "");
       setTitle(initial?.title ?? "");
       setDescription(initial?.description ?? "");
       setMedia(initial?.media ?? []);
@@ -76,7 +81,7 @@ function UpsertUpdateDialog({
       setPostWithoutMedia(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
-  }, [open, initial]);
+  }, [open, initial, mode, selectedStageId]);
 
   const isValid =
     title.trim().length > 0 &&
@@ -113,6 +118,7 @@ function UpsertUpdateDialog({
   function handleSubmit(): void {
     if (!isValid) return;
     onSubmit({
+      ...(canFilterStages ? { stageId: stageId || null } : {}),
       category,
       title: title.trim(),
       description: description.trim(),
@@ -136,6 +142,15 @@ function UpsertUpdateDialog({
       error={error ?? null}
       onSubmit={handleSubmit}
     >
+      {canFilterStages && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="update-stage">Build stage (optional)</Label>
+          <select id="update-stage" value={stageId} onChange={(event) => setStageId(event.target.value)} className={inputClass}>
+            <option value="">No stage assigned</option>
+            {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+          </select>
+        </div>
+      )}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="update-category">Category</Label>
         <select

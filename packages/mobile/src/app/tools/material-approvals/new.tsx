@@ -1,4 +1,8 @@
-import { router } from "expo-router";
+import { StageField } from "@/components/molecules/stage-field";
+import { useStageScope } from "@/lib/stage-scope";
+import { isIsoDate } from "@/lib/dates";
+import { goBack } from "@/lib/navigation";
+
 import { useState } from "react";
 import { View } from "react-native";
 import { MATERIAL_UNITS, type MaterialUnit } from "@/api/material-approvals";
@@ -22,6 +26,8 @@ function reviewerOptions(assignees: readonly CommentAssignee[]): { value: string
 
 export default function NewMaterialApproval() {
   const { projectId } = useFieldSession();
+  const scope = useStageScope();
+  const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
   const { db } = useLocalDb();
   const { isOnline } = useSyncState();
   const assignees = useProjectAssignees(projectId);
@@ -43,7 +49,7 @@ export default function NewMaterialApproval() {
   const isQuantityValid =
     quantity.trim().length === 0 || (Number.isFinite(parsedQuantity) && parsedQuantity >= 0);
   const canSubmit =
-    title.trim().length > 0 && materialName.trim().length > 0 && isQuantityValid && !saving;
+    title.trim().length > 0 && materialName.trim().length > 0 && isQuantityValid && (neededBy.trim() === "" || isIsoDate(neededBy.trim())) && !saving;
 
   async function handleSubmit() {
     if (!canSubmit || !projectId) return;
@@ -54,6 +60,7 @@ export default function NewMaterialApproval() {
       // so this succeeds with no signal.
       await createApproval({
         title: title.trim(),
+        phaseId: stageId,
         materialName: materialName.trim(),
         specification: specification.trim() || null,
         quantity: quantity.trim().length > 0 ? parsedQuantity : 0,
@@ -65,7 +72,7 @@ export default function NewMaterialApproval() {
         requestedReviewerName:
           assignees.find((person) => person.id === reviewerId)?.name ?? null,
       });
-      router.back();
+      goBack();
     } catch (err) {
       setSaving(false);
       setError(err instanceof Error ? err.message : "Could not save this request.");
@@ -75,7 +82,7 @@ export default function NewMaterialApproval() {
   return (
     <Page
       title="New approval request"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       footer={
         <Button onPress={handleSubmit} disabled={!canSubmit} loading={saving}>
           Send request
@@ -100,6 +107,7 @@ export default function NewMaterialApproval() {
       ) : null}
 
       <View className="gap-5">
+        <StageField value={stageId} onChange={setStageId} />
         <Field
           label="Request title"
           value={title}

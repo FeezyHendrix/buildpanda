@@ -41,8 +41,8 @@ export const changeRequestCommentsRepository = {
   ): Promise<string> {
     const id = `local_${randomUUID()}`;
 
-    await db.transaction(async (tx) => {
-      await tx.insert(changeRequestComments).values({
+    await db.transaction((tx) => {
+      tx.insert(changeRequestComments).values({
         id,
         changeRequestId,
         projectId,
@@ -51,16 +51,16 @@ export const changeRequestCommentsRepository = {
         createdAt: Date.now(),
         isPendingSync: true,
         serverLastSyncedAt: null,
-      });
+      }).run();
 
-      await tx.insert(outbox).values({
+      tx.insert(outbox).values({
         id: randomUUID(),
         resource: CHANGE_REQUEST_COMMENTS_RESOURCE,
         entityId: id,
         projectId,
         operation: "create",
         nextAttemptAt: 0,
-      });
+      }).run();
     });
 
     return id;
@@ -68,17 +68,17 @@ export const changeRequestCommentsRepository = {
 
   /** Replaces the local placeholder with the row the server assigned, keeping its project. */
   async reconcileCreate(db: Db, localId: string, server: ChangeRequestComment): Promise<void> {
-    await db.transaction(async (tx) => {
-      const [local] = await tx
+    await db.transaction((tx) => {
+      const [local] = tx
         .select({
           projectId: changeRequestComments.projectId,
           changeRequestId: changeRequestComments.changeRequestId,
         })
         .from(changeRequestComments)
         .where(eq(changeRequestComments.id, localId))
-        .limit(1);
-      await tx.delete(changeRequestComments).where(eq(changeRequestComments.id, localId));
-      await tx.insert(changeRequestComments).values({
+        .limit(1).all();
+      tx.delete(changeRequestComments).where(eq(changeRequestComments.id, localId)).run();
+      tx.insert(changeRequestComments).values({
         id: server.id,
         changeRequestId: server.changeRequestId || local?.changeRequestId || "",
         projectId: local?.projectId ?? "",
@@ -87,7 +87,7 @@ export const changeRequestCommentsRepository = {
         createdAt: Date.parse(server.createdAt) || Date.now(),
         isPendingSync: false,
         serverLastSyncedAt: Date.now(),
-      });
+      }).run();
     });
   },
 
@@ -100,9 +100,9 @@ export const changeRequestCommentsRepository = {
   ): Promise<void> {
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
       for (const row of rows) {
-        await tx
+        tx
           .insert(changeRequestComments)
           .values({
             id: row.id,
@@ -118,7 +118,7 @@ export const changeRequestCommentsRepository = {
             target: changeRequestComments.id,
             set: { body: row.body, authorName: row.authorName, serverLastSyncedAt: now },
             where: eq(changeRequestComments.isPendingSync, false),
-          });
+          }).run();
       }
     });
   },

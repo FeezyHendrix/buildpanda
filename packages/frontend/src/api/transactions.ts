@@ -37,6 +37,7 @@ export const transactionsApi = {
   getExportUrl: (projectId: string, filters?: TransactionListFilters) => {
     const params = new URLSearchParams();
     if (filters?.category) params.append("category", filters.category);
+    if (filters?.stageId) params.append("stageId", filters.stageId);
     if (filters?.from) params.append("from", filters.from);
     if (filters?.to) params.append("to", filters.to);
     if (filters?.search) params.append("search", filters.search);

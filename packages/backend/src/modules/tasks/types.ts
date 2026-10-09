@@ -190,3 +190,8 @@ export interface TaskLinkRow {
   link_type: TaskLinkType;
   created_at: string;
 }
+export interface TaskBoardFilters {
+  scope?: "all" | "assigned";
+  buildingId?: string;
+  stageId?: string;
+}

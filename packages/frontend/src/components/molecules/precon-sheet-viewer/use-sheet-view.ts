@@ -1,4 +1,30 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { isTypingTarget } from "@/lib/precon-meta";
+
+/** Space held outside a text field: a temporary pan that never drops the draft. */
+export function useSpaceHold(): boolean {
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || isTypingTarget(e.target)) return;
+      e.preventDefault();
+      setHeld(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.code === "Space") setHeld(false);
+    };
+    const clear = () => setHeld(false);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", clear);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", clear);
+    };
+  }, []);
+  return held;
+}
 
 export interface SheetView {
   tx: number;
@@ -7,8 +33,8 @@ export interface SheetView {
 }
 
 export const FIT_VIEW: SheetView = { tx: 0, ty: 0, userZoom: 1 };
-const MIN_ZOOM = 0.2;
-const MAX_ZOOM = 8;
+export const MIN_ZOOM = 0.2;
+export const MAX_ZOOM = 8;
 
 function isFiniteView(v: SheetView): boolean {
   return Number.isFinite(v.tx) && Number.isFinite(v.ty) && Number.isFinite(v.userZoom) && v.userZoom > 0;
@@ -52,8 +78,6 @@ export function useSheetView(containerRef: RefObject<HTMLDivElement | null>, pan
     },
     [containerRef, setView],
   );
-  const zoomFit = useCallback(() => setView(FIT_VIEW), [setView]);
-
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -89,7 +113,10 @@ export function useSheetView(containerRef: RefObject<HTMLDivElement | null>, pan
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (!panEnabled) return;
+      // middle mouse pans in any tool; the primary button pans only when the
+      // active tool (or a held Space) says so
+      if ((!panEnabled || e.shiftKey) && e.button !== 1) return; // Shift-drag is the marquee, not a pan
+      if (e.button === 1) e.preventDefault();
       panRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
     },
     [panEnabled, view.tx, view.ty],
@@ -105,6 +132,10 @@ export function useSheetView(containerRef: RefObject<HTMLDivElement | null>, pan
   const endPan = useCallback(() => {
     panRef.current = null;
   }, []);
+  useEffect(() => {
+    window.addEventListener("blur", endPan);
+    return () => window.removeEventListener("blur", endPan);
+  }, [endPan]);
 
-  return { view, setView, zoomBy, zoomFit, onMouseDown, onMouseMove, endPan };
+  return { view, setView, zoomBy, onMouseDown, onMouseMove, endPan };
 }

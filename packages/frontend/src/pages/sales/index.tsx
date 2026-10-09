@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import type { BadgeTone } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { TourGuide } from "@/components/molecules/tour-guide";
@@ -264,14 +264,7 @@ function Header({ onNew }: { onNew: () => void }) {
     <PageHeader
       title="Pre-Construction"
       actions={
-        <Button
-          variant="primary"
-          size="md"
-          data-tour="sales-new"
-          onClick={onNew}
-        >
-          New Proposal
-        </Button>
+        <CreateButton data-tour="sales-new" onClick={onNew}>New Proposal</CreateButton>
       }
     />
   );

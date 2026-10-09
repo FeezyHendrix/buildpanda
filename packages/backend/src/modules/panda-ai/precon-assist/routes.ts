@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { mapAllows } from "../../../lib/permissions.ts";
 import { preconRepository } from "../pdf-takeoff/repository.ts";
 import { preconService } from "../pdf-takeoff/service.ts";
+import { lockedPreconService } from "../pdf-takeoff/locked-service.ts";
 import { preconAssistRepository } from "./repository.ts";
 import { preconAssistService } from "./service.ts";
 import { ASSIST_SURFACES, VIEWER_TOOLS, type AssistRequestBody, type CanFn, type ChangeSetParams } from "./types.ts";
@@ -52,7 +53,16 @@ const preconAssistRoutes: FastifyPluginAsync = async (fastify) => {
   const precon = preconService(preconRepo, (sessionId, event) => {
     fastify.realtime.publish({ event: event.type, channelId: `precon:${sessionId}`, data: event });
   });
-  const service = preconAssistService(preconAssistRepository(fastify.db), { precon, preconRepo });
+  const locked = lockedPreconService(fastify.db, (sessionId, event) => {
+    fastify.realtime.publish({ event: event.type, channelId: `precon:${sessionId}`, data: event });
+  });
+  const service = preconAssistService(preconAssistRepository(fastify.db), {
+    precon,
+    preconRepo,
+    // Only the APPLICATION of a change set takes the lock; the LLM call that
+    // produced it ran in `propose`, outside any transaction.
+    withLockedPrecon: (sessionId, fn) => locked.forSession(sessionId, fn),
+  });
 
   fastify.post<{ Body: AssistRequestBody }>("/precon/assist", { schema: { body: assistBody } }, async (request, reply) => {
     const user = request.requireAuth();

@@ -1,6 +1,12 @@
 import type { LlmTool } from "../../../lib/llm.ts";
 import type { ToolContext, ToolResult } from "./tools.ts";
 
+/** The resource/action an agent tool needs — the same pair its HTTP route enforces. */
+export interface ToolPermission {
+  resource: string;
+  action: string;
+}
+
 export interface AgentTool {
   spec: LlmTool;
   run(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult>;

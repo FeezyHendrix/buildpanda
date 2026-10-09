@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -190,12 +191,7 @@ export default function ProjectPermits() {
         title="Permits & Compliance"
         actions={
           canManage ? (
-            <Button
-              variant="primary"
-              onClick={() => setCreateOpen(true)}
-            >
-              Add permit
-            </Button>
+            <CreateButton onClick={() => setCreateOpen(true)}>Add permit</CreateButton>
           ) : null
         }
       />

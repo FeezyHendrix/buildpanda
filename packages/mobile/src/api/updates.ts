@@ -3,6 +3,8 @@ import { request } from "./client";
 export type UpdateCategory = "Progress" | "Material Delivery" | "Inspections" | "Issues";
 
 export interface ProjectUpdate {
+  stageId?: string | null;
+  activityId?: string | null;
   id: string;
   category: UpdateCategory;
   title: string;

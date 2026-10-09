@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileCheck } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -99,9 +100,7 @@ export default function ProjectApprovals() {
         title="Approvals"
         actions={
           canManage ? (
-            <Button variant="primary" onClick={() => setCreateOpen(true)}>
-              Submit for approval
-            </Button>
+            <CreateButton onClick={() => setCreateOpen(true)}>Submit for approval</CreateButton>
           ) : null
         }
       />

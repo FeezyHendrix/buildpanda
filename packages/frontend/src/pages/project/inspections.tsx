@@ -3,8 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useUrlState } from "@/hooks/use-url-state";
 import { QueryError } from "@/components/molecules/query-error";
 import { UnavailableRecord } from "@/components/molecules/unavailable-record";
-import { Button } from "@/components/atoms/button";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
@@ -14,6 +13,8 @@ import { InspectionOutcomeDialog } from "@/components/molecules/inspection-outco
 import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";
 import { UpsertInspectionDialog } from "@/components/molecules/upsert-inspection-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStageActivity, stageActivityIds } from "@/lib/stage-filter";
 import { useSession } from "@/stores/auth";
 import { useProjectActivities } from "@/hooks/use-activities";
 import { useParticipants } from "@/hooks/use-participants";
@@ -48,6 +49,7 @@ const STATUS_FILTERS = SERVICE_STATUS_TABS.map(tab => tab.value);
  */
 export default function ProjectInspections() {
   const { project, access } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const { data: session } = useSession();
   const userId = session?.user?.id;
   const isPlatformAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
@@ -99,7 +101,9 @@ export default function ProjectInspections() {
     [participants],
   );
 
+  const stageActivities = stageActivityIds(activities, selectedStageId);
   const filtered = inspections
+    .filter((report) => matchesStageActivity(report.activityId, selectedStageId, stageActivities))
     .filter((report) => statusFilter === "all" || report.serviceStatus === statusFilter)
     .filter((report) => matchesInspectionSearch(report, search));
 
@@ -134,10 +138,9 @@ export default function ProjectInspections() {
         title="Inspections & hold points"
         actions={
           canRequest ? (
-            <Button variant="primary" size="md" onClick={() => setRequestOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setRequestOpen(true)}>
               Request an inspection
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

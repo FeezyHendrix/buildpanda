@@ -31,6 +31,9 @@ export interface TakeoffJobData {
   sessionId?: string;
   // measure the session's DWG again with its stored layer map
   rerun?: boolean;
+  // which re-run this job is; a result quoting an older one read the drawing
+  // before a correction that supersedes it, and is refused rather than applied
+  rerunGeneration?: number;
   // a take-off measured by hand: build the drawing register (sheets, bounds,
   // units) for the session's DWG and draft no lines
   sheetsOnly?: boolean;
@@ -104,12 +107,19 @@ function storedLayerMap(raw: Record<string, string> | null): LayerMap | undefine
   return Object.keys(map).length ? map : undefined;
 }
 
-async function rerun(precon: ReturnType<typeof preconService>, sessionId: string): Promise<void> {
+async function rerun(
+  precon: ReturnType<typeof preconService>,
+  sessionId: string,
+  generation: number | undefined,
+): Promise<void> {
   const context = await precon.dwgRerunContext(sessionId);
   if (!context) return;
   try {
+    // The parse runs first and outside the lock; only its result is applied
+    // under one, against the re-run number the request was queued with.
     const result = await withTempDwg(context.storagePath, (file) => runDwgTakeoff(file, { layerMap: storedLayerMap(context.layerMap) }));
-    await precon.fillDwgSession(sessionId, { fileName: context.fileName }, toHandover(result));
+    const token = generation === undefined ? undefined : { sessionId, generation };
+    await precon.fillDwgSession(sessionId, { fileName: context.fileName }, toHandover(result), { token });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Take-off failed";
     await precon.failDwgSession(sessionId, message).catch(() => undefined);
@@ -139,7 +149,7 @@ async function sheetsOnly(db: Knex, precon: ReturnType<typeof preconService>, se
 export async function runTakeoff(db: Knex, data: TakeoffJobData): Promise<void> {
   const precon = preconService(preconRepository(db));
   if (data.sheetsOnly && data.sessionId) return sheetsOnly(db, precon, data.sessionId);
-  if (data.rerun && data.sessionId) return rerun(precon, data.sessionId);
+  if (data.rerun && data.sessionId) return rerun(precon, data.sessionId, data.rerunGeneration);
   if (!data.jobId) return;
   const repo = takeoffJobsRepository(db);
   const job = await repo.rawById(data.jobId);

@@ -2,31 +2,30 @@
  * Palette values for the places `className` cannot reach: Ionicon `color=`
  * props, react-navigation options, canvas/DOM CSS strings.
  *
- * Every value here is a token in tailwind.config.js, named after it — never a
- * near-miss shade. `colors.test.ts` fails the moment the two drift. The config
- * is not imported at runtime because it pulls the NativeWind preset into the
- * app bundle.
+ * NativeWind and these values read the same v2 token snapshot.
  */
+import { colors } from "./design-tokens.json";
+
 export const palette = {
-  primary500: "#004DE7",
-  surface: "#FFFFFF",
-  surfaceAlt: "#F6F6F6",
-  canvas: "#FAFAFA",
-  hairline: "#F0F0F0",
-  success500: "#1AE592",
-  success600: "#18D085",
-  success700: "#13A368",
-  error500: "#E9301C",
-  error600: "#D42C19",
-  warning600: "#B6E800",
-  amber700: "#8E6B00",
-  grey50: "#EDEDED",
-  grey100: "#C8C8C8",
-  grey200: "#ADADAD",
-  grey300: "#888888",
-  grey400: "#717171",
-  grey600: "#464646",
-  black500: "#1A1A1A",
+  primary500: colors.primary[500],
+  surface: colors.surface,
+  surfaceAlt: colors["surface-alt"],
+  canvas: colors.canvas,
+  hairline: colors.hairline,
+  success500: colors.success[500],
+  success600: colors.success[600],
+  success700: colors.success[700],
+  error500: colors.error[500],
+  error600: colors.error[600],
+  warning600: colors.warning[600],
+  amber700: colors.warning[700],
+  grey50: colors.grey[50],
+  grey100: colors.grey[100],
+  grey200: colors.grey[200],
+  grey300: colors.grey[300],
+  grey400: colors["ink-muted"],
+  grey600: colors["ink-subtle"],
+  black500: colors.ink,
 } as const;
 
 /** BuildPanda blue: the active, actionable icon. */

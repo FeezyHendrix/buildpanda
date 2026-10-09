@@ -1,4 +1,5 @@
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { formatRoleLabel } from "./utils";
 import { Section } from "./section";
@@ -61,9 +62,7 @@ export function RolesSection({
   onDelete,
 }: RolesSectionProps) {
   const action = canManage ? (
-    <Button variant="secondary" size="sm" onClick={onCreate}>
-      Create role
-    </Button>
+    <CreateButton size="sm" onClick={onCreate}>Create role</CreateButton>
   ) : null;
 
   if (roles.length === 0) {

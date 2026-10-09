@@ -1,9 +1,12 @@
-import type { CalibrationResult, ExtractedSheet, MeasuredBoqItem, SheetKind } from "../types.ts";
+import { SHEET_KIND, type CalibrationResult, type ExtractedSheet, type MeasuredBoqItem, type SheetKind } from "../types.ts";
 import { calibrate } from "./calibrate.ts";
 import { buildDocumentContext, type DocumentContext } from "./document-context.ts";
 import { countDoorArcs } from "./measure.ts";
 import { classifySheet, measureSheetRegions } from "./measure-sheet.ts";
 import { extractSheet } from "./pdf-extract.ts";
+import { measureRoofPlan } from "./roof-measure.ts";
+import { evidenceTexts } from "./drawing-evidence.ts";
+import type { DrawingEvidence } from "./drawing-evidence-types.ts";
 
 // The per-sheet measuring path with no database and no queue: open a PDF from
 // disk, and for every page run extraction, calibration, classification and
@@ -25,6 +28,9 @@ export interface ExtractedPage {
   pageNumber: number;
   extracted: ExtractedSheet;
   calibration: CalibrationResult | null;
+  evidence?: DrawingEvidence | null;
+  label?: string;
+  globalPage?: number;
 }
 
 interface PdfDocumentLike {
@@ -46,7 +52,12 @@ export async function extractAllPages(doc: PdfDocumentLike, OPS: unknown): Promi
 }
 
 export function contextFromPages(pages: ExtractedPage[]): DocumentContext {
-  return buildDocumentContext(pages.map((p) => ({ texts: p.extracted.texts, segments: p.extracted.segments, mmPerPt: p.calibration?.mmPerPt ?? null })));
+  return buildDocumentContext(pages.map((p) => ({
+    texts: [...p.extracted.texts, ...evidenceTexts(p.evidence ?? null)],
+    segments: p.extracted.segments,
+    mmPerPt: p.calibration?.mmPerPt ?? null,
+    source: p.label ? `drawing page ${p.globalPage ?? p.pageNumber}: ${p.label}` : `page ${p.pageNumber}`,
+  })));
 }
 
 export function hasRoomWords(extracted: ExtractedSheet): boolean {
@@ -95,7 +106,12 @@ export async function measurePdfFile(filePath: string, opts: { roomsAsItems?: bo
         pages.push({ ...base, kind, title, calibration: null, items: [], note: "no reliable scale" });
         continue;
       }
-      if (kind !== "floor-plan") {
+      if (kind === SHEET_KIND.ROOF_PLAN) {
+        const measured = measureRoofPlan(extracted, calibration.mmPerPt, calibration.confidence, pageNo, `page ${pageNo}`);
+        pages.push({ ...base, kind, title, calibration, items: measured, note: measured.length ? null : "roof outline could not be isolated" });
+        continue;
+      }
+      if (kind !== SHEET_KIND.FLOOR_PLAN) {
         pages.push({ ...base, kind, title, calibration, items: [], note: `classified as ${kind}; not measured` });
         continue;
       }

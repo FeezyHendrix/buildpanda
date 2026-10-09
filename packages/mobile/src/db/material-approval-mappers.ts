@@ -16,6 +16,8 @@ export interface LocalMaterialApproval {
   unit: string;
   supplier: string | null;
   neededBy: string | null;
+  phaseId: string | null;
+  activityId: string | null;
   phaseName: string | null;
   activityName: string | null;
   description: string | null;
@@ -49,6 +51,8 @@ export function toMaterialApproval(row: MaterialApprovalRow): LocalMaterialAppro
     unit: row.unit,
     supplier: row.supplier,
     neededBy: row.neededBy,
+    phaseId: row.phaseId,
+    activityId: row.activityId,
     phaseName: row.phaseName,
     activityName: row.activityName,
     description: row.description,

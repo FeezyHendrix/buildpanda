@@ -101,6 +101,7 @@ export function VoiceCaptureSheet({
 }) {
   const insets = useSafeAreaInsets();
   const recorder = useVoiceRecorder();
+  const finishing = useRef(false);
   const live = recorder.isRecording || recorder.isPaused;
 
   // opening the sheet starts listening: the tap on the mic was the intent
@@ -110,12 +111,16 @@ export function VoiceCaptureSheet({
   }, [visible]);
 
   async function finish() {
-    const recording = await recorder.stop();
-    if (!recording || recording.durationSeconds < 1) {
-      onClose();
-      return;
+    if (finishing.current) return;
+    finishing.current = true;
+    try {
+      const recording = await recorder.stop();
+      if (!recording) return;
+      if (recording.durationSeconds < 1) { onClose(); return; }
+      onRecorded(recording);
+    } finally {
+      finishing.current = false;
     }
-    onRecorded(recording);
   }
 
   function cancel() {

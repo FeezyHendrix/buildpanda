@@ -1,0 +1,4 @@
+Inter and Archivo static font faces are distributed under the SIL Open Font License 1.1.
+Sources: https://github.com/expo/google-fonts/tree/master/font-packages/inter
+https://github.com/expo/google-fonts/tree/master/font-packages/archivo
+The corresponding inter-OFL.txt and archivo-OFL.txt licenses are included.

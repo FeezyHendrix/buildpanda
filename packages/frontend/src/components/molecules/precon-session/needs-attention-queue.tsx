@@ -4,6 +4,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import type { PreconBoqRow } from "@/api/precon";
 import { useVerifyPreconRows } from "@/hooks/use-precon";
+import { useAbility } from "@/contexts/ability-context";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { confidenceReasonLabel } from "@/lib/precon-meta";
 import { toast } from "@/lib/toast";
@@ -41,6 +42,7 @@ export function confidentDrafts(rows: PreconBoqRow[]): PreconBoqRow[] {
 export function NeedsAttentionQueue({ sessionId, rows, sheetByRow, selectedRowId, onSelectRow }: Props) {
   const queue = useMemo(() => attentionRows(rows), [rows]);
   const confident = useMemo(() => confidentDrafts(rows), [rows]);
+  const canVerify = useAbility().can("verify", "takeoffs");
   const verifyMany = useVerifyPreconRows(sessionId);
 
   return (
@@ -51,7 +53,7 @@ export function NeedsAttentionQueue({ sessionId, rows, sheetByRow, selectedRowId
           <h3 className="text-xs font-semibold text-gray-900">Needs attention</h3>
           <Badge tone={queue.length > 0 ? "warning" : "success"}>{queue.length}</Badge>
         </div>
-        {confident.length > 0 ? (
+        {canVerify && confident.length > 0 ? (
           <Button
             size="sm"
             variant="ghost"

@@ -1,10 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMemo, useState, type ReactNode } from "react";
-import { Pressable, SectionList, TextInput, View } from "react-native";
-import { Spinner, Text } from "@/components/atoms";
-import { ICON_BRAND, ICON_FAINT, ICON_MUTED, ICON_SUBTLE } from "@/constants/colors";
+import { Pressable, SectionList, View } from "react-native";
+import { Button, Spinner, Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_FAINT } from "@/constants/colors";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Page } from "./page";
+import { SearchField } from "./search-field";
 import { StaleBanner } from "./stale-banner";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ interface PickerScreenProps {
   emptyTitle: string;
   emptyDescription: string;
   errorMessage?: string;
+  onRetry?: () => void;
   /** The list is the last synced copy: shown as a notice, not an error. */
   isStale?: boolean;
   searchPlaceholder?: string;
@@ -33,42 +35,6 @@ interface PickerScreenProps {
   onBack?: () => void;
   onSelect: (id: string) => void;
   footer?: ReactNode;
-}
-
-function SearchField({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-  placeholder: string;
-}) {
-  return (
-    <View className="mb-4 h-11 flex-row items-center gap-2 rounded-xl bg-surface-alt px-3">
-      <Ionicons name="search" size={18} color={ICON_MUTED} />
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={ICON_SUBTLE}
-        autoCapitalize="none"
-        autoCorrect={false}
-        returnKeyType="search"
-        className="h-11 flex-1 font-jakarta text-base text-black-500"
-      />
-      {value.length > 0 ? (
-        <Pressable
-          onPress={() => onChange("")}
-          accessibilityRole="button"
-          accessibilityLabel="Clear search"
-          className="-mr-2 h-11 w-11 items-center justify-center rounded-full active:bg-hairline"
-        >
-          <Ionicons name="close-circle" size={18} color={ICON_SUBTLE} />
-        </Pressable>
-      ) : null}
-    </View>
-  );
 }
 
 function GroupHeader({ text }: { text: string }) {
@@ -83,19 +49,21 @@ function PickerRow({
   item,
   isActive,
   isBusy,
+  disabled,
   onSelect,
 }: {
   item: PickerItem;
   isActive: boolean;
   isBusy: boolean;
+  disabled: boolean;
   onSelect: (id: string) => void;
 }) {
   return (
     <Pressable
       onPress={() => onSelect(item.id)}
-      disabled={isBusy}
+      disabled={disabled}
       accessibilityRole="button"
-      accessibilityState={{ selected: isActive, busy: isBusy }}
+      accessibilityState={{ selected: isActive, busy: isBusy, disabled }}
       className={cn(
         "min-h-16 flex-row items-center gap-3 rounded-2xl border px-4 py-3",
         isActive
@@ -141,6 +109,7 @@ export function PickerScreen({
   emptyTitle,
   emptyDescription,
   errorMessage,
+  onRetry,
   isStale = false,
   searchPlaceholder = "Search",
   otherLabel = "OTHER PROJECTS",
@@ -182,6 +151,7 @@ export function PickerScreen({
           <Text tone="danger" className="text-sm">
             {errorMessage}
           </Text>
+          {onRetry ? <Button variant="secondary" onPress={onRetry} className="mt-3">Try again</Button> : null}
         </View>
       ) : null}
 
@@ -203,6 +173,7 @@ export function PickerScreen({
               item={item}
               isActive={item.id === activeId}
               isBusy={item.id === busyId}
+              disabled={busyId !== undefined}
               onSelect={onSelect}
             />
           )}

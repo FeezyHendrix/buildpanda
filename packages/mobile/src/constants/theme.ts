@@ -15,3 +15,4 @@ export const NavColors = {
 
 /** Phones stack; anything wider gets the tablet split. Matches the web `md` breakpoint. */
 export const TabletMinWidth = 768;
+export const TabBarHeight = 64;

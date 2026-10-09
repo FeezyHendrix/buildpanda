@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useContracts, useDeleteContract, type Contract } from "@/hooks/use-contracts";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { useStages } from "@/hooks/use-stages";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { CONTRACTS_PHASES_TABS } from "@/lib/finance-routes";
 import { canResourceAction, type Stage } from "@/lib/project-types";
@@ -38,6 +39,7 @@ import { StageValueDrawer } from "./stage-value-drawer";
  */
 export default function ProjectContractsPhasesPage() {
   const { project, access } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const canManage = canResourceAction(access, "finances", "manage");
   const canManageStages = canResourceAction(access, "stages", "manage");
   const currency = project.currency;
@@ -65,10 +67,13 @@ export default function ProjectContractsPhasesPage() {
     [contracts, mainContract],
   );
   const query = search.trim().toLowerCase();
-  const visibleContracts = useMemo(() => listed.filter((c) => matchesContractSearch(c, query)), [listed, query]);
+  const selectedStage = stages.find((stage) => stage.id === selectedStageId);
+  const visibleContracts = useMemo(() => listed.filter((c) => matchesContractSearch(c, query) && (
+    !selectedStageId || c.id === (selectedStage?.contractId ?? mainContract.id)
+  )), [listed, query, selectedStageId, selectedStage?.contractId, mainContract.id]);
   const visibleStages = useMemo(
-    () => (query ? stages.filter((stage) => stage.name.toLowerCase().includes(query)) : stages),
-    [stages, query],
+    () => stages.filter((stage) => matchesStage(stage.id, selectedStageId) && stage.name.toLowerCase().includes(query)),
+    [stages, query, selectedStageId],
   );
 
   // Deep link: ?drawer=<contractId|main>&view=<section>, consumed once.
@@ -133,10 +138,9 @@ export default function ProjectContractsPhasesPage() {
           />
         </div>
         {tab === "contracts" && canManage ? (
-          <Button variant="primary" size="md" onClick={() => setUpsert({ open: true, initial: null })}>
-            <PlusIcon className="size-4" />
+          <CreateButton onClick={() => setUpsert({ open: true, initial: null })}>
             Add contract
-          </Button>
+     </CreateButton>
         ) : null}
       </div>
 

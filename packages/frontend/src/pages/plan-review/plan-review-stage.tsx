@@ -1,243 +1,160 @@
-import { Minus, Plus, Ruler, Trash2 } from "lucide-react";
+import { useId } from "react";
+import { Ruler, Trash2 } from "lucide-react";
 import { MARKUP_KIND, type DrawingMarkup } from "@/api/drawing-markup";
 import { cn } from "@/lib/utils";
-import { clamp, type Sheet } from "./plan-review-data";
+import { sheetPageKey, type Sheet } from "./plan-review-data";
 import { MarkupLayer } from "./plan-review-markup";
 import { CommentPin } from "@/components/molecules/comment-pin";
 import { anchorBelow } from "@/components/molecules/markup-thread/pin-popover";
 import { SheetImage } from "./plan-review-sheet-image";
-import { BLEND_MODE, REC_STATUS, SELECTION_KIND, TOOL, TOOL_CURSORS } from "./plan-review-types";
-import { IconBtn, Kbd } from "./plan-review-ui";
+import { SELECTION_KIND, TOOL, TOOL_CURSORS } from "./plan-review-types";
 import type { MarkupToolsController } from "./use-markup-tools";
-import type { RecordingController } from "./use-plan-recording";
 import type { SheetNavigationController } from "./use-sheet-navigation";
 import type { SheetScaleController } from "./use-sheet-scale";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { Button } from "@/components/atoms/button";
-
-const ZOOM_MIN = 50;
-const ZOOM_MAX = 300;
-const ZOOM_STEP = 25;
+import { ReviewPageControls, ReviewZoomControls } from "./review-view-controls";
 
 function pinLabel(record: DrawingMarkup | undefined, index: number): string {
   if (!record) return `Comment ${index + 1} (unsaved)`;
-  const n = record.comments.length;
-  return `${n} comment${n === 1 ? "" : "s"}${record.resolvedAt ? " · resolved" : ""}`;
+  const count = record.comments.length;
+  return `${count} comment${count === 1 ? "" : "s"}${record.resolvedAt ? " · resolved" : ""}`;
 }
-
 interface PlanReviewStageProps {
   sheet: Sheet;
-  /** Revision overlay: the compare sheet washed over the current one. */
-  blend: { ready: boolean; compareSheet: Sheet | null; currentRevision: string };
   nav: SheetNavigationController;
   markup: MarkupToolsController;
   scale: SheetScaleController;
-  recording: RecordingController;
   drawingRef: React.RefObject<HTMLDivElement | null>;
   onCalibrate: () => void;
+  label?: string;
 }
 
-/**
- * The single-sheet review canvas: the drawing surface every gesture lands on,
- * the markup and pins drawn over it, the walkthrough trace, and the controls
- * pinned to the viewport (zoom, and the toolbar for whatever is selected).
- */
-export function PlanReviewStage({
-  sheet,
-  blend,
-  nav,
-  markup,
-  scale,
-  recording,
-  drawingRef,
-  onCalibrate,
-}: PlanReviewStageProps) {
-  const compareSheet = blend.compareSheet;
+/** The drawing fills the page; controls stay outside its scrolling surface. */
+export function PlanReviewStage({ sheet, nav, markup, scale, drawingRef, onCalibrate, label }: PlanReviewStageProps) {
+  const calibrationId = useId();
   const selection = markup.selection;
+  const selectedMarkup =
+    selection?.kind === SELECTION_KIND.MARKUP ? markup.sheetMarkups.find((item) => item.id === selection.id) : null;
+  const measurementSelected = selectedMarkup?.tool === MARKUP_KIND.MEASURE;
+  const localSelection = selection && !markup.serverMarkups.has(selection.id);
   return (
-    <div ref={markup.canvasRef} className="relative min-h-0 flex-1 overflow-auto bg-gray-100 p-4 sm:p-8">
-      <div className="mx-auto" style={{ width: `${nav.zoom}%`, minWidth: "min(560px, 100%)" }}>
-        <div
-          ref={drawingRef}
-          onClick={markup.handleDrawingClick}
-          onPointerDown={markup.handlePointerDown}
-          onPointerMove={markup.handlePointerMove}
-          onPointerUp={markup.handlePointerUp}
-          className={cn(
-            "relative w-full touch-none rounded-lg border border-line bg-white shadow-lg",
-            markup.isPanning ? "cursor-grabbing" : TOOL_CURSORS[markup.activeTool],
-          )}
-        >
-          <SheetImage
-            sheet={sheet}
-            className="block w-full rounded-lg"
-            pageNumber={nav.pdfPage}
-            onRender={(state) => scale.applyRender(sheet.id, state)}
-          />
-
-          {blend.ready && compareSheet?.src && (
-            <>
-              <img
-                src={compareSheet.src}
-                alt=""
-                aria-hidden="true"
-                draggable={false}
-                className="pointer-events-none absolute inset-0 h-full w-full rounded-lg"
-                style={
-                  nav.blendMode === BLEND_MODE.DIFFERENCES
-                    ? { mixBlendMode: "difference", opacity: nav.blendAmount / 100 }
-                    : nav.blendMode === BLEND_MODE.GHOST
-                      ? { opacity: (nav.blendAmount / 100) * 0.6, filter: "grayscale(0.9)" }
-                      : { mixBlendMode: "multiply", opacity: nav.blendAmount / 100 }
-                }
-              />
-              {nav.blendMode === BLEND_MODE.HIGHLIGHT && (
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 rounded-lg bg-yellow-300"
-                  style={{ mixBlendMode: "multiply", opacity: (nav.blendAmount / 100) * 0.35 }}
-                />
-              )}
-              <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-xs font-medium text-red-700 shadow-sm ring-1 ring-black/10">
-                <span className="size-2 rounded-full bg-red-500" /> {sheet.code} · {blend.currentRevision} (current)
-              </span>
-              <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-xs font-medium text-sky-700 shadow-sm ring-1 ring-black/10">
-                <span className="size-2 rounded-full bg-sky-500" /> {compareSheet.code} · {compareSheet.revision} (compare)
-              </span>
-            </>
-          )}
-
-          {markup.markupVisible && (
-            <MarkupLayer
-              markups={markup.sheetMarkups}
-              draft={markup.draft ?? markup.measureDraft}
-              selectedId={selection?.kind === SELECTION_KIND.MARKUP ? selection.id : null}
-              dimmedIds={markup.dimmedIds}
-              scale={sheet.scale}
-              aspect={scale.imgAspect}
-              customFtPerPct={scale.scaleFor(sheet.id)}
-            />
-          )}
-
-          {markup.markupVisible &&
-            markup.sheetPins.map((pin, index) => {
-              const record = markup.serverMarkups.get(pin.id);
-              const selecting = markup.activeTool === TOOL.SELECT;
-              return (
-                <CommentPin
-                  key={pin.id}
-                  color={pin.color}
-                  label={pinLabel(record, index)}
-                  selected={selection?.kind === SELECTION_KIND.PIN && selection.id === pin.id}
-                  draggable={selecting && !record}
-                  dimmed={markup.dimmedIds.has(pin.id)}
-                  onPointerDown={(e) => {
-                    if (record) {
-                      if (selecting) e.stopPropagation();
-                    } else {
-                      markup.handlePinPointerDown(e, pin.id);
-                    }
-                  }}
-                  onClick={(e) => {
-                    if (!selecting) return;
-                    e.stopPropagation();
-                    if (record) markup.openThread(pin.id, anchorBelow(e.currentTarget));
-                  }}
-                  style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-                />
-              );
-            })}
-
-          {(recording.status === REC_STATUS.RECORDING ||
-            (recording.status === REC_STATUS.SAVED && recording.trace.length > 1)) && (
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              className="pointer-events-none absolute inset-0 h-full w-full"
-            >
-              <polyline
-                points={recording.visibleTrace.map((p) => `${p.x},${p.y}`).join(" ")}
-                fill="none"
-                stroke="#004DE7"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.55"
-                vectorEffect="non-scaling-stroke"
-              />
-              {recording.traceTip && (
-                <circle cx={recording.traceTip.x} cy={recording.traceTip.y} r="1.1" fill="#004DE7" />
-              )}
-            </svg>
-          )}
-        </div>
-      </div>
-
-      <div className="absolute bottom-4 left-4 z-30 flex items-center gap-1 rounded-lg bg-white/95 p-1 shadow-lg ring-1 ring-black/5">
-        <IconBtn
-          label="Zoom out"
-          disabled={nav.zoom <= ZOOM_MIN}
-          onClick={() => nav.setZoom((z) => clamp(z - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
-          className="size-7"
-        >
-          <Minus size={13} />
-        </IconBtn>
-        <span className="w-11 text-center font-mono text-xs text-gray-600">{nav.zoom}%</span>
-        <IconBtn
-          label="Zoom in"
-          disabled={nav.zoom >= ZOOM_MAX}
-          onClick={() => nav.setZoom((z) => clamp(z + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
-          className="size-7"
-        >
-          <Plus size={13} />
-        </IconBtn>
-      </div>
-
-      {selection && (
-        <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/95 py-1 pl-3 pr-1 shadow-lg ring-1 ring-black/5">
-          <span className="text-xs font-medium text-gray-600">
-            {selection.kind === SELECTION_KIND.PIN
-              ? markup.serverMarkups.has(selection.id)
-                ? "Comment selected"
-                : "Pin selected — drag to move"
-              : "Markup selected"}
-          </span>
-          {selection.kind === SELECTION_KIND.MARKUP &&
-            markup.markups.find((m) => m.id === selection.id)?.tool === MARKUP_KIND.MEASURE && (
-              <div className="relative">
-                <Button variant="ghost" size="sm" onClick={() => scale.setCalibrateOpen(!scale.calibrateOpen)}>
-                  <Ruler size={11} /> Calibrate
-                </Button>
-                {scale.calibrateOpen && (
-                  <div data-popover-root className="absolute left-1/2 top-full mt-2 w-56 -translate-x-1/2 rounded-lg bg-white p-3 shadow-lg ring-1 ring-black/5">
-                    <p className="text-xs font-semibold text-gray-900">Calibrate scale</p>
-                    <p className="mt-0.5 text-xs text-gray-500">Enter the actual distance for this measurement.</p>
-                    <div className="mt-2.5 flex items-center gap-2">
-                      <input
-                        type="number"
-                        step="any"
-                        value={scale.calibrateInput}
-                        onChange={(e) => scale.setCalibrateInput(e.target.value)}
-                        placeholder="Feet (e.g. 10.5)"
-                        className={INPUT_SM_CLASS}
-                      />
-                      <Button size="sm" onClick={onCalibrate}>
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+    <div className="relative min-h-0 flex-1">
+      <div ref={markup.canvasRef} className="h-full overflow-auto bg-gray-100 p-4 pb-20 sm:p-6 sm:pb-20">
+        <div className="mx-auto" style={{ width: `${nav.zoom}%` }}>
+          <div
+            ref={drawingRef}
+            data-plan-drawing
+            onClick={markup.handleDrawingClick}
+            onPointerDown={markup.handlePointerDown}
+            onPointerMove={markup.handlePointerMove}
+            onPointerUp={markup.handlePointerUp}
+            className={cn(
+              "relative w-full touch-none rounded-lg border border-line bg-white shadow-sm",
+              markup.isPanning ? "cursor-grabbing" : TOOL_CURSORS[markup.activeTool],
             )}
-          <Button variant="danger" size="sm" onClick={markup.deleteSelection}>
-            <Trash2 size={11} /> Delete
-          </Button>
-          <Kbd>Del</Kbd>
+          >
+            <SheetImage
+              sheet={sheet}
+              className="block w-full rounded-lg"
+              pageNumber={nav.pdfPage}
+              onRender={(state) => scale.applyRender(sheetPageKey(sheet, nav.pdfPage), state)}
+            />
+            {markup.markupVisible ? (
+              <MarkupLayer
+                markups={markup.sheetMarkups}
+                draft={markup.draft ?? markup.measureDraft}
+                selectedId={selection?.kind === SELECTION_KIND.MARKUP ? selection.id : null}
+                dimmedIds={markup.dimmedIds}
+                scale={sheet.scale}
+                aspect={scale.imgAspect}
+                customFtPerPct={scale.scaleFor(sheetPageKey(sheet, nav.pdfPage))}
+              />
+            ) : null}
+            {markup.markupVisible
+              ? markup.sheetPins.map((pin, index) => {
+                  const record = markup.serverMarkups.get(pin.id);
+                  const selecting = markup.activeTool === TOOL.SELECT;
+                  return (
+                    <CommentPin
+                      key={pin.id}
+                      color={pin.color}
+                      label={pinLabel(record, index)}
+                      selected={selection?.kind === SELECTION_KIND.PIN && selection.id === pin.id}
+                      draggable={selecting && !record}
+                      dimmed={markup.dimmedIds.has(pin.id)}
+                      onPointerDown={(event) => {
+                        if (record) {
+                          if (selecting) event.stopPropagation();
+                        } else markup.handlePinPointerDown(event, pin.id);
+                      }}
+                      onClick={(event) => {
+                        if (!selecting) return;
+                        event.stopPropagation();
+                        if (record) markup.openThread(pin.id, anchorBelow(event.currentTarget));
+                      }}
+                      style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                    />
+                  );
+                })
+              : null}
+          </div>
         </div>
-      )}
+      </div>
+      <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-end justify-between gap-2">
+        <div className="pointer-events-auto">
+          <ReviewZoomControls label={label} zoom={nav.zoom} onChange={nav.setZoom} />
+        </div>
+        <div className="pointer-events-auto">
+          <ReviewPageControls label={label} page={nav.pdfPage} count={nav.pdfPageCount} onChange={nav.goToPage} />
+        </div>
+      </div>
+      {selection && (measurementSelected || localSelection) ? (
+        <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-line bg-white p-1 shadow-sm">
+          {measurementSelected ? (
+            <div className="relative">
+              <Button variant="ghost" size="sm" onClick={() => scale.setCalibrateOpen(!scale.calibrateOpen)}>
+                <Ruler size={13} /> Calibrate
+              </Button>
+              {scale.calibrateOpen ? (
+                <div
+                  data-popover-root
+                  className="absolute left-1/2 top-full mt-2 w-64 -translate-x-1/2 rounded-lg border border-line bg-white p-3 shadow-lg"
+                >
+                  <label htmlFor={calibrationId} className="text-xs font-semibold text-gray-900">
+                    Actual distance (feet)
+                  </label>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      id={calibrationId}
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={scale.calibrateInput}
+                      onChange={(event) => scale.setCalibrateInput(event.target.value)}
+                      placeholder="e.g. 10.5"
+                      className={INPUT_SM_CLASS}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={onCalibrate}
+                      disabled={!Number.isFinite(Number(scale.calibrateInput)) || Number(scale.calibrateInput) <= 0}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {localSelection ? (
+            <Button variant="danger" size="sm" onClick={markup.deleteSelection}>
+              <Trash2 size={13} /> Delete
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
-
 PlanReviewStage.displayName = "PlanReviewStage";

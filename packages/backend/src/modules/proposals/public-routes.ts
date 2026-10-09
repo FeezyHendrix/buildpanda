@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { estimateItemsService } from "./estimate-items-service.ts";
 import { proposalsRepository } from "./repository.ts";
 import { proposalTermsRepository } from "./terms-repository.ts";
 import { publicViewService } from "./public-view.ts";
@@ -33,6 +34,7 @@ const respondBody = {
 const publicProposalRoutes: FastifyPluginAsync = async (fastify) => {
   const repo = proposalsRepository(fastify.db);
   const terms = proposalTermsRepository(fastify.db);
+  const estimates = estimateItemsService(fastify.db);
   const views = publicViewService(fastify.db, repo, terms);
 
   fastify.get<{ Params: { token: string } }>(
@@ -79,8 +81,6 @@ const publicProposalRoutes: FastifyPluginAsync = async (fastify) => {
         userAgent: (request.headers["user-agent"] as string | undefined) ?? null,
         at,
       };
-      await terms.recordResponse(estimateId, evidence);
-
       const eventMeta = {
         estimateId,
         name: responderName,
@@ -88,19 +88,30 @@ const publicProposalRoutes: FastifyPluginAsync = async (fastify) => {
         ip: evidence.ip,
         pdfHash: estimate.acceptedPdfHash,
       };
-      if (action === "accept") {
-        await repo.updateEstimateMeta(estimateId, { status: "Accepted", acceptedAt: at, acceptedByName: responderName });
-        await repo.updateProposal(proposal.id, orgId, { status: "Accepted" });
-        await repo.logEvent(proposal.id, "client_accepted", null, eventMeta);
-      } else if (action === "decline") {
-        await repo.updateEstimateMeta(estimateId, { status: "Declined" });
-        await repo.updateProposal(proposal.id, orgId, { status: "Lost" });
-        await repo.logEvent(proposal.id, "client_declined", null, eventMeta);
-      } else {
-        // the estimate stays Sent; the contractor decides whether to redraft
-        await repo.updateProposal(proposal.id, orgId, { status: "UnderReview" });
-        await repo.logEvent(proposal.id, "client_change_requested", null, eventMeta);
-      }
+
+      // The client's answer and the status it moves the estimate to are one
+      // record, taken under the estimate's row lock. The Sent check is repeated
+      // inside it: the link was read before the lock, and a contractor may have
+      // superseded the revision in between.
+      await estimates.withEstimateLock(estimateId, async (ctx) => {
+        if (ctx.estimate.status !== "Sent") {
+          throw new BadRequestError("This proposal is no longer open for responses.");
+        }
+        await proposalTermsRepository(ctx.trx).recordResponse(estimateId, evidence);
+        if (action === "accept") {
+          await ctx.estimates.updateEstimateMeta(estimateId, { status: "Accepted", acceptedAt: at, acceptedByName: responderName });
+          await ctx.proposals.updateProposal(proposal.id, orgId, { status: "Accepted" });
+          await ctx.proposals.logEvent(proposal.id, "client_accepted", null, eventMeta);
+        } else if (action === "decline") {
+          await ctx.estimates.updateEstimateMeta(estimateId, { status: "Declined" });
+          await ctx.proposals.updateProposal(proposal.id, orgId, { status: "Lost" });
+          await ctx.proposals.logEvent(proposal.id, "client_declined", null, eventMeta);
+        } else {
+          // the estimate stays Sent; the contractor decides whether to redraft
+          await ctx.proposals.updateProposal(proposal.id, orgId, { status: "UnderReview" });
+          await ctx.proposals.logEvent(proposal.id, "client_change_requested", null, eventMeta);
+        }
+      });
 
       const org = await fastify.db("organization").where({ id: orgId }).select("contact_email", "name").first();
       const notifyEmail = (org?.contact_email as string | undefined) ?? null;

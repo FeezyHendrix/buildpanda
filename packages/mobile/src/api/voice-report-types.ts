@@ -27,7 +27,7 @@ export interface StageTransitionPayload {
 
 export type DraftAction =
   | { kind: "rfi"; title: string; summary: string; payload: UpsertRfiInput }
-  | { kind: "daily_log"; title: string; summary: string; payload: { bodyText: string } }
+  | { kind: "daily_log"; title: string; summary: string; payload: { bodyText: string; buildingId?: string | null } }
   | { kind: "change_request"; title: string; summary: string; payload: UpsertChangeRequestInput }
   | { kind: "material_log"; title: string; summary: string; payload: LogMaterialEntryInput }
   | { kind: "material_order"; title: string; summary: string; payload: CreateMaterialOrderInput }
@@ -55,7 +55,7 @@ export type DraftAction =
       payload: { lookAheadId: string; patch: Partial<CreateLookAheadInput> };
     }
   | { kind: "delete_look_ahead"; title: string; summary: string; payload: { lookAheadId: string } }
-  | { kind: "update_daily_log"; title: string; summary: string; payload: { totalHours: number } }
+  | { kind: "update_daily_log"; title: string; summary: string; payload: { totalHours: number; buildingId?: string | null } }
   | {
       kind: "log_activity";
       title: string;

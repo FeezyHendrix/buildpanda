@@ -313,6 +313,57 @@ export function consultationLeadEmail(lead: ConsultationLead): {
   };
 }
 
+export interface NewSignup {
+  name: string;
+  email: string;
+  /** Only set when the person typed one on the sign-up form. */
+  companyName?: string | null;
+  /** Derived from the sign-up request, so it can be absent. */
+  country?: string | null;
+  /** True when the account came from an invitation rather than a cold sign-up. */
+  invited: boolean;
+}
+
+/**
+ * Internal notice, one per new account. Country is included because a run of
+ * sign-ups from somewhere the business does not operate is the earliest sign of
+ * junk accounts, and it costs nothing to show.
+ */
+export function newSignupEmail(signup: NewSignup): { subject: string; html: string } {
+  const rows: Array<[string, string]> = [
+    ["Name", signup.name],
+    ["Email", signup.email],
+  ];
+  if (signup.companyName) rows.push(["Company", signup.companyName]);
+  rows.push(["Route", signup.invited ? "Accepted an invitation" : "Signed up directly"]);
+  if (signup.country) rows.push(["Country", signup.country]);
+
+  const detailRows = rows
+    .map(
+      ([label, value]) => `<tr>
+        <td style="padding:8px 16px 8px 0;font-family:${FONT_STACK};font-size:13px;font-weight:600;color:${BRAND.muted};white-space:nowrap;vertical-align:top;">${escapeHtml(label)}</td>
+        <td style="padding:8px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.heading};vertical-align:top;">${escapeHtml(value)}</td>
+      </tr>`,
+    )
+    .join("");
+
+  return {
+    subject: `New BuildPanda sign-up: ${signup.name}`,
+    html: renderEmail({
+      preview: `${signup.name} — ${signup.email}`,
+      heading: "New sign-up",
+      bodyHtml: `<p style="margin:0 0 16px 0;">Someone just created a BuildPanda account.</p>
+                 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-top:1px solid ${BRAND.border};border-bottom:1px solid ${BRAND.border};">${detailRows}</table>`,
+      cta: {
+        label: `Email ${signup.name}`,
+        url: `mailto:${signup.email}?subject=${encodeURIComponent("Welcome to BuildPanda")}`,
+      },
+      footnote:
+        "You're receiving this because you're listed as the sign-up contact for BuildPanda.",
+    }),
+  };
+}
+
 export function proposalSentEmail(options: {
   clientName: string;
   companyName: string;

@@ -11,12 +11,10 @@ import type {
 
 export type { UpdateMediaInput };
 
-export function useProjectUpdates(projectId: string | undefined) {
+export function useProjectUpdates(projectId: string | undefined, stageId?: string) {
   return useQuery({
-    queryKey: projectId
-      ? updateKeys.list(projectId)
-      : updateKeys.list("__none__"),
-    queryFn: () => updatesApi.list(projectId!),
+    queryKey: updateKeys.list(projectId ?? "__none__", stageId),
+    queryFn: () => updatesApi.list(projectId!, stageId),
     enabled: Boolean(projectId),
   });
 }
@@ -74,6 +72,7 @@ export function useAddComment() {
 }
 
 interface CreateUpdateVariables {
+  stageId?: string | null;
   projectId: string;
   category: UpdateCategory;
   title: string;
@@ -94,6 +93,7 @@ export function useCreateUpdate() {
 }
 
 interface EditUpdateVariables {
+  stageId?: string | null;
   projectId: string;
   updateId: string;
   category?: UpdateCategory;

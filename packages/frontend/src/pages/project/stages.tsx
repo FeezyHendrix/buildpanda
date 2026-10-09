@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/components/atoms/button";
-import { BlocksIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CreateButton } from "@/components/molecules/create-button";
+import { BlocksIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import {
@@ -21,6 +21,8 @@ import {
 import { StageRow } from "./stages/stage-row";
 import { StageValueSummaryBar } from "./stages/stage-value-summary-bar";
 import { useParams } from "react-router-dom";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateStage,
@@ -46,6 +48,7 @@ const TABS: { value: FilterTab; label: string }[] = [
 
 export default function ProjectStages() {
   const { project, access } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const { buildingId } = useParams<{ buildingId?: string }>();
   const { data: stages = [], isLoading } = useStages(project.id, buildingId);
@@ -61,14 +64,15 @@ export default function ProjectStages() {
   const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
 
   const currency = project.currency ?? "NGN";
-  const complete = stages.filter((s) => s.status === "Done").length;
-  const inProgress = stages.filter((s) => s.status === "InProgress").length;
+  const scopedStages = stages.filter((stage) => matchesStage(stage.id, selectedStageId));
+  const complete = scopedStages.filter((s) => s.status === "Done").length;
+  const inProgress = scopedStages.filter((s) => s.status === "InProgress").length;
   const overall =
-    stages.length === 0
+    scopedStages.length === 0
       ? 0
-      : Math.round(stages.reduce((sum, s) => sum + s.progressPercent, 0) / stages.length);
+      : Math.round(scopedStages.reduce((sum, s) => sum + s.progressPercent, 0) / scopedStages.length);
 
-  const filtered = stages
+  const filtered = scopedStages
     .filter(
       (s) =>
         filter === "all" ||
@@ -107,10 +111,9 @@ export default function ProjectStages() {
         title="Build stages"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               Add stage
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />
@@ -121,9 +124,9 @@ export default function ProjectStages() {
             label="Construction progress"
             icon={icons.constructionProgress}
             progress={overall}
-            helper={`${complete} of ${stages.length} stages complete`}
+            helper={`${complete} of ${scopedStages.length} stages complete`}
           />
-          <KpiCard label="Total stages" value={stages.length} icon={icons.penSquare} />
+          <KpiCard label="Total stages" value={scopedStages.length} icon={icons.penSquare} />
           <KpiCard label="In progress" value={inProgress} icon={icons.penSquare} />
           <KpiCard label="Completed stages" value={complete} icon={icons.verified} />
         </section>

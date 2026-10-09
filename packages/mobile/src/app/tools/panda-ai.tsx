@@ -1,5 +1,6 @@
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
+
 import { useRef, useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
@@ -54,7 +55,7 @@ export default function PandaAiChat() {
   return (
     <Page
       title="Panda AI"
-      onBack={() => router.back()}
+      onBack={() => goBack()}
       showSync={false}
       // A fresh thread: the history is what Panda AI answers against, so
       // starting over is the only way to ask about something unrelated.
@@ -80,7 +81,7 @@ export default function PandaAiChat() {
               multiline
               returnKeyType="send"
               onSubmitEditing={handleSend}
-              className="max-h-28 min-h-14 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
+              className="max-h-28 min-h-14 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-inter text-base text-black-500"
             />
             <Pressable
               onPress={streaming ? stop : handleSend}

@@ -1,8 +1,7 @@
 import { useUrlState } from "@/hooks/use-url-state";
 import { useState } from "react";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { QueryError } from "@/components/molecules/query-error";
 import { UnavailableRecord } from "@/components/molecules/unavailable-record";
@@ -20,6 +19,8 @@ import {
   type ReceivePurchaseOrderInput,
 } from "@/hooks/use-purchase-orders";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStage } from "@/lib/stage-filter";
 import { errorMessage } from "@/lib/api-error";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
@@ -52,13 +53,15 @@ type PoDialog =
 /** Purchase orders — vendor POs that become committed spend once they are issued. */
 export function PurchaseOrdersTab() {
   const { project, access } = useProjectContext();
+  const { selectedStageId } = useStageScope();
   const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
-  const { data: purchaseOrders = EMPTY_PURCHASE_ORDERS, isPending, isSuccess, error, refetch } = usePurchaseOrders(project.id);
+  const { data: allPurchaseOrders = EMPTY_PURCHASE_ORDERS, isPending, isSuccess, error, refetch } = usePurchaseOrders(project.id);
+  const purchaseOrders = allPurchaseOrders.filter((order) => matchesStage(order.stageId, selectedStageId));
 
   const [selectedId, setSelectedId] = useUrlState<string | null>("po", null);
   const [actionDialog, setDialog] = useState<PoDialog>(null);
-  const selected = purchaseOrders.find(po => po.id === selectedId);
+  const selected = allPurchaseOrders.find(po => po.id === selectedId);
   const unavailable = Boolean(selectedId) && isSuccess && !selected;
   const dialog: PoDialog = actionDialog ?? (selected ? { kind: "detail", purchaseOrder: selected } : null);
   const [busyAction, setBusyAction] = useState<PurchaseOrderAction | null>(null);
@@ -148,10 +151,9 @@ export function PurchaseOrdersTab() {
     <section aria-label="Purchase orders">
       <TabActions>
         {canManage ? (
-          <Button variant="primary" size="md" onClick={() => setDialog({ kind: "create" })}>
-            <PlusIcon className="size-4" />
+          <CreateButton onClick={() => setDialog({ kind: "create" })}>
             New purchase order
-          </Button>
+     </CreateButton>
         ) : null}
       </TabActions>
 

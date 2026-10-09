@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
@@ -277,14 +278,7 @@ export default function ProposalsPage() {
         title="Proposals"
         actions={
           <Can do="create" on="proposals">
-            <Button
-              variant="primary"
-              size="md"
-                  data-tour="sales-new"
-                  onClick={() => setDrawerOpen(true)}
-            >
-              New Proposal
-            </Button>
+            <CreateButton data-tour="sales-new" onClick={() => setDrawerOpen(true)}>New Proposal</CreateButton>
           </Can>
         }
       />

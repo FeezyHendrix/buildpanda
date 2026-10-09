@@ -62,3 +62,8 @@ export function formatLongDayLabel(value: DateInput): string {
 export function formatDateRange(start: DateInput, end: DateInput): string {
   return `${formatShortDate(start) || "—"}${RANGE_SEPARATOR}${formatShortDate(end) || "—"}`;
 }
+
+/** Calendar date on the device, including around local midnight. */
+export function localIsoDate(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}

@@ -1,9 +1,11 @@
-import { Maximize2, Minus, Plus } from "lucide-react";
+import { Crosshair, Maximize2, Minus, Plus } from "lucide-react";
 
 interface Props {
   userZoom: number;
   onZoomBy: (factor: number) => void;
   onFit: () => void;
+  /** Zooms the view to the selected measurement; absent when nothing is selected. */
+  onZoomSelection?: (() => void) | null;
 }
 
 const BUTTON = "flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100";
@@ -13,10 +15,12 @@ function formatZoom(userZoom: number): string {
 }
 
 /** Zoom out / percentage / zoom in / fit, floating over the bottom-right of the canvas. */
-export function ZoomControls({ userZoom, onZoomBy, onFit }: Props) {
+export function ZoomControls({ userZoom, onZoomBy, onFit, onZoomSelection = null }: Props) {
   return (
     <div
-      className="absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-line bg-white p-1 shadow-sm"
+      className="flex max-w-full flex-wrap items-center gap-1 rounded-lg border border-line bg-white p-1 shadow-sm"
+      role="group"
+      aria-label="View controls"
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
@@ -30,6 +34,11 @@ export function ZoomControls({ userZoom, onZoomBy, onFit }: Props) {
       <button type="button" aria-label="Fit to view" title="Fit to view" className={BUTTON} onClick={onFit}>
         <Maximize2 className="size-4" aria-hidden="true" />
       </button>
+      {onZoomSelection ? (
+        <button type="button" aria-label="Zoom to selection" title="Zoom to the selected measurement" className={BUTTON} onClick={onZoomSelection}>
+          <Crosshair className="size-4" aria-hidden="true" />
+        </button>
+      ) : null}
     </div>
   );
 }

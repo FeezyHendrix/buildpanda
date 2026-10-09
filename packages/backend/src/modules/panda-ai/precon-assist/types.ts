@@ -75,7 +75,7 @@ export interface AssistChange {
 }
 
 export interface UndoStep {
-  kind: "update" | "verify" | "reject" | "remove" | "recreate";
+  kind: "update" | "verify" | "reject" | "remove" | "restore";
   id?: string;
   before?: Record<string, unknown>;
 }

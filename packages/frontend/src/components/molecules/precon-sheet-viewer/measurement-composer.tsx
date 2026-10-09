@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ComboInput } from "@/components/atoms/combo-input";
 import { UnitInput } from "@/components/atoms/unit-input";
 import { X } from "lucide-react";
 import { Button } from "@/components/atoms/button";
-import type { Assembly, CreateMeasurementBody, MeasureTool, PreconBoqRow, PreconSheet } from "@/api/precon";
-import { useAssemblies, useCreateAssemblyMeasurement, useCreateMeasurement } from "@/hooks/use-precon";
+import type { Assembly, MeasureTool, PreconBoqRow, PreconSheet } from "@/api/precon";
+import { preconApi } from "@/api/precon";
+import type { CreateAssemblyCommand, CreateGeometryCommand, ScaleChoice } from "@/api/precon-editor";
+import { useAssemblies } from "@/hooks/use-precon";
+import { newOperationId, useEditorOperation } from "@/hooks/use-precon-editor";
 import { useRateCards } from "@/hooks/use-rate-library";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { PRECON_TOOL_META, TAKEOFF_SECTIONS } from "@/lib/precon-meta";
@@ -16,6 +19,8 @@ import { cn } from "@/lib/utils";
 export interface PendingMeasurement {
   tool: MeasureTool;
   vertices: number[][];
+  /** Present when any drawn side curves: the authoritative logical outline the create sends. */
+  shape?: import("@/api/precon-row-types").MeasurementShape;
   /** Prefilled by Room fill (the room label) and Find symbol ("<name> × <count>"). */
   description?: string;
 }
@@ -66,19 +71,26 @@ AssemblyItemsPreview.displayName = "AssemblyItemsPreview";
  */
 export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, onClose, onCreated }: Props) {
   const meta = PRECON_TOOL_META.find((m) => m.measure === pending.tool)!;
-  const create = useCreateMeasurement(sessionId);
-  const createFromAssembly = useCreateAssemblyMeasurement(sessionId);
+  // The canonical operation envelope: the receipt names a real audit event, so
+  // a measurement is undoable the moment it is created. The operationId is
+  // minted once per composer so a retried Add is recorded once.
+  const create = useEditorOperation(sessionId);
+  const operationIdRef = useRef(newOperationId());
+  const createFromAssembly = useEditorOperation(sessionId);
+  const assemblyOperationIdRef = useRef(newOperationId());
   const { data: cards = [] } = useRateCards();
   const { data: assemblies = [] } = useAssemblies();
 
-  // WS-M3B: an assembly names the lines itself, so description and unit go away
-  const [assemblyId, setAssemblyId] = useState(pending.description ?? "");
+  // WS-M3B: an assembly names the lines itself, so description and unit go away.
+  // A prefill from Room fill / Find symbol is a DESCRIPTION, never an assembly id.
+  const [assemblyId, setAssemblyId] = useState("");
   const assembly = assemblies.find((a) => a.id === assemblyId) ?? null;
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(pending.description ?? "");
   const [elementGroup, setElementGroup] = useState<string | null>(null);
   const [unit, setUnit] = useState(MEASURE_DEFAULT_UNIT[pending.tool]);
   const [code, setCode] = useState("");
   const [factorRaw, setFactorRaw] = useState("");
+  const [scaleChoice, setScaleChoice] = useState<ScaleChoice | null>(null);
   const [typicalRaw, setTypicalRaw] = useState("1");
   const [rateRaw, setRateRaw] = useState("");
 
@@ -98,19 +110,23 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
     (assembly !== null || description.trim() !== "") && effectiveGroup !== "" && (!(needsHeight || needsDepth) || factorValue !== undefined);
 
   const submitAssembly = (picked: Assembly) => {
+    const command: CreateAssemblyCommand = {
+      kind: "create-assembly",
+      assemblyId: picked.id,
+      sheetId: sheet.id,
+      tool: pending.tool,
+      vertices: pending.vertices,
+      elementGroup: effectiveGroup,
+      code: code.trim() || undefined,
+      typical: typical > 1 ? typical : undefined,
+      ...(needsHeight || needsDepth ? { factor } : {}),
+    };
     createFromAssembly.mutate(
+      { operationId: assemblyOperationIdRef.current, command },
       {
-        assemblyId: picked.id,
-        sheetId: sheet.id,
-        tool: pending.tool,
-        vertices: pending.vertices,
-        elementGroup: effectiveGroup,
-        code: code.trim() || undefined,
-        typical: typical > 1 ? typical : undefined,
-        ...(needsHeight || needsDepth ? { factor } : {}),
-      },
-      {
-        onSuccess: ({ rows }) => {
+        onSuccess: async (receipt) => {
+          const snapshot = await preconApi.snapshot(sessionId);
+          const rows = receipt.rows.flatMap((ref) => snapshot.rows.filter((r) => r.id === ref.id));
           toast(`${picked.name}: ${rows.length} line${rows.length === 1 ? "" : "s"} added to the bill`, "success");
           if (rows[0]) onCreated(rows[0]);
           onClose();
@@ -123,10 +139,12 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
     if (!canSubmit) return;
     if (assembly) return submitAssembly(assembly);
     if (!elementGroup) return;
-    const body: CreateMeasurementBody = {
+    const command: CreateGeometryCommand = {
+      kind: "create-geometry",
       sheetId: sheet.id,
       tool: pending.tool,
-      vertices: pending.vertices,
+      // shape is authoritative; the server derives the tessellation (§7)
+      ...(pending.shape ? { shape: pending.shape } : { vertices: pending.vertices }),
       description: description.trim(),
       elementGroup: elementGroup.trim(),
       unit: unit.trim() || undefined,
@@ -134,18 +152,32 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
       typical: typical > 1 ? typical : undefined,
       rate,
     };
-    if (needsHeight || needsDepth) body.factor = factor;
-    create.mutate(body, {
-      onSuccess: ({ row }) => {
-        toast(`${row.description} added: ${formatQty(row.qty ?? 0)} ${unitLabel(row.unit ?? "")}`, "success");
-        onCreated(row);
-        onClose();
+    if (needsHeight || needsDepth) command.factor = factor;
+    if (scaleChoice) {
+      command.scaleChoice = scaleChoice;
+      operationIdRef.current = newOperationId();
+    }
+    create.mutate(
+      { operationId: operationIdRef.current, command },
+      {
+        onSuccess: async (receipt) => {
+          const snapshot = await preconApi.snapshot(sessionId);
+          const row = snapshot.rows.find((r) => r.id === receipt.rows[0]?.id) ?? null;
+          if (row) {
+            toast(`${row.description} added: ${formatQty(row.qty ?? 0)} ${unitLabel(row.unit ?? "")}`, "success");
+            onCreated(row);
+          }
+          onClose();
+        },
       },
-    });
+    );
   };
 
   const activeError = create.error ?? createFromAssembly.error;
   const error = activeError ? getApiErrorMessage(activeError, "Could not add the measurement") : null;
+  // A refused outline spanning two scale regions needs the QS to state the
+  // whole-shape scale (contract 12); the choice is offered, never inferred.
+  const crossesScales = Boolean(error && /crosses more than one scale/i.test(error));
   const submitting = create.isPending || createFromAssembly.isPending;
   // A floating card, not a modal: the shape just drawn stays visible on the
   // sheet while it is named, and the sheet can still be panned behind it.
@@ -276,7 +308,28 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
           </label>
         </div>
       )}
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="text-xs text-red-600" data-composer-error>{error}</p> : null}
+      {crossesScales ? (
+        <label className={LABEL} data-scale-choice>
+          Measure the whole shape at
+          <select
+            className={FIELD}
+            value={scaleChoice ? (scaleChoice.source === "sheet" ? "sheet" : scaleChoice.viewportId) : ""}
+            onChange={(e) =>
+              setScaleChoice(e.target.value === "" ? null : e.target.value === "sheet" ? { source: "sheet" } : { source: "viewport", viewportId: e.target.value })
+            }
+          >
+            <option value="">Choose a scale…</option>
+            <option value="sheet">The sheet scale</option>
+            {(sheet.viewports ?? []).map((viewport) => (
+              <option key={viewport.id} value={viewport.id}>
+                Region {viewport.label}
+              </option>
+            ))}
+          </select>
+          <span className="mt-0.5 block text-[10px] text-gray-500">Then press Add to bill again — the stated scale is recorded with the line.</span>
+        </label>
+      ) : null}
       <div className="flex justify-end gap-2">
         <Button type="button" size="sm" variant="secondary" onClick={onClose}>
           Discard

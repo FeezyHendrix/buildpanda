@@ -1,9 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assemblyService } from "../../rate-library/assembly-service.ts";
-import { rateLibraryRepository } from "../../rate-library/repository.ts";
-import { assemblyMeasurement } from "./assembly-measure.ts";
+import { editorOperationService } from "./editor-operation-service.ts";
+import { grantsOf } from "./editor-grants.ts";
 import type { PreconRepository } from "./repository.ts";
-import type { preconService } from "./service.ts";
+import type { PublishFn, preconService } from "./service.ts";
 import { MEASURE_TOOLS } from "./types.ts";
 import type { CreateAssemblyMeasurementBody } from "./types.ts";
 
@@ -43,18 +42,21 @@ const assemblyMeasurementBody = {
     typical: { type: "integer", minimum: 1, maximum: 500 },
     rate: { type: "number", minimum: 0 },
     billId: { type: "string", minLength: 1 },
+    operationId: { type: "string", minLength: 1, maxLength: 64 },
   },
 } as const;
 
 interface AssemblyRoutesOptions {
   service: ReturnType<typeof preconService>;
   repo: PreconRepository;
+  publish: PublishFn;
 }
 
 // One drawn shape billed as every item of a rate-library assembly.
-export const assemblyMeasurementRoutes: FastifyPluginAsync<AssemblyRoutesOptions> = async (fastify, { service, repo }) => {
-  const assemblies = assemblyService(rateLibraryRepository(fastify.db));
-  const measure = assemblyMeasurement({ repo, manual: service.manualLine, loadAssembly: (orgId, id) => assemblies.priced(orgId, id) });
+export const assemblyMeasurementRoutes: FastifyPluginAsync<AssemblyRoutesOptions> = async (fastify, { service, publish }) => {
+  // The shipped URL is kept as an adapter onto the envelope: the same request
+  // body, the same response, but now one receipt that the history can undo.
+  const operations = editorOperationService(fastify.db, publish);
 
   fastify.post<{ Params: { sessionId: string }; Body: CreateAssemblyMeasurementBody }>(
     "/precon/sessions/:sessionId/measurements/assembly",
@@ -63,7 +65,27 @@ export const assemblyMeasurementRoutes: FastifyPluginAsync<AssemblyRoutesOptions
       const user = request.requireAuth();
       const orgId = request.requireOrgPermission("takeoffs", "measure");
       await service.assertSessionOrg(request.params.sessionId, orgId);
-      const result = await measure.create(request.params.sessionId, orgId, request.body, user.id);
+      const result = await operations.apply(
+        request.params.sessionId,
+        {
+          operationId: request.body.operationId ?? `pop_${request.id}`,
+          command: {
+            kind: "create-assembly",
+            sheetId: request.body.sheetId,
+            assemblyId: request.body.assemblyId,
+            tool: request.body.tool,
+            vertices: request.body.vertices,
+            ...(request.body.elementGroup ? { elementGroup: request.body.elementGroup } : {}),
+            ...(request.body.code ? { code: request.body.code } : {}),
+            ...(request.body.factor ? { factor: request.body.factor } : {}),
+            ...(request.body.typical !== undefined ? { typical: request.body.typical } : {}),
+            ...(request.body.rate !== undefined ? { rate: request.body.rate } : {}),
+            ...(request.body.billId ? { billId: request.body.billId } : {}),
+          },
+        },
+        user.id,
+        grantsOf(request, orgId),
+      );
       return reply.status(201).send(result);
     },
   );

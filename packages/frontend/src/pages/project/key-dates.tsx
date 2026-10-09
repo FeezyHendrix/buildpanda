@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import {
@@ -27,6 +27,8 @@ import {
 } from "@/components/molecules/upsert-key-date-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { useStageScope } from "@/contexts/stage-scope-context";
+import { matchesStageActivity, stageActivityIds } from "@/lib/stage-filter";
 import {
   useCreateKeyDate,
   useDeleteKeyDate,
@@ -77,6 +79,7 @@ function keyDateFor(kd: KeyDate, view: DateView): string | null {
 export default function ProjectKeyDates() {
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
+  const { selectedStageId } = useStageScope();
   const canManage = Boolean(access && canResourceAction(access, "key-dates", "manage"));
   const { data: keyDates = [], isLoading } = useKeyDates(project.id, selectedBuildingId);
   // A key date that names no activity can never move with the programme, which
@@ -116,7 +119,9 @@ export default function ProjectKeyDates() {
   );
 
   const filtered = useMemo(() => {
+    const stageActivities = stageActivityIds(activities, selectedStageId);
     return keyDates
+      .filter((keyDate) => matchesStageActivity(keyDate.linkedActivityId, selectedStageId, stageActivities))
       .filter((k) =>
         statusFilter === "all" ||
         (statusFilter === "met" && k.status === "Met") ||
@@ -134,7 +139,7 @@ export default function ProjectKeyDates() {
         if (dateTo && dateStr > dateTo) return false;
         return true;
       });
-  }, [keyDates, statusFilter, search, dateView, dateFrom, dateTo]);
+  }, [keyDates, statusFilter, search, dateView, dateFrom, dateTo, activities, selectedStageId]);
 
   function handleCreate(values: UpsertKeyDateValues): void {
     createKd.mutate(
@@ -157,10 +162,9 @@ export default function ProjectKeyDates() {
         title="Key dates"
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setCreateOpen(true)}>
               Add key date
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

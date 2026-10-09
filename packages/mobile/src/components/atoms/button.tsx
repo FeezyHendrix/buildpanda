@@ -23,7 +23,7 @@ const spinnerTone: Record<ButtonVariant, SpinnerTone> = {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: "bg-primary-500 active:bg-primary-600",
-  secondary: "bg-grey-50 active:bg-grey-100",
+  secondary: "border border-line bg-surface active:bg-surface-alt",
   ghost: "bg-transparent active:bg-grey-50",
   danger: "bg-white border border-grey-50 active:bg-error-50",
 };
@@ -37,8 +37,8 @@ const labelTone: Record<ButtonVariant, TextTone> = {
 
 // 56px is the floor for a gloved hand on site, so there is no `sm`.
 const sizeStyles: Record<ButtonSize, string> = {
-  md: "h-14 px-5",
-  lg: "h-16 px-6",
+  md: "min-h-14 px-5 py-3",
+  lg: "min-h-16 px-6 py-4",
 };
 
 export function Button({
@@ -69,7 +69,7 @@ export function Button({
       {loading ? (
         <Spinner size="sm" tone={spinnerTone[variant]} />
       ) : (
-        <Text weight="semibold" tone={labelTone[variant]} className="text-base">
+        <Text weight="semibold" tone={labelTone[variant]} className="shrink text-center text-base">
           {children}
         </Text>
       )}

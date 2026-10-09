@@ -10,18 +10,18 @@ import { ICON_BRAND, ICON_INVERSE } from "@/constants/colors";
  */
 export function MicTabButton({ onPress }: { onPress: () => void }) {
   return (
-    <View className="flex-1 items-center justify-start" style={{ top: -18 }}>
+    <View className="flex-1 items-center justify-start" style={{ top: -8 }}>
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel="Record a field update"
-        className="h-16 w-16 items-center justify-center rounded-full bg-primary-500 active:bg-primary-600"
+        className="h-14 w-14 items-center justify-center rounded-2xl bg-primary-500 active:bg-primary-600"
         style={{
           shadowColor: ICON_BRAND,
-          shadowOpacity: 0.35,
+          shadowOpacity: 0.15,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: 4 },
-          elevation: 8,
+          elevation: 3,
         }}
       >
         <Ionicons name="mic" size={26} color={ICON_INVERSE} />

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray } from "drizzle-orm";
 import { randomUUID } from "expo-crypto";
 import type { DocumentGroup, ProjectDocument } from "@/api/documents";
 import { discardStagedMedia, stageMedia } from "@/lib/stage-media";
@@ -7,9 +7,7 @@ import { documentCategories, documents, outbox, type DocumentCategoryRow, type D
 
 export type { DocumentGroup };
 
-// The backend's three groups. The Plans and Documents tabs mirror the web's
-// two pages; media has its own library on the web and is kept out of both
-// here rather than folded into Documents.
+// Retain server group metadata while presenting one file list on mobile.
 export const DOCUMENT_GROUP = {
   PLAN: "plan",
   DOCUMENT: "document",
@@ -66,8 +64,8 @@ export interface LocalDocumentInput {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
-  categoryId: string;
-  categoryName: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
   group: DocumentGroup;
 }
 
@@ -127,9 +125,9 @@ export const documentsRepository = {
     }[],
   ): Promise<void> {
     if (rows.length === 0) return;
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
       for (const row of rows) {
-        await tx
+        tx
           .insert(documentCategories)
           .values({
             id: row.id,
@@ -141,7 +139,7 @@ export const documentsRepository = {
             group: row.group,
           })
           .onConflictDoUpdate({
-            target: documentCategories.id,
+            target: [documentCategories.projectId, documentCategories.id],
             set: {
               name: row.name,
               fileCount: row.fileCount,
@@ -149,7 +147,7 @@ export const documentsRepository = {
               tone: row.tone,
               group: row.group,
             },
-          });
+          }).run();
       }
     });
   },
@@ -163,8 +161,8 @@ export const documentsRepository = {
 
   /**
    * Server rows refresh the cache. A queued upload has a `local_` id the
-   * server never hands out, so it is never touched here; `localUri` is left
-   * alone because a downloaded blob stays valid across metadata refreshes.
+   * server never hands out, so it is never touched here. Keep cached bytes
+   * only while the server revision stays the same.
    */
   async upsertFromServer(
     db: Db,
@@ -173,13 +171,24 @@ export const documentsRepository = {
   ): Promise<void> {
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
+      const cached = new Map(
+        tx.select().from(documents)
+          .where(inArray(documents.id, rows.map((row) => row.id)))
+          .all().map((row) => [row.id, row]),
+      );
       for (const row of rows) {
-        const values = fromServer(projectId, row, now);
-        await tx
+        const existing = cached.get(row.id);
+        if (existing?.isPendingSync) continue;
+        const values = {
+          ...fromServer(projectId, row, now),
+          localUri: existing?.currentVersionId === row.currentVersionId ? existing?.localUri ?? null : null,
+          stagedUri: existing?.currentVersionId === row.currentVersionId ? existing?.stagedUri ?? null : null,
+        };
+        tx
           .insert(documents)
           .values({ id: row.id, ...values })
-          .onConflictDoUpdate({ target: documents.id, set: values });
+          .onConflictDoUpdate({ target: documents.id, set: values }).run();
       }
     });
   },
@@ -194,8 +203,8 @@ export const documentsRepository = {
     const id = `local_${randomUUID()}`;
     const stagedUri = stageMedia(input.uri, id, input.fileName);
     try {
-      await db.transaction(async (tx) => {
-        await tx.insert(documents).values({
+      await db.transaction((tx) => {
+        tx.insert(documents).values({
           id,
           projectId,
           fileName: input.fileName,
@@ -212,15 +221,15 @@ export const documentsRepository = {
           stagedUri,
           isPendingSync: true,
           updatedAt: Date.now(),
-        });
-        await tx.insert(outbox).values({
+        }).run();
+        tx.insert(outbox).values({
           id: randomUUID(),
           resource: DOCUMENTS_RESOURCE,
           entityId: id,
           projectId,
           operation: "create",
           nextAttemptAt: 0,
-        });
+        }).run();
       });
     } catch (err) {
       discardStagedMedia(stagedUri);
@@ -241,19 +250,32 @@ export const documentsRepository = {
     server: ProjectDocument,
   ): Promise<void> {
     const local = await this.findById(db, localId);
-    const values = fromServer(projectId, server, Date.now());
-    await db.transaction(async (tx) => {
-      await tx.delete(documents).where(eq(documents.id, localId));
-      await tx
+    let localUri = local?.stagedUri ?? null;
+    if (localUri && server.currentVersionId) {
+      try {
+        localUri = (await import("@/lib/download-file")).cachePickedVersion(localUri, server.currentVersionId, server.fileName);
+      } catch {
+        // The upload already succeeded. Keep its durable staged bytes if a
+        // second copy cannot fit; retrying creation would duplicate the file.
+      }
+    }
+    const stagedUri = localUri === local?.stagedUri ? localUri : null;
+    const values = { ...fromServer(projectId, server, Date.now()), localUri, stagedUri };
+    await db.transaction((tx) => {
+      tx.delete(documents).where(eq(documents.id, localId)).run();
+      tx
         .insert(documents)
         .values({ id: server.id, ...values, mimeType: local?.mimeType ?? null })
-        .onConflictDoUpdate({ target: documents.id, set: values });
+        .onConflictDoUpdate({ target: documents.id, set: values }).run();
     });
-    discardStagedMedia(local?.stagedUri ?? null);
+    if (!stagedUri) discardStagedMedia(local?.stagedUri ?? null);
   },
 
-  async setLocalUri(db: Db, documentId: string, uri: string | null): Promise<void> {
-    await db.update(documents).set({ localUri: uri }).where(eq(documents.id, documentId));
+  async setLocalUri(db: Db, documentId: string, uri: string | null, versionId?: string): Promise<void> {
+    const where = versionId
+      ? and(eq(documents.id, documentId), eq(documents.currentVersionId, versionId))
+      : eq(documents.id, documentId);
+    await db.update(documents).set({ localUri: uri }).where(where);
   },
 
   async findById(db: Db, documentId: string): Promise<DocumentRow | undefined> {

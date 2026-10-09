@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import { validatorFor } from "../../plugins/request-validation.ts";
+import { preconAuditRepository } from "../panda-ai/pdf-takeoff/audit-repository.ts";
 import { preconRepository } from "../panda-ai/pdf-takeoff/repository.ts";
 import { preconService } from "../panda-ai/pdf-takeoff/service.ts";
 import { drawingMarkupRepository } from "./repository.ts";
@@ -10,6 +12,8 @@ import {
   type CreateCommentInput,
   type CreateMarkupInput,
   type CreatePreconMarkupInput,
+  type EditCommentInput,
+  type EditMarkupInput,
 } from "./types.ts";
 
 const projectIdParams = {
@@ -132,10 +136,67 @@ const preconMarkupParams = {
   properties: { id: { type: "string", minLength: 1 } },
 } as const;
 
+const preconCommentParams = {
+  type: "object",
+  required: ["id", "commentId"],
+  additionalProperties: false,
+  properties: {
+    id: { type: "string", minLength: 1 },
+    commentId: { type: "string", minLength: 1 },
+  },
+} as const;
+
 const sessionListQuery = {
   type: "object",
   additionalProperties: false,
-  properties: { sheetId: { type: "string", minLength: 1 } },
+  properties: {
+    sheetId: { type: "string", minLength: 1 },
+    includeDeleted: { type: "boolean" },
+  },
+} as const;
+
+// Required. Withdrawing evidence without saying which version you are
+// withdrawing is a delete aimed at whatever happens to be there.
+const deleteMarkupQuery = {
+  type: "object",
+  required: ["version"],
+  additionalProperties: false,
+  properties: { version: { type: "integer", minimum: 1 } },
+} as const;
+
+// One declaration for both the create and the edit: a pen a stroke may be
+// DRAWN with and a pen it may be RESTATED to are the same pen, and two schemas
+// would let one of them quietly accept a width the other refuses.
+const style = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    color: { type: "string", minLength: 1, maxLength: 20 },
+    strokeWidthPx: { type: "number", minimum: 0, maximum: 200 },
+  },
+} as const;
+
+const editMarkupBody = {
+  type: "object",
+  required: ["version"],
+  additionalProperties: false,
+  properties: {
+    version: { type: "integer", minimum: 1 },
+    geometry,
+    color: { type: "string", minLength: 1, maxLength: 20 },
+    style,
+  },
+} as const;
+
+const editCommentBody = {
+  type: "object",
+  required: ["version", "body"],
+  additionalProperties: false,
+  properties: {
+    version: { type: "integer", minimum: 1 },
+    body: { type: "string", minLength: 1, maxLength: 4000 },
+    bodyHtml: { type: ["string", "null"], maxLength: 200000 },
+  },
 } as const;
 
 const createPreconMarkupBody = {
@@ -148,13 +209,19 @@ const createPreconMarkupBody = {
     kind: { type: "string", enum: MARKUP_KINDS },
     geometry,
     color: { type: "string", minLength: 1, maxLength: 20 },
+    style,
   },
 } as const;
 
 const drawingMarkupRoutes: FastifyPluginAsync = async (fastify) => {
+  // A markup anchors to a point, so a `null` must never be coerced into a 0
+  // nobody clicked. Encapsulated: binds THIS subtree, not its siblings.
+  fastify.setValidatorCompiler(validatorFor);
+
   const service = drawingMarkupService(
     drawingMarkupRepository(fastify.db),
     preconService(preconRepository(fastify.db)),
+    preconAuditRepository(fastify.db),
   );
 
   fastify.get<{ Params: { id: string }; Querystring: { documentVersionId: string; pageNo?: number } }>(
@@ -223,13 +290,20 @@ const drawingMarkupRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── WS-M1D: pinned comments on take-off sheets (org-scoped via the session) ──
 
-  fastify.get<{ Params: { sessionId: string }; Querystring: { sheetId?: string } }>(
+  fastify.get<{
+    Params: { sessionId: string };
+    Querystring: { sheetId?: string; includeDeleted?: boolean };
+  }>(
     "/precon/sessions/:sessionId/markups",
     { schema: { params: sessionParams, querystring: sessionListQuery } },
     async (request) => {
       const orgId = request.requireOrgPermission("takeoffs", "view");
       await service.assertPreconSessionOrg(request.params.sessionId, orgId);
-      return service.listForSession(request.params.sessionId, request.query.sheetId);
+      return service.listForSession(
+        request.params.sessionId,
+        request.query.sheetId,
+        request.query.includeDeleted,
+      );
     },
   );
 
@@ -267,14 +341,54 @@ const drawingMarkupRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.delete<{ Params: { id: string } }>(
+  fastify.patch<{ Params: { id: string }; Body: EditMarkupInput }>(
     "/precon/markups/:id",
+    { schema: { params: preconMarkupParams, body: editMarkupBody } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      const user = request.requireAuth();
+      await service.preconSessionOf(request.params.id, orgId);
+      return service.editMarkup(request.params.id, user.id, request.body);
+    },
+  );
+
+  fastify.patch<{ Params: { id: string; commentId: string }; Body: EditCommentInput }>(
+    "/precon/markups/:id/comments/:commentId",
+    { schema: { params: preconCommentParams, body: editCommentBody } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      const user = request.requireAuth();
+      await service.preconSessionOf(request.params.id, orgId);
+      return service.editComment(
+        request.params.id,
+        request.params.commentId,
+        user.id,
+        request.body,
+      );
+    },
+  );
+
+  // Withdrawn, not erased: the pin and its thread stay on the record and can be
+  // offered back, because an RFI may already have been raised off them.
+  fastify.delete<{ Params: { id: string }; Querystring: { version: number } }>(
+    "/precon/markups/:id",
+    { schema: { params: preconMarkupParams, querystring: deleteMarkupQuery } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      const user = request.requireAuth();
+      await service.preconSessionOf(request.params.id, orgId);
+      return service.softDeleteMarkup(request.params.id, user.id, request.query.version);
+    },
+  );
+
+  fastify.post<{ Params: { id: string } }>(
+    "/precon/markups/:id/restore",
     { schema: { params: preconMarkupParams } },
     async (request) => {
       const orgId = request.requireOrgPermission("takeoffs", "edit");
+      const user = request.requireAuth();
       await service.preconSessionOf(request.params.id, orgId);
-      await service.remove(request.params.id);
-      return { ok: true };
+      return service.restoreMarkup(request.params.id, user.id);
     },
   );
 };

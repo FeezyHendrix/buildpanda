@@ -43,12 +43,10 @@ function invalidateInvoiceAndPosition(
   queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
 }
 
-export function useProjectInvoices(projectId: string | undefined) {
+export function useProjectInvoices(projectId: string | undefined, stageId?: string) {
   return useQuery({
-    queryKey: projectId
-      ? invoiceKeys.list(projectId)
-      : invoiceKeys.list("__none__"),
-    queryFn: () => invoicesApi.list(projectId!),
+    queryKey: invoiceKeys.list(projectId ?? "__none__", stageId),
+    queryFn: () => invoicesApi.list(projectId!, stageId),
     enabled: Boolean(projectId),
   });
 }

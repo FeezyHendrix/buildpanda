@@ -25,6 +25,7 @@ export function isWeatherCondition(value: string | null | undefined): value is W
 }
 
 export interface DailyLogEntry {
+  buildingId?: string | null;
   id: string;
   authorName: string;
   bodyHtml: string | null;
@@ -34,6 +35,9 @@ export interface DailyLogEntry {
 }
 
 export interface DailyLogDay {
+  buildingId?: string | null;
+  summary?: string | null;
+  activities?: { activityId: string; activityName: string; hoursLogged: number }[];
   projectId: string;
   logDate: string;
   weatherCondition: WeatherCondition | null;
@@ -45,7 +49,7 @@ export interface DailyLogDay {
   voidedAt?: string | null;
 }
 
-/** The log itself is keyed by date, not id — one log per project per day. */
+/** The log itself is keyed by date, not id — one log per building per day. */
 export interface UpsertDailyLogInput {
   weatherCondition?: WeatherCondition | null;
   temperatureC?: number | null;
@@ -65,8 +69,8 @@ export const dailyLogsApi = {
     return request<DailyLogDay[]>(`/projects/${projectId}/daily-logs${suffix}`);
   },
 
-  day: (projectId: string, date: string) =>
-    request<DailyLogDay>(`/projects/${projectId}/daily-logs/${date}/day`),
+  day: (projectId: string, date: string, buildingId: string) =>
+    request<DailyLogDay>(`/projects/${projectId}/daily-logs/${date}/day?${new URLSearchParams({ buildingId })}`),
 
   upsert: (projectId: string, date: string, body: UpsertDailyLogInput) =>
     request<DailyLogDay>(`/projects/${projectId}/daily-logs/${date}`, {

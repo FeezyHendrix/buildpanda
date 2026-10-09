@@ -43,6 +43,7 @@ export interface LookAheadActivitySummary {
 }
 
 export interface LookAhead {
+  buildingId: string;
   id: string;
   projectId: string;
   name: string;

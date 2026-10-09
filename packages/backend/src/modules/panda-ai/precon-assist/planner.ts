@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { LlmMessage } from "../../../lib/llm.ts";
 import { chatLongJsonValidated, longTextCharBudget } from "../../../lib/llm-long-text.ts";
 import { ValidationError } from "../../../lib/errors.ts";
-import type { PreconBill, PreconBoqRowDto, PreconProgrammeTask, PreconSheet } from "../pdf-takeoff/types.ts";
+import type { PreconBill, PreconBoqRowDto, PreconGeometry, PreconProgrammeTask, PreconSession, PreconSheet } from "../pdf-takeoff/types.ts";
 import {
   BOQ_ROW_CREATE_FIELDS,
   BOQ_ROW_UPDATE_FIELDS,
@@ -17,6 +17,7 @@ import {
   type AssistSurface,
   type AssistViewerContext,
 } from "./types.ts";
+import { rowBasis } from "../pdf-takeoff/measurement-basis-facts.ts";
 import { MEASUREMENT_PROMPT_LINES, normaliseMeasurementChange } from "./measurement-change.ts";
 
 const MM_PER_PT_AT_1_TO_1 = 0.3528;
@@ -66,6 +67,10 @@ export interface BillContext {
   bills: PreconBill[];
   rows: PreconBoqRowDto[];
   sheets: PreconSheet[];
+  /** Every drawing in the session, so a line's basis can name every scale it was taken at. */
+  geometries?: PreconGeometry[];
+  /** Which revision of this take-off measured the lines, and whether it has been replaced. */
+  session?: Pick<PreconSession, "revision" | "supersededBy">;
   viewer?: AssistViewerContext;
 }
 
@@ -102,7 +107,43 @@ function compactSheet(sheet: PreconSheet) {
   };
 }
 
-function compactRow(row: PreconBoqRowDto) {
+/** The live measuring drawings of each line, in the order the snapshot serves them. */
+function shapesByRow(ctx: BillContext): Map<string, PreconGeometry[]> {
+  const byRow = new Map<string, PreconGeometry[]>();
+  for (const shape of ctx.geometries ?? []) {
+    if (shape.kind === "deduction" || shape.source !== "manual") continue;
+    const list = byRow.get(shape.rowId);
+    if (list) list.push(shape);
+    else byRow.set(shape.rowId, [shape]);
+  }
+  return byRow;
+}
+
+/**
+ * The line's drawings newest first, which is what a basis is read from.
+ *
+ * The snapshot serves geometries oldest-first and `measurementDefinition` is
+ * the last write among them, so the newest is taken from the ROW — the same
+ * record this has always reported a tool from. Taking it off the geometry list
+ * instead would quietly change which lines report one: a geometry's
+ * `definition` is the strict parse, which refuses records the row-level one
+ * still reads, and a line silently losing its tool reads as "needs factor
+ * review" on a line that never did.
+ */
+function definitionsFor(row: PreconBoqRowDto, shapes: readonly PreconGeometry[]): unknown[] {
+  if (shapes.length === 0) return [];
+  const older = shapes.slice(0, -1).map((shape) => shape.definition);
+  return [row.measurementDefinition ?? null, ...older.reverse()];
+}
+
+function compactRow(row: PreconBoqRowDto, shapes: readonly PreconGeometry[] = []) {
+  const basis = rowBasis({
+    definitions: definitionsFor(row, shapes),
+    deductions: row.deductions,
+    typical: row.typical,
+    settings: row.measurementSettings,
+    measurementBasis: row.measurementBasis,
+  });
   return {
     id: row.id,
     billId: row.billId,
@@ -112,8 +153,10 @@ function compactRow(row: PreconBoqRowDto) {
     description: row.description,
     unit: row.unit,
     qty: row.qty,
+    qtyGross: row.qtyGross,
     rate: row.rate,
     status: row.status,
+    ...basis,
   };
 }
 
@@ -133,7 +176,8 @@ function compactTask(task: PreconProgrammeTask) {
 }
 
 export function buildBillMessages(prompt: string, ctx: BillContext): LlmMessage[] {
-  const rows = ctx.rows.slice(0, contextRowBudget()).map(compactRow);
+  const shapes = shapesByRow(ctx);
+  const rows = ctx.rows.slice(0, contextRowBudget()).map((row) => compactRow(row, shapes.get(row.id) ?? []));
   return [
     {
       role: "system",
@@ -142,6 +186,11 @@ export function buildBillMessages(prompt: string, ctx: BillContext): LlmMessage[
         "Surface: the take-off review. Entities: \"boq_row\" (bill lines), \"sheet\" (the drawing sheets), \"viewer\" (the drawing viewer's tools), \"measurement\" (a line measured by hand).",
         ...MEASUREMENT_PROMPT_LINES,
         `boq_row update: id required; allowed after fields: ${BOQ_ROW_UPDATE_FIELDS.join(", ")}. status may only be \"verified\" or \"rejected\".`,
+        "Each row carries its read-only measurement basis, which is why the line bills what it does: net = (qtyGross − deductionsTotal) × typical. qtyGross is the figure measured on the drawing; deductions are the openings netted off it, each with its label, qty, unit and mode (unitConfirmed false means the unit was assumed, not confirmed); typical is the number of identical floors or areas the line stands for and repeatLabels are the names given them; tool is what measured it and heightM/depthM are the height and depth factors behind a wall_area or volume line; quantityMode says whether the figure was drawn on the sheet or stated in words.",
+        "scales lists every scale the line's drawings were taken at — sheet or viewport, the viewportId, the sheetVersion the figure was true for, and mmPerPt — and measurementCount says how many drawings measure the line, with tool and the factors describing the newest. assembly is the assembly as it stood when the line was drawn, frozen. Quote these fields when you explain a quantity, and never infer a factor, an opening, a unit or a scale the line does not record.",
+        "You cannot change a factor, an opening, a typical or a scale from here — say in the plan which line needs which change and that the user makes it in the line's inspector, where it re-bills without redrawing.",
+        "takeoff.sourceRevision is the revision of this take-off the lines were measured on. takeoff.supersededByNewerRevision true means the drawing has since been re-measured on a later revision: say so in the plan before proposing any change to these figures.",
+        "hasUnknownBasis means the line was measured but its basis was never recorded: its factor cannot be resolved at all until a person sets the tool in the inspector. Name those lines when the user asks which lines need factor review, and never guess a factor for them.",
         `boq_row create: allowed after fields: ${BOQ_ROW_CREATE_FIELDS.join(", ")}; billId required and must be one of the bills; rowType defaults to \"item\".`,
         "boq_row delete: id required. Only rows of type item or provisional_sum may be priced; headings and notes carry no qty or rate.",
         `sheet update: id is a sheet id; allowed after fields: ${SHEET_UPDATE_FIELDS.join(", ")}. kind is one of floor-plan, elevation, section, detail, schedule, unknown. scaleRatio is the drawing scale as a number, e.g. 100 for 1:100. dimUnit is mm, cm or m.`,
@@ -154,6 +203,10 @@ export function buildBillMessages(prompt: string, ctx: BillContext): LlmMessage[
       content: JSON.stringify({
         request: prompt,
         viewer: ctx.viewer ?? null,
+        takeoff: {
+          sourceRevision: ctx.session?.revision ?? null,
+          supersededByNewerRevision: ctx.session ? ctx.session.supersededBy !== null : null,
+        },
         sheets: (ctx.sheets ?? []).map(compactSheet),
         bills: ctx.bills,
         rows,
@@ -199,6 +252,8 @@ export function normaliseBillChanges(draft: AssistDraft, ctx: BillContext): Assi
   const rowById = new Map(ctx.rows.map((r) => [r.id, r]));
   const billIds = new Set(ctx.bills.map((b) => b.id));
   const sheetById = new Map((ctx.sheets ?? []).map((s) => [s.id, s]));
+  const shapes = shapesByRow(ctx);
+  const compact = (row: PreconBoqRowDto): Record<string, unknown> => compactRow(row, shapes.get(row.id) ?? []);
   return draft.changes.map((change): AssistChange => {
     if (change.entity === "viewer") {
       if (change.op !== "update") throw new ValidationError("Panda AI proposed something other than an update to the viewer");
@@ -251,12 +306,12 @@ export function normaliseBillChanges(draft: AssistDraft, ctx: BillContext): Assi
     const row = change.id ? rowById.get(change.id) : undefined;
     if (!row) throw new ValidationError("Panda AI referenced a bill line that does not exist");
     if (change.op === "delete") {
-      return { op: "delete", entity: "boq_row", id: row.id, before: compactRow(row), after: {}, label: `Delete · ${row.description}` };
+      return { op: "delete", entity: "boq_row", id: row.id, before: compact(row), after: {}, label: `Delete · ${row.description}` };
     }
     const after = pick(change.after, BOQ_ROW_UPDATE_FIELDS);
     requireStatus(after);
     if (Object.keys(after).length === 0) throw new ValidationError("Panda AI proposed an update with no allowed fields");
-    const before = pick(compactRow(row) as Record<string, unknown>, Object.keys(after));
+    const before = pick(compact(row), Object.keys(after));
     return { op: "update", entity: "boq_row", id: row.id, before, after, label: `${row.description} · ${Object.keys(after).join(", ")}` };
   });
 }

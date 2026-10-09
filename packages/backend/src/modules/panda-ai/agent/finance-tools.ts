@@ -15,6 +15,7 @@ import { stagesRepository } from "../../stages/repository.ts";
 import { stagesService } from "../../stages/service.ts";
 import { transactionsRepository } from "../../transactions/repository.ts";
 import { fn, round2, tool, type AgentTool } from "./tool-helpers.ts";
+import { canRead } from "./tool-permissions.ts";
 import type { ToolContext } from "./tools.ts";
 
 function contractsFor(ctx: ToolContext) {
@@ -45,6 +46,7 @@ function phasesFor(ctx: ToolContext, contracts: ReturnType<typeof contractsFor>)
 export function financeTools(): AgentTool[] {
   return [
     tool(fn("get_finance_position", "THE answer to 'what is outstanding on the contract', 'how much have we been paid', 'what is owed', 'are we exposed to liquidated damages': the single contract position. Returns the original contract sum, approved variations and the adjusted contract; gross certified to date (from approved receivable certificates only); amount paid to date (from the receipts recorded on those certificates); retention held; advance recovered; outstanding (adjusted contract MINUS certified — still to certify); unpaid certified (certified MINUS paid — certified and awaiting payment); the funding ledger (deposits and milestone releases, which are NOT part of the contract waterfall); liquidated-damages exposure (days late beyond the revised completion date times the daily rate, capped); approved and pending extension-of-time days; and cost versus budget per build stage with the source of each budget figure. Prefer this over get_contracts and get_finances for any 'what is outstanding / owed / paid / late' question. Every figure is a record of money a human moved off-platform; BuildPanda never transacts."), async (ctx) => {
+      const maySeeCosts = canRead(ctx, "finances", "viewCosts");
       const repository = financesRepository(ctx.db);
       const stages = stagesRepository(ctx.db);
       const position = await financeSummaryService({
@@ -98,24 +100,33 @@ export function financeTools(): AgentTool[] {
               daysOverdue: i.overdueDays,
               outstanding: i.balanceDue,
             })),
-          costVsBudgetByStage: position.phases.map((p) => ({
-            stage: p.name,
-            scheduledValue: p.scheduledValue,
-            budget: p.budget,
-            budgetSource: p.budgetSource,
-            committed: p.committed,
-            actual: p.actual,
-            variance: p.variance,
-          })),
+          // Cost versus budget is the contractor's internal position, gated
+          // elsewhere by finances:viewCosts. The contract waterfall above is
+          // client-facing (finances:view) and stays.
+          costVsBudgetByStage: maySeeCosts
+            ? position.phases.map((p) => ({
+                stage: p.name,
+                scheduledValue: p.scheduledValue,
+                budget: p.budget,
+                budgetSource: p.budgetSource,
+                committed: p.committed,
+                actual: p.actual,
+                variance: p.variance,
+              }))
+            : [],
+          notPermitted: maySeeCosts ? [] : ["costVsBudgetByStage"],
         },
       };
     }),
 
     tool(fn("get_contracts", "Get the project's contracts — the main contract (mirrors the contract sum) and one change-order contract per approved change request — each with its status (Draft, Pending, Signed), total, trade, legal entity, whether the signed document is on file and how many build stages sit on it; plus every build stage's estimate vs used figures: scheduled value, expected cost, estimated labour hours, labour and material budgets against labour hours logged in daily logs, material cost committed on purchase orders and total cost (materials + logged expenses). Use for questions about contracts, what is signed or pending, change-order contracts, or how a stage is tracking against its estimate. BuildPanda only LOGS these records; it does not move money."), async (ctx) => {
       const contracts = contractsFor(ctx);
+      // The contract list is finances:view; the build-stage estimate rollup is
+      // served by GET /projects/:id/stages, which takes stages:view.
+      const maySeeStages = canRead(ctx, "stages", "view");
       const [contractRows, stages] = await Promise.all([
         contracts.listByProject(ctx.projectId),
-        phasesFor(ctx, contracts).list(ctx.projectId),
+        maySeeStages ? phasesFor(ctx, contracts).list(ctx.projectId) : Promise.resolve([]),
       ]);
       const titleById = new Map(contractRows.map((c) => [c.id, c.title]));
       return {
@@ -147,6 +158,7 @@ export function financeTools(): AgentTool[] {
             totalCost: s.totalCost,
             costVariance: round2(s.expectedCost - s.totalCost),
           })),
+          notPermitted: maySeeStages ? [] : ["phases"],
         },
       };
     }),

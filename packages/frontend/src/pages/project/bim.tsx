@@ -2,10 +2,10 @@ import { lazy, Suspense, useState } from "react";
 import { Boxes } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { CreateButton } from "@/components/molecules/create-button";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { UploadBimDialog } from "@/components/molecules/upload-bim-dialog";
@@ -345,10 +345,9 @@ export default function ProjectBim() {
         title="BIM models"
         actions={
           canUpload ? (
-            <Button variant="primary" size="md" onClick={() => setUploadOpen(true)}>
-              <PlusIcon className="size-4" />
+            <CreateButton onClick={() => setUploadOpen(true)}>
               Import model
-            </Button>
+      </CreateButton>
           ) : undefined
         }
       />

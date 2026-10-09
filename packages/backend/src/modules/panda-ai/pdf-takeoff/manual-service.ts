@@ -2,10 +2,12 @@ import { generateId } from "../../../lib/ids.ts";
 import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
 import type { PreconRepository } from "./repository.ts";
 import { nextRevision } from "./revisions.ts";
-import { PICTURE_PLAN } from "./types.ts";
+import { PICTURE_PLAN, SHEET_KIND } from "./types.ts";
 import { buildTakeoffCsv, csvFileName } from "./export-csv.ts";
 import { manualBasis, measureVertices, netQuantity, normaliseTypical, quantityFromStated } from "./measurements.ts";
-import { scaleAt, scaleClause } from "./viewports.ts";
+import { mmPerPtOf, scaleClause, scaleForTool } from "./viewports.ts";
+import { measurementDefinition, statedSettings } from "./measurement-definition.ts";
+import type { MeasurementSettingsV1 } from "./editor-types.ts";
 import type {
   CreateMeasurementBody,
   CreateMeasurementResult,
@@ -57,6 +59,8 @@ export interface ManualLine {
   rate?: number;
   basis: string;
   provenance: string;
+  // Typed measurement inputs, for a line that has no shape to carry them.
+  settings?: MeasurementSettingsV1;
 }
 
 /**
@@ -101,6 +105,7 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
       status: "verified",
       version: 1,
       measurement_basis: line.basis,
+      measurement_settings: line.settings ?? null,
       confidence_reason: null,
       provenance: line.provenance,
       origin: "manual",
@@ -172,7 +177,7 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
           page_number: 1,
           code: isDwg ? "DWG-01" : isPicture ? "IMG-01" : null,
           title: isDwg || isPicture ? file.fileName : null,
-          kind: isDwg ? "floor-plan" : "unknown",
+          kind: isDwg ? SHEET_KIND.FLOOR_PLAN : SHEET_KIND.UNKNOWN,
           status: isPicture ? "measured" : "pending",
           scale_mm_per_pt: null,
           scale_confidence: null,
@@ -207,9 +212,10 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
       if (!sheet || sheet.session_id !== sessionId) throw new NotFoundError("Sheet");
       if (!body.description.trim()) throw new BadRequestError("Give the line a description");
       const typical = normaliseTypical(body.typical);
-      // the viewport under the first vertex sets the scale, else the sheet does
-      const pick = scaleAt(sheet, body.vertices);
-      const q = measureVertices(body.tool, body.vertices, pick.mmPerPt, body.factor);
+      // the viewport under the first vertex sets the scale, else the sheet does;
+      // a count needs neither, so it never reaches the uncalibrated-sheet refusal
+      const pick = scaleForTool(sheet, body.tool, body.vertices);
+      const q = measureVertices(body.tool, body.vertices, mmPerPtOf(pick), body.factor);
       const unit = unitFor(body, q);
       const sheetCode = sheet.code ?? sheet.title ?? sheet.file_name;
       const bill = await targetBill(sessionId, body.billId);
@@ -237,6 +243,7 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
         source: "manual",
         quantity: q.base,
         unit: q.baseUnit,
+        definition: measurementDefinition(body.tool, body.vertices, body.factor ?? {}, sheet, pick),
       };
       await repo.insertGeometries([geometry]);
       await audit(sessionId, row.id, actor, "measured_by_hand", null, {
@@ -273,6 +280,10 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
           rate: body.rate,
           basis: manualBasis(body.tool, q, "stated in prompt", body.factor, typical, unit),
           provenance: `Stated in a Panda AI prompt by ${actor}`,
+          // A stated figure has no shape, so there is nowhere to hang a geometry
+          // definition. Without this the only record of what was stated is the
+          // basis sentence, and nothing may parse that back (contracts 3, 17).
+          settings: statedSettings(body.tool, body.qty, unit, body.factor, actor),
         },
         actor,
       );

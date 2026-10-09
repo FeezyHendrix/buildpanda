@@ -1,5 +1,9 @@
+import { useProjectBuilding } from "@/hooks/use-project-building";
+import { isIsoDate } from "@/lib/dates";
+import { todayIso } from "@/db/daily-logs-repository";
+import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import type { Activity } from "@/api/activities";
@@ -17,10 +21,11 @@ import { cn } from "@/lib/utils";
 // It used to be a bottom sheet, which this package's rule reserves for
 // switching context or a short confirmation.
 
-export default function LogActivity() {
+function LogActivityForm() {
   const { date } = useLocalSearchParams<{ date?: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
+  const { buildingId } = useProjectBuilding();
   const activities = useActivities(projectId);
   const delayReasons = useDelayReasons();
 
@@ -32,22 +37,27 @@ export default function LogActivity() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const logDate = date ?? "";
+  const logDate = date ?? todayIso();
+  const hoursNumber = Number(hours.trim());
+  const canLog = Boolean(selected && db && projectId) && isIsoDate(logDate) &&
+    hours.trim().length > 0 && Number.isFinite(hoursNumber) && hoursNumber > 0 &&
+    (!delayed || Boolean(reasonCode)) && !saving;
 
   async function handleLog() {
-    if (!selected || !hours.trim() || !db || !projectId || !logDate) return;
+    if (!canLog || !selected || !db || !projectId) return;
     setSaving(true);
     setError(null);
     try {
       await dailyLogsRepository.logActivityLocal(db, projectId, logDate, {
         activityId: selected.id,
+        buildingId: selected.buildingId ?? buildingId,
         activityName: selected.name,
-        hoursLogged: Number.parseFloat(hours) || 0,
+        hoursLogged: hoursNumber,
         delayReasonCode: delayed ? reasonCode : null,
         delayNote: delayed && delayNote.trim() ? delayNote.trim() : null,
       });
       void flushOutbox(db).catch(() => undefined);
-      router.back();
+      goBack();
     } catch (err) {
       console.error("log activity failed", err);
       setError(err instanceof Error && err.message ? err.message : "Couldn't log that activity.");
@@ -59,8 +69,9 @@ export default function LogActivity() {
 
   return (
     <Page
+      buildingScope
       title={selected ? "Log hours" : "Pick an activity"}
-      onBack={() => (selected ? setSelected(null) : router.back())}
+      onBack={() => (selected ? setSelected(null) : goBack())}
       scroll={false}
       footer={
         selected ? (
@@ -70,7 +81,7 @@ export default function LogActivity() {
                 {error}
               </Text>
             ) : null}
-            <Button onPress={handleLog} loading={saving} disabled={!hours.trim()}>
+            <Button onPress={handleLog} loading={saving} disabled={!canLog}>
               Log activity
             </Button>
           </View>
@@ -171,4 +182,10 @@ function ActivityPicker({ list, onPick }: { list: Activity[]; onPick: (activity:
       </Card>
     </ScrollView>
   );
+}
+
+export default function LogActivity() {
+  const { projectId } = useFieldSession();
+  const { buildingId } = useProjectBuilding();
+  return <LogActivityForm key={`${projectId}:${buildingId}`} />;
 }

@@ -19,6 +19,12 @@ const hosted: Knex.Config = {
     directory: "./src/db/migrations",
     extension: "ts",
   },
+  // Without this a deployed environment cannot be seeded at all: knex falls
+  // back to its default "./seeds" and every seed fails on a missing directory.
+  seeds: {
+    directory: "./src/db/seeds",
+    extension: "ts",
+  },
 };
 
 const config: Record<string, Knex.Config> = {
