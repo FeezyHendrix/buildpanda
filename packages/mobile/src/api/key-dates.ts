@@ -1,6 +1,7 @@
 import { request } from "./client";
 
 export interface KeyDate {
+  linkedActivityId?: string | null;
   buildingId?: string | null;
   id: string;
   label: string;

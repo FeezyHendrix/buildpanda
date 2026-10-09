@@ -26,6 +26,7 @@ export const RFI_RESPONDABLE_STATUSES: readonly RfiStatus[] = ["Open", "InReview
 export const RFI_REOPENABLE_STATUSES: readonly RfiStatus[] = ["Answered", "Closed"];
 
 export interface Rfi {
+  changeRequestId?: string | null;
   id: string;
   number: number;
   subject: string;
@@ -82,7 +83,7 @@ export interface RespondRfiInput {
 }
 
 export const rfisApi = {
-  list: (projectId: string) => request<Rfi[]>(`/projects/${projectId}/rfis`),
+  list: (projectId: string, stageId?: string) => request<Rfi[]>(`/projects/${projectId}/rfis${stageId ? `?${new URLSearchParams({ stageId })}` : ""}`),
 
   detail: (projectId: string, rfiId: string) =>
     request<RfiDetail>(`/projects/${projectId}/rfis/${rfiId}`),

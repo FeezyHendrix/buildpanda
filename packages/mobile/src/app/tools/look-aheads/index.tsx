@@ -52,7 +52,7 @@ export default function LookAheads() {
   const { db, ready } = useLocalDb();
 
   return (
-    <Page
+    <Page stageScope
       scroll={false}
       buildingScope
       title="Look aheads"

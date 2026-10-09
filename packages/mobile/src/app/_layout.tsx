@@ -1,10 +1,5 @@
 import "@/global.css";
 
-import { PlusJakartaSans_400Regular } from "@expo-google-fonts/plus-jakarta-sans/400Regular";
-import { PlusJakartaSans_500Medium } from "@expo-google-fonts/plus-jakarta-sans/500Medium";
-import { PlusJakartaSans_600SemiBold } from "@expo-google-fonts/plus-jakarta-sans/600SemiBold";
-import { PlusJakartaSans_700Bold } from "@expo-google-fonts/plus-jakarta-sans/700Bold";
-import { PlusJakartaSans_800ExtraBold } from "@expo-google-fonts/plus-jakarta-sans/800ExtraBold";
 import { useFonts } from "expo-font";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
@@ -17,6 +12,7 @@ import { LocalDbProvider } from "@/db/provider";
 import { FieldSessionProvider } from "@/lib/field-session";
 import { SyncProvider } from "@/lib/sync-provider";
 import { OfflinePlansProvider } from "@/lib/offline-plans-provider";
+import { StageScopeProvider } from "@/lib/stage-scope";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -39,11 +35,13 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
+    Archivo_700Bold: require("../../assets/fonts/Archivo_700Bold.ttf"),
+    Archivo_600SemiBold: require("../../assets/fonts/Archivo_600SemiBold.ttf"),
+    Inter_400Regular: require("../../assets/fonts/Inter_400Regular.ttf"),
+    Inter_500Medium: require("../../assets/fonts/Inter_500Medium.ttf"),
+    Inter_600SemiBold: require("../../assets/fonts/Inter_600SemiBold.ttf"),
+    Inter_700Bold: require("../../assets/fonts/Inter_700Bold.ttf"),
+    Inter_800ExtraBold: require("../../assets/fonts/Inter_800ExtraBold.ttf"),
   });
 
   useEffect(() => {
@@ -56,10 +54,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <FieldSessionProvider>
+          <StageScopeProvider>
           <LocalDbProvider>
           <SyncProvider>
           <OfflinePlansProvider>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
           <Stack
             initialRouteName="index"
             screenOptions={{
@@ -73,6 +72,7 @@ export default function RootLayout() {
           </OfflinePlansProvider>
           </SyncProvider>
           </LocalDbProvider>
+          </StageScopeProvider>
         </FieldSessionProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

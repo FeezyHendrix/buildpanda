@@ -1,3 +1,5 @@
+import { StageField } from "@/components/molecules/stage-field";
+import { useStageScope } from "@/lib/stage-scope";
 import { isIsoDate } from "@/lib/dates";
 import { goBack } from "@/lib/navigation";
 
@@ -24,6 +26,8 @@ function reviewerOptions(assignees: readonly CommentAssignee[]): { value: string
 
 export default function NewMaterialApproval() {
   const { projectId } = useFieldSession();
+  const scope = useStageScope();
+  const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
   const { db } = useLocalDb();
   const { isOnline } = useSyncState();
   const assignees = useProjectAssignees(projectId);
@@ -56,6 +60,7 @@ export default function NewMaterialApproval() {
       // so this succeeds with no signal.
       await createApproval({
         title: title.trim(),
+        phaseId: stageId,
         materialName: materialName.trim(),
         specification: specification.trim() || null,
         quantity: quantity.trim().length > 0 ? parsedQuantity : 0,
@@ -102,6 +107,7 @@ export default function NewMaterialApproval() {
       ) : null}
 
       <View className="gap-5">
+        <StageField value={stageId} onChange={setStageId} />
         <Field
           label="Request title"
           value={title}

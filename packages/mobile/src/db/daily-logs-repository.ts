@@ -69,6 +69,8 @@ export function toLoggedActivity(row: DailyLogActivityRow) {
 }
 
 export const dailyLogsRepository = {
+  allActivitiesQuery: (db: Db, projectId: string) =>
+    db.select().from(dailyLogActivities).where(eq(dailyLogActivities.projectId, projectId)),
   activitiesQuery: (db: Db, projectId: string, logDate: string, buildingId?: string) =>
     db
       .select()

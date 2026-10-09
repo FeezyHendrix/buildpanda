@@ -1,3 +1,5 @@
+import { useStageScope } from "@/lib/stage-scope";
+import { matchesStage } from "@/lib/stage-filter";
 import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
@@ -24,7 +26,8 @@ import { flushOutbox, hasPendingCreates } from "@/db/outbox";
  * its own copy under a different id while the `local_` placeholder is still on
  * screen, and the crew member would see the same request twice.
  */
-export function useLocalMaterialApprovals(db: Db, projectId: string) {
+export function useLocalMaterialApprovals(db: Db, projectId: string, scoped = true) {
+  const { stageId, activityStages } = useStageScope();
   const { isOnline } = useSyncState();
   const query = useMemo(
     () => materialApprovalsRepository.listQuery(db, projectId),
@@ -49,12 +52,12 @@ export function useLocalMaterialApprovals(db: Db, projectId: string) {
     };
   }, [db, projectId, isOnline]);
 
-  const data = useMemo(() => (live.data ?? []).map(toMaterialApproval), [live.data]);
+  const data = useMemo(() => (live.data ?? []).map(toMaterialApproval).filter((row) => !scoped || matchesStage(row.phaseId ?? (row.activityId ? activityStages.get(row.activityId) : undefined), stageId)), [live.data, scoped, stageId, activityStages]);
   return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
 export function useLocalMaterialApproval(db: Db, projectId: string, approvalId: string) {
-  const { data, isPending } = useLocalMaterialApprovals(db, projectId);
+  const { data, isPending } = useLocalMaterialApprovals(db, projectId, false);
   const approval = useMemo(() => data.find((row) => row.id === approvalId), [data, approvalId]);
   return { approval, isPending };
 }

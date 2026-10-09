@@ -26,6 +26,9 @@ export async function pushChangeRequestOutboxItem(
 
   const status = changeStatus(row.status);
   const fields = {
+    // Older offline rows did not cache the stage. Do not clear a server
+    // assignment when replaying an edit that was queued before this upgrade.
+    ...(row.stageId ? { stageId: row.stageId } : {}),
     title: row.title,
     description: row.description,
     descriptionHtml: row.descriptionHtml,

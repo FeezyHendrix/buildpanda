@@ -81,7 +81,7 @@ export default function PandaAiChat() {
               multiline
               returnKeyType="send"
               onSubmitEditing={handleSend}
-              className="max-h-28 min-h-14 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
+              className="max-h-28 min-h-14 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-inter text-base text-black-500"
             />
             <Pressable
               onPress={streaming ? stop : handleSend}

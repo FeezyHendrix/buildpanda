@@ -8,7 +8,7 @@ interface CardProps extends ViewProps {
 export function Card({ className, ...props }: CardProps) {
   return (
     <View
-      className={cn("rounded-2xl border border-grey-50 bg-white overflow-hidden", className)}
+      className={cn("rounded-xl border border-line bg-surface overflow-hidden", className)}
       {...props}
     />
   );

@@ -148,6 +148,13 @@
       "when": 1789490833913,
       "tag": "0020_project_document_folders",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1791566303831,
+      "tag": "0021_stage_scope",
+      "breakpoints": true
     }
   ]
 }

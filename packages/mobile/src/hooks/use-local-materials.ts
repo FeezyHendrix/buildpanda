@@ -1,3 +1,5 @@
+import { useStageScope } from "@/lib/stage-scope";
+import { matchesStage } from "@/lib/stage-filter";
 import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
@@ -7,7 +9,8 @@ import { flushOutbox } from "@/db/outbox";
 import { materialsRepository, toMaterialOrder } from "@/db/materials-repository";
 
 /** SQLite first, background refresh — opens with no signal. */
-export function useLocalMaterialOrders(db: Db, projectId: string) {
+export function useLocalMaterialOrders(db: Db, projectId: string, scoped = true) {
+  const { stageId } = useStageScope();
   const { isOnline } = useSyncState();
   const query = useMemo(() => materialsRepository.listQuery(db, projectId), [db, projectId]);
   const live = useLiveQuery(query, [query]);
@@ -26,7 +29,7 @@ export function useLocalMaterialOrders(db: Db, projectId: string) {
     };
   }, [db, projectId, isOnline]);
 
-  const data = useMemo(() => (live.data ?? []).map(toMaterialOrder), [live.data]);
+  const data = useMemo(() => (live.data ?? []).map(toMaterialOrder).filter((row) => !scoped || matchesStage(row.phaseId, stageId)), [live.data, scoped, stageId]);
   return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 

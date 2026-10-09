@@ -1,6 +1,7 @@
 import { useProjectBuilding } from "./use-project-building";
 import { filterBuildingRows } from "@/lib/building-scope";
 import { useSyncState } from "@/lib/sync-provider";
+import { useStageScope } from "@/lib/stage-scope";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
 import { dailyLogsApi, type UpsertDailyLogInput } from "@/api/daily-logs";
@@ -10,10 +11,13 @@ import { flushOutbox } from "@/db/outbox";
 
 /** Recent days from SQLite, refreshed in the background. */
 export function useDailyLogDays(db: Db, projectId: string) {
+  const { stageId, activityStages } = useStageScope();
   const { buildingId } = useProjectBuilding();
   const { isOnline } = useSyncState();
   const query = useMemo(() => dailyLogsRepository.listQuery(db, projectId, buildingId ?? ""), [db, projectId, buildingId]);
   const live = useLiveQuery(query, [query]);
+  const activitiesQuery = useMemo(() => dailyLogsRepository.allActivitiesQuery(db, projectId), [db, projectId]);
+  const loggedActivities = useLiveQuery(activitiesQuery, [activitiesQuery]);
 
   useEffect(() => {
     if (!isOnline) return;
@@ -29,7 +33,13 @@ export function useDailyLogDays(db: Db, projectId: string) {
     };
   }, [db, projectId, isOnline]);
 
-  const data = useMemo(() => filterBuildingRows((live.data ?? []).filter((r) => r.projectId === projectId), buildingId).map(toDay), [live.data, projectId, buildingId]);
+  const data = useMemo(() => {
+    const dates = new Set((loggedActivities.data ?? [])
+      .filter((row) => row.projectId === projectId && row.buildingId === buildingId && activityStages.get(row.activityId) === stageId)
+      .map((row) => row.logDate));
+    return filterBuildingRows((live.data ?? []).filter((row) => row.projectId === projectId), buildingId)
+      .map(toDay).filter((row) => !stageId || dates.has(row.logDate));
+  }, [live.data, loggedActivities.data, projectId, buildingId, stageId, activityStages]);
   return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 

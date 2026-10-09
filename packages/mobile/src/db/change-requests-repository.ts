@@ -15,6 +15,7 @@ import { changeRequestComments, changeRequests, outbox, type ChangeRequestRow } 
 export function toChangeRequest(row: ChangeRequestRow): ChangeRequest & { isPendingSync: boolean } {
   return {
     id: row.id,
+    stageId: row.stageId,
     title: row.title,
     description: row.description,
     descriptionHtml: row.descriptionHtml,
@@ -46,6 +47,7 @@ export const changeRequestsRepository = {
         id,
         projectId,
         title: input.title,
+        stageId: input.stageId ?? null,
         description: input.description ?? null,
         descriptionHtml: input.descriptionHtml ?? null,
         reason: input.reason ?? null,
@@ -108,6 +110,7 @@ export const changeRequestsRepository = {
         .update(changeRequests)
         .set({
           ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.stageId !== undefined ? { stageId: patch.stageId } : {}),
           ...(patch.description !== undefined ? { description: patch.description } : {}),
           ...(patch.descriptionHtml !== undefined ? { descriptionHtml: patch.descriptionHtml } : {}),
           ...(patch.reason !== undefined ? { reason: patch.reason } : {}),
@@ -133,6 +136,7 @@ export const changeRequestsRepository = {
       const values = {
         projectId,
         title: server.title,
+        stageId: server.stageId ?? null,
         description: server.description,
         descriptionHtml: server.descriptionHtml,
         reason: server.reason,
@@ -173,6 +177,7 @@ export const changeRequestsRepository = {
             id: row.id,
             projectId,
             title: row.title,
+            stageId: row.stageId ?? null,
             description: row.description,
             descriptionHtml: row.descriptionHtml,
             reason: row.reason,
@@ -187,6 +192,7 @@ export const changeRequestsRepository = {
             target: changeRequests.id,
             set: {
               title: row.title,
+              stageId: row.stageId ?? null,
               description: row.description,
               descriptionHtml: row.descriptionHtml,
               reason: row.reason,

@@ -2,25 +2,17 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { memo } from "react";
 import { Pressable, View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
-import { ICON_INVERSE } from "@/constants/colors";
+import { ICON_BRAND } from "@/constants/colors";
 
 interface ScopeSelectorProps {
   workspaceName?: string;
   projectName?: string;
-  /** The project is known but its name has not loaded yet: show a spinner, never a stand-in name. */
   projectPending?: boolean;
   onPressProject?: () => void;
   compact?: boolean;
 }
 
-/**
- * Sits on the blue header, so it uses translucent white fills rather than the
- * grey surfaces used on canvas. Only the project switches here; the workspace
- * is a rarer, deliberate change and lives under Account.
- *
- * Memoised because it renders inside every page header and its props change far
- * less often than the screen content below it.
- */
+/** The project switcher uses the same neutral surface as the v2 workspace. */
 export const ScopeSelector = memo(function ScopeSelector({
   workspaceName,
   projectName,
@@ -39,16 +31,16 @@ export const ScopeSelector = memo(function ScopeSelector({
         }
         className={
           compact
-            ? "min-h-11 shrink flex-row items-center gap-2 rounded-xl bg-white/15 px-3 active:bg-white/25"
-            : "min-h-11 flex-1 flex-row items-center gap-2 rounded-xl bg-white/15 px-3 active:bg-white/25"
+            ? "min-h-11 shrink flex-row items-center gap-2 rounded-lg bg-surface-alt px-3 active:bg-grey-100"
+            : "min-h-11 flex-1 flex-row items-center gap-2 rounded-lg bg-surface-alt px-3 active:bg-grey-100"
         }
       >
-        <Ionicons name="business-outline" size={16} color={ICON_INVERSE} />
+        <Ionicons name="business-outline" size={16} color={ICON_BRAND} />
         <View className={compact ? "min-w-0 shrink" : "min-w-0 flex-1"}>
           {workspaceName && !compact ? (
             <Text
-              tone="inverse"
-              className="text-[10px] uppercase tracking-wide opacity-70"
+              tone="default"
+              className="text-xs "
               numberOfLines={1}
             >
               {workspaceName}
@@ -56,15 +48,15 @@ export const ScopeSelector = memo(function ScopeSelector({
           ) : null}
           {projectPending && !projectName ? (
             <View className="items-start py-0.5">
-              <Spinner size="xs" tone="current" />
+              <Spinner size="xs" tone="brand" />
             </View>
           ) : (
-            <Text weight="semibold" tone="inverse" className={compact ? "text-xs" : "text-sm"} numberOfLines={1}>
+            <Text weight="semibold" tone="default" className={compact ? "text-xs" : "text-sm"} numberOfLines={1}>
               {projectName ?? "Choose a project"}
             </Text>
           )}
         </View>
-        {onPressProject ? <Ionicons name="chevron-down" size={16} color={ICON_INVERSE} /> : null}
+        {onPressProject ? <Ionicons name="chevron-down" size={16} color={ICON_BRAND} /> : null}
       </Pressable>
 
     </View>

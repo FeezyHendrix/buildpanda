@@ -1,3 +1,4 @@
+import { useStageScope } from "@/lib/stage-scope";
 import { useProjectBuilding } from "./use-project-building";
 import { filterBuildingRows } from "@/lib/building-scope";
 import { useSyncState } from "@/lib/sync-provider";
@@ -10,6 +11,7 @@ import { lookAheadsRepository, toLookAhead, type LookAheadPatch } from "@/db/loo
 
 /** SQLite first, background refresh — opens with no signal. */
 export function useLocalLookAheads(db: Db, projectId: string) {
+  const { stageId, activityStages } = useStageScope();
   const { buildingId } = useProjectBuilding();
   const { isOnline } = useSyncState();
   const query = useMemo(() => lookAheadsRepository.listQuery(db, projectId, buildingId ?? ""), [db, projectId, buildingId]);
@@ -29,7 +31,7 @@ export function useLocalLookAheads(db: Db, projectId: string) {
     };
   }, [db, projectId, isOnline]);
 
-  const data = useMemo(() => filterBuildingRows((live.data ?? []).filter((r) => r.projectId === projectId), buildingId).map(toLookAhead), [live.data, projectId, buildingId]);
+  const data = useMemo(() => filterBuildingRows((live.data ?? []).filter((r) => r.projectId === projectId), buildingId).map(toLookAhead).filter((row) => !stageId || row.activityIds.some((id) => activityStages.get(id) === stageId)), [live.data, projectId, buildingId, stageId, activityStages]);
   return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 

@@ -1,3 +1,5 @@
+import { StageField } from "@/components/molecules/stage-field";
+import { useStageScope } from "@/lib/stage-scope";
 import { goBack } from "@/lib/navigation";
 
 import { useState } from "react";
@@ -12,6 +14,8 @@ import { useSyncState } from "@/lib/sync-provider";
 
 export default function NewMaterialOrder() {
   const { projectId } = useFieldSession();
+  const scope = useStageScope();
+  const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
   const { db } = useLocalDb();
   const create = useCreateMaterialOrder(db, projectId);
   const { isOnline } = useSyncState();
@@ -45,6 +49,7 @@ export default function NewMaterialOrder() {
     try {
       await create({
         title: title.trim(),
+        phaseId: stageId,
         materialName: materialName.trim(),
         quantity: quantityValue,
         unit: unit.trim(),
@@ -85,6 +90,7 @@ export default function NewMaterialOrder() {
       ) : null}
 
       <View className="gap-5">
+        <StageField value={stageId} onChange={setStageId} />
         <Field label="Title" value={title} onChangeText={setTitle} placeholder="What is this for?" autoFocus />
         <Field label="Material" value={materialName} onChangeText={setMaterialName} placeholder="e.g. Cement" />
         <View className="flex-row gap-3">

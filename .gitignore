@@ -179,3 +179,8 @@ branch_structure.json
 # slash so a real .claude/skills or a package's own store is unaffected.
 /.claude/worktrees/
 /.pnpm-store/
+
+# Native stage scope and offline migration regressions.
+!/packages/mobile/scripts/stage-scope.test.mjs
+!/packages/mobile/scripts/messaging.test.mjs
+!/packages/mobile/scripts/sqlite-worker.test.mjs

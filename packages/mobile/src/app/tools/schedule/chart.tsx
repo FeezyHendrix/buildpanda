@@ -17,7 +17,7 @@ export default function ProjectChart() {
     matchesSearch(query, [activity.name, activity.phaseName, activity.location, activity.status]),
   );
   return (
-    <Page buildingScope title="Project chart" onBack={goBack}>
+    <Page stageScope buildingScope title="Project chart" onBack={goBack}>
       <SearchField value={query} onChange={setQuery} placeholder="Search activities" />
       {activities.isStale ? <StaleBanner what="schedule" /> : null}
       {activities.isPending ? (
