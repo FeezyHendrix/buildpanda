@@ -1171,6 +1171,9 @@ export interface DailyLogEntry {
   authorRole: string;
   bodyHtml: string | null;
   bodyText: string | null;
+  /** Set when filled from a template; the body is the rendered form. */
+  templateId?: string | null;
+  templateName?: string | null;
   voids: DailyLogEntryVoid[];
   voided: boolean;
   createdAt: string;

@@ -1,113 +1,19 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
-import { toIso } from "../../lib/dates.ts";
 import type { DailyLogsRepository } from "./repository.ts";
+import { assertDate, buildEntry, buildLog, stripHtml, toDay, toLogDateString } from "./mappers.ts";
+import type { TemplateResponses } from "../daily-log-templates/types.ts";
 import type {
+  CreateDailyLogEntryInput,
   DailyLog,
   DailyLogActivityLink,
   DailyLogActivityRow,
   DailyLogDay,
   DailyLogEntry,
-  DailyLogEntryRow,
-  DailyLogEntryVoidRow,
   DailyLogRow,
+  FilledEntryForm,
   LinkActivityInput,
   UpsertDailyLogInput,
 } from "./types.ts";
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function assertDate(value: string, field: string): void {
-  if (!DATE_RE.test(value)) {
-    throw new BadRequestError(`${field} must be ISO date YYYY-MM-DD`);
-  }
-}
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
-}
-
-function numOrNull(value: string | null): number | null {
-  return value === null ? null : Number(value);
-}
-
-function toLogDateString(value: Date | string): string {
-  if (typeof value === "string") return value.slice(0, 10);
-  return value.toISOString().slice(0, 10);
-}
-
-function buildEntry(row: DailyLogEntryRow, voidRows: DailyLogEntryVoidRow[]): DailyLogEntry {
-  const voids = voidRows
-    .filter((v) => v.entry_id === row.id)
-    .map((v) => ({
-      id: v.id,
-      reason: v.reason,
-      voidedById: v.voided_by_id,
-      voidedByName: v.voided_by_name,
-      voidedAt: toIso(v.voided_at),
-    }));
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    buildingId: row.building_id,
-    logDate: toLogDateString(row.log_date),
-    authorId: row.author_id,
-    authorName: row.author_name,
-    authorRole: row.author_role,
-    bodyHtml: row.body_html,
-    bodyText: row.body_text,
-    voids,
-    voided: voids.length > 0,
-    createdAt: toIso(row.created_at),
-    updatedAt: toIso(row.updated_at),
-  };
-}
-
-function toDay(log: DailyLog, entries: DailyLogEntry[]): DailyLogDay {
-  return {
-    projectId: log.projectId,
-    buildingId: log.buildingId,
-    summary: log.summary,
-    logDate: log.logDate,
-    weatherCondition: log.weatherCondition,
-    temperatureC: log.temperatureC,
-    precipitationMm: log.precipitationMm,
-    windKph: log.windKph,
-    workersExpected: log.workersExpected,
-    workersPresent: log.workersPresent,
-    totalHours: log.totalHours,
-    activities: log.activities,
-    entries,
-    voidedAt: log.voidedAt,
-  };
-}
-
-function buildLog(
-  row: DailyLogRow,
-  activities: DailyLogActivityLink[],
-  voiderNames: Map<string, string>,
-): DailyLog {
-  return {
-    projectId: row.project_id,
-    buildingId: row.building_id,
-    logDate: toLogDateString(row.log_date),
-    weatherCondition: row.weather_condition,
-    temperatureC: numOrNull(row.temperature_c),
-    precipitationMm: numOrNull(row.precipitation_mm),
-    windKph: numOrNull(row.wind_kph),
-    workersExpected: row.workers_expected,
-    workersPresent: row.workers_present,
-    totalHours: Number(row.total_hours),
-    summary: row.summary,
-    summaryHtml: row.summary_html,
-    activities,
-    voidedAt: row.voided_at ? toIso(row.voided_at) : null,
-    voidedById: row.voided_by_id,
-    voidedByName: row.voided_by_id ? (voiderNames.get(row.voided_by_id) ?? null) : null,
-    voidReason: row.void_reason,
-    createdAt: toIso(row.created_at),
-    updatedAt: toIso(row.updated_at),
-  };
-}
 
 export interface DailyLogActivityHooks {
   assertBuilding?: (projectId: string, buildingId: string) => Promise<void>;
@@ -117,6 +23,8 @@ export interface DailyLogActivityHooks {
     actor: { id: string; name: string },
   ) => Promise<unknown>;
   markActivityInProgress?: (projectId: string, activityId: string) => Promise<void>;
+  /** Validates answers against a project's template and renders them (daily-log-templates module). */
+  fillTemplate?: (projectId: string, templateId: string, responses: TemplateResponses) => Promise<FilledEntryForm>;
 }
 
 export function dailyLogsService(
@@ -336,19 +244,40 @@ export function dailyLogsService(
       return toDay(log, entries);
     },
 
+    /**
+     * A free-form entry is its body. A template entry is the filled form,
+     * rendered into the body so every reader of the diary sees it, with any
+     * notes or photos the author added underneath.
+     */
     async addEntry(
       projectId: string,
       logDate: string,
-      bodyHtml: string,
-      bodyText: string | null,
+      input: CreateDailyLogEntryInput,
       author: { id: string; name: string; role: string },
-      explicitBuildingId: string | null = null,
     ): Promise<DailyLogEntry> {
       assertDate(logDate, "logDate");
-      if (stripHtml(bodyHtml).trim() === "") {
+      const raw = input.bodyHtml ?? "";
+      const hasText = stripHtml(raw) !== "";
+      // Under a form, a photo with no caption is still worth keeping.
+      const notes = hasText || /<img\b/i.test(raw) ? raw : null;
+
+      let form: FilledEntryForm | null = null;
+      if (input.templateId) {
+        if (!hooks.fillTemplate) throw new BadRequestError("Daily log templates are not available");
+        form = await hooks.fillTemplate(projectId, input.templateId, input.responses ?? {});
+      } else if (!hasText) {
         throw new BadRequestError("Your daily log entry cannot be empty");
       }
-      const buildingId = await resolveBuildingId(projectId, explicitBuildingId);
+
+      const bodyHtml = form
+        ? form.html + (notes ? `<h3>Notes</h3>${notes}` : "")
+        : notes;
+      const notesText = input.bodyText?.trim() || null;
+      const bodyText = form
+        ? [form.text, notesText ? `NOTES\n${notesText}` : null].filter(Boolean).join("\n")
+        : notesText;
+
+      const buildingId = await resolveBuildingId(projectId, input.buildingId ?? null);
       const existing = await repository.findOne({ projectId, buildingId, logDate });
       if (!existing) {
         await repository.upsert({ projectId, buildingId, logDate }, {}, author.id);
@@ -362,6 +291,7 @@ export function dailyLogsService(
         authorRole: author.role,
         bodyHtml,
         bodyText,
+        form,
       });
       return buildEntry(row, []);
     },
