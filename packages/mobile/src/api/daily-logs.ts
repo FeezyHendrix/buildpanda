@@ -1,4 +1,5 @@
 import { request } from "./client";
+import type { TemplateResponses } from "./daily-log-templates";
 
 export const WEATHER_CONDITIONS = [
   "Sunny",
@@ -94,6 +95,23 @@ export const dailyLogsApi = {
     request<DailyLogEntry>(`/projects/${projectId}/daily-logs/${date}/entries`, {
       method: "POST",
       body: JSON.stringify({ bodyHtml, bodyText, ...(buildingId ? { buildingId } : {}) }),
+    }),
+
+  /** A filled template: the server validates the answers and renders the entry body. */
+  addTemplateEntry: (
+    projectId: string,
+    date: string,
+    input: {
+      templateId: string;
+      responses: TemplateResponses;
+      bodyHtml: string | null;
+      bodyText: string | null;
+      buildingId?: string | null;
+    },
+  ) =>
+    request<DailyLogEntry>(`/projects/${projectId}/daily-logs/${date}/entries`, {
+      method: "POST",
+      body: JSON.stringify(input),
     }),
 
   voidEntry: (projectId: string, date: string, entryId: string, reason: string) =>

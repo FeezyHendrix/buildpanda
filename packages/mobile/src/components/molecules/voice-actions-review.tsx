@@ -99,6 +99,13 @@ export function VoiceActionsReview({
                 <Text tone="secondary" className="pt-1 text-[13px]" numberOfLines={3}>
                   {action.summary}
                 </Text>
+                {/* a filled form is a record: show every answer, not a teaser */}
+                {action.kind === "daily_log" && action.payload.formText ? (
+                  <View className="mt-2 rounded-lg bg-surface-alt px-3 py-2">
+                    <Text weight="semibold" className="pb-1 text-[12px]">{action.payload.templateName ?? "Daily log form"}</Text>
+                    <Text className="text-[13px]">{action.payload.formText}</Text>
+                  </View>
+                ) : null}
               </View>
               <Ionicons
                 name={included || applied ? "checkmark-circle" : "ellipse-outline"}

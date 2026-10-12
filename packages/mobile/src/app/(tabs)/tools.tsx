@@ -6,6 +6,11 @@ import { Page } from "@/components/molecules/page";
 import { ICON_BRAND, ICON_MUTED } from "@/constants/colors";
 import { useProject } from "@/hooks/use-projects";
 import { useFieldSession } from "@/lib/field-session";
+import { useEffect } from "react";
+import { dailyLogTemplatesApi } from "@/api/daily-log-templates";
+import { dailyLogTemplatesRepository } from "@/db/daily-log-templates-repository";
+import { useLocalDb } from "@/db/provider";
+import { useSyncState } from "@/lib/sync-provider";
 
 interface Tool { label: string; helper: string; icon: React.ComponentProps<typeof Ionicons>["name"]; href: string }
 const GROUPS: { title: string; tools: Tool[] }[] = [
@@ -26,6 +31,17 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
 export default function Site() {
   const { projectId } = useFieldSession();
   const project = useProject(projectId);
+  const { db } = useLocalDb();
+  const { isOnline } = useSyncState();
+
+  // The app opens here, so fetch the admin's daily log forms now: a crew that
+  // loses signal later can still fill today's log.
+  useEffect(() => {
+    if (!db || !projectId || !isOnline) return;
+    dailyLogTemplatesApi.list(projectId)
+      .then((templates) => dailyLogTemplatesRepository.replaceFromServer(db, projectId, templates))
+      .catch(() => undefined);
+  }, [db, projectId, isOnline]);
   return (
     <Page stageScope title="Site" projectName={project.data?.name} projectPending={project.isPending} onPressProject={() => router.push("/select-project")}>
       <Pressable accessibilityRole="button" onPress={() => router.push("/tools/panda-ai")} className="min-h-20 flex-row items-center gap-3 rounded-xl bg-primary-50 px-4 py-4">

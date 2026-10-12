@@ -2,10 +2,12 @@ import { settleOutboxItem } from "./sync-write-state";
 import { eq } from "drizzle-orm";
 import { activitiesApi } from "@/api/activities";
 import { dailyLogsApi, isWeatherCondition } from "@/api/daily-logs";
-import { textToParagraphHtml } from "@/lib/html";
+import { ApiError } from "@/api/client";
+import type { TemplateResponses } from "@/api/daily-log-templates";
+import { htmlToText, textToParagraphHtml } from "@/lib/html";
 import type { Db } from "./client";
 import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { dailyLogActivities, dailyLogEntries, dailyLogs, outbox, type OutboxRow } from "./schema";
+import { dailyLogActivities, dailyLogEntries, dailyLogs, outbox, type DailyLogEntryRow, type OutboxRow } from "./schema";
 
 export async function pushDailyLogOutboxItem(
   db: Db,
@@ -61,6 +63,42 @@ async function pushDailyLogActivity(db: Db, item: OutboxRow): Promise<OutboxHand
   return done(true);
 }
 
+/**
+ * A form filled offline can meet a template that changed meanwhile: archived,
+ * or given a new required question. The crew's answers are still the record of
+ * the day, so on a validation refusal the entry goes up as the text they saw.
+ */
+async function pushTemplateEntry(projectId: string, entry: DailyLogEntryRow) {
+  try {
+    return await dailyLogsApi.addTemplateEntry(projectId, entry.logDate, {
+      templateId: entry.templateId!,
+      responses: parseResponses(entry.responses),
+      bodyHtml: entry.notesHtml,
+      bodyText: entry.notesHtml ? htmlToText(entry.notesHtml) || null : null,
+      buildingId: entry.buildingId,
+    });
+  } catch (error) {
+    const status = error instanceof ApiError ? error.status : 0;
+    if (status !== 400 && status !== 404 && status !== 422) throw error;
+    return dailyLogsApi.addEntry(
+      projectId,
+      entry.logDate,
+      entry.bodyHtml ?? textToParagraphHtml(entry.bodyText),
+      entry.bodyText,
+      entry.buildingId,
+    );
+  }
+}
+
+function parseResponses(json: string | null): TemplateResponses {
+  try {
+    const parsed: unknown = JSON.parse(json ?? "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as TemplateResponses) : {};
+  } catch {
+    return {};
+  }
+}
+
 async function pushDailyLogEntry(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
   const [entry] = await db
     .select()
@@ -72,13 +110,15 @@ async function pushDailyLogEntry(db: Db, item: OutboxRow): Promise<OutboxHandler
     return done(false);
   }
 
-  const server = await dailyLogsApi.addEntry(
-    item.projectId,
-    entry.logDate,
-    entry.bodyHtml ?? textToParagraphHtml(entry.bodyText),
-    entry.bodyText,
-    entry.buildingId,
-  );
+  const server = entry.templateId
+    ? await pushTemplateEntry(item.projectId, entry)
+    : await dailyLogsApi.addEntry(
+        item.projectId,
+        entry.logDate,
+        entry.bodyHtml ?? textToParagraphHtml(entry.bodyText),
+        entry.bodyText,
+        entry.buildingId,
+      );
   await db.transaction((tx) => {
     tx.delete(dailyLogEntries).where(eq(dailyLogEntries.id, entry.id)).run();
     tx.insert(dailyLogEntries).values({

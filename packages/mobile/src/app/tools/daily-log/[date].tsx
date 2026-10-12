@@ -15,6 +15,8 @@ import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useAddDailyLogEntry, useDailyLogDay, useSaveDailyLog } from "@/hooks/use-daily-logs";
+import { useDailyLogTemplates } from "@/hooks/use-daily-log-templates";
+import { defaultTemplate } from "@/db/daily-log-templates-repository";
 import { useProjectBuilding } from "@/hooks/use-project-building";
 import { useSession } from "@/lib/auth-client";
 import { formatLongDayLabel } from "@/lib/dates";
@@ -45,6 +47,8 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
   const { day, entries, activities, isPending } = useDailyLogDay(db, projectId, logDate, buildingId);
   const save = useSaveDailyLog(db, projectId);
   const addEntry = useAddDailyLogEntry(db, projectId);
+  const templates = useDailyLogTemplates(db, projectId);
+  const form = defaultTemplate(templates.data) ?? templates.data[0] ?? null;
   const { data: session } = useSession();
 
   // Untouched fields (`undefined` for weather, whose `null` means "no weather";
@@ -245,15 +249,25 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
           </Card>
         )}
 
+        {!isVoided && form ? (
+          <Button
+            onPress={() => router.push(`/tools/daily-log/fill?date=${logDate}&templateId=${form.id}` as never)}
+            accessibilityLabel={`Fill ${form.name}`}
+          >
+            {`Fill ${form.name}`}
+          </Button>
+        ) : null}
+
         {!isVoided ? (
           <View className="gap-2 pt-1">
+            {form ? <Text tone="secondary" className="text-[13px]">Or add a quick note</Text> : null}
             <RichTextEditor
               value={entryHtml}
               onChange={setEntryHtml}
               placeholder="What happened on site?"
               projectId={projectId}
             />
-            <Button onPress={handleAddEntry} disabled={htmlToText(entryHtml).length === 0}>
+            <Button variant={form ? "secondary" : undefined} onPress={handleAddEntry} disabled={htmlToText(entryHtml).length === 0}>
               Add entry
             </Button>
           </View>
