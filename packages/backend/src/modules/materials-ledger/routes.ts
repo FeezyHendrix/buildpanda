@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { materialsLedgerRepository } from "./repository.ts";
 import { materialsLedgerService, type LogEntryInput } from "./service.ts";
 import { materialReportService } from "./report.ts";
@@ -13,9 +13,26 @@ import { filesService } from "../files/service.ts";
 import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
 import { materialsEquipmentService } from "../materials-equipment/service.ts";
 import { suppliersRepository } from "../suppliers/repository.ts";
+import { ForbiddenError } from "../../lib/errors.ts";
 import { logger } from "../../lib/logger.ts";
 
 const ENTRY_TYPE = ["IN", "USED"] as const;
+
+/**
+ * The crew on site see a delivery arrive, so anyone who can request materials
+ * can log one received. It lands Pending and counts in stock only once a
+ * manager approves it. Logging usage still needs `manage`.
+ */
+async function requireLogPermission(request: FastifyRequest, projectId: string, entryType: "IN" | "USED") {
+  if (entryType === "IN") {
+    try {
+      return await request.requireProjectPermission(projectId, "materials", "request");
+    } catch (error) {
+      if (!(error instanceof ForbiddenError)) throw error;
+    }
+  }
+  return request.requireProjectPermission(projectId, "materials", "manage");
+}
 
 const projectIdParams = {
   type: "object",
@@ -258,7 +275,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/ledger",
     { schema: { params: projectIdParams, body: logBody } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "materials", "manage");
+      const project = await requireLogPermission(request, request.params.id, request.body.entryType);
       const user = request.requireAuth();
       const result = await service.logEntry(project.id, request.body, user.id);
       return reply.status(result.duplicate ? 200 : 201).send(result);

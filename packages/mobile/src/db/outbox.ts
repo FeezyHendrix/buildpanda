@@ -9,6 +9,7 @@ import { pushDocumentOutboxItem } from "./outbox-documents";
 import { pushDrawingMarkupCommentOutboxItem, pushDrawingMarkupOutboxItem } from "./outbox-drawing-markups";
 import { pushLookAheadOutboxItem } from "./outbox-look-aheads";
 import { pushMaterialApprovalOutboxItem } from "./outbox-material-approvals";
+import { pushMaterialLedgerOutboxItem } from "./outbox-material-ledger";
 import { pushMaterialOrderOutboxItem } from "./outbox-material-orders";
 import { PermanentOutboxError } from "./outbox-handler";
 import { pushRfiOutboxItem } from "./outbox-rfis";
@@ -59,6 +60,7 @@ async function pushOutboxItem(db: Db, item: OutboxRow): Promise<boolean> {
     pushDrawingMarkupCommentOutboxItem,
     pushLookAheadOutboxItem,
     pushMaterialOrderOutboxItem,
+    pushMaterialLedgerOutboxItem,
     pushMaterialApprovalOutboxItem,
     pushDailyLogOutboxItem,
     pushRfiOutboxItem,
