@@ -36,7 +36,7 @@ export function NewGroupDialog({ open, onClose, onSubmit, loading = false }: Pro
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />
         <Dialog.Popup
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2",
+            "fixed left-1/2 top-visible-center z-50 max-h-visible overflow-y-auto w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2",
             "flex flex-col gap-5 rounded-lg border border-line-hair bg-white p-6 shadow-lg outline-none",
           )}
         >

@@ -160,7 +160,7 @@ function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetP
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm lg:hidden" />
         <Dialog.Popup
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col",
+            "fixed inset-x-0 bottom-visible z-50 flex max-h-[min(85dvh,calc(var(--vv-height,100dvh)-1rem))] flex-col",
             "rounded-t-2xl bg-white shadow-xl outline-none lg:hidden",
           )}
         >
