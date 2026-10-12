@@ -55,8 +55,8 @@ export function useDailyLogCoverage(projectId: string | undefined, buildingId?: 
 export function useAddDailyLogEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, logDate, bodyHtml, bodyText }: AddDailyLogEntryInput) => 
-      dailyLogsApi.addEntry(projectId, logDate, { bodyHtml, bodyText: bodyText ?? null }),
+    mutationFn: ({ projectId, logDate, ...body }: AddDailyLogEntryInput) =>
+      dailyLogsApi.addEntry(projectId, logDate, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: dailyLogKeys.all(projectId) });
     },

@@ -4,6 +4,7 @@ import { QueryError } from "@/components/molecules/query-error";
 import { AiUpdateCadenceSection } from "@/components/molecules/ai-update-cadence-section";
 import { EditBudgetDrawer } from "@/components/molecules/edit-budget-drawer";
 import { useProjectContext } from "@/layouts/project-layout";
+import { DailyLogTab } from "./settings/daily-log-tab";
 import { GeneralTab } from "./settings/general-tab";
 import { MoneyTab } from "./settings/money-tab";
 import { ProgrammeTab } from "./settings/programme-tab";
@@ -43,6 +44,7 @@ export default function ProjectSettings() {
             onEditBudget={() => setEditBudgetOpen(true)}
           />
         ) : null}
+        {tab === "daily-log" ? <DailyLogTab projectId={project.id} canManage={canManage} /> : null}
         {tab === "panda-ai" ? (
           <AiUpdateCadenceSection projectId={project.id} canManage={canManage} />
         ) : null}

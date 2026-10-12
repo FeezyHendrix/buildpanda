@@ -5,6 +5,7 @@ import type {
   DailyLogEntryRow,
   DailyLogEntryVoidRow,
   DailyLogRow,
+  FilledEntryForm,
   UpsertDailyLogInput,
   WeatherCondition,
 } from "./types.ts";
@@ -221,6 +222,7 @@ export function dailyLogsRepository(db: Knex) {
       authorRole: string;
       bodyHtml: string | null;
       bodyText: string | null;
+      form: FilledEntryForm | null;
     }): Promise<DailyLogEntryRow> {
       const [row] = await db<DailyLogEntryRow>("daily_log_entries")
         .insert({
@@ -233,7 +235,12 @@ export function dailyLogsRepository(db: Knex) {
           author_role: record.authorRole,
           body_html: record.bodyHtml,
           body_text: record.bodyText,
-        })
+          template_id: record.form?.templateId ?? null,
+          template_name: record.form?.templateName ?? null,
+          // jsonb: pg would send a JS array as a Postgres array.
+          template_fields: record.form ? JSON.stringify(record.form.fields) : null,
+          responses: record.form ? JSON.stringify(record.form.responses) : null,
+        } as Record<string, unknown>)
         .returning("*");
       if (!row) throw new Error("Failed to insert daily log entry");
       return row;

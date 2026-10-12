@@ -5,7 +5,7 @@ import { dailyLogsService } from "./service.ts";
 import { dailyLogCoverage, dailyLogCoverageDeps } from "./coverage.ts";
 import { dailyReportService } from "./report.ts";
 import { periodReportService } from "./period-report.ts";
-import { REPORT_PERIODS, type ReportPeriod } from "../../lib/report-period.ts";
+import type { ReportPeriod } from "../../lib/report-period.ts";
 import { updatesRepository } from "../updates/repository.ts";
 import { updatesService } from "../updates/service.ts";
 import { activitiesRepository } from "../activities/repository.ts";
@@ -14,140 +14,27 @@ import { buildingsService } from "../buildings/service.ts";
 import { buildingsRepository } from "../buildings/repository.ts";
 import { filesRepository } from "../files/repository.ts";
 import { filesService } from "../files/service.ts";
+import { dailyLogTemplatesRepository } from "../daily-log-templates/repository.ts";
+import { dailyLogTemplatesService } from "../daily-log-templates/service.ts";
 import { PROGRESS_RECOMPUTE_QUEUE } from "../activities/progress-job.ts";
-import type { LinkActivityInput, UpsertDailyLogInput } from "./types.ts";
-
-const projectIdParams = {
-  type: "object",
-  required: ["id"],
-  additionalProperties: false,
-  properties: { id: { type: "string", minLength: 1 } },
-} as const;
-
-const dateParams = {
-  type: "object",
-  required: ["id", "date"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-  },
-} as const;
-
-const listQuery = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    from: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-    to: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-    buildingId: { type: "string", minLength: 1, maxLength: 100 },
-  },
-} as const;
-
-const upsertBody = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    // Which block the day belongs to. Required by the service on a
-    // multi-building project; the field app always sends it.
-    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
-    weatherCondition: {
-      type: ["string", "null"],
-      enum: ["Sunny", "Cloudy", "Rain", "Storm", "Fog", "ExtremeHeat", null],
-    },
-    temperatureC: { type: ["number", "null"] },
-    precipitationMm: { type: ["number", "null"], minimum: 0 },
-    windKph: { type: ["number", "null"], minimum: 0 },
-    workersExpected: { type: "integer", minimum: 0, maximum: 5000 },
-    workersPresent: { type: "integer", minimum: 0, maximum: 5000 },
-    totalHours: { type: "number", minimum: 0, maximum: 100000 },
-    summary: { type: ["string", "null"], maxLength: 4000 },
-    summaryHtml: { type: ["string", "null"], maxLength: 200000 },
-  },
-} as const;
-
-const linkActivityBody = {
-  type: "object",
-  required: ["activityId", "hoursLogged"],
-  additionalProperties: false,
-  properties: {
-    activityId: { type: "string", minLength: 1, maxLength: 100 },
-    hoursLogged: { type: "number", minimum: 0, maximum: 5000 },
-    postUpdate: { type: "boolean" },
-  },
-} as const;
-
-const coverageSchema = {
-  type: "object",
-  properties: {
-    from: { type: ["string", "null"] },
-    to: { type: ["string", "null"] },
-    workingDays: { type: "integer" },
-    daysLogged: { type: "integer" },
-    daysMissed: { type: "integer" },
-    missedDates: { type: "array", items: { type: "string" } },
-    calendar: {
-      type: "object",
-      properties: {
-        workingDays: { type: "array", items: { type: "integer" } },
-        holidays: { type: "array", items: { type: "string" } },
-      },
-    },
-  },
-} as const;
-
-const voidBody = {
-  type: "object",
-  required: ["reason"],
-  additionalProperties: false,
-  properties: {
-    reason: { type: "string", minLength: 1, maxLength: 8000 },
-  },
-} as const;
-
-const periodReportQuery = {
-  type: "object",
-  required: ["period"],
-  additionalProperties: false,
-  properties: {
-    period: { type: "string", enum: [...REPORT_PERIODS] },
-    date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-  },
-} as const;
+import type { CreateDailyLogEntryInput, LinkActivityInput, UpsertDailyLogInput } from "./types.ts";
+import {
+  projectIdParams,
+  dateParams,
+  listQuery,
+  upsertBody,
+  linkActivityBody,
+  coverageSchema,
+  voidBody,
+  periodReportQuery,
+  reportEmailBody,
+  entryBody,
+  entryParams,
+} from "./schemas.ts";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
-
-const reportEmailBody = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    email: { type: "string", format: "email", maxLength: 320 },
-  },
-} as const;
-
-const entryBody = {
-  type: "object",
-  required: ["bodyHtml"],
-  additionalProperties: false,
-  properties: {
-    bodyHtml: { type: "string", minLength: 1, maxLength: 200000 },
-    bodyText: { type: ["string", "null"], maxLength: 20000 },
-    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
-  },
-} as const;
-
-const entryParams = {
-  type: "object",
-  required: ["id", "date", "entryId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-    entryId: { type: "string", minLength: 1 },
-  },
-} as const;
 
 const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
   const buildings = buildingsRepository(fastify.db);
@@ -157,9 +44,11 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     fastify.queue.enqueue(PROGRESS_RECOMPUTE_QUEUE, "recompute", { projectId }),
     (projectId) => buildings.soleRealBuildingId(projectId),
   );
+  const templates = dailyLogTemplatesService(dailyLogTemplatesRepository(fastify.db));
   const service = dailyLogsService(dailyLogsRepository(fastify.db), {
     assertBuilding: buildingsService(buildings).assertRealBuilding,
     createUpdate: (projectId, input, actor) => updates.create(projectId, input, actor),
+    fillTemplate: (projectId, templateId, responses) => templates.fill(projectId, templateId, responses),
     markActivityInProgress: async (projectId, activityId) => {
       const current = await activitiesRepo.findById(activityId).catch(() => undefined);
       if (current && current.status === "Planned") {
@@ -215,10 +104,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{
-    Params: { id: string; date: string };
-    Body: { bodyHtml: string; bodyText?: string | null; buildingId?: string | null };
-  }>(
+  fastify.post<{ Params: { id: string; date: string }; Body: CreateDailyLogEntryInput }>(
     "/projects/:id/daily-logs/:date/entries",
     { schema: { params: dateParams, body: entryBody } },
     async (request, reply) => {
@@ -228,14 +114,11 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
         request.projectRoles.get(project.id) ??
         (project.organization_id ? request.orgRoles.get(project.organization_id) : undefined) ??
         "member";
-      const entry = await service.addEntry(
-        project.id,
-        request.params.date,
-        request.body.bodyHtml,
-        request.body.bodyText ?? null,
-        { id: user.id, name: user.name, role },
-        request.body.buildingId ?? null,
-      );
+      const entry = await service.addEntry(project.id, request.params.date, request.body, {
+        id: user.id,
+        name: user.name,
+        role,
+      });
       return reply.status(201).send(entry);
     },
   );

@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
-import { RichTextField } from "@/components/molecules/rich-text-field";
 import {
-  useAddDailyLogEntry,
   useDownloadDailyReport,
   useEmailDailyReport,
   useProjectDailyLog,
@@ -16,10 +14,10 @@ import type { DailyLogDay } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { DailyLogEntryRow } from "./daily-log-entry-row";
+import { EntryComposer } from "./entry-composer";
 import { AddActivityHours } from "./add-activity-hours";
 import { VoidDayAction } from "./void-day-action";
 import { formatDayDate, formatHours, formatWeekday, WEATHER_LABEL, WEATHER_TONE } from "./daily-log-helpers";
-import { errorMessage } from "@/lib/api-error";
 
 interface DailyLogDrawerProps {
   open: boolean;
@@ -265,75 +263,6 @@ function EntriesSection({ day, projectId, userId, canCreateEntry, canVoidEntry, 
       )}
       {canCreateEntry ? <EntryComposer projectId={projectId} logDate={day.logDate} autoFocus={focusComposer} /> : null}
     </Section>
-  );
-}
-
-function EntryComposer({ projectId, logDate, autoFocus }: { projectId: string; logDate: string; autoFocus: boolean }) {
-  const [html, setHtml] = useState("");
-  const [text, setText] = useState("");
-  const [editorKey, setEditorKey] = useState(0);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const addEntry = useAddDailyLogEntry();
-
-  // The tiptap editor mounts a tick after the drawer, so watch the wrapper and
-  // focus the contenteditable as soon as it exists (no rAF: it never fires in a
-  // background tab). The popup's own initial focus is disabled in that mode.
-  useEffect(() => {
-    if (!autoFocus) return;
-    const root = wrapperRef.current;
-    if (!root) return;
-    const focusEditor = (): boolean => {
-      const target = root.querySelector<HTMLElement>('[contenteditable="true"]');
-      if (!target) return false;
-      target.scrollIntoView({ block: "center" });
-      target.focus();
-      return true;
-    };
-    if (focusEditor()) return;
-    const observer = new MutationObserver(() => {
-      if (focusEditor()) observer.disconnect();
-    });
-    observer.observe(root, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [autoFocus, logDate]);
-
-  const hasContent = text.trim().length > 0;
-
-  function submit(): void {
-    addEntry.mutate(
-      { projectId, logDate, bodyHtml: html, bodyText: text },
-      {
-        onSuccess: () => {
-          setHtml("");
-          setText("");
-          setEditorKey((k) => k + 1);
-          toast("Your log was added", "success");
-        },
-        onError: () => toast("Could not add your log"),
-      },
-    );
-  }
-
-  return (
-    <div ref={wrapperRef} className="mt-4 flex flex-col gap-3 border-t border-line-hair pt-4">
-      <RichTextField
-        key={editorKey}
-        label="Add my log"
-        value={html}
-        onChange={setHtml}
-        onChangeText={setText}
-        projectId={projectId}
-        placeholder="e.g. Completed the level 3 slab pour, inspected rebar, flagged a delivery delay…"
-      />
-      {addEntry.error ? (
-        <p className="rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-600">{errorMessage(addEntry.error)}</p>
-      ) : null}
-      <div className="flex justify-end">
-        <Button type="button" variant="primary" size="sm" disabled={!hasContent} loading={addEntry.isPending} onClick={submit}>
-          Add entry
-        </Button>
-      </div>
-    </div>
   );
 }
 

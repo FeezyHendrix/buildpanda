@@ -8,6 +8,7 @@ export const SETTINGS_TABS = [
   { id: "general", label: "General" },
   { id: "programme", label: "Programme" },
   { id: "money", label: "Money" },
+  { id: "daily-log", label: "Daily log" },
   { id: "panda-ai", label: "Panda AI" },
 ] as const;
 

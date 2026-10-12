@@ -6,12 +6,19 @@ import type {
   ReportPeriod,
   WeatherCondition,
 } from "@/lib/project-types";
+import type { TemplateResponses } from "./daily-log-templates";
 
-export interface AddDailyLogEntryInput {
+/** Free-form: bodyHtml. From a template: templateId + responses, bodyHtml as optional notes. */
+export interface NewDailyLogEntry {
+  bodyHtml: string | null;
+  bodyText?: string | null;
+  templateId?: string;
+  responses?: TemplateResponses;
+}
+
+export interface AddDailyLogEntryInput extends NewDailyLogEntry {
   projectId: string;
   logDate: string;
-  bodyHtml: string;
-  bodyText?: string | null;
 }
 
 export interface VoidDailyLogEntryInput {
@@ -82,7 +89,7 @@ export const dailyLogsApi = {
       })
       .then((r) => r.data),
 
-  addEntry: (projectId: string, logDate: string, body: { bodyHtml: string; bodyText: string | null }) =>
+  addEntry: (projectId: string, logDate: string, body: NewDailyLogEntry) =>
     api.post<DailyLogEntry>(`/projects/${projectId}/daily-logs/${logDate}/entries`, body).then((r) => r.data),
 
   voidEntry: (projectId: string, logDate: string, entryId: string, body: { reason: string }) =>
