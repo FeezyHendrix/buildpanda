@@ -13,10 +13,11 @@ import { useFieldSession } from "@/lib/field-session";
 import { useAuthGate } from "@/lib/use-auth-gate";
 import { useMessagingChannels } from "@/hooks/use-messaging";
 
-// The workspace opens on the Site tools; field capture remains one tap away.
+// The app opens on Home: the tools this person uses most and what needs them
+// today. Every tool is in Tools; field capture stays one tap away.
 const LEFT_TABS = [
-  { name: "tools", title: "Site", icon: "construct-outline", iconActive: "construct" },
-  { name: "overview", title: "Overview", icon: "grid-outline", iconActive: "grid" },
+  { name: "overview", title: "Home", icon: "home-outline", iconActive: "home" },
+  { name: "tools", title: "Tools", icon: "construct-outline", iconActive: "construct" },
 ] as const;
 
 const RIGHT_TABS = [
@@ -38,7 +39,7 @@ export default function TabsLayout() {
   return (
     <View className="flex-1">
     <Tabs
-      initialRouteName="tools"
+      initialRouteName="overview"
       screenOptions={{
         headerShown: false,
         tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 11, lineHeight: 16 },

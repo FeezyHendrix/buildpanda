@@ -1,97 +1,85 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { Pressable, View } from "react-native";
-import { Card, Spinner, Text } from "@/components/atoms";
+import type { ReactNode } from "react";
+import { View } from "react-native";
+import { Spinner } from "@/components/atoms";
+import { DailyLogCard, MaterialLogCard, SyncNote, TasksCard } from "@/components/home/field-cards";
+import { ExpensesCard, ScheduleCard, UpdatesCard } from "@/components/home/project-cards";
+import { QuickToolsBar } from "@/components/home/quick-tools-bar";
+import { StatCards, type Stat } from "@/components/home/stat-cards";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
-import { UpdateCard } from "@/components/molecules/update-card";
-import { StaleBanner } from "@/components/molecules/stale-banner";
-import { ICON_BRAND } from "@/constants/colors";
+import type { Db } from "@/db/client";
+import { useLocalDb } from "@/db/provider";
+import { useHomeSummary } from "@/hooks/use-home-summary";
+import { useHomeToolOrder } from "@/hooks/use-home-tools";
+import { useProjectBuilding } from "@/hooks/use-project-building";
 import { useProject } from "@/hooks/use-projects";
-import { useActivities } from "@/hooks/use-activities";
-import { useKeyDates } from "@/hooks/use-key-dates";
-import { useProjectUpdates } from "@/hooks/use-updates";
 import { useFieldSession } from "@/lib/field-session";
-import { useStageScope } from "@/lib/stage-scope";
-import { matchesStage } from "@/lib/stage-filter";
+import type { HomeToolKey } from "@/lib/home-tools";
 
-function SectionTitle({ title, onPress }: { title: string; onPress: () => void }) {
+// Home is the app's first screen: the tools this person uses most, what needs
+// them today, then a card per tool in the order they use them. Everything is
+// read from the phone, so it opens fully with no signal.
+
+function Dashboard({ db, projectId, buildingId }: { db: Db; projectId: string; buildingId: string | undefined }) {
+  const { tools, isPending } = useHomeToolOrder(db);
+  // tasks and the daily log belong to a building; until one is chosen they sit out
+  const summary = useHomeSummary(db, projectId, buildingId ?? "");
+  if (isPending) return <View className="items-center py-12"><Spinner size="md" /></View>;
+
+  const keys = tools.map((tool) => tool.key).filter((key) => buildingId || (key !== "tasks" && key !== "dailyLog"));
+  const stats: (Stat & { tool: HomeToolKey | null })[] = [
+    { tool: "tasks", key: "tasks", label: "My tasks", value: String(summary.myOpen.length), detail: summary.overdue ? `${summary.overdue} overdue` : "None overdue", tone: summary.overdue ? "danger" : undefined, href: "/tools/tasks" },
+    { tool: "dailyLog", key: "log", label: "Today's log", value: String(summary.todaysEntries), detail: summary.todaysEntries ? "Entries today" : "Not started", href: "/tools/daily-log" },
+    { tool: "materialLog", key: "approval", label: "Awaiting approval", value: String(summary.awaiting), detail: "Deliveries", href: "/tools/material-log" },
+    { tool: null, key: "sync", label: "To upload", value: String(summary.toSync + summary.failed), detail: summary.failed ? `${summary.failed} failed` : summary.toSync ? "Waiting for signal" : "All uploaded", tone: summary.failed ? "danger" : undefined, href: "/sync" },
+  ];
+  const rank = (tool: HomeToolKey | null) => (tool ? keys.indexOf(tool) : keys.length);
+  const visibleStats = stats.filter((stat) => stat.tool === null || keys.includes(stat.tool)).sort((a, b) => rank(a.tool) - rank(b.tool));
+
+  const cards: Partial<Record<HomeToolKey, ReactNode>> = {
+    ...(buildingId ? {
+      dailyLog: <DailyLogCard key="dailyLog" db={db} projectId={projectId} buildingId={buildingId} />,
+      tasks: <TasksCard key="tasks" db={db} projectId={projectId} buildingId={buildingId} myOpen={summary.myOpen} />,
+    } : {}),
+    materialLog: <MaterialLogCard key="materialLog" db={db} projectId={projectId} awaiting={summary.awaiting} />,
+    expenses: <ExpensesCard key="expenses" db={db} projectId={projectId} />,
+    schedule: <ScheduleCard key="schedule" projectId={projectId} />,
+    updates: <UpdatesCard key="updates" projectId={projectId} />,
+  };
+
   return (
-    <View className="flex-row items-center justify-between pb-2 pt-5">
-      <Text variant="heading" weight="semibold" className="text-lg">{title}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`View all ${title.toLowerCase()}`} onPress={onPress} className="min-h-11 justify-center px-2">
-        <Text tone="brand" weight="medium" className="text-sm">View all</Text>
-      </Pressable>
+    <View className="gap-4">
+      <SyncNote failed={summary.failed} />
+      <QuickToolsBar tools={tools} />
+      <StatCards stats={visibleStats} />
+      {keys.flatMap((key) => cards[key] ?? [])}
     </View>
   );
 }
 
-export default function Overview() {
+export default function Home() {
   const { projectId } = useFieldSession();
   const project = useProject(projectId);
-  // Overview remains useful when the optional buildings feature is disabled.
-  const activities = useActivities(projectId, true, null);
-  const dates = useKeyDates(projectId, true, null);
-  const updates = useProjectUpdates(projectId);
-  const scope = useStageScope();
-  const progress = scope.stageId ? scope.stage?.progressPercent : project.data?.progressPercent;
-  const percent = typeof progress === "number" && Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : undefined;
-  const visibleActivities = activities.data?.filter((activity) => matchesStage(activity.phaseId, scope.stageId));
-  const upcoming = (dates.data ?? []).filter((date) => !date.actualDate && date.targetDate &&
-    matchesStage(date.linkedActivityId ? scope.activityStages.get(date.linkedActivityId) : undefined, scope.stageId))
-    .sort((a, b) => a.targetDate!.localeCompare(b.targetDate!)).slice(0, 3);
-  const delayed = visibleActivities?.filter((activity) => activity.isDelayed).length;
+  const { buildingId } = useProjectBuilding();
+  const { db, ready } = useLocalDb();
 
   return (
-    <Page stageScope title="Overview" projectName={project.data?.name}
-      projectPending={project.isPending} onPressProject={() => router.push("/select-project")}>
-      {project.isStale || activities.isStale || dates.isStale || updates.isStale ? <StaleBanner what="project overview" /> : null}
-      <Card className="p-5">
-        <View className="flex-row items-center justify-between gap-3">
-          <Text tone="secondary" className="text-sm">{scope.stageId ? "Stage progress" : "Project progress"}</Text>
-          <Ionicons name="trending-up-outline" size={20} color={ICON_BRAND} />
-        </View>
-        <Text variant="heading" weight="bold" className="pt-2 text-4xl">{percent === undefined ? "—" : `${Math.round(percent)}%`}</Text>
-        <Text className="pt-1 text-sm" numberOfLines={2}>{scope.stage?.name ?? project.data?.name ?? "Loading project…"}</Text>
-        <View className="mt-4 h-2 overflow-hidden rounded-full bg-surface-alt"
-          accessibilityRole="progressbar" accessibilityLabel={scope.stageId ? "Stage progress" : "Project progress"}
-          accessibilityValue={percent === undefined ? undefined : { min: 0, max: 100, now: percent }}>
-          <View className="h-2 rounded-full bg-primary-500" style={{ width: `${percent ?? 0}%` }} />
-        </View>
-        {project.error && !project.data ? <Text tone="danger" className="pt-2 text-sm">Project details are unavailable.</Text> : null}
-      </Card>
-      <View className="mt-3 flex-row gap-3">
-        <Pressable accessibilityRole="button" onPress={() => router.push("/tools/schedule/activities")} className="flex-1">
-          <Card className="p-4">
-            <Text tone="secondary" className="text-xs">Activities</Text>
-            <Text variant="heading" weight="bold" className="pt-2 text-2xl">{visibleActivities?.length ?? "—"}</Text>
-          </Card>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => router.push("/(tabs)/schedule")} className="flex-1">
-          <Card className="p-4">
-            <Text tone="secondary" className="text-xs">Delayed activities</Text>
-            <Text variant="heading" weight="bold" tone={delayed ? "danger" : "default"} className="pt-2 text-2xl">{delayed ?? "—"}</Text>
-          </Card>
-        </Pressable>
-      </View>
-      <Pressable accessibilityRole="button" onPress={() => router.push("/(tabs)/schedule")} className="mt-3 min-h-14 flex-row items-center gap-3 rounded-xl border border-line bg-surface px-4">
-        <Ionicons name="calendar-outline" size={20} color={ICON_BRAND} />
-        <Text weight="medium" className="flex-1 text-sm">Schedule and build stages</Text>
-        <Ionicons name="arrow-forward" size={18} color={ICON_BRAND} />
-      </Pressable>
-      <SectionTitle title="Key dates" onPress={() => router.push("/tools/schedule/key-dates")} />
-      <Card>
-        {dates.isPending ? <View className="p-5"><Spinner /></View> : upcoming.length ? upcoming.map((date) => (
-          <Pressable key={date.id} accessibilityRole="button" onPress={() => router.push(`/tools/schedule/key-dates/${date.id}` as never)} className="min-h-16 flex-row items-center gap-3 border-b border-line px-4 py-3">
-            <Ionicons name="flag-outline" size={18} color={ICON_BRAND} />
-            <Text weight="medium" className="flex-1 text-sm">{date.label}</Text>
-            <Text tone="secondary" className="text-xs">{new Date(`${date.targetDate!.slice(0, 10)}T12:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</Text>
-          </Pressable>
-        )) : <Text tone="secondary" className="p-4 text-sm">{dates.error ? "Key dates are unavailable. Open the schedule to retry." : "No upcoming key dates in this view."}</Text>}
-      </Card>
-      <SectionTitle title="Recent updates" onPress={() => router.push("/tools/updates")} />
-      {updates.isPending ? <Spinner /> : updates.data?.length ? (
-        <View className="gap-3">{updates.data.slice(0, 3).map((update) => <UpdateCard key={update.id} update={update} onPress={() => router.push(`/tools/updates/${update.id}` as never)} />)}</View>
-      ) : <Card className="p-4"><Text tone="secondary" className="text-sm">{updates.error ? "Updates are unavailable. Try again when connected." : "No updates in this view yet."}</Text></Card>}
+    <Page
+      buildingScope
+      buildingOptional
+      stageScope
+      title="Home"
+      projectName={project.data?.name}
+      projectPending={project.isPending}
+      onPressProject={() => router.push("/select-project")}
+      rightButtons={<HeaderIconButton icon="options-outline" label="Customise Home" onPress={() => router.push("/tools/customise-home")} />}
+    >
+      {ready && db && projectId ? (
+        <Dashboard key={`${projectId}:${buildingId ?? ""}`} db={db} projectId={projectId} buildingId={buildingId} />
+      ) : (
+        <View className="items-center py-12"><Spinner size="md" /></View>
+      )}
     </Page>
   );
 }

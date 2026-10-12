@@ -33,6 +33,8 @@ interface PageProps {
   footer?: ReactNode;
   className?: string;
   buildingScope?: boolean;
+  /** With `buildingScope`: show the picker but render the page without a building too. */
+  buildingOptional?: boolean;
   stageScope?: boolean;
   children: ReactNode;
 }
@@ -126,7 +128,7 @@ function BuildingPage(props: PageProps) {
   const { buildingId, isLoading } = useProjectBuilding();
   return (
     <PageContent {...props} footer={buildingId ? props.footer : undefined}>
-      {buildingId ? props.children : (
+      {buildingId || props.buildingOptional ? props.children : (
         <View className="items-center py-12">
           <Text tone="secondary" className="text-center">
             {isLoading ? "Loading buildings…" : "Choose a building above to see its records."}

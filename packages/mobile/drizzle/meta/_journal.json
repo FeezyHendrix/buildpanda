@@ -183,6 +183,13 @@
       "when": 1791815218100,
       "tag": "0025_expenses",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1791815933091,
+      "tag": "0026_home_tool_usage",
+      "breakpoints": true
     }
   ]
 }
