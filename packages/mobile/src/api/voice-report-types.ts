@@ -1,3 +1,4 @@
+import type { TemplateResponses } from "./daily-log-templates";
 import type { UpsertChangeRequestInput } from "./change-requests";
 import type { CreateLookAheadInput } from "./look-aheads";
 import type { LogMaterialEntryInput } from "./materials-ledger";
@@ -25,9 +26,20 @@ export interface StageTransitionPayload {
   status: "Pending" | "InProgress" | "Done" | null;
 }
 
+/** A diary note, or, when the project has a daily log form, that form filled from the speech. */
+export interface VoiceDailyLogPayload {
+  bodyText: string;
+  buildingId?: string | null;
+  templateId?: string | null;
+  templateName?: string;
+  responses?: TemplateResponses;
+  /** The answers as readable text, checked by the server against the form. */
+  formText?: string;
+}
+
 export type DraftAction =
   | { kind: "rfi"; title: string; summary: string; payload: UpsertRfiInput }
-  | { kind: "daily_log"; title: string; summary: string; payload: { bodyText: string; buildingId?: string | null } }
+  | { kind: "daily_log"; title: string; summary: string; payload: VoiceDailyLogPayload }
   | { kind: "change_request"; title: string; summary: string; payload: UpsertChangeRequestInput }
   | { kind: "material_log"; title: string; summary: string; payload: LogMaterialEntryInput }
   | { kind: "material_order"; title: string; summary: string; payload: CreateMaterialOrderInput }

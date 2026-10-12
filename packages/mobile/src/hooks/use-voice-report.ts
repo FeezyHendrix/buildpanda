@@ -15,7 +15,11 @@ import { useLocalDb } from "@/db/provider";
 import { useFieldSession } from "@/lib/field-session";
 import { useProjectBuilding } from "./use-project-building";
 import { useAuthGate } from "@/lib/use-auth-gate";
-import { useAddDailyLogEntry, useSaveDailyLog } from "./use-daily-logs";
+import { useAddDailyLogEntry, useAddTemplateEntry, useSaveDailyLog } from "./use-daily-logs";
+import { dailyLogTemplatesRepository } from "@/db/daily-log-templates-repository";
+import type { TemplateField, TemplateResponses } from "@/api/daily-log-templates";
+import type { VoiceDailyLogPayload } from "@/api/voice-report-types";
+import { textToParagraphHtml } from "@/lib/html";
 import { useCreateChangeRequest } from "./use-local-change-requests";
 import { useCreateLookAhead } from "./use-local-look-aheads";
 import { useCreateMaterialOrder } from "./use-local-materials";
@@ -27,6 +31,21 @@ function localDateIso(): string {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 10);
+}
+
+/**
+ * The model's answers plus any the reviewer typed for required questions (sent
+ * back as `response:<id>` fields), with yes/no picks turned back into booleans.
+ */
+function spokenResponses(fields: readonly TemplateField[], payload: VoiceDailyLogPayload): TemplateResponses {
+  const out: TemplateResponses = { ...payload.responses };
+  const typed = payload as unknown as Record<string, unknown>;
+  for (const field of fields) {
+    const value = typed[`response:${field.id}`];
+    if (value === undefined || value === null || value === "") continue;
+    out[field.id] = field.type === "yes_no" ? value === "yes" : (value as string | number);
+  }
+  return out;
 }
 
 /**
@@ -42,6 +61,7 @@ export function useApplyProposedAction() {
 
   const createRfi = useCreateLocalRfi();
   const addDailyEntry = useAddDailyLogEntry(db, projectId);
+  const addTemplateEntry = useAddTemplateEntry(db, projectId);
   const { buildingId } = useProjectBuilding();
   const activities = useActivities(projectId, true, null);
   const saveDailyLog = useSaveDailyLog(db, projectId);
@@ -69,15 +89,28 @@ export function useApplyProposedAction() {
         case "rfi":
           await createRfi(action.payload);
           return;
-        case "daily_log":
-          await addDailyEntry(
-            localDateIso(),
-            action.payload.bodyText,
-            user?.name ?? "Field team",
-            null,
-            action.payload.buildingId ?? buildingId,
-          );
+        case "daily_log": {
+          const { templateId, formText, bodyText } = action.payload;
+          const entryBuilding = action.payload.buildingId ?? buildingId;
+          if (templateId) {
+            const form = db ? (await dailyLogTemplatesRepository.list(db, requireProject())).find((t) => t.id === templateId) : undefined;
+            if (form) {
+              await addTemplateEntry(localDateIso(), {
+                template: form,
+                responses: spokenResponses(form.fields, action.payload),
+                notesHtml: bodyText.trim() ? textToParagraphHtml(bodyText.trim()) : null,
+                authorName: user?.name ?? "Field team",
+                buildingId: entryBuilding,
+              });
+              return;
+            }
+            // the form never reached this phone: keep the answers as the note
+            await addDailyEntry(localDateIso(), [formText, bodyText.trim()].filter(Boolean).join("\n"), user?.name ?? "Field team", null, entryBuilding);
+            return;
+          }
+          await addDailyEntry(localDateIso(), bodyText, user?.name ?? "Field team", null, entryBuilding);
           return;
+        }
         case "change_request":
           await createChangeRequest(action.payload);
           return;
@@ -204,6 +237,7 @@ export function useApplyProposedAction() {
     [
       createRfi,
       addDailyEntry,
+      addTemplateEntry,
       saveDailyLog,
       createChangeRequest,
       createMaterialOrder,
