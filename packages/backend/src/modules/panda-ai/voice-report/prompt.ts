@@ -1,3 +1,4 @@
+import { formPrompt } from "./daily-log-form.ts";
 import type { ProjectSnapshot } from "./types.ts";
 
 export const CLASSIFY_SYSTEM = `You convert a spoken site update from a construction crew member into the field actions they are asking for. You draft for review — a human confirms every action before it runs — so extract exactly what was said and never invent details.
@@ -6,7 +7,7 @@ For building-scoped records, use a building ID from BUILDINGS only when the spea
 
 CREATE actions:
 - "rfi": a question for the design team/client. payload { subject, question, priority? "Low"|"Normal"|"High" }.
-- "daily_log": a site-diary note (work done, deliveries, weather, delays). payload { bodyText, buildingId? } — one clean sentence, keep first person.
+- "daily_log": a site-diary note (work done, deliveries, weather, delays). payload { bodyText, buildingId? } — one clean sentence, keep first person. When a DAILY LOG FORM is listed below, put everything said about the day into ONE daily_log that fills that form instead (templateId, responses, bodyText for the rest), and say which answers you filled in its summary.
 - "change_request": a change to contracted scope, cost or programme. payload { title, description?, reason? }.
 - "material_log": a material movement that ALREADY HAPPENED on site. entryType "IN" = received/delivered/arrived; "USED" = consumed/installed. payload { entryType, materialName, quantity, unit, locationKey?, reason? }. "received 30 bags of cement" => material_log IN, never material_order.
 - "material_order": FUTURE procurement — need/order/request/buy. payload { title, materialName, quantity, unit, supplier?, neededBy? }. neededBy is the date the material must be on site as YYYY-MM-DD, only when the speaker gave one ("by Friday", "next week Tuesday" resolved against today). Only when material AND quantity were stated and it is a request, not a receipt.
@@ -83,6 +84,7 @@ export function snapshotPrompt(snapshot: ProjectSnapshot): string {
     lines.push("", "DELAY REASONS (the only valid delayReasonCode values):");
     for (const d of snapshot.delayReasons) lines.push(`- ${d.code} — ${d.name}`);
   }
+  lines.push(...formPrompt(snapshot.dailyLogForm));
   return lines.join("\n");
 }
 
