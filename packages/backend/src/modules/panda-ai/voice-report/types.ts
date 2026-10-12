@@ -1,3 +1,4 @@
+import type { TemplateField, TemplateResponses } from "../../daily-log-templates/types.ts";
 export interface RfiPayload {
   subject: string;
   question: string;
@@ -7,6 +8,12 @@ export interface RfiPayload {
 export interface DailyLogPayload {
   buildingId?: string | null;
   bodyText: string;
+  /** Set when the speech filled the project's daily log form. */
+  templateId?: string | null;
+  templateName?: string;
+  responses?: TemplateResponses;
+  /** The answers as readable text, for the review card and an offline fallback. */
+  formText?: string;
 }
 
 export interface ChangeRequestPayload {
@@ -266,7 +273,14 @@ export interface ProjectSnapshot {
   todayEntries: SnapshotDailyLogEntry[];
   stages: SnapshotStage[];
   buildings: SnapshotBuilding[];
+  dailyLogForm: SnapshotDailyLogForm | null;
   today: string;
+}
+
+export interface SnapshotDailyLogForm {
+  id: string;
+  name: string;
+  fields: TemplateField[];
 }
 
 export interface VoiceReport {

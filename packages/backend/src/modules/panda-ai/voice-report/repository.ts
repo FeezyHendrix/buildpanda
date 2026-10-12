@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { loadDefaultForm } from "./daily-log-form.ts";
 import type { ProjectSnapshot } from "./types.ts";
 
 interface RfiPick {
@@ -94,6 +95,7 @@ export function voiceReportRepository(db: Knex) {
         todayEntries,
         stages,
         buildings,
+        dailyLogForm,
       ] = await Promise.all([
           db<RfiPick>("rfis")
             .where({ project_id: projectId })
@@ -142,6 +144,7 @@ export function voiceReportRepository(db: Knex) {
             .orderBy("sort_order", "asc")
             .limit(20)
             .select("id", "name", "code"),
+          loadDefaultForm(db, projectId),
         ]);
 
       return {
@@ -184,6 +187,7 @@ export function voiceReportRepository(db: Knex) {
           buildingId: s.building_id,
         })),
         buildings: buildings.map((b) => ({ id: b.id, name: b.name, code: b.code })),
+        dailyLogForm,
         today,
       };
     },
