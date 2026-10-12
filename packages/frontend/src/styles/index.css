@@ -421,3 +421,22 @@ input[type="radio"] {
     to { opacity: 1; transform: translateY(0); }
   }
 }
+
+/* ─── Keyboard avoidance ─────────────────────────────────────────────────── */
+/* Size overlays to the part of the screen the on-screen keyboard leaves
+   visible. The vars come from lib/keyboard-inset.ts and are unset while no
+   keyboard is open, so these equal inset-y-0 / bottom-0 / centred on desktop. */
+@utility inset-y-visible {
+  top: var(--vv-top, 0px);
+  bottom: var(--keyboard-inset, 0px);
+}
+@utility bottom-visible {
+  bottom: var(--keyboard-inset, 0px);
+}
+/* A centred dialog: pair with -translate-y-1/2 in place of top-1/2. */
+@utility top-visible-center {
+  top: calc(var(--vv-top, 0px) + var(--vv-height, 100dvh) / 2);
+}
+@utility max-h-visible {
+  max-height: calc(var(--vv-height, 100dvh) - 2rem);
+}

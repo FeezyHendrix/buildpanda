@@ -33,7 +33,7 @@ function ConfirmDialog({
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/20" />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-96 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-lg">
+        <AlertDialog.Popup className="fixed top-visible-center left-1/2 z-50 w-96 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-lg">
           <AlertDialog.Title className="text-lg font-semibold text-gray-900 text-balance">
             {title}
           </AlertDialog.Title>

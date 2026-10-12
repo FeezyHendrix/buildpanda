@@ -62,7 +62,7 @@ function DailyLogDrawer({
           // land on the close button and beat the editor; the composer focuses itself.
           initialFocus={focusComposer ? false : true}
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-line-hair bg-white shadow-drawer outline-none md:w-[min(750px,100vw)]",
+            "fixed inset-y-visible right-0 z-50 flex w-full flex-col border-l border-line-hair bg-white shadow-drawer outline-none md:w-[min(750px,100vw)]",
             "transition-transform duration-300 ease-out",
             "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
           )}
