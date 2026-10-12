@@ -13,6 +13,7 @@ import { FieldSessionProvider } from "@/lib/field-session";
 import { SyncProvider } from "@/lib/sync-provider";
 import { OfflinePlansProvider } from "@/lib/offline-plans-provider";
 import { StageScopeProvider } from "@/lib/stage-scope";
+import { useTrackToolOpens } from "@/hooks/use-home-tools";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -32,6 +33,12 @@ const queryClient = new QueryClient({
     mutations: { retry: 0 },
   },
 });
+
+// Learns which tools this user opens most, so Home can lead with them.
+function ToolOpenTracker() {
+  useTrackToolOpens();
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -58,6 +65,7 @@ export default function RootLayout() {
           <LocalDbProvider>
           <SyncProvider>
           <OfflinePlansProvider>
+          <ToolOpenTracker />
           <StatusBar style="dark" />
           <Stack
             initialRouteName="index"

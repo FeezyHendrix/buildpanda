@@ -324,3 +324,4 @@ export * from "./schema-daily-logs";
 export * from "./schema-material-log";
 export * from "./schema-tasks";
 export * from "./schema-expenses";
+export * from "./schema-home";
