@@ -1,4 +1,5 @@
 import { StageField } from "@/components/molecules/stage-field";
+import { DateField } from "@/components/molecules/date-field";
 import { useStageScope } from "@/lib/stage-scope";
 import { isIsoDate } from "@/lib/dates";
 import { goBack } from "@/lib/navigation";
@@ -139,15 +140,8 @@ export default function NewMaterialApproval() {
             error={isQuantityValid ? undefined : "Enter a number of zero or more."}
             className="flex-1"
           />
-          <Field
-            label="Needed by"
-            value={neededBy}
-            onChangeText={setNeededBy}
-            placeholder="YYYY-MM-DD"
-            autoCapitalize="none"
-            className="flex-1"
-          />
         </View>
+        <DateField label="Needed by" value={neededBy} onChange={setNeededBy} optional placeholder="No date" />
         <OptionRow label="Unit" options={MATERIAL_UNITS} value={unit} onChange={setUnit} />
         <Field
           label="Supplier"

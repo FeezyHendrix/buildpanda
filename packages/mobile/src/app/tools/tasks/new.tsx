@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DateField } from "@/components/molecules/date-field";
 import { Pressable, View } from "react-native";
 import { TASK_PRIORITIES, type TaskAssignee, type TaskPriority } from "@/api/tasks";
 import { Button, Field, FieldLabel, OptionRow, Text } from "@/components/atoms";
@@ -78,14 +79,7 @@ export default function NewTask() {
           </Pressable>
         </View>
         <OptionRow label="Priority" options={TASK_PRIORITIES} value={priority} onChange={setPriority} />
-        <Field
-          label="Due date"
-          value={dueDate}
-          onChangeText={setDueDate}
-          placeholder="YYYY-MM-DD (optional)"
-          autoCapitalize="none"
-          error={dueValid ? undefined : "Enter a date as YYYY-MM-DD."}
-        />
+        <DateField label="Due date" value={dueDate} onChange={setDueDate} optional placeholder="No due date" />
         <Field label="Details" value={description} onChangeText={setDescription} placeholder="Optional" multiline />
       </View>
       <WorkspaceSheet

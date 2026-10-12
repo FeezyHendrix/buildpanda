@@ -1,4 +1,5 @@
 import { StageField } from "@/components/molecules/stage-field";
+import { DateField } from "@/components/molecules/date-field";
 import { useStageScope } from "@/lib/stage-scope";
 import { goBack } from "@/lib/navigation";
 
@@ -98,14 +99,7 @@ export default function NewMaterialOrder() {
           <Field label="Unit" value={unit} onChangeText={setUnit} placeholder="bags" className="flex-1" />
         </View>
         <Field label="Supplier" value={supplier} onChangeText={setSupplier} placeholder="Optional" />
-        <Field
-          label="Needed by"
-          value={neededBy}
-          onChangeText={setNeededBy}
-          placeholder="YYYY-MM-DD"
-          autoCapitalize="none"
-          error={neededBy.length > 0 && !isNeededByValid ? "Enter a date as YYYY-MM-DD." : undefined}
-        />
+        <DateField label="Needed by" value={neededBy} onChange={setNeededBy} placeholder="When it must be on site" minimumDate={new Date()} />
       </View>
     </Page>
   );
