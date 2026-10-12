@@ -6,6 +6,7 @@ import { pushChangeRequestCommentOutboxItem } from "./outbox-change-request-comm
 import { pushChangeRequestOutboxItem } from "./outbox-change-requests";
 import { pushDailyLogOutboxItem } from "./outbox-daily-logs";
 import { pushDocumentOutboxItem } from "./outbox-documents";
+import { pushExpenseOutboxItem } from "./outbox-expenses";
 import { pushDrawingMarkupCommentOutboxItem, pushDrawingMarkupOutboxItem } from "./outbox-drawing-markups";
 import { pushLookAheadOutboxItem } from "./outbox-look-aheads";
 import { pushMaterialApprovalOutboxItem } from "./outbox-material-approvals";
@@ -15,7 +16,7 @@ import { PermanentOutboxError } from "./outbox-handler";
 import { pushRfiOutboxItem } from "./outbox-rfis";
 import { pushTaskOutboxItem } from "./outbox-tasks";
 import { OUTBOX_TABLES } from "./outbox-tables";
-import { documents, drawingMarkupComments, outbox, type OutboxRow } from "./schema";
+import { documents, drawingMarkupComments, expenses, outbox, type OutboxRow } from "./schema";
 import { discardStagedMedia } from "../lib/stage-media";
 
 import { startSending, finishSending } from "./sync-write-state";
@@ -66,6 +67,7 @@ async function pushOutboxItem(db: Db, item: OutboxRow): Promise<boolean> {
     pushDailyLogOutboxItem,
     pushRfiOutboxItem,
     pushTaskOutboxItem,
+    pushExpenseOutboxItem,
   ]) {
     const result = await handler(db, item);
     if (result.handled) return result.pushed;
@@ -192,6 +194,10 @@ export async function discardOutboxItem(db: Db, id: string): Promise<void> {
 async function stagedFileFor(db: Db, item: OutboxRow): Promise<string | null> {
   if (item.resource === "documents") {
     const [row] = await db.select({ uri: documents.stagedUri }).from(documents).where(eq(documents.id, item.entityId)).limit(1);
+    return row?.uri ?? null;
+  }
+  if (item.resource === "expenses") {
+    const [row] = await db.select({ uri: expenses.receiptStagedUri }).from(expenses).where(eq(expenses.id, item.entityId)).limit(1);
     return row?.uri ?? null;
   }
   if (item.resource === "drawing-markup-comments") {

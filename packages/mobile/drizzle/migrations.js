@@ -26,6 +26,7 @@ import m0021 from './0021_stage_scope.sql';
 import m0022 from './0022_daily_log_templates.sql';
 import m0023 from './0023_material_log.sql';
 import m0024 from './0024_tasks.sql';
+import m0025 from './0025_expenses.sql';
 
   export default {
     journal,
@@ -54,7 +55,8 @@ m0020,
 m0021,
 m0022,
 m0023,
-m0024
+m0024,
+m0025
     }
   }
   

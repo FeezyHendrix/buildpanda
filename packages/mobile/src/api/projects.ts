@@ -6,6 +6,8 @@ export interface Project {
   address: string;
   status: string;
   progressPercent: number;
+  /** ISO code expenses and costs are recorded in, e.g. NGN. */
+  currency?: string;
 }
 
 export const projectsApi = {
