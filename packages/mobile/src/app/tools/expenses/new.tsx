@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { DateField } from "@/components/molecules/date-field";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
@@ -134,7 +135,7 @@ export default function NewExpense() {
             </View>
           )}
         </View>
-        <Field label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" autoCapitalize="none" error={isIsoDate(date.trim()) ? undefined : "Enter a date as YYYY-MM-DD."} />
+        <DateField label="Date" value={date} onChange={setDate} />
         <Field label="Supplier" value={vendor} onChangeText={setVendor} placeholder="Optional" />
         <StageField value={stageId} onChange={setStageId} />
         <Field label="Notes" value={description} onChangeText={setDescription} placeholder="Optional" multiline />

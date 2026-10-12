@@ -1,4 +1,5 @@
 import { goBack } from "@/lib/navigation";
+import { DateField } from "@/components/molecules/date-field";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
@@ -109,14 +110,7 @@ function Editor({ db, projectId, orderId }: { db: Db; projectId: string; orderId
             <Field label="Unit" value={unitValue} onChangeText={setUnit} placeholder="bags" className="flex-1" />
           </View>
           <Field label="Supplier" value={supplierValue} onChangeText={setSupplier} placeholder="Optional" />
-          <Field
-            label="Needed by"
-            value={neededByValue}
-            onChangeText={setNeededBy}
-            placeholder="YYYY-MM-DD"
-            autoCapitalize="none"
-            error={neededByValue.length > 0 && !isNeededByValid ? "Enter a date as YYYY-MM-DD." : undefined}
-          />
+          <DateField label="Needed by" value={neededByValue} onChange={setNeededBy} placeholder="When it must be on site" />
         </View>
       )}
     </Page>
