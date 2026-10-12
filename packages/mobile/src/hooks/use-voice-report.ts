@@ -24,6 +24,8 @@ import { useCreateChangeRequest } from "./use-local-change-requests";
 import { useCreateLookAhead } from "./use-local-look-aheads";
 import { useCreateMaterialOrder } from "./use-local-materials";
 import { useCreateLocalRfi } from "./use-local-rfis";
+import { useLogMaterial } from "./use-material-log";
+import { useProjectAccess } from "./use-project-access";
 import { useAddRfiComment } from "./use-rfi-comments";
 
 /** Local calendar date (YYYY-MM-DD) — the daily log is keyed by the crew's day, not UTC. */
@@ -69,6 +71,8 @@ export function useApplyProposedAction() {
   const createMaterialOrder = useCreateMaterialOrder(db, projectId);
   const createLookAhead = useCreateLookAhead(db, projectId);
   const addRfiComment = useAddRfiComment(db, projectId);
+  const logMaterial = useLogMaterial(db, projectId);
+  const { can } = useProjectAccess();
 
   return useCallback(
     async (action: ProposedAction): Promise<{ awaitingApproval?: boolean } | void> => {
@@ -115,11 +119,23 @@ export function useApplyProposedAction() {
           await createChangeRequest(action.payload);
           return;
         case "material_log": {
-          const logged = await materialsLedgerApi.logEntry(requireProject(), action.payload);
-          // Material now lands pending and does not move stock until approved.
-          // Reporting it as simply saved would tell a crew their delivery is
-          // counted when it is not.
-          return { awaitingApproval: logged.entry.approvalStatus === "Pending" };
+          // A delivery is spoken on site, often out of signal, so it queues
+          // like a hand-logged one. Every entry waits for a manager before it
+          // counts in stock, which the review screen tells the crew.
+          const { entryType, materialName, quantity, unit, stageId, reason } = action.payload;
+          if (entryType === "USED" && !can("materials", "manage")) {
+            throw new Error("Only people who manage materials can log usage. Add it to the daily log instead.");
+          }
+          await logMaterial({
+            entryType,
+            materialName,
+            unit: unit || "item",
+            quantity,
+            stageId: stageId ?? null,
+            notesHtml: reason ? textToParagraphHtml(reason) : null,
+            loggedByName: user?.name ?? "Field team",
+          });
+          return { awaitingApproval: true };
         }
         case "material_order":
           // The orders API requires the date; the review screen collects it as
@@ -243,6 +259,8 @@ export function useApplyProposedAction() {
       createMaterialOrder,
       createLookAhead,
       addRfiComment,
+      logMaterial,
+      can,
       db,
       projectId,
       user,

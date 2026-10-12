@@ -22,9 +22,17 @@ export interface CommentAssignee {
   name: string;
 }
 
+/** What the signed-in user may do on a project, as the server enforces it. */
+export interface ProjectAccess {
+  /** Effective resource permissions, e.g. { materials: ["view", "request"] }. */
+  permissions: Record<string, string[]>;
+}
+
 export const participantsApi = {
   list: (projectId: string) =>
     request<ProjectParticipant[]>(`/projects/${projectId}/participants`),
+
+  access: (projectId: string) => request<ProjectAccess>(`/projects/${projectId}/access`),
 };
 
 /** People who can be tagged on a comment: active members with a real account. */
