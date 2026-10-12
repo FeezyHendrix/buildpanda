@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   DndContext,
   DragOverlay,
-  KeyboardSensor,
   MouseSensor,
   TouchSensor,
   closestCenter,
@@ -14,7 +13,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { arrayMove } from "@dnd-kit/sortable";
 import { MousePointer2 } from "lucide-react";
 import type { TemplateFieldType } from "@/api/daily-log-templates";
 import { FieldPalette } from "./field-palette";
@@ -47,7 +46,6 @@ export function StepBuild({ drafts, onChange }: StepBuildProps) {
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   function insert(type: TemplateFieldType, at: number) {
@@ -76,6 +74,13 @@ export function StepBuild({ drafts, onChange }: StepBuildProps) {
       const copy = { ...rest, key: draftKey(), label: rest.label ? `${rest.label} (copy)` : "" };
       onChange((current) => [...current.slice(0, index + 1), copy, ...current.slice(index + 1)]);
       setSelectedKey(copy.key);
+    },
+    onMove: (key: string, by: -1 | 1) => {
+      onChange((current) => {
+        const from = current.findIndex((d) => d.key === key);
+        const to = from + by;
+        return from < 0 || to < 0 || to >= current.length ? current : arrayMove(current, from, to);
+      });
     },
     onRemove: (key: string) => {
       onChange((current) => current.filter((f) => f.key !== key));
@@ -109,8 +114,8 @@ export function StepBuild({ drafts, onChange }: StepBuildProps) {
     setDropTarget(null);
   }
 
-  const dragged = active?.kind === "field" ? drafts.find((d) => d.key === active.key) : null;
-  const overlayType = active?.kind === "new" ? active.type : dragged?.type;
+  // Only a new field needs a floating copy; a field on the form moves in place.
+  const overlayType = active?.kind === "new" ? active.type : null;
 
   return (
     <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => { setActive(null); setDropTarget(null); }}>
@@ -165,7 +170,7 @@ export function StepBuild({ drafts, onChange }: StepBuildProps) {
         {overlayType ? (
           <div className="flex items-center gap-2 rounded-lg border border-primary-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-lg">
             {(() => { const Icon = FIELD_TYPE_META[overlayType].icon; return <Icon className="size-4 text-primary-500" aria-hidden />; })()}
-            {dragged?.label || FIELD_TYPE_META[overlayType].label}
+            {FIELD_TYPE_META[overlayType].label}
           </div>
         ) : null}
       </DragOverlay>
