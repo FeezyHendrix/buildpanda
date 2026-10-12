@@ -15,7 +15,7 @@ import {
 import { EmptyState } from "@/components/molecules/empty-state";
 import { QueryError } from "@/components/molecules/query-error";
 import { RowActionsMenu, type RowActionItem } from "@/components/molecules/row-actions-menu";
-import { UpsertDailyLogTemplateDrawer } from "@/components/molecules/daily-log-template/upsert-daily-log-template-drawer";
+import { TemplateWizard } from "@/components/molecules/daily-log-template/template-wizard";
 import type { DailyLogTemplate } from "@/api/daily-log-templates";
 import {
   useDailyLogTemplates,
@@ -147,11 +147,10 @@ export function DailyLogTab({ projectId, canManage }: { projectId: string; canMa
       </div>
 
       {drawer ? (
-        <UpsertDailyLogTemplateDrawer
+        <TemplateWizard
           key={drawer.key}
           projectId={projectId}
-          open
-          onOpenChange={(open) => { if (!open) setDrawer(null); }}
+          onClose={() => setDrawer(null)}
           initial={drawer.editing}
         />
       ) : null}

@@ -85,3 +85,14 @@ export function starterFields(): DraftField[] {
     starter("long_text", "Delays, instructions received or visitors"),
   ];
 }
+
+/** A short end-of-day check for a crew lead in a hurry. */
+export function quickCheckFields(): DraftField[] {
+  return [
+    starter("select", "Weather", { options: ["Sunny", "Cloudy", "Rain", "Storm"] }),
+    starter("number", "Workers on site", { unit: "workers", required: true }),
+    starter("long_text", "Work done today", { required: true }),
+    starter("yes_no", "Any safety incidents?", { required: true }),
+    starter("long_text", "Anything holding the work up?"),
+  ];
+}
