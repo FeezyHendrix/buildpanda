@@ -28,6 +28,8 @@ export interface CanvasActions {
   onSelect: (key: string) => void;
   onDuplicate: (key: string) => void;
   onRemove: (key: string) => void;
+  /** One place up or down, for the keyboard. */
+  onMove: (key: string, by: -1 | 1) => void;
 }
 
 function DropLine() {
@@ -49,7 +51,7 @@ function FieldCard({ field, index, selected, actions, insertBefore, children }: 
   const detail = summary(field);
 
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn("flex flex-col gap-2", isDragging && "z-10 opacity-50")}>
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn("relative flex flex-col gap-2", isDragging && "z-10 [&>div:last-child]:shadow-lg")}>
       {insertBefore ? <DropLine /> : null}
       <div
         className={cn(
@@ -63,9 +65,16 @@ function FieldCard({ field, index, selected, actions, insertBefore, children }: 
             ref={setActivatorNodeRef}
             type="button"
             className={cn(ICON_BUTTON, "cursor-grab touch-none active:cursor-grabbing")}
-            aria-label={`Reorder ${field.label || meta.label}. Press space to pick up, arrows to move.`}
+            aria-label={`Reorder ${field.label || meta.label}. Drag, or use the up and down arrow keys.`}
             {...listeners}
             {...attributes}
+            // The dialog keeps arrow keys from reaching the document, where
+            // dnd-kit's keyboard sensor listens, so arrows move the field here.
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+              event.preventDefault();
+              actions.onMove(field.key, event.key === "ArrowUp" ? -1 : 1);
+            }}
           >
             <GripVertical className="size-4" />
           </button>
