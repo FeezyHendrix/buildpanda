@@ -13,6 +13,7 @@ import { pushMaterialLedgerOutboxItem } from "./outbox-material-ledger";
 import { pushMaterialOrderOutboxItem } from "./outbox-material-orders";
 import { PermanentOutboxError } from "./outbox-handler";
 import { pushRfiOutboxItem } from "./outbox-rfis";
+import { pushTaskOutboxItem } from "./outbox-tasks";
 import { OUTBOX_TABLES } from "./outbox-tables";
 import { documents, drawingMarkupComments, outbox, type OutboxRow } from "./schema";
 import { discardStagedMedia } from "../lib/stage-media";
@@ -64,6 +65,7 @@ async function pushOutboxItem(db: Db, item: OutboxRow): Promise<boolean> {
     pushMaterialApprovalOutboxItem,
     pushDailyLogOutboxItem,
     pushRfiOutboxItem,
+    pushTaskOutboxItem,
   ]) {
     const result = await handler(db, item);
     if (result.handled) return result.pushed;
