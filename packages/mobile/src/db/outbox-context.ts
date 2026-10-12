@@ -1,11 +1,11 @@
 import { eq, getTableColumns, sql } from "drizzle-orm";
 import type { Db } from "./client";
-import { outbox, rfis, changeRequests, documents, materialOrders, materialApprovals, lookAheads, materialLedgerEntries, tasks } from "./schema";
+import { outbox, rfis, changeRequests, documents, materialOrders, materialApprovals, lookAheads, materialLedgerEntries, tasks, expenses } from "./schema";
 
 export function outboxContextQuery(db: Db) {
   return db.select({
     ...getTableColumns(outbox),
-    title: sql<string>`coalesce(${rfis.subject}, ${changeRequests.title}, ${documents.fileName}, ${materialOrders.title}, ${materialApprovals.title}, ${lookAheads.name}, ${materialLedgerEntries.materialName}, ${tasks.title}, ${outbox.entityId})`,
+    title: sql<string>`coalesce(${rfis.subject}, ${changeRequests.title}, ${documents.fileName}, ${materialOrders.title}, ${materialApprovals.title}, ${lookAheads.name}, ${materialLedgerEntries.materialName}, ${tasks.title}, ${expenses.title}, ${outbox.entityId})`,
   }).from(outbox)
     .leftJoin(rfis, eq(outbox.entityId, rfis.id))
     .leftJoin(changeRequests, eq(outbox.entityId, changeRequests.id))
@@ -14,7 +14,8 @@ export function outboxContextQuery(db: Db) {
     .leftJoin(materialApprovals, eq(outbox.entityId, materialApprovals.id))
     .leftJoin(lookAheads, eq(outbox.entityId, lookAheads.id))
     .leftJoin(materialLedgerEntries, eq(outbox.entityId, materialLedgerEntries.id))
-    .leftJoin(tasks, eq(outbox.entityId, tasks.id));
+    .leftJoin(tasks, eq(outbox.entityId, tasks.id))
+    .leftJoin(expenses, eq(outbox.entityId, expenses.id));
 }
 
 const DETAIL_ROUTES: Record<string, string> = {

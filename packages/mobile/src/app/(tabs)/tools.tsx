@@ -22,6 +22,7 @@ const QUICK_TOOLS: { label: string; icon: IconName; href: string; permission: [s
   { label: "Updates", icon: "chatbubbles-outline", href: "/tools/updates", permission: ["updates", "view"] },
   { label: "Daily logs", icon: "clipboard-outline", href: "/tools/daily-log", permission: ["dailyLog", "view"] },
   { label: "Material logs", icon: "cube-outline", href: "/tools/material-log", permission: ["materials", "view"] },
+  { label: "Expenses log", icon: "receipt-outline", href: "/tools/expenses", permission: ["finances", "viewCosts"] },
 ];
 
 const GROUPS: { title: string; tools: Tool[] }[] = [

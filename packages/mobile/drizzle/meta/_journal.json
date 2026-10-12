@@ -176,6 +176,13 @@
       "when": 1791815105853,
       "tag": "0024_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1791815218100,
+      "tag": "0025_expenses",
+      "breakpoints": true
     }
   ]
 }
