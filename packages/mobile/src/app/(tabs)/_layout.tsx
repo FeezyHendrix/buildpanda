@@ -13,15 +13,14 @@ import { useFieldSession } from "@/lib/field-session";
 import { useAuthGate } from "@/lib/use-auth-gate";
 import { useMessagingChannels } from "@/hooks/use-messaging";
 
-// The v2 workspace opens at Overview; field capture remains one tap away.
+// The workspace opens on the Site tools; field capture remains one tap away.
 const LEFT_TABS = [
+  { name: "tools", title: "Site", icon: "construct-outline", iconActive: "construct" },
   { name: "overview", title: "Overview", icon: "grid-outline", iconActive: "grid" },
-  { name: "index", title: "Files", icon: "document-outline", iconActive: "document" },
-
 ] as const;
 
 const RIGHT_TABS = [
-  { name: "tools", title: "Site", icon: "construct-outline", iconActive: "construct" },
+  { name: "index", title: "Files", icon: "document-outline", iconActive: "document" },
   { name: "messages", title: "Messages", icon: "chatbubbles-outline", iconActive: "chatbubbles" },
 ] as const;
 
@@ -39,7 +38,7 @@ export default function TabsLayout() {
   return (
     <View className="flex-1">
     <Tabs
-      initialRouteName="overview"
+      initialRouteName="tools"
       screenOptions={{
         headerShown: false,
         tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 11, lineHeight: 16 },
