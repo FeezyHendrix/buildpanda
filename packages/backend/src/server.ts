@@ -12,6 +12,7 @@ import accessCachePlugin from "./plugins/access-cache.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
 import securityPlugin from "./plugins/security.ts";
+import payloadEncryptionPlugin from "./plugins/payload-encryption.ts";
 import featureFlagsPlugin from "./plugins/feature-flags.ts";
 import queuePlugin from "./plugins/queue.ts";
 import realtimePlugin from "./plugins/realtime.ts";
@@ -147,6 +148,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(securityPlugin);
+  // Before every route, so sealed bodies are opened before validation.
+  await app.register(payloadEncryptionPlugin);
 
   await app.register(databasePlugin);
 

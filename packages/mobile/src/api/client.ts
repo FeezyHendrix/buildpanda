@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
+import { ENCRYPTED_CONTENT_TYPE, isEnvelope, KEY_HEADER, fitsSealLimit, open, seal, type PayloadSession } from "@/lib/payload-crypto";
+import { payloadSession, randomBytes } from "@/lib/payload-session";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -44,12 +46,29 @@ function describeError(body: ErrorBody | null, status: number): string {
   return reasons.length > 0 ? `${headline}: ${reasons.join("; ")}` : headline;
 }
 
+/** Reads a JSON body, opening it first when the server sealed it (test and app). */
+async function readJson(response: Response, session: PayloadSession | null): Promise<unknown> {
+  const body: unknown = await response.json();
+  return session && isEnvelope(body) ? JSON.parse(open(session, body)) : body;
+}
+
 export async function request<T>(path: string, init?: RequestOptions): Promise<T> {
   const headers: Record<string, string> = {
     ...(init?.body ? { "Content-Type": "application/json" } : {}),
     ...init?.headers,
   };
   if (Platform.OS !== "web") headers.cookie = authClient.getCookie();
+
+  // Encrypted payloads where the server has them on; JSON bodies only.
+  const session = await payloadSession();
+  let body = init?.body;
+  if (session) {
+    headers[KEY_HEADER] = session.publicKey;
+    if (typeof body === "string" && fitsSealLimit(body)) {
+      body = JSON.stringify(seal(session, body, randomBytes));
+      headers["Content-Type"] = ENCRYPTED_CONTENT_TYPE;
+    }
+  }
 
   const controller = new AbortController();
   const abort = () => controller.abort();
@@ -65,17 +84,18 @@ export async function request<T>(path: string, init?: RequestOptions): Promise<T
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
+      body,
       signal: controller.signal,
       credentials: "include",
       headers,
     });
 
     if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as ErrorBody | null;
-      throw new ApiError(response.status, describeError(body, response.status));
+      const failure = (await readJson(response, session).catch(() => null)) as ErrorBody | null;
+      throw new ApiError(response.status, describeError(failure, response.status));
     }
     if (response.status === 204) return undefined as T;
-    return (await response.json()) as T;
+    return (await readJson(response, session)) as T;
   } catch (error) {
     if (timedOut) throw new ApiError(0, "The connection timed out. Your saved changes are still on this device.");
     throw error;

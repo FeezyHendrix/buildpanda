@@ -316,6 +316,8 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
       const isPublic =
         (method === "GET" && url === "/healthz") ||
         (method === "GET" && url === "/maintenance") ||
+        // the public half of the payload key; clients fetch it before signing in
+        (method === "GET" && url === "/crypto/payload-key") ||
         (method === "GET" && url.startsWith("/static/")) ||
         (method === "GET" && url === "/ws") ||
         (method === "GET" && /^\/public\/invoices\/[^/?]+(\/pdf)?$/.test(url)) ||
