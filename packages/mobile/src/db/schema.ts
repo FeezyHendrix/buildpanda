@@ -322,3 +322,4 @@ export type MaterialApprovalCommentRow = typeof materialApprovalComments.$inferS
 export * from "./schema-drawing-markups";
 export * from "./schema-daily-logs";
 export * from "./schema-material-log";
+export * from "./schema-tasks";

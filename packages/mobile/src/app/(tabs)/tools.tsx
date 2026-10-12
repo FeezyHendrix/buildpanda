@@ -18,6 +18,7 @@ interface Tool { label: string; helper: string; icon: IconName; href: string }
 
 /** What the crew reaches for every day, one tap from the app's first screen. */
 const QUICK_TOOLS: { label: string; icon: IconName; href: string; permission: [string, string] }[] = [
+  { label: "Tasks", icon: "checkbox-outline", href: "/tools/tasks", permission: ["tasks", "view"] },
   { label: "Updates", icon: "chatbubbles-outline", href: "/tools/updates", permission: ["updates", "view"] },
   { label: "Daily logs", icon: "clipboard-outline", href: "/tools/daily-log", permission: ["dailyLog", "view"] },
   { label: "Material logs", icon: "cube-outline", href: "/tools/material-log", permission: ["materials", "view"] },
