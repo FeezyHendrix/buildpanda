@@ -40,9 +40,26 @@ Rules:
 
 Return JSON exactly: { "actions": [ { "kind", "title", "summary", "payload" } ] }`;
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/**
+ * Today and the next two weeks spelled out with weekdays. Given only a date,
+ * the model guesses which weekday it is and "by Friday" lands on the wrong day.
+ */
+export function dateCalendar(today: string): string {
+  const start = new Date(`${today}T00:00:00Z`);
+  return [...Array(15)]
+    .map((_, offset) => {
+      const day = new Date(start.getTime() + offset * 86_400_000);
+      return `${WEEKDAYS[day.getUTCDay()]} ${day.toISOString().slice(0, 10)}`;
+    })
+    .join(", ");
+}
+
 export function snapshotPrompt(snapshot: ProjectSnapshot): string {
   const lines: string[] = [
-    `TODAY: ${snapshot.today}. Resolve every relative date ("today", "tomorrow", "next Monday") against it and output YYYY-MM-DD.`,
+    `TODAY: ${WEEKDAYS[new Date(`${snapshot.today}T00:00:00Z`).getUTCDay()]} ${snapshot.today}. Resolve every relative date ("today", "tomorrow", "by Friday", "next Monday") against it and output YYYY-MM-DD.`,
+    `CALENDAR (today first; "by Friday" means the first Friday listed after today): ${dateCalendar(snapshot.today)}.`,
     "",
     "EXISTING RECORDS (the only valid update/delete targets):",
   ];
