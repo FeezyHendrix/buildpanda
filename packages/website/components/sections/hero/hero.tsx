@@ -53,7 +53,7 @@ export function Hero() {
               alt={backedBy.logo.alt}
               width={backedBy.logo.width}
               height={backedBy.logo.height}
-              className="mt-2.5 h-[2.4375rem] w-auto"
+              className="mt-2.5 h-14 w-auto lg:h-16"
             />
           </div>
         </div>
