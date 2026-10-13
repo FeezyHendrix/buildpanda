@@ -1,7 +1,7 @@
 import { signInPath } from "@/lib/return-path";
-import axios, { type AxiosResponse } from "axios";
+import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from "axios";
 import { ENCRYPTED_CONTENT_TYPE, isEnvelope, KEY_HEADER, fitsSealLimit, open, seal } from "@/lib/payload-crypto";
-import { payloadSession, randomBytes } from "@/lib/payload-session";
+import { isStaleKeyError, payloadSession, randomBytes, resetPayloadSession } from "@/lib/payload-session";
 import { toast } from "@/lib/toast";
 
 // hostname is used to check if the app is running on staging or production
@@ -27,7 +27,11 @@ function isPlainJsonBody(data: unknown): boolean {
   return !(data instanceof FormData || data instanceof Blob || data instanceof ArrayBuffer || data instanceof URLSearchParams || ArrayBuffer.isView(data));
 }
 
-api.interceptors.request.use(async (config) => {
+/** The body as the caller gave it, kept so a retry after a key change can seal it afresh. */
+type PayloadConfig = InternalAxiosRequestConfig & { bpPlainData?: unknown; bpRetried?: boolean };
+
+api.interceptors.request.use(async (config: PayloadConfig) => {
+  if (!("bpPlainData" in config)) config.bpPlainData = config.data;
   const session = await payloadSession();
   if (!session) return config;
   config.headers.set(KEY_HEADER, session.publicKey);
@@ -39,19 +43,62 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+class StaleKey extends Error {}
+
 async function openResponse(response: AxiosResponse | undefined): Promise<void> {
   if (!response || !isEnvelope(response.data)) return;
   const session = await payloadSession();
-  if (session) response.data = JSON.parse(open(session, response.data));
+  if (!session) throw new StaleKey();
+  try {
+    response.data = JSON.parse(open(session, response.data));
+  } catch {
+    // Sealed with a key this tab does not hold.
+    throw new StaleKey();
+  }
+}
+
+/**
+ * The key changed while this tab was open (rotated, or encryption switched
+ * on or off): fetch it again and send the request once more, from the body
+ * the caller gave rather than the copy sealed with the old key.
+ */
+function retryWithFreshKey(config: PayloadConfig | undefined) {
+  if (!config || config.bpRetried) return null;
+  resetPayloadSession();
+  config.bpRetried = true;
+  config.data = config.bpPlainData;
+  // Headers from the sealed attempt no longer describe this one: the
+  // interceptor re-adds the key if there still is one, and the length of
+  // the sealed body would leave the server waiting for bytes never sent.
+  config.headers.delete(KEY_HEADER);
+  config.headers.delete("Content-Length");
+  // Only a JSON body was sealed; form data keeps the type axios gives it.
+  if (isPlainJsonBody(config.data)) config.headers.set("Content-Type", "application/json");
+  return api(config);
 }
 
 api.interceptors.response.use(
   async (response) => {
-    await openResponse(response);
+    try {
+      await openResponse(response);
+    } catch (error) {
+      const retry = error instanceof StaleKey ? retryWithFreshKey(response.config) : null;
+      if (retry) return retry;
+      throw error;
+    }
     return response;
   },
   async (error) => {
-    await openResponse(error.response).catch(() => undefined);
+    let stale = false;
+    try {
+      await openResponse(error.response);
+    } catch (openError) {
+      stale = openError instanceof StaleKey;
+    }
+    if (stale || isStaleKeyError(error.response?.status, error.response?.data)) {
+      const retry = retryWithFreshKey(error.config);
+      if (retry) return retry;
+    }
     return Promise.reject(error);
   },
 );

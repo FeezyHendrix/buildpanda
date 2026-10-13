@@ -1,7 +1,7 @@
 import fp from "fastify-plugin";
 import type { FastifyRequest } from "fastify";
 import { config } from "../config/index.ts";
-import { BadRequestError } from "../lib/errors.ts";
+import { AppError } from "../lib/errors.ts";
 import {
   deriveKey,
   ENCRYPTED_CONTENT_TYPE,
@@ -25,6 +25,18 @@ export const PAYLOAD_KEY_PATH = "/crypto/payload-key";
 const CACHE_LIMIT = 2000;
 
 /**
+ * The client's session no longer matches the server: the key was rotated,
+ * or encryption was switched off, while a tab or app stayed open. Clients
+ * answer this code by fetching the key again and retrying once, so a key
+ * change never strands an open session (or fails a queued offline write).
+ */
+export const STALE_KEY_CODE = "payload_key_stale";
+
+function staleKey(message: string): AppError {
+  return new AppError(message, { statusCode: 400, code: STALE_KEY_CODE });
+}
+
+/**
  * Encrypted JSON payloads, on when API_PAYLOAD_KEY is set (test and app).
  * A client that fetched the public key sends its own in `x-bp-key`; its JSON
  * bodies arrive sealed, and every JSON response to it goes back sealed.
@@ -44,7 +56,14 @@ export default fp(async (fastify) => {
     if (!server) return reply.status(404).send({ error: "Payload encryption is off" });
     return { version: 1, publicKey: server.publicKey };
   });
-  if (!server) return;
+  if (!server) {
+    // Off, but a client that started while it was on still sends sealed
+    // bodies: say so in a way it acts on, rather than a bare 415.
+    fastify.addContentTypeParser(ENCRYPTED_CONTENT_TYPE, { parseAs: "string" }, (_request, _body, done) => {
+      done(staleKey("Payload encryption is off; fetch the key again"), undefined);
+    });
+    return;
+  }
   const key = server;
 
   // Session keys are reused across a client's requests; deriving one is an
@@ -58,7 +77,7 @@ export default fp(async (fastify) => {
       try {
         derived = deriveKey(key, header);
       } catch {
-        throw new BadRequestError("Invalid payload key");
+        throw staleKey("Invalid payload key");
       }
       if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value!);
       cache.set(header, derived);
@@ -74,11 +93,11 @@ export default fp(async (fastify) => {
     try {
       const derived = request.payloadKey ?? sessionKey(request);
       const envelope: unknown = JSON.parse(body as string);
-      if (!derived || !isEnvelope(envelope)) throw new BadRequestError("Encrypted body without a usable key");
+      if (!derived || !isEnvelope(envelope)) throw staleKey("Encrypted body without a usable key");
       const plain = open(derived, envelope, "request");
       done(null, plain ? JSON.parse(plain) : undefined);
     } catch (error) {
-      done(error instanceof BadRequestError ? error : new BadRequestError("Could not decrypt the request"), undefined);
+      done(error instanceof AppError ? error : staleKey("Could not decrypt the request"), undefined);
     }
   });
 
