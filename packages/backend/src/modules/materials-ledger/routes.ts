@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { materialsLedgerRepository } from "./repository.ts";
 import { materialsLedgerService, type LogEntryInput } from "./service.ts";
 import { materialReportService } from "./report.ts";
@@ -12,10 +12,32 @@ import { filesRepository } from "../files/repository.ts";
 import { filesService } from "../files/service.ts";
 import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
 import { materialsEquipmentService } from "../materials-equipment/service.ts";
+import { buildMaterialsServices } from "../materials-equipment/wiring.ts";
+import { sameMaterial } from "./units.ts";
 import { suppliersRepository } from "../suppliers/repository.ts";
+import { ForbiddenError } from "../../lib/errors.ts";
 import { logger } from "../../lib/logger.ts";
 
 const ENTRY_TYPE = ["IN", "USED"] as const;
+
+/** Order statuses that can take goods: approved and not yet closed. */
+const RECEIVABLE: readonly string[] = ["Approved", "Ordered", "PartiallyDelivered", "Delivered"];
+
+/**
+ * The crew on site see a delivery arrive, so anyone who can request materials
+ * can log one received. It lands Pending and counts in stock only once a
+ * manager approves it. Logging usage still needs `manage`.
+ */
+async function requireLogPermission(request: FastifyRequest, projectId: string, entryType: "IN" | "USED") {
+  if (entryType === "IN") {
+    try {
+      return await request.requireProjectPermission(projectId, "materials", "request");
+    } catch (error) {
+      if (!(error instanceof ForbiddenError)) throw error;
+    }
+  }
+  return request.requireProjectPermission(projectId, "materials", "manage");
+}
 
 const projectIdParams = {
   type: "object",
@@ -110,6 +132,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
   const tasks = tasksService(tasksRepository(fastify.db), { notifications });
   const projects = projectsRepository(fastify.db);
   const orders = materialsEquipmentService(materialsEquipmentRepository(fastify.db));
+  const procurement = buildMaterialsServices(fastify);
   const suppliers = suppliersRepository(fastify.db);
 
   const service = materialsLedgerService(materialsLedgerRepository(fastify.db), {
@@ -145,6 +168,41 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     // material has auto-reorder enabled, we go further and raise a "Requested"
     // material order against the preferred supplier so procurement can act on
     // it immediately rather than discovering the shortfall later.
+    receiptOrder: async (projectId, orderId) => {
+      const order = await procurement.service.getMaterialOrder(projectId, orderId).catch(() => null);
+      if (!order) return null;
+      return {
+        materialName: order.materialName,
+        unit: order.unit,
+        stageId: order.phaseId,
+        // Goods count against an order once it is approved; before that there
+        // is nothing agreed to receive them against.
+        receivable: RECEIVABLE.includes(order.status),
+      };
+    },
+    soleOpenOrderFor: async (projectId, materialName) => {
+      const open = (await procurement.service.listMaterialOrders(projectId)).filter(
+        (order) => RECEIVABLE.includes(order.status) && order.status !== "Delivered" && sameMaterial(order.materialName, materialName),
+      );
+      return open.length === 1 ? open[0]!.id : null;
+    },
+    // Accepting the receipt is the moment the goods count; the order learns of
+    // them now, not when the crew claimed them.
+    onReceiptApproved: async ({ projectId, entryId, materialOrderId, quantity, occurredAt, deliveryNote, actorId }) => {
+      // The stock is already accepted; an order that has since been closed
+      // must not undo that, so a failure here is logged, not thrown.
+      try {
+        await procurement.deliveries.record(
+          projectId,
+          materialOrderId,
+          { deliveredQty: quantity, deliveredAt: occurredAt.slice(0, 10), deliveryNote, notes: "Logged on site and approved" },
+          actorId,
+          { ledgerEntryId: entryId },
+        );
+      } catch (error) {
+        logger.warn({ err: error, projectId, entryId, materialOrderId }, "Approved receipt not recorded on its order");
+      }
+    },
     onLowStock: ({
       projectId,
       materialName,
@@ -258,7 +316,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/ledger",
     { schema: { params: projectIdParams, body: logBody } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "materials", "manage");
+      const project = await requireLogPermission(request, request.params.id, request.body.entryType);
       const user = request.requireAuth();
       const result = await service.logEntry(project.id, request.body, user.id);
       return reply.status(result.duplicate ? 200 : 201).send(result);

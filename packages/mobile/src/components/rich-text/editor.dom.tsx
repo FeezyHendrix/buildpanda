@@ -37,6 +37,7 @@ const STYLES = `
   .rt-bold { font-weight:700; }
   .rt-italic { font-style:italic; }
   .rt-ul, .rt-ol { padding-left:22px; margin:6px 0; }
+  .rt-compact .rt-input { min-height:72px; max-height:140px; overflow-y:auto; }
 `;
 
 function Btn({ label, onPress }: { label: string; onPress: () => void }) {
@@ -88,14 +89,17 @@ export default function Editor({
   value,
   onChangeHtml,
   placeholder = "Write here…",
+  compact = false,
 }: {
   value: string;
   onChangeHtml: (html: string) => void;
   placeholder?: string;
+  /** Short and capped, scrolling inside itself: for a composer pinned above the keyboard. */
+  compact?: boolean;
   dom?: import("expo/dom").DOMProps;
 }) {
   return (
-    <div className="rt-shell">
+    <div className={compact ? "rt-shell rt-compact" : "rt-shell"}>
       <style>{STYLES}</style>
       <LexicalComposer
         initialConfig={{

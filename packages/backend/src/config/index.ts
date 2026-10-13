@@ -61,6 +61,10 @@ export const config = {
       .map((value) => value.trim())
       .filter(Boolean),
     logLevel: optional("LOG_LEVEL", "info"),
+    // X25519 private key (base64url, 32 bytes) that turns on encrypted API
+    // payloads. Set on test and app; left empty locally so payloads stay
+    // readable while developing. Generate one with `pnpm payload-key`.
+    payloadKey: optional("API_PAYLOAD_KEY", ""),
   },
 
   cluster: {

@@ -175,6 +175,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
             onChange={setBodyHtml}
             placeholder={postOfficial ? "Write the official response" : "Add a comment"}
             projectId={projectId}
+            compact
           />
           {canRespondOfficially ? <OfficialToggle value={official} onChange={setOfficial} /> : null}
           <Button

@@ -126,80 +126,6 @@ export const outbox = sqliteTable(
   (table) => [index("outbox_status_idx").on(table.status, table.nextAttemptAt)],
 );
 
-/**
- * Daily logs are keyed by (project, building, date) — one log per building per day —
- * so the local primary key is the composite, and there is never a "local_" row
- * to reconcile the way RFIs need.
- */
-export const dailyLogs = sqliteTable(
-  "daily_logs",
-  {
-    id: text("id").primaryKey(),
-    projectId: text("project_id").notNull(),
-    buildingId: text("building_id"),
-    logDate: text("log_date").notNull(),
-    totalHours: integer("total_hours").notNull().default(0),
-    summary: text("summary"),
-    weatherCondition: text("weather_condition"),
-    temperatureC: real("temperature_c"),
-    workersExpected: integer("workers_expected").notNull().default(0),
-    workersPresent: integer("workers_present").notNull().default(0),
-    voidedAt: text("voided_at"),
-    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
-    serverLastSyncedAt: integer("server_last_synced_at"),
-    updatedAt: integer("updated_at")
-      .notNull()
-      .default(sql`(unixepoch() * 1000)`),
-  },
-  (table) => [index("daily_logs_project_idx").on(table.projectId, table.logDate)],
-);
-
-/**
- * Work logged against an activity for a day — the core of the report.
- *
- * Hours are per activity, not per person; `delayReasonCode` records why work
- * was blocked, reusing the seeded delay_reasons the rest of BuildPanda uses.
- */
-export const dailyLogActivities = sqliteTable(
-  "daily_log_activities",
-  {
-    buildingId: text("building_id"),
-    id: text("id").primaryKey(),
-    projectId: text("project_id").notNull(),
-    logDate: text("log_date").notNull(),
-    activityId: text("activity_id").notNull(),
-    activityName: text("activity_name").notNull().default(""),
-    hoursLogged: integer("hours_logged").notNull().default(0),
-    delayReasonCode: text("delay_reason_code"),
-    delayNote: text("delay_note"),
-    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
-    updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
-  },
-  (table) => [index("daily_log_activities_day_idx").on(table.projectId, table.logDate)],
-);
-
-/** Narrative entries on a day's log; append-only, so they merge by union. */
-export const dailyLogEntries = sqliteTable(
-  "daily_log_entries",
-  {
-    id: text("id").primaryKey(),
-    projectId: text("project_id").notNull(),
-    // Carried so an entry written offline still names its block; the API
-    // refuses a daily-log write without one on a multi-building project.
-    buildingId: text("building_id"),
-    logDate: text("log_date").notNull(),
-    authorName: text("author_name").notNull().default(""),
-    bodyText: text("body_text").notNull().default(""),
-    bodyHtml: text("body_html"),
-    voided: integer("voided", { mode: "boolean" }).notNull().default(false),
-    createdAt: integer("created_at")
-      .notNull()
-      .default(sql`(unixepoch() * 1000)`),
-    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
-  },
-  (table) => [index("daily_log_entries_day_idx").on(table.projectId, table.logDate)],
-);
-
 /** Document category folders, cached so the browser opens with no signal. */
 export const documentCategories = sqliteTable(
   "document_categories",
@@ -299,6 +225,18 @@ export const materialOrders = sqliteTable(
     // queued before the column existed still load; the push refuses to send
     // an order without one.
     neededBy: text("needed_by"),
+    /** The material approval it relies on (newest in its resubmission chain). */
+    approvalId: text("approval_id"),
+    approvalTitle: text("approval_title"),
+    approvalStatus: text("approval_status"),
+    /** Accepted on the server as of the last pull. */
+    deliveredQuantity: real("delivered_quantity").notNull().default(0),
+    /**
+     * Received on this device and not yet sent. Deliveries recorded offline
+     * add up here and go as one; the order shows server + pending.
+     */
+    pendingDeliveryQty: real("pending_delivery_qty").notNull().default(0),
+    pendingDeliveryNote: text("pending_delivery_note"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
   },
@@ -387,9 +325,6 @@ export type OutboxRow = typeof outbox.$inferSelect;
 export type DocumentRow = typeof documents.$inferSelect;
 export type RfiCommentRow = typeof rfiComments.$inferSelect;
 export type DocumentCategoryRow = typeof documentCategories.$inferSelect;
-export type DailyLogRow = typeof dailyLogs.$inferSelect;
-export type DailyLogEntryRow = typeof dailyLogEntries.$inferSelect;
-export type DailyLogActivityRow = typeof dailyLogActivities.$inferSelect;
 export type ChangeRequestRow = typeof changeRequests.$inferSelect;
 export type LookAheadRow = typeof lookAheads.$inferSelect;
 export type MaterialOrderRow = typeof materialOrders.$inferSelect;
@@ -397,3 +332,8 @@ export type MaterialApprovalRow = typeof materialApprovals.$inferSelect;
 export type MaterialApprovalCommentRow = typeof materialApprovalComments.$inferSelect;
 
 export * from "./schema-drawing-markups";
+export * from "./schema-daily-logs";
+export * from "./schema-material-log";
+export * from "./schema-tasks";
+export * from "./schema-expenses";
+export * from "./schema-home";

@@ -1,7 +1,7 @@
 import { goBack } from "@/lib/navigation";
 import { useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
-import { View, useWindowDimensions } from "react-native";
+import { ScrollView, View, useWindowDimensions } from "react-native";
 import { Button, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { DEFAULT_ASPECT } from "@/components/plan-review/canvas-support";
@@ -346,7 +346,13 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
           {sidePanel ? <View className="w-96 border-l border-hairline bg-surface">{sidebar}</View> : null}
         </View>
 
-        {!sidePanel ? sidebar : null}
+        {/* Capped and scrollable: with the keyboard up, a comment form taller than
+            what is left would otherwise push its Save button under the keyboard. */}
+        {!sidePanel ? (
+          <ScrollView style={{ maxHeight: "60%", flexGrow: 0 }} keyboardShouldPersistTaps="handled" bounces={false}>
+            {sidebar}
+          </ScrollView>
+        ) : null}
       </View>
     </Page>
   );

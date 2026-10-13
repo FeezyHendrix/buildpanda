@@ -6,6 +6,7 @@ import { View } from "react-native";
 import { Button, Field, Spinner, Text } from "@/components/atoms";
 import { ActivityChecklist } from "@/components/molecules/activity-checklist";
 import { BuildingLabel } from "@/components/molecules/building-label";
+import { DateField } from "@/components/molecules/date-field";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
@@ -103,11 +104,14 @@ function Editor({ db, projectId, lookAheadId }: { db: Db; projectId: string; loo
         <View className="gap-5">
           <BuildingLabel buildingId={existing.buildingId} />
           <Field label="Name" value={nameValue} onChangeText={setName} />
-          <View className="flex-row gap-3">
-            <Field label="Start" value={startValue} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" className="flex-1" />
-            <Field label="End" value={endValue} onChangeText={setEndDate} placeholder="YYYY-MM-DD" autoCapitalize="none" className="flex-1" />
-          </View>
-          {!datesValid ? <Text tone="danger" className="text-sm">Use YYYY-MM-DD dates, with the end on or after the start.</Text> : null}
+          <DateField label="Start" value={startValue} onChange={setStartDate} />
+          <DateField
+            label="End"
+            value={endValue}
+            onChange={setEndDate}
+            minimumDate={isIsoDate(startValue) ? new Date(`${startValue}T00:00:00`) : undefined}
+            error={datesValid ? undefined : "The end must be on or after the start."}
+          />
         {!workersValid ? <Text tone="danger" className="text-sm">Enter a whole number of crew members, zero or more.</Text> : null}
         <Field label="Total crew" value={workersValue} onChangeText={setWorkers} keyboardType="number-pad" />
           <ActivityChecklist

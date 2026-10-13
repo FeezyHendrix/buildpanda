@@ -32,6 +32,15 @@ export interface MaterialOption {
   unit: string;
 }
 
+/** An order that can still take goods, offered when logging a receipt. */
+export interface ReceivableOrderOption {
+  id: string;
+  title: string;
+  materialName: string;
+  unit: string;
+  outstanding: number;
+}
+
 export interface StageOption {
   id: string;
   name: string;
@@ -41,6 +50,7 @@ export function LogMaterialDrawer({
   open,
   onOpenChange,
   materials,
+  orders,
   stages,
   submitting,
   onSubmit,
@@ -48,6 +58,7 @@ export function LogMaterialDrawer({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   materials: MaterialOption[];
+  orders: ReceivableOrderOption[];
   stages: StageOption[];
   submitting: boolean;
   onSubmit: (input: {
@@ -58,6 +69,7 @@ export function LogMaterialDrawer({
     stageId?: string | null;
     fileIds?: string[];
     notesHtml?: string | null;
+    materialOrderId?: string | null;
   }) => void;
 }) {
   const [entryType, setEntryType] = useState<"IN" | "USED">("IN");
@@ -69,8 +81,10 @@ export function LogMaterialDrawer({
   const [fileName, setFileName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [notesHtml, setNotesHtml] = useState("");
+  const [orderId, setOrderId] = useState("");
 
   function reset(): void {
+    setOrderId("");
     setEntryType("IN");
     setMaterialName("");
     setUnit("bags");
@@ -107,6 +121,17 @@ export function LogMaterialDrawer({
     if (match?.unit) setUnit(match.unit);
   }
 
+  /** A receipt against an order is that order's material, so the line matches. */
+  function handleOrderChange(id: string): void {
+    setOrderId(id);
+    const order = orders.find((o) => o.id === id);
+    if (!order) return;
+    setMaterialName(order.materialName);
+    setUnit(order.unit);
+    if (!quantity) setQuantity(String(order.outstanding));
+  }
+
+  const receiving = entryType === "IN";
   const qtyNum = Number(quantity);
   const valid = materialName.trim().length > 0 && unit.trim().length > 0 && qtyNum > 0;
 
@@ -120,6 +145,7 @@ export function LogMaterialDrawer({
       stageId: stageId || null,
       fileIds: fileId ? [fileId] : [],
       notesHtml: notesHtml.trim().length > 0 ? notesHtml : null,
+      materialOrderId: receiving && orderId ? orderId : null,
     });
   }
 
@@ -156,6 +182,23 @@ export function LogMaterialDrawer({
           ))}
         </div>
       </div>
+
+      {receiving && orders.length > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="mat-order">Against order</Label>
+          <select id="mat-order" value={orderId} onChange={(e) => handleOrderChange(e.target.value)} className={FIELD}>
+            <option value="">No order — unplanned delivery</option>
+            {orders.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.title} · {o.outstanding} {o.unit} outstanding
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-muted">
+            Counts the goods against the order once the receipt is approved.
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="mat-name">Material</Label>

@@ -1,4 +1,5 @@
 import { isIsoDate, localIsoDate } from "@/lib/dates";
+import { DateField } from "@/components/molecules/date-field";
 import { goBack } from "@/lib/navigation";
 
 import { useState } from "react";
@@ -96,11 +97,14 @@ function NewLookAheadForm() {
 
       <View className="gap-5">
         <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Weeks 12–13" autoFocus />
-        <View className="flex-row gap-3">
-          <Field label="Start" value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" className="flex-1" />
-          <Field label="End" value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" autoCapitalize="none" className="flex-1" />
-        </View>
-        {!datesValid ? <Text tone="danger" className="text-sm">Use YYYY-MM-DD dates, with the end on or after the start.</Text> : null}
+        <DateField label="Start" value={startDate} onChange={setStartDate} />
+        <DateField
+          label="End"
+          value={endDate}
+          onChange={setEndDate}
+          minimumDate={isIsoDate(startDate) ? new Date(`${startDate}T00:00:00`) : undefined}
+          error={datesValid ? undefined : "The end must be on or after the start."}
+        />
         {!workersValid ? <Text tone="danger" className="text-sm">Enter a whole number of crew members, zero or more.</Text> : null}
         <Field label="Total crew" value={workers} onChangeText={setWorkers} keyboardType="number-pad" />
         <ActivityChecklist

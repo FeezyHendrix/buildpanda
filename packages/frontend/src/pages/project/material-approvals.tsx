@@ -1,3 +1,4 @@
+import { useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -75,7 +76,8 @@ export default function ProjectMaterialApprovals() {
   const [editApproval, setEditApproval] = useState<MaterialApproval | null>(null);
   const [resubmitTarget, setResubmitTarget] = useState<MaterialApproval | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  // In the URL so an order can link straight to the approval it relies on.
+  const [detailId, setDetailId] = useUrlState<string | null>("approval", null);
   const [pendingDecision, setPendingDecision] = useState<PendingDecision | null>(null);
 
   const nameById = useMemo(
@@ -285,6 +287,7 @@ export default function ProjectMaterialApprovals() {
           projectId={project.id}
           approvalId={detailId}
           canComment={canComment}
+          canOrder={canResourceAction(access, "materials", "request")}
         />
       ) : null}
     </div>

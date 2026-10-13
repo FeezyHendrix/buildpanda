@@ -100,7 +100,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />
         <Dialog.Popup
           className={cn(
-            "fixed right-0 top-0 z-50 flex h-dvh w-full sm:w-[60vw] sm:min-w-[420px] max-w-[1100px] flex-col",
+            "fixed inset-y-visible right-0 z-50 flex w-full sm:w-[60vw] sm:min-w-[420px] max-w-[1100px] flex-col",
             "overflow-hidden border-l border-line-hair bg-white shadow-lg outline-none",
           )}
         >

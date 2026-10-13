@@ -63,7 +63,7 @@ export function PandaAiPane({ projectId }: { projectId: string }) {
       <div
         data-testid="panda-ai-pane"
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-surface-alt shadow-lg transition-all duration-300",
+          "fixed inset-y-visible right-0 z-50 flex w-full flex-col bg-surface-alt shadow-lg transition-all duration-300",
           "lg:static lg:z-auto lg:h-full lg:shrink-0 lg:overflow-hidden lg:shadow-none lg:transition-[width]",
           open
             ? "translate-x-0 lg:w-[440px] lg:border-l lg:border-line-hair"

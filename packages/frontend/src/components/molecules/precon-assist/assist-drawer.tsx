@@ -105,7 +105,7 @@ export function AssistDrawer({ open, onOpenChange, sessionId, surface, surfaceLa
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/20 transition-opacity data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
         <Dialog.Popup
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-[min(520px,100vw)] flex-col border-l border-line bg-gray-50 shadow-drawer outline-none",
+            "fixed inset-y-visible right-0 z-50 flex w-[min(520px,100vw)] flex-col border-l border-line bg-gray-50 shadow-drawer outline-none",
             "transition-transform duration-300 ease-out data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
           )}
         >

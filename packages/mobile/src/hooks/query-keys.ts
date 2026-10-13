@@ -34,6 +34,7 @@ export const keyDateKeys = {
 export const participantKeys = {
   all: (projectId: string | undefined) => ["participants", projectId ?? "none"] as const,
   list: (projectId: string | undefined) => [...participantKeys.all(projectId), "list"] as const,
+  access: (projectId: string | undefined) => [...participantKeys.all(projectId), "access"] as const,
 };
 
 export const updateKeys = {

@@ -254,6 +254,53 @@ export const dailyLogsRepository = {
   },
 
   /**
+   * A filled template form. The answers and notes travel to the server
+   * separately (it re-validates and renders them); the rendered body is kept
+   * here so the day reads the same before sync, and so the entry can still go
+   * up as plain text if the form was archived while the crew was offline.
+   */
+  async addTemplateEntryLocal(
+    db: Db,
+    projectId: string,
+    logDate: string,
+    entry: {
+      templateId: string;
+      responses: string;
+      notesHtml: string | null;
+      bodyHtml: string;
+      bodyText: string;
+      authorName: string;
+      buildingId: string;
+    },
+  ): Promise<void> {
+    const id = `local_${randomUUID()}`;
+    await db.transaction((tx) => {
+      tx.insert(dailyLogEntries).values({
+        id,
+        projectId,
+        logDate,
+        authorName: entry.authorName,
+        bodyText: entry.bodyText,
+        bodyHtml: entry.bodyHtml,
+        buildingId: entry.buildingId,
+        templateId: entry.templateId,
+        responses: entry.responses,
+        notesHtml: entry.notesHtml,
+        createdAt: Date.now(),
+        isPendingSync: true,
+      }).run();
+      tx.insert(outbox).values({
+        id: randomUUID(),
+        resource: "daily-log-entries",
+        entityId: id,
+        projectId,
+        operation: "create",
+        nextAttemptAt: 0,
+      }).run();
+    });
+  },
+
+  /**
    * Server days never clobber a building's day still holding local edits.
    */
   async upsertFromServer(db: Db, projectId: string, days: readonly DailyLogDay[]): Promise<void> {

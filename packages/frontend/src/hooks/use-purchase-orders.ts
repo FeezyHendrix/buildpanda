@@ -16,7 +16,7 @@ export type {
   ReceivePurchaseOrderInput,
   RaisePurchaseOrderInput,
 } from "@/api/purchase-orders";
-import { financeKeys, materialKeys, purchaseOrderKeys } from "./query-keys";
+import { financeKeys, materialKeys, materialLedgerKeys, purchaseOrderKeys } from "./query-keys";
 
 export function usePurchaseOrders(projectId: string | undefined) {
   return useQuery({
@@ -30,7 +30,8 @@ export function usePurchaseOrders(projectId: string | undefined) {
 
 /**
  * Every PO write moves committed spend, which the finance pages read from the
- * API rather than recompute, so they all invalidate the same two caches.
+ * API rather than recompute. Issuing and receiving also move the material
+ * order the PO was raised from (placed, delivered, stock booked).
  */
 function useProjectPurchaseOrderMutation<TVariables extends { projectId: string }, TData>(
   mutationFn: (variables: TVariables) => Promise<TData>,
@@ -41,6 +42,8 @@ function useProjectPurchaseOrderMutation<TVariables extends { projectId: string 
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all(projectId) });
       queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: materialKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) });
     },
   });
 }

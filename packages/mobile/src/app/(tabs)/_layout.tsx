@@ -13,15 +13,15 @@ import { useFieldSession } from "@/lib/field-session";
 import { useAuthGate } from "@/lib/use-auth-gate";
 import { useMessagingChannels } from "@/hooks/use-messaging";
 
-// The v2 workspace opens at Overview; field capture remains one tap away.
+// The app opens on Home: the tools this person uses most and what needs them
+// today. Every tool is in Tools; field capture stays one tap away.
 const LEFT_TABS = [
-  { name: "overview", title: "Overview", icon: "grid-outline", iconActive: "grid" },
-  { name: "index", title: "Files", icon: "document-outline", iconActive: "document" },
-
+  { name: "overview", title: "Home", icon: "home-outline", iconActive: "home" },
+  { name: "tools", title: "Tools", icon: "construct-outline", iconActive: "construct" },
 ] as const;
 
 const RIGHT_TABS = [
-  { name: "tools", title: "Site", icon: "construct-outline", iconActive: "construct" },
+  { name: "index", title: "Files", icon: "document-outline", iconActive: "document" },
   { name: "messages", title: "Messages", icon: "chatbubbles-outline", iconActive: "chatbubbles" },
 ] as const;
 

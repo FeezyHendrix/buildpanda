@@ -8,6 +8,9 @@ import { dailyLogsApi, type UpsertDailyLogInput } from "@/api/daily-logs";
 import type { Db } from "@/db/client";
 import { dailyLogsRepository, toDay, toEntry, toLoggedActivity } from "@/db/daily-logs-repository";
 import { flushOutbox } from "@/db/outbox";
+import type { TemplateField, TemplateResponses } from "@/api/daily-log-templates";
+import { cleanResponses, composeEntryBody, missingRequired } from "@/lib/daily-log-template";
+import { htmlToText } from "@/lib/html";
 
 /** Recent days from SQLite, refreshed in the background. */
 export function useDailyLogDays(db: Db, projectId: string) {
@@ -113,6 +116,42 @@ export function useAddDailyLogEntry(db: Db | null, projectId: string | undefined
       bodyHtml,
       resolvedId,
     );
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
+
+/** Queues a filled daily log form; it renders now and syncs when there is signal. */
+export function useAddTemplateEntry(db: Db | null, projectId: string | undefined) {
+  const scope = useProjectBuilding();
+  return async (
+    logDate: string,
+    input: {
+      template: { id: string; fields: readonly TemplateField[] };
+      responses: TemplateResponses;
+      notesHtml?: string | null;
+      authorName: string;
+      buildingId?: string | null;
+    },
+  ) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    const buildingId = input.buildingId ?? scope.buildingId;
+    if (!buildingId) throw new Error("Choose a building before adding a daily log entry.");
+    const responses = cleanResponses(input.template.fields, input.responses);
+    const missing = missingRequired(input.template.fields, responses);
+    if (missing.length > 0) throw new Error(`Fill in the required fields: ${missing.join(", ")}`);
+    const notesText = input.notesHtml ? htmlToText(input.notesHtml) : "";
+    const notesHtml = notesText || /<img\b/i.test(input.notesHtml ?? "") ? input.notesHtml ?? null : null;
+    if (Object.keys(responses).length === 0 && !notesHtml) throw new Error("Answer at least one question.");
+    const body = composeEntryBody(input.template.fields, responses, notesHtml, notesText || null);
+    await dailyLogsRepository.addTemplateEntryLocal(db, projectId, logDate, {
+      templateId: input.template.id,
+      responses: JSON.stringify(responses),
+      notesHtml,
+      bodyHtml: body.html,
+      bodyText: body.text,
+      authorName: input.authorName,
+      buildingId,
+    });
     void flushOutbox(db).catch(() => undefined);
   };
 }

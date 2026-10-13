@@ -267,6 +267,12 @@ export const dailyLogKeys = {
     [...dailyLogKeys.all(projectId), "coverage", buildingId ?? "all"] as const,
 };
 
+export const dailyLogTemplateKeys = {
+  all: (projectId: string) => ["projects", projectId, "daily-log-templates"] as const,
+  list: (projectId: string, includeArchived: boolean) =>
+    [...dailyLogTemplateKeys.all(projectId), "list", { includeArchived }] as const,
+};
+
 export const notificationKeys = {
   all: ["notifications"] as const,
   list: (filters?: { unreadOnly?: boolean; limit?: number }) =>

@@ -1,8 +1,8 @@
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { useRef, useState } from "react";
-import { FlatList, Pressable, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { FlatList, Keyboard, Pressable, TextInput, View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
 import { ICON_BRAND, ICON_INVERSE, ICON_SUBTLE } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
@@ -44,6 +44,12 @@ export default function PandaAiChat() {
   const { messages, streaming, activeTool, error, send, stop, reset } = usePandaAiChat(projectId);
   const [input, setInput] = useState("");
   const listRef = useRef<FlatList>(null);
+
+  // the keyboard shrinks the list from below; keep the newest message in view
+  useEffect(() => {
+    const sub = Keyboard.addListener("keyboardDidShow", () => listRef.current?.scrollToEnd({ animated: true }));
+    return () => sub.remove();
+  }, []);
 
   function handleSend() {
     if (!input.trim() || streaming) return;
@@ -136,6 +142,8 @@ export default function PandaAiChat() {
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item }) => <MessageBubble message={item} />}
           contentContainerClassName="px-4 py-4"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         />
       )}

@@ -70,6 +70,11 @@ export default function ProjectMaterialLog() {
   const [policyMaterialId, setPolicyMaterialId] = useState<string | null>(null);
   const policyMaterial = catalog.find((c) => c.id === policyMaterialId) ?? null;
 
+  // Goods count against an order once it is approved and until it is closed.
+  const receivableOrders = orders
+    .filter((o) => o.status === "Approved" || o.status === "Ordered" || o.status === "PartiallyDelivered")
+    .map((o) => ({ id: o.id, title: o.title, materialName: o.materialName, unit: o.unit, outstanding: o.outstandingQuantity }));
+
   const materialOptions = useMemo(() => {
     const byName = new Map<string, { name: string; unit: string }>();
     const add = (name: string, unit: string) => {
@@ -271,6 +276,7 @@ export default function ProjectMaterialLog() {
         open={logOpen}
         onOpenChange={setLogOpen}
           materials={materialOptions}
+          orders={receivableOrders}
           stages={stages}
           submitting={logEntry.isPending}
         onSubmit={(input) =>

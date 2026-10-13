@@ -2,10 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import type { StageListQuery } from "../../lib/stage-filter-types.ts";
 import { assertProjectPermission } from "../../lib/authorization.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
-import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
-import { materialsEquipmentService } from "../materials-equipment/service.ts";
-import { materialsLedgerRepository } from "../materials-ledger/repository.ts";
-import { materialsLedgerService } from "../materials-ledger/service.ts";
+import { buildMaterialsServices } from "../materials-equipment/wiring.ts";
 import { contractsRepository } from "../contracts/repository.ts";
 import { toContractTerms } from "../finances/contract-terms.ts";
 import { financesRepository } from "../finances/repository.ts";
@@ -96,10 +93,11 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
   });
   await fastify.register(invoiceCertificateRoutes);
   const scanService = invoicesScanService(fastify.db);
+  const procurement = buildMaterialsServices(fastify);
   const materialSyncer = invoiceMaterialSyncer({
     db: fastify.db,
-    materialsEquipment: materialsEquipmentService(materialsEquipmentRepository(fastify.db)),
-    materialsLedger: materialsLedgerService(materialsLedgerRepository(fastify.db)),
+    materialsEquipment: procurement.service,
+    deliveries: procurement.deliveries,
   });
 
   fastify.get<{ Params: { id: string }; Querystring: StageListQuery }>(

@@ -3,6 +3,7 @@ import { TextInput, View, type TextInputProps } from "react-native";
 import { ICON_SUBTLE } from "@/constants/colors";
 import { Text } from "./text";
 import { cn } from "@/lib/utils";
+import { useKeyboardReveal } from "@/hooks/use-keyboard-avoidance";
 
 /**
  * The one form label. `Field` and `OptionRow` use it, and so does anything a
@@ -27,7 +28,8 @@ interface FieldProps extends TextInputProps {
   className?: string;
 }
 
-export function Field({ label, error, helperText, className, ...props }: FieldProps) {
+export function Field({ label, error, helperText, className, onFocus, ...props }: FieldProps) {
+  const reveal = useKeyboardReveal();
   return (
     <View className={cn("gap-2", className)}>
       <FieldLabel>{label}</FieldLabel>
@@ -41,6 +43,10 @@ export function Field({ label, error, helperText, className, ...props }: FieldPr
         textAlignVertical={props.multiline ? "top" : "center"}
         placeholderTextColor={ICON_SUBTLE}
         {...props}
+        onFocus={(event) => {
+          reveal?.();
+          onFocus?.(event);
+        }}
       />
       {error ? (
         <Text tone="danger" className="text-xs">

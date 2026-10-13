@@ -7,13 +7,16 @@ import {
   dailyLogs,
   documents,
   drawingMarkupComments,
+  expenses,
   drawingMarkups,
   lookAheads,
   materialApprovalComments,
   materialApprovals,
+  materialLedgerEntries,
   materialOrders,
   rfiComments,
   rfis,
+  tasks,
 } from "./schema";
 
 /**
@@ -31,6 +34,9 @@ export const OUTBOX_TABLES: Record<string, SQLiteTable> = {
   "change-request-comments": changeRequestComments,
   documents,
   "material-orders": materialOrders,
+  "material-ledger": materialLedgerEntries,
+  tasks,
+  expenses,
   "look-aheads": lookAheads,
   "material-approvals": materialApprovals,
   "material-approval-comments": materialApprovalComments,
