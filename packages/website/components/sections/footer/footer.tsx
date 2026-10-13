@@ -36,7 +36,7 @@ export function Footer() {
             alt={backedBy.logo.alt}
             width={backedBy.logo.width}
             height={backedBy.logo.height}
-            className="mt-2 h-[3.375rem] w-auto"
+            className="mt-2 h-14 w-auto lg:h-16"
           />
         </div>
 
