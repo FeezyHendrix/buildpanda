@@ -16,7 +16,17 @@ const { form: copy } = owners.consultation;
  * (see lib/leads.ts): the two names become one, and the dialling code is
  * joined to the number.
  */
-export function ConsultationForm() {
+export function ConsultationForm({
+  projectType = copy.projectType,
+  source = copy.source,
+  submitLabel = copy.submit,
+}: {
+  /** What the enquiry is for; the lead endpoint requires one. */
+  projectType?: string;
+  /** Which page sent it, so the team knows the context. */
+  source?: string;
+  submitLabel?: string;
+} = {}) {
   const [status, setStatus] = useState<Status>("idle");
   const [dial, setDial] = useState(countries[0].dial);
   const confirmation = useRef<HTMLDivElement>(null);
@@ -40,9 +50,9 @@ export function ConsultationForm() {
         email: value("email"),
         phone: `${dial} ${value("phone")}`,
         location: value("location"),
-        projectType: copy.projectType,
+        projectType,
         ...(message ? { message } : null),
-        source: copy.source,
+        source,
       });
       form.reset();
       setDial(countries[0].dial);
@@ -172,7 +182,7 @@ export function ConsultationForm() {
           </p>
         ) : null}
         <button type="submit" disabled={submitting} className="btn btn-solid h-12 w-full disabled:opacity-70">
-          {submitting ? copy.submitting : copy.submit}
+          {submitting ? copy.submitting : submitLabel}
         </button>
       </div>
     </form>

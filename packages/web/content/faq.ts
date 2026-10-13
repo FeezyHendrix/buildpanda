@@ -1,18 +1,14 @@
-import { navActions } from "./nav";
-
 export type FaqItem = { id: string; question: string; answer: string };
 
 export const faq = {
   eyebrow: "FAQ",
   title: "Frequently Asked Questions",
-  // PLACEHOLDER: lorem ipsum from the design, kept at the user's request until real copy exists.
-  intro: "Diam amet libero sit sapien senectus risus et orci. Vitae blandit aliquam etiam sodales. Non lacus veli odio. Tincidunt in.",
+  intro: "What contractors and owners ask before they run a build on BuildPanda. Type your own question and, if it isn't here, send it to the team.",
   search: {
     label: "Search the questions",
     placeholder: "Ask us anything",
     submit: "Go to the first matching question",
     empty: "No question matches that yet.",
-    emptyAction: { label: "Ask us on a demo call", href: navActions.demo.href },
   },
 } as const;
 

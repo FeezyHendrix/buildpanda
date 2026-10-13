@@ -31,3 +31,26 @@ export async function sendConsultationLead(lead: ConsultationLead): Promise<void
   });
   if (!response.ok) throw new Error(`Lead endpoint responded ${response.status}`);
 }
+
+/** Same backend, sibling route: a question the FAQ did not answer. */
+const questionEndpoint = endpoint?.replace(/\/consultation\/?$/, "/question");
+
+export type WebsiteQuestion = {
+  email: string;
+  question: string;
+  /** Honeypot: hidden from people, so only a bot fills it. */
+  company?: string;
+};
+
+export async function sendQuestion(question: WebsiteQuestion): Promise<void> {
+  if (!questionEndpoint) {
+    console.info("Website question (not sent: no endpoint in development)", question);
+    return;
+  }
+  const response = await fetch(questionEndpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(question),
+  });
+  if (!response.ok) throw new Error(`Question endpoint responded ${response.status}`);
+}
