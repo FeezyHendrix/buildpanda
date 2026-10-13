@@ -62,6 +62,12 @@ export interface LedgerSideEffects {
   /** Resolves an order a receipt names; null when it is not on the project. */
   receiptOrder?: (projectId: string, orderId: string) => Promise<ReceiptOrder | null>;
   /**
+   * The one open order a receipt of this material must be for, when there is
+   * exactly one. With two or more the crew has to say which; none means an
+   * unplanned delivery.
+   */
+  soleOpenOrderFor?: (projectId: string, materialName: string) => Promise<string | null>;
+  /**
    * A crew receipt against an order has just been accepted: record it on the
    * order as a delivery (status, cost) without posting the stock twice.
    */
@@ -194,7 +200,14 @@ export function materialsLedgerService(
    * order's name and unit so it lands on the same stock line the order
    * will, whatever the crew typed. Usage is never tied to an order.
    */
-  async function againstOrder(projectId: string, input: LogEntryInput): Promise<LogEntryInput> {
+  async function againstOrder(projectId: string, raw: LogEntryInput): Promise<LogEntryInput> {
+    // A receipt spoken or typed without naming its order still belongs to
+    // one when only one open order is waiting for that material. Receipts
+    // posted by a delivery already carry theirs.
+    const input =
+      raw.entryType === "IN" && !raw.materialOrderId && sideEffects.soleOpenOrderFor
+        ? { ...raw, materialOrderId: await sideEffects.soleOpenOrderFor(projectId, raw.materialName) }
+        : raw;
     if (!input.materialOrderId) return input;
     if (input.entryType !== "IN") return { ...input, materialOrderId: null };
     const order = await sideEffects.receiptOrder?.(projectId, input.materialOrderId);

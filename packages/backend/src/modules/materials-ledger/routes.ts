@@ -13,11 +13,15 @@ import { filesService } from "../files/service.ts";
 import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
 import { materialsEquipmentService } from "../materials-equipment/service.ts";
 import { buildMaterialsServices } from "../materials-equipment/wiring.ts";
+import { sameMaterial } from "./units.ts";
 import { suppliersRepository } from "../suppliers/repository.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
 import { logger } from "../../lib/logger.ts";
 
 const ENTRY_TYPE = ["IN", "USED"] as const;
+
+/** Order statuses that can take goods: approved and not yet closed. */
+const RECEIVABLE: readonly string[] = ["Approved", "Ordered", "PartiallyDelivered", "Delivered"];
 
 /**
  * The crew on site see a delivery arrive, so anyone who can request materials
@@ -173,8 +177,14 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
         stageId: order.phaseId,
         // Goods count against an order once it is approved; before that there
         // is nothing agreed to receive them against.
-        receivable: ["Approved", "Ordered", "PartiallyDelivered", "Delivered"].includes(order.status),
+        receivable: RECEIVABLE.includes(order.status),
       };
+    },
+    soleOpenOrderFor: async (projectId, materialName) => {
+      const open = (await procurement.service.listMaterialOrders(projectId)).filter(
+        (order) => RECEIVABLE.includes(order.status) && order.status !== "Delivered" && sameMaterial(order.materialName, materialName),
+      );
+      return open.length === 1 ? open[0]!.id : null;
     },
     // Accepting the receipt is the moment the goods count; the order learns of
     // them now, not when the crew claimed them.
