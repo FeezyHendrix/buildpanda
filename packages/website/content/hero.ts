@@ -10,7 +10,13 @@ export const hero = {
   secondaryAction: { id: "how-it-works", label: "How it works", href: "#how-it-works" },
   backedBy: {
     label: "Backed by",
-    logo: { src: "/brand/nvidia-logo.png", alt: "NVIDIA", width: 83, height: 54 },
+    // The NVIDIA Inception Program badge, white for the brand-blue hero and footer.
+    logo: {
+      src: "/brand/nvidia-inception-program-badge-white.svg",
+      alt: "BuildPanda is a member of the NVIDIA Inception Program",
+      width: 501,
+      height: 216,
+    },
   },
   frame: {
     width: 1211,
