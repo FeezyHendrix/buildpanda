@@ -35,6 +35,9 @@ export interface MaterialLedgerEntry {
   loggedByName: string | null;
   reason: string | null;
   notesHtml: string | null;
+  materialOrderId: string | null;
+  /** The order a receipt arrived against; none is an unplanned delivery. */
+  materialOrderTitle: string | null;
 }
 
 /** Received minus used for one material at one location. */

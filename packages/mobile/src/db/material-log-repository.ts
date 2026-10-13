@@ -12,6 +12,9 @@ export interface MaterialLogEntryInput {
   stageId: string | null;
   notesHtml: string | null;
   loggedByName: string;
+  /** The order this receipt is for, picked on site. */
+  materialOrderId?: string | null;
+  materialOrderTitle?: string | null;
 }
 
 function serverValues(projectId: string, row: MaterialLedgerEntry) {
@@ -29,6 +32,8 @@ function serverValues(projectId: string, row: MaterialLedgerEntry) {
     negativeStock: row.negativeStock,
     loggedByName: row.loggedByName,
     notesHtml: row.notesHtml,
+    materialOrderId: row.materialOrderId ?? null,
+    materialOrderTitle: row.materialOrderTitle ?? null,
   };
 }
 
@@ -62,6 +67,8 @@ export const materialLogRepository = {
         occurredAt: new Date().toISOString(),
         loggedByName: input.loggedByName,
         notesHtml: input.notesHtml,
+        materialOrderId: input.entryType === "IN" ? input.materialOrderId ?? null : null,
+        materialOrderTitle: input.entryType === "IN" ? input.materialOrderTitle ?? null : null,
         isPendingSync: true,
         updatedAt: Date.now(),
       }).run();
@@ -90,6 +97,7 @@ export const materialLogRepository = {
     stageId: row.stageId,
     occurredAt: row.occurredAt,
     notesHtml: row.notesHtml,
+    materialOrderId: row.materialOrderId,
     idempotencyKey: row.id,
   }),
 

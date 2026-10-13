@@ -225,6 +225,18 @@ export const materialOrders = sqliteTable(
     // queued before the column existed still load; the push refuses to send
     // an order without one.
     neededBy: text("needed_by"),
+    /** The material approval it relies on (newest in its resubmission chain). */
+    approvalId: text("approval_id"),
+    approvalTitle: text("approval_title"),
+    approvalStatus: text("approval_status"),
+    /** Accepted on the server as of the last pull. */
+    deliveredQuantity: real("delivered_quantity").notNull().default(0),
+    /**
+     * Received on this device and not yet sent. Deliveries recorded offline
+     * add up here and go as one; the order shows server + pending.
+     */
+    pendingDeliveryQty: real("pending_delivery_qty").notNull().default(0),
+    pendingDeliveryNote: text("pending_delivery_note"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
   },

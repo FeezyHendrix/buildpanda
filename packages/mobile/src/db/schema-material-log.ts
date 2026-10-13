@@ -25,6 +25,9 @@ export const materialLedgerEntries = sqliteTable(
     negativeStock: integer("negative_stock", { mode: "boolean" }).notNull().default(false),
     loggedByName: text("logged_by_name"),
     notesHtml: text("notes_html"),
+    /** The order a receipt arrived against; none on a receipt is an unplanned delivery. */
+    materialOrderId: text("material_order_id"),
+    materialOrderTitle: text("material_order_title"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
   },
