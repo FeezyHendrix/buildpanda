@@ -27,7 +27,7 @@ export function materialOrderStatusLabel(status: string): string {
   return (MATERIAL_ORDER_STATUS_LABELS as Record<string, string>)[status] ?? status;
 }
 
-/** Only an order that has been approved or placed can have a delivery recorded. */
+/** Only an order that has been approved or placed can take a delivery. */
 export function canRecordDelivery(status: string): boolean {
   return status === "Approved" || status === "Ordered" || status === "PartiallyDelivered";
 }
@@ -43,6 +43,25 @@ export interface MaterialOrder {
   phaseId: string | null;
   phaseName: string | null;
   neededBy: string;
+  /** The material approval it relies on, newest in its resubmission chain. */
+  approvalId: string | null;
+  approvalTitle: string | null;
+  approvalStatus: string | null;
+  deliveredQuantity: number;
+  outstandingQuantity: number;
+}
+
+export interface MaterialDelivery {
+  id: string;
+  deliveredQty: number;
+  rejected: boolean;
+}
+
+export interface RecordDeliveryInput {
+  deliveredQty: number;
+  deliveredAt: string;
+  deliveryNote?: string | null;
+  notes?: string | null;
 }
 
 export interface CreateMaterialOrderInput {
@@ -54,6 +73,8 @@ export interface CreateMaterialOrderInput {
   supplier?: string | null;
   phaseId?: string | null;
   status?: MaterialOrderStatus;
+  /** Raised from an approved material request; matched by material when omitted. */
+  approvalId?: string | null;
 }
 
 export const materialsApi = {
@@ -71,6 +92,16 @@ export const materialsApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+
+  /** Goods received: books the stock and the cost and moves the order's status. */
+  recordDelivery: (projectId: string, orderId: string, body: RecordDeliveryInput) =>
+    request<MaterialOrder>(`/projects/${projectId}/materials/orders/${orderId}/deliveries`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  deliveries: (projectId: string, orderId: string) =>
+    request<MaterialDelivery[]>(`/projects/${projectId}/materials/orders/${orderId}/deliveries`),
 
   remove: (projectId: string, orderId: string) =>
     request<{ ok: boolean }>(`/projects/${projectId}/materials/orders/${orderId}`, {

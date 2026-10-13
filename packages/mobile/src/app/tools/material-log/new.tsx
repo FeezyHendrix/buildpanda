@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Button, Field, FieldLabel, OptionRow, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { ReceiptOrderPicker, isReceivable, type ReceivableOrder } from "@/components/molecules/receipt-order-picker";
 import { StageField } from "@/components/molecules/stage-field";
+import { useLocalMaterialOrders } from "@/hooks/use-local-materials";
 import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
@@ -31,6 +34,9 @@ function LogForm({ db, projectId }: { db: Db; projectId: string }) {
   const { data: session } = useSession();
   const { isOnline } = useSyncState();
   const scope = useStageScope();
+  const params = useLocalSearchParams<{ orderId?: string }>();
+  const { data: allOrders } = useLocalMaterialOrders(db, projectId, false);
+  const orders = useMemo<ReceivableOrder[]>(() => allOrders.filter(isReceivable), [allOrders]);
 
   const [entryType, setEntryType] = useState<Movement>("IN");
   const [materialName, setMaterialName] = useState("");
@@ -38,6 +44,17 @@ function LogForm({ db, projectId }: { db: Db; projectId: string }) {
   const [unit, setUnit] = useState("");
   const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
   const [notesHtml, setNotesHtml] = useState("");
+  const [order, setOrder] = useState<ReceivableOrder | null>(null);
+  // Arriving from an order ("Log a delivery" on its page) preselects it once
+  // the local orders have loaded, and only once.
+  const [preselected, setPreselected] = useState(false);
+  useEffect(() => {
+    if (preselected || !params.orderId || orders.length === 0) return;
+    setPreselected(true);
+    const match = orders.find((o) => o.id === params.orderId);
+    if (match) pickOrder(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once when the orders arrive
+  }, [orders, params.orderId, preselected]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +71,15 @@ function LogForm({ db, projectId }: { db: Db; projectId: string }) {
     if (match?.unit) setUnit(match.unit);
   }
 
+  /** A receipt against an order is that order's material, so the stock line matches. */
+  function pickOrder(next: ReceivableOrder | null) {
+    setOrder(next);
+    if (!next) return;
+    setMaterialName(next.materialName);
+    setUnit(next.unit);
+    if (!quantity.trim() && next.outstandingQuantity > 0) setQuantity(String(next.outstandingQuantity));
+  }
+
   async function submit() {
     if (!valid || saving) return;
     setSaving(true);
@@ -67,6 +93,8 @@ function LogForm({ db, projectId }: { db: Db; projectId: string }) {
         stageId,
         notesHtml: notesHtml.trim() || null,
         loggedByName: session?.user.name ?? "You",
+        materialOrderId: entryType === "IN" ? order?.id ?? null : null,
+        materialOrderTitle: entryType === "IN" ? order?.title ?? null : null,
       });
       goBack();
     } catch (err) {
@@ -95,6 +123,9 @@ function LogForm({ db, projectId }: { db: Db; projectId: string }) {
           </View>
         ) : null}
         {canLogUsage ? <OptionRow label="Movement" options={MOVEMENTS} value={entryType} onChange={setEntryType} /> : null}
+        {entryType === "IN" ? (
+          <ReceiptOrderPicker orders={orders} materialName={materialName} value={order?.id ?? null} onChange={pickOrder} />
+        ) : null}
         <View className="gap-2">
           <Field label="Material" value={materialName} onChangeText={pickMaterial} placeholder="e.g. Cement" autoFocus />
           {suggestions.length > 0 ? (

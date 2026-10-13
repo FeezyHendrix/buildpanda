@@ -47,6 +47,11 @@ function EntryRow({ row, first }: { row: MaterialLedgerEntryRow; first: boolean 
         <Text tone="secondary" className="pt-0.5 text-xs" numberOfLines={1}>
           {[formatDateTime(row.occurredAt), row.loggedByName, row.stageName, approvalLabel(row)].filter(Boolean).join(" · ")}
         </Text>
+        {received ? (
+          <Text tone={row.materialOrderTitle ? "secondary" : "muted"} className="pt-0.5 text-xs" numberOfLines={1}>
+            {row.materialOrderTitle ? `Order: ${row.materialOrderTitle}` : "Unplanned delivery"}
+          </Text>
+        ) : null}
       </View>
       {row.isPendingSync ? <PendingBadge /> : null}
     </View>

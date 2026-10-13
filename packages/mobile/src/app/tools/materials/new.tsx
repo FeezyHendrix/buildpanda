@@ -3,6 +3,7 @@ import { DateField } from "@/components/molecules/date-field";
 import { useStageScope } from "@/lib/stage-scope";
 import { goBack } from "@/lib/navigation";
 
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Text } from "@/components/atoms";
@@ -13,20 +14,34 @@ import { useFieldSession } from "@/lib/field-session";
 import { isIsoDate } from "@/lib/dates";
 import { useSyncState } from "@/lib/sync-provider";
 
+type FromApproval = {
+  approvalId?: string;
+  approvalTitle?: string;
+  materialName?: string;
+  quantity?: string;
+  unit?: string;
+  supplier?: string;
+  neededBy?: string;
+  stageId?: string;
+};
+
 export default function NewMaterialOrder() {
   const { projectId } = useFieldSession();
   const scope = useStageScope();
-  const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
+  // "Order this material" on an approved request opens this page filled in
+  // from it; the order is linked to the approval when it is created.
+  const from = useLocalSearchParams<FromApproval>();
+  const [stageId, setStageId] = useState<string | null>(from.stageId || scope.stageId || null);
   const { db } = useLocalDb();
   const create = useCreateMaterialOrder(db, projectId);
   const { isOnline } = useSyncState();
 
-  const [title, setTitle] = useState("");
-  const [materialName, setMaterialName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("");
-  const [supplier, setSupplier] = useState("");
-  const [neededBy, setNeededBy] = useState("");
+  const [title, setTitle] = useState(from.materialName ?? "");
+  const [materialName, setMaterialName] = useState(from.materialName ?? "");
+  const [quantity, setQuantity] = useState(from.quantity ?? "");
+  const [unit, setUnit] = useState(from.unit ?? "");
+  const [supplier, setSupplier] = useState(from.supplier ?? "");
+  const [neededBy, setNeededBy] = useState(from.neededBy ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +71,7 @@ export default function NewMaterialOrder() {
         unit: unit.trim(),
         neededBy: neededBy.trim(),
         supplier: supplier.trim() || null,
+        approvalId: from.approvalId ?? null,
       });
       goBack();
     } catch (err) {
@@ -91,6 +107,11 @@ export default function NewMaterialOrder() {
       ) : null}
 
       <View className="gap-5">
+        {from.approvalTitle ? (
+          <View className="rounded-xl bg-surface-alt px-4 py-3">
+            <Text tone="secondary" className="text-[13px]">Placed against the approved request “{from.approvalTitle}”.</Text>
+          </View>
+        ) : null}
         <StageField value={stageId} onChange={setStageId} />
         <Field label="Title" value={title} onChangeText={setTitle} placeholder="What is this for?" autoFocus />
         <Field label="Material" value={materialName} onChangeText={setMaterialName} placeholder="e.g. Cement" />

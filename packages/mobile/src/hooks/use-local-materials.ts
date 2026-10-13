@@ -3,7 +3,7 @@ import { matchesStage } from "@/lib/stage-filter";
 import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
-import { materialsApi, type CreateMaterialOrderInput, type MaterialOrderStatus } from "@/api/materials";
+import { materialsApi, type CreateMaterialOrderInput } from "@/api/materials";
 import type { Db } from "@/db/client";
 import { flushOutbox } from "@/db/outbox";
 import { materialsRepository, toMaterialOrder } from "@/db/materials-repository";
@@ -59,14 +59,14 @@ export function useUpdateMaterialOrder(db: Db | null, projectId: string | undefi
 }
 
 /**
- * Records a delivery (full or partial) against an order. A status change is a
- * contractual record, so the screen confirms before calling this; the push is
- * queued like any other edit and lands when there is signal.
+ * Goods received against an order, full or part. Recorded here first; the push
+ * books the stock and cost on the server and moves the order's status.
  */
-export function useSetMaterialOrderStatus(db: Db | null, projectId: string | undefined) {
-  return async (id: string, status: MaterialOrderStatus) => {
+export function useRecordDelivery(db: Db | null, projectId: string | undefined) {
+  return async (id: string, quantity: number, note: string | null) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
-    await materialsRepository.updateLocal(db, projectId, id, { status });
+    if (!(quantity > 0)) throw new Error("Enter how much arrived.");
+    await materialsRepository.recordDeliveryLocal(db, projectId, id, quantity, note);
     void flushOutbox(db).catch(() => undefined);
   };
 }
