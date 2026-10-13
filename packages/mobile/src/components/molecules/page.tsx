@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SyncIndicator, Text } from "@/components/atoms";
 import { ICON_DEFAULT } from "@/constants/colors";
@@ -9,6 +9,7 @@ import { useSyncState } from "@/lib/sync-provider";
 import { cn } from "@/lib/utils";
 import { BuildingSelector } from "./building-selector";
 import { useProjectBuilding } from "@/hooks/use-project-building";
+import { KeyboardRevealContext, useKeyboardAvoidance } from "@/hooks/use-keyboard-avoidance";
 import { ScopeSelector } from "./scope-selector";
 import { StageSelector } from "./stage-selector";
 import { HeaderIconButton } from "./header-icon-button";
@@ -32,6 +33,8 @@ interface PageProps {
   footer?: ReactNode;
   className?: string;
   buildingScope?: boolean;
+  /** With `buildingScope`: show the picker but render the page without a building too. */
+  buildingOptional?: boolean;
   stageScope?: boolean;
   children: ReactNode;
 }
@@ -59,9 +62,11 @@ function PageContent({
   const sync = useSyncState();
   const hasScope = Boolean(projectName || workspaceName || projectPending || onPressProject);
   const handleSyncPress = onPressSync ?? (() => router.push("/sync"));
+  const keyboard = useKeyboardAvoidance();
 
   return (
-    <View className="flex-1 bg-canvas">
+    <KeyboardRevealContext.Provider value={keyboard.reveal}>
+    <View ref={keyboard.rootRef} onLayout={keyboard.measureOffset} className="flex-1 bg-canvas">
       <View className="border-b border-line bg-surface px-4 pb-3" style={{ paddingTop: insets.top + 8 }}>
         <View className="min-h-11 flex-row items-center gap-2">
           {onBack ? (
@@ -89,12 +94,18 @@ function PageContent({
       {buildingScope ? <BuildingSelector /> : null}
       {stageScope ? <StageSelector /> : null}
 
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      {/* Padding on Android too: edge-to-edge windows no longer shrink for the
+          keyboard, and where one still does the overlap is zero, so nothing doubles. */}
+      <KeyboardAvoidingView className="flex-1" behavior="padding" keyboardVerticalOffset={keyboard.offset}>
         {scroll ? (
           <ScrollView
+            ref={keyboard.scrollRef}
+            onScroll={keyboard.onScroll}
+            scrollEventThrottle={32}
             className={cn("px-4", className)}
             contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 24 }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             {children}
           </ScrollView>
@@ -103,12 +114,13 @@ function PageContent({
         )}
 
         {footer ? (
-          <View className="px-4 pt-3" style={{ paddingBottom: insets.bottom + 12 }}>
+          <View className="px-4 pt-3" style={{ paddingBottom: keyboard.keyboardShown ? 12 : insets.bottom + 12 }}>
             {footer}
           </View>
         ) : null}
       </KeyboardAvoidingView>
     </View>
+    </KeyboardRevealContext.Provider>
   );
 }
 
@@ -116,7 +128,7 @@ function BuildingPage(props: PageProps) {
   const { buildingId, isLoading } = useProjectBuilding();
   return (
     <PageContent {...props} footer={buildingId ? props.footer : undefined}>
-      {buildingId ? props.children : (
+      {buildingId || props.buildingOptional ? props.children : (
         <View className="items-center py-12">
           <Text tone="secondary" className="text-center">
             {isLoading ? "Loading buildings…" : "Choose a building above to see its records."}

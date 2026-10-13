@@ -1,56 +1,52 @@
 import { goBack } from "@/lib/navigation";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { Alert, View } from "react-native";
-import { canRecordDelivery, materialOrderStatusLabel, type MaterialOrderStatus } from "@/api/materials";
+import { Alert, Pressable, View } from "react-native";
+import { canRecordDelivery, materialOrderStatusLabel } from "@/api/materials";
 import { Button, Card, PendingBadge, Spinner, Text } from "@/components/atoms";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
+import { MaterialApprovalStatusBadge } from "@/components/molecules/material-approval-status";
 import { Page } from "@/components/molecules/page";
 import { ABSENT_VALUE } from "@/components/molecules/schedule/detail-fields";
+import { ICON_FAINT } from "@/constants/colors";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
-import { useDeleteMaterialOrder, useLocalMaterialOrder, useSetMaterialOrderStatus } from "@/hooks/use-local-materials";
+import { useDeleteMaterialOrder, useLocalMaterialOrder } from "@/hooks/use-local-materials";
+import { useProjectAccess } from "@/hooks/use-project-access";
+import { isApprovalStatus } from "@/api/material-approvals";
 import { formatDate } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
 
-const DELIVERY_ACTIONS: { status: MaterialOrderStatus; label: string; prompt: string }[] = [
-  {
-    status: "Delivered",
-    label: "Mark delivered",
-    prompt: "This records that the full order arrived on site. The office sees it at once.",
-  },
-  {
-    status: "PartiallyDelivered",
-    label: "Partially delivered",
-    prompt: "This records that some of the order arrived on site. The rest stays outstanding.",
-  },
-];
+const qty = (value: number) => (Number.isInteger(value) ? String(value) : value.toFixed(2));
 
-function MaterialDetail({ db, projectId, orderId }: { db: Db; projectId: string; orderId: string }) {
-  const { data: order } = useLocalMaterialOrder(db, orderId);
-  const setStatus = useSetMaterialOrderStatus(db, projectId);
-  const [busy, setBusy] = useState<MaterialOrderStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // A delivery is a contractual record the office acts on, so it is confirmed
-  // rather than recorded on a single stray tap.
-  function confirmDelivery(action: (typeof DELIVERY_ACTIONS)[number]) {
-    Alert.alert(`${action.label}?`, action.prompt, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: action.label,
-        onPress: () => {
-          setBusy(action.status);
-          setError(null);
-          void setStatus(orderId, action.status)
-            .catch((err: unknown) => {
-              setError(err instanceof Error ? err.message : "Could not record this delivery.");
-            })
-            .finally(() => setBusy(null));
-        },
-      },
-    ]);
+/** The sign-off this order relies on, or a plain note that there is none. */
+function ApprovalLink({ approvalId, title, status }: { approvalId: string | null; title: string | null; status: string | null }) {
+  if (!approvalId) {
+    return (
+      <View className="rounded-xl bg-surface-alt px-4 py-3">
+        <Text tone="secondary" className="text-[13px]">No material approval covers this material.</Text>
+      </View>
+    );
   }
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push(`/tools/material-approvals/${approvalId}` as never)}
+      className="min-h-14 flex-row items-center gap-3 rounded-xl border border-hairline bg-white px-4 py-3 active:bg-surface-alt"
+    >
+      <View className="min-w-0 flex-1">
+        <Text weight="semibold" tone="muted" className="text-[10px] uppercase tracking-wide">Material approval</Text>
+        <Text weight="semibold" className="pt-0.5 text-[15px]" numberOfLines={1}>{title ?? "View approval"}</Text>
+      </View>
+      {status && isApprovalStatus(status) ? <MaterialApprovalStatusBadge status={status} /> : null}
+      <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
+    </Pressable>
+  );
+}
+
+function MaterialDetail({ db, orderId }: { db: Db; orderId: string }) {
+  const { data: order } = useLocalMaterialOrder(db, orderId);
+  const { can } = useProjectAccess();
 
   if (!order) {
     return (
@@ -60,8 +56,10 @@ function MaterialDetail({ db, projectId, orderId }: { db: Db; projectId: string;
     );
   }
 
-  // Only a full delivery is offered once part of the order has already landed.
-  const actions = DELIVERY_ACTIONS.filter((action) => action.status !== order.status);
+  const receivable = canRecordDelivery(order.status) && !order.id.startsWith("local_");
+  // Signing for goods books stock and cost, so it is the approver's act; the
+  // crew logs what arrived and a manager accepts it onto the order.
+  const canSign = can("materials", "approve");
 
   return (
     <View className="gap-5">
@@ -74,11 +72,7 @@ function MaterialDetail({ db, projectId, orderId }: { db: Db; projectId: string;
 
       <Text weight="bold" className="text-lg">{order.title || order.materialName}</Text>
 
-      {error ? (
-        <View className="rounded-xl bg-error-50 px-4 py-3">
-          <Text tone="danger" className="text-sm">{error}</Text>
-        </View>
-      ) : null}
+      <ApprovalLink approvalId={order.approvalId} title={order.approvalTitle} status={order.approvalStatus} />
 
       <Card>
         <View className="border-b border-hairline px-4 py-3">
@@ -87,34 +81,37 @@ function MaterialDetail({ db, projectId, orderId }: { db: Db; projectId: string;
         </View>
         <View className="flex-row border-b border-hairline">
           <View className="flex-1 border-r border-hairline px-4 py-3">
-            <Text weight="semibold" tone="muted" className="text-[10px] uppercase tracking-wide">Quantity</Text>
-            <Text className="pt-0.5 text-[15px]">{order.quantity} {order.unit}</Text>
+            <Text weight="semibold" tone="muted" className="text-[10px] uppercase tracking-wide">Ordered</Text>
+            <Text className="pt-0.5 text-[15px]">{qty(order.quantity)} {order.unit}</Text>
           </View>
           <View className="flex-1 px-4 py-3">
+            <Text weight="semibold" tone="muted" className="text-[10px] uppercase tracking-wide">Delivered</Text>
+            <Text className="pt-0.5 text-[15px]">{qty(order.deliveredQuantity)} of {qty(order.quantity)}</Text>
+            {order.pendingDeliveryQty > 0 ? (
+              <Text tone="secondary" className="text-xs">{qty(order.pendingDeliveryQty)} waiting to upload</Text>
+            ) : null}
+          </View>
+        </View>
+        <View className="flex-row">
+          <View className="flex-1 border-r border-hairline px-4 py-3">
             <Text weight="semibold" tone="muted" className="text-[10px] uppercase tracking-wide">Supplier</Text>
             <Text className="pt-0.5 text-[15px]">{order.supplier || ABSENT_VALUE}</Text>
           </View>
-        </View>
-        <View className="px-4 py-3">
-          <Text weight="semibold" tone="muted" className="text-[10px] uppercase tracking-wide">Needed by</Text>
-          <Text className="pt-0.5 text-[15px]">{formatDate(order.neededBy) || ABSENT_VALUE}</Text>
+          <View className="flex-1 px-4 py-3">
+            <Text weight="semibold" tone="muted" className="text-[10px] uppercase tracking-wide">Needed by</Text>
+            <Text className="pt-0.5 text-[15px]">{formatDate(order.neededBy) || ABSENT_VALUE}</Text>
+          </View>
         </View>
       </Card>
 
-      {canRecordDelivery(order.status) ? (
-        <View className="gap-3">
-          <Text weight="semibold" tone="secondary" className="text-xs uppercase tracking-wide">Record a delivery</Text>
-          {actions.map((action, index) => (
-            <Button
-              key={action.status}
-              variant={index === 0 ? "primary" : "secondary"}
-              onPress={() => confirmDelivery(action)}
-              loading={busy === action.status}
-              disabled={busy !== null}
-            >
-              {action.label}
-            </Button>
-          ))}
+      {receivable && canSign ? (
+        <Button onPress={() => router.push(`/tools/materials/deliver/${order.id}` as never)}>Record a delivery</Button>
+      ) : receivable && can("materials", "request") ? (
+        <View className="gap-2">
+          <Button variant="secondary" onPress={() => router.push(`/tools/material-log/new?orderId=${order.id}` as never)}>
+            Log a delivery
+          </Button>
+          <Text tone="secondary" className="text-center text-xs">A manager approves it before it counts against this order.</Text>
         </View>
       ) : null}
     </View>
@@ -159,7 +156,7 @@ export default function MaterialOrderDetail() {
       }
     >
       {ready && db && projectId && id ? (
-        <MaterialDetail db={db} projectId={projectId} orderId={id} />
+        <MaterialDetail db={db} orderId={id} />
       ) : (
         <View className="items-center py-12"><Spinner size="md" /></View>
       )}

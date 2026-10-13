@@ -12,6 +12,7 @@ import accessCachePlugin from "./plugins/access-cache.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
 import securityPlugin from "./plugins/security.ts";
+import payloadEncryptionPlugin from "./plugins/payload-encryption.ts";
 import featureFlagsPlugin from "./plugins/feature-flags.ts";
 import queuePlugin from "./plugins/queue.ts";
 import realtimePlugin from "./plugins/realtime.ts";
@@ -41,6 +42,7 @@ import fileRoutes from "./modules/files/routes.ts";
 import activityRoutes from "./modules/activities/routes.ts";
 import activityReferencesRoutes from "./modules/activities/references-routes.ts";
 import dailyLogRoutes from "./modules/daily-logs/routes.ts";
+import dailyLogTemplateRoutes from "./modules/daily-log-templates/routes.ts";
 import teamMemberRoutes from "./modules/team-members/routes.ts";
 import invoiceRoutes from "./modules/invoices/routes.ts";
 import publicInvoiceRoutes from "./modules/invoices/public-routes.ts";
@@ -146,6 +148,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(securityPlugin);
+  // Before every route, so sealed bodies are opened before validation.
+  await app.register(payloadEncryptionPlugin);
 
   await app.register(databasePlugin);
 
@@ -189,6 +193,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(activityRoutes);
   await app.register(activityReferencesRoutes);
   await app.register(dailyLogRoutes);
+  await app.register(dailyLogTemplateRoutes);
   await app.register(teamMemberRoutes);
   await app.register(invoicePaymentRoutes);
   await app.register(invoiceRoutes);

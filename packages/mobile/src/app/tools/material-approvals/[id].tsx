@@ -7,6 +7,7 @@ import type { ApprovalStatus } from "@/api/material-approvals";
 import { Button, Field, Spinner, Text } from "@/components/atoms";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { MaterialApprovalDetailBody } from "@/components/molecules/material-approval-detail-body";
+import { MaterialApprovalOrders } from "@/components/molecules/material-approval-orders";
 import { Page } from "@/components/molecules/page";
 import { ICON_INVERSE, ICON_SUBTLE } from "@/constants/colors";
 import type { Db } from "@/db/client";
@@ -260,6 +261,7 @@ function ReadyScreen({
             commentsPending={comments.isPending}
           />
           <DecisionPanel db={db} approval={approval} projectId={projectId} />
+          <MaterialApprovalOrders db={db} projectId={projectId} approval={approval} />
         </View>
       )}
     </Page>

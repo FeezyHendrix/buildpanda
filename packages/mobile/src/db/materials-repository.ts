@@ -6,7 +6,27 @@ import type { Db } from "./client";
 import { enqueueDelete, enqueueUpdate, reviveOrQueue } from "./enqueue-update";
 import { materialOrders, outbox, type MaterialOrderRow } from "./schema";
 
+/** What the server owns on an order: everything a pull or a push reply refreshes. */
+function serverValues(row: MaterialOrder) {
+  return {
+    title: row.title,
+    materialName: row.materialName,
+    quantity: row.quantity,
+    unit: row.unit,
+    supplier: row.supplier,
+    phaseId: row.phaseId,
+    phaseName: row.phaseName,
+    neededBy: row.neededBy,
+    status: row.status,
+    approvalId: row.approvalId ?? null,
+    approvalTitle: row.approvalTitle ?? null,
+    approvalStatus: row.approvalStatus ?? null,
+    deliveredQuantity: row.deliveredQuantity ?? 0,
+  };
+}
+
 export function toMaterialOrder(row: MaterialOrderRow) {
+  const delivered = row.deliveredQuantity + row.pendingDeliveryQty;
   return {
     id: row.id,
     title: row.title,
@@ -18,6 +38,13 @@ export function toMaterialOrder(row: MaterialOrderRow) {
     phaseName: row.phaseName,
     neededBy: row.neededBy,
     status: row.status,
+    approvalId: row.approvalId,
+    approvalTitle: row.approvalTitle,
+    approvalStatus: row.approvalStatus,
+    /** Server-accepted plus anything received here and not yet sent. */
+    deliveredQuantity: delivered,
+    outstandingQuantity: Math.max(0, Math.round((row.quantity - delivered) * 100) / 100),
+    pendingDeliveryQty: row.pendingDeliveryQty,
     isPendingSync: row.isPendingSync,
   };
 }
@@ -47,6 +74,7 @@ export const materialsRepository = {
         supplier: input.supplier ?? null,
         phaseId: input.phaseId ?? null,
         neededBy: input.neededBy,
+        approvalId: input.approvalId ?? null,
         isPendingSync: true,
         updatedAt: Date.now(),
       }).run();
@@ -133,15 +161,7 @@ export const materialsRepository = {
       tx.delete(materialOrders).where(eq(materialOrders.id, localId)).run();
       const values = {
         projectId,
-        title: server.title,
-        materialName: server.materialName,
-        quantity: server.quantity,
-        unit: server.unit,
-        supplier: server.supplier,
-        phaseId: server.phaseId,
-        phaseName: server.phaseName,
-        neededBy: server.neededBy,
-        status: server.status,
+        ...serverValues(server),
         ...(hasEdits ? local : {}),
         id: server.id,
         isPendingSync: hasEdits,
@@ -164,39 +184,45 @@ export const materialsRepository = {
       for (const row of rows) {
         tx
           .insert(materialOrders)
-          .values({
-            id: row.id,
-            projectId,
-            title: row.title,
-            materialName: row.materialName,
-            quantity: row.quantity,
-            unit: row.unit,
-            supplier: row.supplier,
-            phaseId: row.phaseId,
-            phaseName: row.phaseName,
-            neededBy: row.neededBy,
-            status: row.status,
-            isPendingSync: false,
-            updatedAt: now,
-          })
+          .values({ id: row.id, projectId, ...serverValues(row), isPendingSync: false, updatedAt: now })
           .onConflictDoUpdate({
             target: materialOrders.id,
-            set: {
-              title: row.title,
-              materialName: row.materialName,
-              quantity: row.quantity,
-              unit: row.unit,
-              supplier: row.supplier,
-              phaseId: row.phaseId,
-              phaseName: row.phaseName,
-              neededBy: row.neededBy,
-              status: row.status,
-              updatedAt: now,
-            },
+            set: { ...serverValues(row), updatedAt: now },
             where: eq(materialOrders.isPendingSync, false),
           }).run();
       }
     });
+  },
+
+  /**
+   * Goods received on site, recorded offline. Repeated deliveries before the
+   * next sync add up and go as one; the order shows them at once.
+   */
+  async recordDeliveryLocal(db: Db, projectId: string, id: string, quantity: number, note: string | null): Promise<void> {
+    await db.transaction((tx) => {
+      const [row] = tx.select().from(materialOrders).where(eq(materialOrders.id, id)).limit(1).all();
+      if (!row) throw new Error("This order is no longer on this device.");
+      const pending = row.pendingDeliveryQty + quantity;
+      const delivered = row.deliveredQuantity + pending;
+      tx.update(materialOrders).set({
+        pendingDeliveryQty: pending,
+        pendingDeliveryNote: [row.pendingDeliveryNote, note].filter(Boolean).join(", ") || null,
+        status: delivered >= row.quantity ? "Delivered" : "PartiallyDelivered",
+        isPendingSync: true,
+        updatedAt: Date.now(),
+      }).where(eq(materialOrders.id, id)).run();
+      reviveOrQueue(tx, { resource: "material-orders", entityId: id, projectId, operation: "delivery", newId: randomUUID() });
+    });
+  },
+
+  /** The server took the delivery: its order replaces ours and nothing is pending. */
+  async settleDelivery(db: Db, id: string, server: MaterialOrder): Promise<void> {
+    await db.update(materialOrders).set({
+      ...serverValues(server),
+      pendingDeliveryQty: 0,
+      pendingDeliveryNote: null,
+      updatedAt: Date.now(),
+    }).where(eq(materialOrders.id, id));
   },
 
   findById: async (db: Db, id: string) => {

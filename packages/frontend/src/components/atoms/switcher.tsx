@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 type SwitcherValue = "yes" | "no";
 
 interface SwitcherProps {
-  value: SwitcherValue;
+  /** null = no answer yet; neither side is selected. */
+  value: SwitcherValue | null;
   onChange: (value: SwitcherValue) => void;
   className?: string;
 }

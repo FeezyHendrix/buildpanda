@@ -1,3 +1,5 @@
+import type { TemplateField, TemplateResponses } from "../daily-log-templates/types.ts";
+
 export type WeatherCondition =
   | "Sunny"
   | "Cloudy"
@@ -105,6 +107,11 @@ export interface DailyLogEntry {
   authorRole: string;
   bodyHtml: string | null;
   bodyText: string | null;
+  /** Set when the entry was filled from a template; the fields are those it was filled against. */
+  templateId: string | null;
+  templateName: string | null;
+  templateFields: TemplateField[] | null;
+  responses: TemplateResponses | null;
   voids: DailyLogEntryVoid[];
   voided: boolean;
   createdAt: string;
@@ -121,6 +128,10 @@ export interface DailyLogEntryRow {
   author_role: string;
   body_html: string | null;
   body_text: string | null;
+  template_id: string | null;
+  template_name: string | null;
+  template_fields: TemplateField[] | null;
+  responses: TemplateResponses | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -135,8 +146,22 @@ export interface DailyLogEntryVoidRow {
 }
 
 export interface CreateDailyLogEntryInput {
-  bodyHtml: string;
+  /** Free-form body, or the notes and photos added under a template form. */
+  bodyHtml?: string | null;
   bodyText?: string | null;
+  buildingId?: string | null;
+  templateId?: string | null;
+  responses?: TemplateResponses;
+}
+
+/** What the template module hands back for a filled form, as stored on the entry. */
+export interface FilledEntryForm {
+  templateId: string;
+  templateName: string;
+  fields: TemplateField[];
+  responses: TemplateResponses;
+  html: string;
+  text: string;
 }
 
 export interface DailyLogDay {

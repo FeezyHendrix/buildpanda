@@ -55,7 +55,7 @@ function ImportProgrammeDialog({ open, onOpenChange, projectId }: ImportProgramm
         />
         <Dialog.Popup
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
+            "fixed left-1/2 top-visible-center z-50 flex max-h-[min(90vh,calc(var(--vv-height,100dvh)-2rem))] w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
             "transition-all duration-300 ease-out",
             "data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
           )}

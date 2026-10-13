@@ -4,6 +4,7 @@ import { BadRequestError } from "../../../lib/errors.ts";
 import { chatJson } from "../../../lib/llm.ts";
 import { logger } from "../../../lib/logger.ts";
 import { translateAudioToEnglish } from "../../../lib/speech.ts";
+import { formMissingFields, normalizeDailyLogForm } from "./daily-log-form.ts";
 import type {
   DraftAction,
   MissingField,
@@ -21,7 +22,12 @@ const rfiPayload = z.object({
   priority: priority.optional(),
 });
 
-const dailyLogPayload = z.object({ bodyText: z.string().min(1), buildingId: z.string().min(1).nullish() });
+const dailyLogPayload = z.object({
+  bodyText: z.string(),
+  buildingId: z.string().min(1).nullish(),
+  templateId: z.string().min(1).nullish(),
+  responses: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).nullish(),
+});
 
 const changeRequestPayload = z.object({
   title: z.string().min(1),
@@ -42,7 +48,8 @@ const materialOrderPayload = z.object({
 const materialLogPayload = z.object({
   entryType: z.enum(["IN", "USED"]),
   materialName: z.string().min(1),
-  quantity: z.number(),
+  // "Used 25" is 25 out, never -25: the entry type carries the direction.
+  quantity: z.number().transform(Math.abs),
   unit: z.string().min(1),
   locationKey: z.string().nullish(),
   reason: z.string().nullish(),
@@ -193,9 +200,11 @@ const EMPTY_SNAPSHOT: ProjectSnapshot = {
   activities: [],
   delayReasons: [],
   ledgerEntries: [],
+  materials: [],
   todayEntries: [],
   stages: [],
   buildings: [],
+  dailyLogForm: null,
   today: new Date().toISOString().slice(0, 10),
 };
 
@@ -245,6 +254,13 @@ function normalizeAction(action: ParsedAction, snapshot: ProjectSnapshot): Draft
       // reviewer is offered the stage picker instead of losing the request.
       const known = snapshot.stages.some((s) => s.id === action.payload.stageId);
       return known ? action : { ...action, payload: { ...action.payload, stageId: null } };
+    }
+    case "daily_log": {
+      const payload = normalizeDailyLogForm(action.payload, snapshot);
+      // a free-form note needs words; a filled form needs at least one answer
+      const hasForm = Object.keys(payload.responses ?? {}).length > 0;
+      if (!payload.bodyText.trim() && !hasForm) return null;
+      return { ...action, payload: hasForm ? payload : { buildingId: payload.buildingId, bodyText: payload.bodyText } };
     }
     default:
       return action;
@@ -310,6 +326,7 @@ function computeMissing(action: DraftAction, snapshot: ProjectSnapshot): Missing
     const value = payload[field.name];
     return value === null || value === undefined || value === "";
   });
+  if (action.kind === "daily_log") missing.push(...formMissingFields(action.payload, snapshot));
 
   if (BUILDING_SCOPED_KINDS.has(action.kind) && snapshot.buildings.length > 1 && !snapshot.buildings.some((building) => building.id === payload["buildingId"])) {
     missing.unshift({ name: "buildingId", label: "Building", type: "select" });

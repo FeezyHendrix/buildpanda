@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { loadDefaultForm } from "./daily-log-form.ts";
 import type { ProjectSnapshot } from "./types.ts";
 
 interface RfiPick {
@@ -91,9 +92,11 @@ export function voiceReportRepository(db: Knex) {
         activities,
         delayReasons,
         ledgerEntries,
+        materials,
         todayEntries,
         stages,
         buildings,
+        dailyLogForm,
       ] = await Promise.all([
           db<RfiPick>("rfis")
             .where({ project_id: projectId })
@@ -127,6 +130,11 @@ export function voiceReportRepository(db: Knex) {
             .orderBy("created_at", "desc")
             .limit(10)
             .select("id", "entry_type", "material_name_snapshot", "quantity", "unit_snapshot"),
+          db<{ name: string; unit: string }>("materials_catalog")
+            .where({ project_id: projectId, active: true })
+            .orderBy("name", "asc")
+            .limit(60)
+            .select("name", "unit"),
           db<DailyLogEntryPick>("daily_log_entries")
             .where({ project_id: projectId, log_date: today })
             .orderBy("created_at", "desc")
@@ -142,6 +150,7 @@ export function voiceReportRepository(db: Knex) {
             .orderBy("sort_order", "asc")
             .limit(20)
             .select("id", "name", "code"),
+          loadDefaultForm(db, projectId),
         ]);
 
       return {
@@ -171,6 +180,7 @@ export function voiceReportRepository(db: Knex) {
           quantity: Number(e.quantity),
           unit: e.unit_snapshot,
         })),
+        materials: materials.map((m) => ({ name: m.name, unit: m.unit })),
         todayEntries: todayEntries.map((e) => ({
           id: e.id,
           logDate: toDay(e.log_date),
@@ -184,6 +194,7 @@ export function voiceReportRepository(db: Knex) {
           buildingId: s.building_id,
         })),
         buildings: buildings.map((b) => ({ id: b.id, name: b.name, code: b.code })),
+        dailyLogForm,
         today,
       };
     },

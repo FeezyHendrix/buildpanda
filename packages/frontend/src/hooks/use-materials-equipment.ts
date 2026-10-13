@@ -103,6 +103,8 @@ export function useUpdateMaterialOrder() {
     mutationFn: ({ projectId, orderId, ...body }: MaterialOrderPatch & { projectId: string; orderId: string }) => materialsEquipmentApi.updateMaterialOrder(projectId, orderId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: materialKeys.all(projectId) });
+      // Marking an order delivered records the outstanding goods, so stock moves too.
+      queryClient.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) });
       queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });

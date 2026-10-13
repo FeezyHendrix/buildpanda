@@ -8,6 +8,7 @@ import {
   useMaterialApproval,
 } from "@/hooks/use-material-approvals";
 import { MATERIAL_APPROVAL_STATUS_META } from "./material-approval-card";
+import { MaterialApprovalOrders } from "./material-approval-orders";
 import { formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { MaterialApprovalDetail } from "@/api/material-approvals";
@@ -42,6 +43,8 @@ interface Props {
   projectId: string;
   approvalId: string | null;
   canComment?: boolean;
+  /** May raise a material order from an approved request. */
+  canOrder?: boolean;
 }
 
 function MaterialApprovalDetailDialog({
@@ -50,6 +53,7 @@ function MaterialApprovalDetailDialog({
   projectId,
   approvalId,
   canComment = false,
+  canOrder = false,
 }: Props) {
   const { data: approval, isPending } = useMaterialApproval(projectId, approvalId ?? undefined);
   const addComment = useAddMaterialApprovalComment();
@@ -71,7 +75,7 @@ function MaterialApprovalDetailDialog({
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />
         <Dialog.Popup
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(580px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
+            "fixed left-1/2 top-visible-center z-50 flex max-h-[min(85vh,calc(var(--vv-height,100dvh)-2rem))] w-[min(580px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
             "overflow-hidden rounded-lg border border-line bg-white shadow-card outline-none",
           )}
         >
@@ -151,6 +155,7 @@ function MaterialApprovalDetailDialog({
                   </div>
                 ) : null}
 
+                <MaterialApprovalOrders projectId={projectId} approval={approval} canOrder={canOrder} />
                 <p className="mt-5 text-xs font-medium uppercase text-ink-muted">
                   Discussion ({approval.comments.length})
                 </p>

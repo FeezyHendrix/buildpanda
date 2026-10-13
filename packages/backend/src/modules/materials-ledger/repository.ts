@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
 import { generateId } from "../../lib/ids.ts";
 import { ledgerWrites } from "./entry-writes.ts";
+import { canonicalUnit, nameVariants, withoutPackaging } from "./units.ts";
 import type {
   CatalogPolicyPatch,
   LedgerEntryFileRow,
@@ -59,6 +60,7 @@ const ENTRY_SELECT = [
   "au.name as approved_by_name",
   "e.approved_at",
   "e.material_order_id",
+  "mo.title as material_order_title",
   "e.task_id",
   "e.activity_id",
   "e.reversal_for_entry_id",
@@ -76,7 +78,8 @@ export function materialsLedgerRepository(db: Knex) {
     return db("material_ledger_entries as e")
       .leftJoin("user as u", "u.id", "e.logged_by_id")
       .leftJoin("project_phases as ph", "ph.id", "e.stage_id")
-      .leftJoin("user as au", "au.id", "e.approved_by_id");
+      .leftJoin("user as au", "au.id", "e.approved_by_id")
+      .leftJoin("material_orders as mo", "mo.id", "e.material_order_id");
   }
 
   function catalogBase() {
@@ -93,25 +96,35 @@ export function materialsLedgerRepository(db: Knex) {
     actorId: string | null,
   ): Promise<MaterialCatalogRow> {
     const normalized = normalize(name);
-    const existing = await trx<MaterialCatalogRow>("materials_catalog")
-      .where({ project_id: projectId, normalized_name: normalized, unit })
-      .first();
+    const canonical = canonicalUnit(unit);
+    // "Cement" in bags and "cement" in bag are one line; so are "blocks" and
+    // "block". Older lines keep the unit they were opened with, so match on
+    // the canonical form of both sides, preferring the closest name.
+    const variants = nameVariants(normalized);
+    const candidates = await trx<MaterialCatalogRow>("materials_catalog")
+      .where({ project_id: projectId })
+      .whereIn("normalized_name", variants);
+    const existing = variants
+      .map((variant) => candidates.find((c) => c.normalized_name === variant && canonicalUnit(c.unit) === canonical))
+      .find(Boolean);
     if (existing) return existing;
+    const label = withoutPackaging(name.trim()) || name.trim();
+    const labelKey = normalize(label);
     const id = generateId("mcat");
     await trx("materials_catalog")
       .insert({
         id,
         project_id: projectId,
-        name: name.trim(),
-        normalized_name: normalized,
-        unit,
+        name: label,
+        normalized_name: labelKey,
+        unit: canonical,
         active: true,
         created_by_id: actorId,
       })
       .onConflict(["project_id", "normalized_name", "unit"])
       .ignore();
     const row = await trx<MaterialCatalogRow>("materials_catalog")
-      .where({ project_id: projectId, normalized_name: normalized, unit })
+      .where({ project_id: projectId, normalized_name: labelKey, unit: canonical })
       .first();
     if (!row) throw new Error("Failed to find-or-create catalog item");
     return row;

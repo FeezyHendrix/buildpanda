@@ -68,7 +68,7 @@ function OpenFormDrawer({
         />
         <Dialog.Popup
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex flex-col bg-white shadow-xl outline-none",
+            "fixed inset-y-visible right-0 z-50 flex flex-col bg-white shadow-xl outline-none",
             WIDTH_CLASS[width],
             "transition-transform duration-300 ease-out",
             "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
