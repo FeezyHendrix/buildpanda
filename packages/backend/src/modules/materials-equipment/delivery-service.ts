@@ -8,6 +8,7 @@ import type {
   MaterialOrderRow,
   MaterialOrderStatus,
   RecordDeliveryInput,
+  UpdateMaterialOrderInput,
 } from "./types.ts";
 
 /** What a goods-received event books elsewhere, wired by the route plugin. */
@@ -37,6 +38,15 @@ export interface DeliveryDeps {
 export interface DeliveryServiceHost {
   materialRow(projectId: string, orderId: string): Promise<MaterialOrderRow>;
   hydrateMaterialOrder(row: MaterialOrderRow): Promise<MaterialOrder>;
+  updateMaterialOrder(projectId: string, orderId: string, input: UpdateMaterialOrderInput): Promise<MaterialOrder>;
+}
+
+/** How a delivery reached the order, when it was not typed in as one. */
+export interface DeliveryOrigin {
+  /** A crew receipt already on the ledger, approved by a manager: link it, don't post again. */
+  ledgerEntryId?: string;
+  /** An invoice already records the cost; booking it again would double it. */
+  bookCost?: boolean;
 }
 
 const RECEIVABLE_STATUSES: MaterialOrderStatus[] = [
@@ -68,6 +78,7 @@ export function materialDeliveryService(
       orderId: string,
       input: RecordDeliveryInput,
       actorId: string,
+      origin: DeliveryOrigin = {},
     ): Promise<MaterialOrder> {
       const order = await host.materialRow(projectId, orderId);
       if (!RECEIVABLE_STATUSES.includes(order.status)) {
@@ -116,7 +127,7 @@ export function materialDeliveryService(
       });
 
       if (!rejected) {
-        const ledgerEntryId = await deps.bookStock?.({
+        const ledgerEntryId = origin.ledgerEntryId ?? await deps.bookStock?.({
           projectId,
           order,
           quantity: input.deliveredQty,
@@ -127,7 +138,7 @@ export function materialDeliveryService(
         });
         const amount = rate === null ? 0 : Math.round(rate * input.deliveredQty * 100) / 100;
         const transactionId =
-          amount > 0
+          amount > 0 && origin.bookCost !== false
             ? await deps.bookCost?.({
                 projectId,
                 order,
@@ -150,6 +161,37 @@ export function materialDeliveryService(
         await repository.createMaterialProcurementFromOrder(updated);
       }
       return host.hydrateMaterialOrder(updated ?? order);
+    },
+
+    /**
+     * An order edit. Marking it Delivered is taken to mean "the rest arrived":
+     * it is recorded as a delivery of what was outstanding, so the stock and
+     * the cost follow, rather than closing the order with nothing received.
+     */
+    async update(
+      projectId: string,
+      orderId: string,
+      input: UpdateMaterialOrderInput,
+      actorId: string,
+    ): Promise<MaterialOrder> {
+      if (input.status !== "Delivered") return host.updateMaterialOrder(projectId, orderId, input);
+      const { status: _status, deliveredAt, ...rest } = input;
+      const order = await host.hydrateMaterialOrder(await host.materialRow(projectId, orderId));
+      let result = order;
+      if (order.status !== "Delivered") {
+        result = await this.record(
+          projectId,
+          orderId,
+          {
+            deliveredQty: order.outstandingQuantity > 0 ? order.outstandingQuantity : order.quantity,
+            deliveredAt: deliveredAt ?? new Date().toISOString().slice(0, 10),
+            notes: "Recorded when the order was marked delivered",
+          },
+          actorId,
+        );
+      }
+      const others = Object.entries(rest).filter(([, value]) => value !== undefined);
+      return others.length ? host.updateMaterialOrder(projectId, orderId, rest) : result;
     },
   };
 }

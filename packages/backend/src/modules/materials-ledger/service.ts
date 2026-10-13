@@ -49,7 +49,31 @@ export interface LogEntryResult {
   onHandQty: number;
 }
 
+/** The order a receipt is logged against, as the ledger needs it. */
+export interface ReceiptOrder {
+  materialName: string;
+  unit: string;
+  stageId: string | null;
+  /** Cancelled and rejected orders take no more goods. */
+  receivable: boolean;
+}
+
 export interface LedgerSideEffects {
+  /** Resolves an order a receipt names; null when it is not on the project. */
+  receiptOrder?: (projectId: string, orderId: string) => Promise<ReceiptOrder | null>;
+  /**
+   * A crew receipt against an order has just been accepted: record it on the
+   * order as a delivery (status, cost) without posting the stock twice.
+   */
+  onReceiptApproved?: (info: {
+    projectId: string;
+    entryId: string;
+    materialOrderId: string;
+    quantity: number;
+    occurredAt: string;
+    deliveryNote: string | null;
+    actorId: string;
+  }) => Promise<void>;
   onNegativeStock?: (info: {
     projectId: string;
     materialName: string;
@@ -138,6 +162,7 @@ function buildEntry(row: LedgerEntryRow, files: LedgerEntryFileRow[]): LedgerEnt
     loggedById: row.logged_by_id,
     loggedByName: row.logged_by_name,
     materialOrderId: row.material_order_id,
+    materialOrderTitle: row.material_order_title ?? null,
     taskId: row.task_id,
     activityId: row.activity_id,
     reversalForEntryId: row.reversal_for_entry_id,
@@ -162,6 +187,26 @@ export function materialsLedgerService(
     if (!row || row.project_id !== projectId) throw new NotFoundError("Ledger entry");
     const files = await repository.listFilesForEntries([entryId]);
     return buildEntry(row, files);
+  }
+
+  /**
+   * A receipt against an order is that order's material: it takes the
+   * order's name and unit so it lands on the same stock line the order
+   * will, whatever the crew typed. Usage is never tied to an order.
+   */
+  async function againstOrder(projectId: string, input: LogEntryInput): Promise<LogEntryInput> {
+    if (!input.materialOrderId) return input;
+    if (input.entryType !== "IN") return { ...input, materialOrderId: null };
+    const order = await sideEffects.receiptOrder?.(projectId, input.materialOrderId);
+    if (!sideEffects.receiptOrder) return input;
+    if (!order) throw new BadRequestError("That material order is not on this project");
+    if (!order.receivable) throw new BadRequestError("That material order is closed and cannot receive goods");
+    return {
+      ...input,
+      materialName: order.materialName,
+      unit: order.unit,
+      stageId: input.stageId ?? order.stageId,
+    };
   }
 
   return {
@@ -221,8 +266,9 @@ export function materialsLedgerService(
       return rows.map((row) => buildEntry(row, files));
     },
 
-    async logEntry(projectId: string, input: LogEntryInput, actorId: string | null): Promise<LogEntryResult> {
-      if (input.quantity <= 0) throw new BadRequestError("Quantity must be greater than zero");
+    async logEntry(projectId: string, rawInput: LogEntryInput, actorId: string | null): Promise<LogEntryResult> {
+      if (rawInput.quantity <= 0) throw new BadRequestError("Quantity must be greater than zero");
+      const input = await againstOrder(projectId, rawInput);
       const unit = (input.unit || "item").trim();
       const catalog = await repository.findOrCreateCatalog(projectId, input.materialName, unit, actorId);
 
@@ -290,8 +336,21 @@ export function materialsLedgerService(
     },
 
       async approveEntry(projectId: string, entryId: string, actorId: string): Promise<LedgerEntry> {
+        const before = await repository.findEntryById(entryId);
         const row = await repository.approveEntry(projectId, entryId, actorId);
-        if (!row) throw new NotFoundError("Ledger entry");
+        if (!row || !before) throw new NotFoundError("Ledger entry");
+        const accepted = before.approval_status === "Pending" && before.status === "Posted";
+        if (accepted && before.entry_type === "IN" && before.material_order_id) {
+          await sideEffects.onReceiptApproved?.({
+            projectId,
+            entryId,
+            materialOrderId: before.material_order_id,
+            quantity: Number(before.quantity),
+            occurredAt: toIso(before.occurred_at),
+            deliveryNote: before.delivery_note,
+            actorId,
+          });
+        }
         return loadEntry(projectId, entryId);
       },
 

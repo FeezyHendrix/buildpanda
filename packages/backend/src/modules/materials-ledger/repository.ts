@@ -60,6 +60,7 @@ const ENTRY_SELECT = [
   "au.name as approved_by_name",
   "e.approved_at",
   "e.material_order_id",
+  "mo.title as material_order_title",
   "e.task_id",
   "e.activity_id",
   "e.reversal_for_entry_id",
@@ -77,7 +78,8 @@ export function materialsLedgerRepository(db: Knex) {
     return db("material_ledger_entries as e")
       .leftJoin("user as u", "u.id", "e.logged_by_id")
       .leftJoin("project_phases as ph", "ph.id", "e.stage_id")
-      .leftJoin("user as au", "au.id", "e.approved_by_id");
+      .leftJoin("user as au", "au.id", "e.approved_by_id")
+      .leftJoin("material_orders as mo", "mo.id", "e.material_order_id");
   }
 
   function catalogBase() {

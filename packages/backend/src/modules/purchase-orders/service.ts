@@ -26,6 +26,20 @@ export interface PurchaseOrdersDeps {
   // Wired by the route plugin from the stages module so this service never
   // touches project_phases directly.
   stageBelongsToProject?: (projectId: string, stageId: string) => Promise<boolean>;
+  /** The PO raised from a material order went out: the order is now placed. */
+  materialOrderIssued?: (projectId: string, orderId: string, poNumber: string) => Promise<void>;
+  /**
+   * Goods came in against a PO raised from a material order: they are a
+   * delivery on that order, which books the stock and moves its status.
+   */
+  materialOrderReceived?: (input: {
+    projectId: string;
+    orderId: string;
+    quantity: number;
+    receivedAt: string;
+    poNumber: string;
+    actorId: string;
+  }) => Promise<void>;
 }
 
 function optional(value: string | null | undefined): string | null | undefined {
@@ -260,6 +274,7 @@ export function purchaseOrdersService(
         order_date: current.order_date ?? issuedAt,
       });
       if (!row) throw new NotFoundError("Purchase order");
+      if (row.material_order_id) await deps.materialOrderIssued?.(projectId, row.material_order_id, row.po_number);
       return buildPurchaseOrder(row);
     },
 
@@ -272,6 +287,7 @@ export function purchaseOrdersService(
       projectId: string,
       purchaseOrderId: string,
       input: ReceivePurchaseOrderInput,
+      actorId: string,
     ): Promise<PurchaseOrder> {
       const current = await getOwnedPurchaseOrder(projectId, purchaseOrderId);
       assertAction(current.status, ["Issued", "PartiallyReceived"], "received against");
@@ -299,6 +315,23 @@ export function purchaseOrdersService(
         ...(input.note ? { notes: [current.notes, input.note.trim()].filter(Boolean).join("\n") } : {}),
       });
       if (!row) throw new NotFoundError("Purchase order");
+      // Received quantities are running totals; only what is new this time
+      // arrived now. A correction downwards is the PO's own record, not a
+      // delivery, so it does not reach the order.
+      const arrived = received.reduce(
+        (sum, line) => sum + Math.max(0, line.receivedQuantity - Number(byId.get(line.itemId)!.received_quantity)),
+        0,
+      );
+      if (row.material_order_id && arrived > 0) {
+        await deps.materialOrderReceived?.({
+          projectId,
+          orderId: row.material_order_id,
+          quantity: arrived,
+          receivedAt: today(),
+          poNumber: row.po_number,
+          actorId,
+        });
+      }
       return buildPurchaseOrder(row);
     },
 

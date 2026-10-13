@@ -5,6 +5,7 @@ import type {
   EquipmentHireExtension,
   EquipmentRequestRow,
   EquipmentRequestStatus,
+  MaterialApprovalRef,
   MaterialDeliveryRow,
   MaterialOrderRow,
   MaterialOrderStatus,
@@ -40,6 +41,7 @@ export interface NewMaterialOrderRecord {
   rejected_reason: string | null;
   invoice_id: string | null;
   invoice_line_item_id: string | null;
+  approval_id: string | null;
 }
 
 export type MaterialOrderPatch = Partial<Omit<NewMaterialOrderRecord, "id" | "project_id" | "requested_by_id">> & {
@@ -100,6 +102,7 @@ export interface NewMaterialDeliveryRecord {
 
 const MATERIAL_SELECT = [
   "mo.id",
+  "mo.approval_id",
   "mo.project_id",
   "mo.title",
   "mo.material_name",
@@ -265,26 +268,13 @@ export function materialsEquipmentRepository(db: Knex) {
       await db("material_deliveries").where({ id: deliveryId }).update(links);
     },
 
-    /**
-     * Approval status of the material-approval request covering each order's
-     * material, worst-first: a Rejected or Pending sample blocks the order.
-     */
-    async approvalStatusByMaterial(projectId: string): Promise<Map<string, string>> {
-      const rows = await db("approvals as a")
+    /** Every material approval on the project, for linking orders to their sign-off. */
+    listMaterialApprovals(projectId: string): Promise<MaterialApprovalRef[]> {
+      return db("approvals as a")
         .join("material_approval_details as d", "d.approval_id", "a.id")
         .where({ "a.project_id": projectId, "a.kind": "material" })
         .orderBy("a.created_at", "desc")
-        .select("d.material_name", "a.status");
-      const byMaterial = new Map<string, string>();
-      for (const row of rows as Array<{ material_name: string; status: string }>) {
-        const key = row.material_name.trim().toLowerCase();
-        const current = byMaterial.get(key);
-        // The latest decision wins unless an earlier one is still unresolved.
-        if (!current || (current === "Approved" && row.status !== "Approved")) {
-          byMaterial.set(key, row.status);
-        }
-      }
-      return byMaterial;
+        .select("a.id", "a.title", "a.status", "a.resubmitted_from_id", "d.material_name");
     },
 
     async createMaterialProcurementFromOrder(order: MaterialOrderRow): Promise<void> {

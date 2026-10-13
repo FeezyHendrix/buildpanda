@@ -34,7 +34,7 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     limits: { fileSize: config.uploads.maxFileBytes, files: 1 },
   });
 
-  const { service } = buildMaterialsServices(fastify);
+  const { service, deliveries } = buildMaterialsServices(fastify);
   const boqJobs = boqJobsRepository(fastify.db);
   const budget = budgetService(budgetRepository(fastify.db));
 
@@ -195,7 +195,8 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
       const needsApprove =
         request.body.status !== undefined && MATERIAL_APPROVAL_STATUSES.has(request.body.status);
       assertMaterialsAction(request, project, needsApprove ? "approve" : "request");
-      return service.updateMaterialOrder(request.params.id, request.params.orderId, request.body);
+      const user = request.requireAuth();
+      return deliveries.update(request.params.id, request.params.orderId, request.body, user.id);
     },
   );
 

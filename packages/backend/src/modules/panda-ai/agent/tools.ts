@@ -640,7 +640,7 @@ export function buildTools(): AgentTool[] {
       return { output: inspections.map((i) => ({ title: i.title, category: i.category, status: i.status, serviceStatus: i.service_status, riskLevel: i.risk_level, scheduledAt: i.scheduled_at, inspector: i.inspector_user_name ?? i.inspector_name, contractorInspected: i.contractor_name, outcome: i.outcome, findings: i.findings, reportIssuedAt: i.report_issued_at })) };
     }),
 
-    tool(fn("get_materials", "Get planned material orders and requests (what was ordered) with status, supplier, cost and the deliveries received against each one (quantity, date, delivery-note number, and whether a load was rejected). This is the procurement list, NOT current stock on hand — for how much of a material is currently available, use get_material_stock. For which orders are running late, use get_late_material_orders."), async (ctx) => {
+    tool(fn("get_materials", "Get planned material orders and requests (what was ordered) with status, supplier, cost, the material approval each order was placed against (title and status, null when none), and the deliveries received against each one (quantity, date, delivery-note number, and whether a load was rejected). This is the procurement list, NOT current stock on hand — for how much of a material is currently available, use get_material_stock. For which orders are running late, use get_late_material_orders."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const materials = await repo.materials(ctx.projectId);
       const deliveries = await repo.deliveriesForOrders(materials.map((m) => m.id));
@@ -658,6 +658,7 @@ export function buildTools(): AgentTool[] {
         status: m.status,
         neededBy: m.needed_by,
         estimatedCost: m.estimated_cost,
+        approval: m.approval_title ? { title: m.approval_title, status: m.approval_status } : null,
         deliveries: (byOrder.get(m.id) ?? []).map((d) => ({
           quantity: d.delivered_qty,
           deliveredAt: d.delivered_at,

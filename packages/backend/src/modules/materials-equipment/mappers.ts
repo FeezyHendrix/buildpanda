@@ -120,7 +120,7 @@ export function acceptedQuantity(deliveries: MaterialDeliveryRow[]): number {
 export function toMaterialOrder(
   row: MaterialOrderRow,
   deliveries: MaterialDeliveryRow[] = [],
-  approvalStatus: string | null = null,
+  approval: { id: string; title: string; status: string } | null = null,
 ): MaterialOrder {
   const quantity = num(row.quantity);
   const delivered = acceptedQuantity(deliveries);
@@ -160,7 +160,9 @@ export function toMaterialOrder(
     deliveredQuantity: delivered,
     outstandingQuantity: Math.max(0, Math.round((quantity - delivered) * 100) / 100),
     deliveries: deliveries.map(toDelivery),
-    approvalStatus,
+    approvalId: approval?.id ?? null,
+    approvalTitle: approval?.title ?? null,
+    approvalStatus: approval?.status ?? null,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };
