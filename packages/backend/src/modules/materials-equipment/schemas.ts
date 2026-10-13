@@ -74,6 +74,7 @@ export const materialBody = {
     currency: { type: "string", enum: ["NGN", "USD"] },
     deliveryLocation: { type: ["string", "null"], maxLength: 200 },
     notes: { type: ["string", "null"], maxLength: 2000 },
+    approvalId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 
@@ -218,6 +219,8 @@ export const materialOrderResponse = {
     deliveredQuantity: { type: "number" },
     outstandingQuantity: { type: "number" },
     deliveries: { type: "array", items: deliveryResponse },
+    approvalId: { type: ["string", "null"] },
+    approvalTitle: { type: ["string", "null"] },
     approvalStatus: { type: ["string", "null"] },
     createdAt: { type: "string" },
     updatedAt: { type: "string" },

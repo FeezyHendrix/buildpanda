@@ -89,7 +89,12 @@ export interface MaterialOrder extends LifecycleLinks {
   deliveredQuantity: number;
   outstandingQuantity: number;
   deliveries: MaterialDelivery[];
-  /** Status of the material-approval request covering this material, if any. */
+  /**
+   * The material approval this order relies on — the newest request in its
+   * resubmission chain — and its status. Null when none covers the material.
+   */
+  approvalId: string | null;
+  approvalTitle: string | null;
   approvalStatus: string | null;
   createdAt: string;
   updatedAt: string;
@@ -140,8 +145,18 @@ export interface EquipmentRequest extends LifecycleLinks {
   updatedAt: string;
 }
 
+/** A material approval as an order sees it: enough to link and gate on. */
+export interface MaterialApprovalRef {
+  id: string;
+  title: string;
+  status: string;
+  resubmitted_from_id: string | null;
+  material_name: string;
+}
+
 export interface MaterialOrderRow {
   id: string;
+  approval_id: string | null;
   project_id: string;
   title: string;
   material_name: string;
@@ -277,6 +292,8 @@ export interface CreateMaterialOrderInput {
   notes?: string | null;
   invoiceId?: string | null;
   invoiceLineItemId?: string | null;
+  /** The sign-off this order is placed against; matched by material when omitted. */
+  approvalId?: string | null;
 }
 
 export type UpdateMaterialOrderInput = Partial<CreateMaterialOrderInput> & {

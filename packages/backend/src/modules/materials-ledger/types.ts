@@ -52,6 +52,8 @@ export interface LedgerEntry {
   loggedById: string | null;
   loggedByName: string | null;
   materialOrderId: string | null;
+  /** The order this movement arrived against; null on a receipt is an unplanned delivery. */
+  materialOrderTitle: string | null;
   taskId: string | null;
   activityId: string | null;
   reversalForEntryId: string | null;
@@ -121,6 +123,7 @@ export interface LedgerEntryRow {
   logged_by_id: string | null;
   logged_by_name: string | null;
   material_order_id: string | null;
+  material_order_title?: string | null;
   task_id: string | null;
   activity_id: string | null;
   reversal_for_entry_id: string | null;

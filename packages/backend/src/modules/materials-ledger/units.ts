@@ -81,3 +81,18 @@ export function nameVariants(normalized: string): string[] {
   }
   return [...new Set(variants)];
 }
+
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Whether two records name the same material, by the same rule the ledger
+ * uses to pick a stock line. Approvals, orders and deliveries are typed by
+ * different people; "Bags of cement" on the order is the cement that was
+ * approved, so a link between them must not depend on identical spelling.
+ */
+export function sameMaterial(a: string, b: string): boolean {
+  const left = new Set(nameVariants(normalizeName(a)));
+  return nameVariants(normalizeName(b)).some((variant) => left.has(variant));
+}

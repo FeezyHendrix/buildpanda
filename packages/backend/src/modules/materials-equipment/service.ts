@@ -1,5 +1,6 @@
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import { approvalIndex } from "./approval-link.ts";
 import type { MaterialsEquipmentRepository } from "./repository.ts";
 import { num, optionalText, requiredText, toMaterialOrder, today } from "./mappers.ts";
 import {
@@ -80,8 +81,21 @@ export function materialsEquipmentService(
     return row;
   }
 
-  function approvalKey(materialName: string): string {
-    return materialName.trim().toLowerCase();
+  async function approvalsOf(projectId: string) {
+    return approvalIndex(await repository.listMaterialApprovals(projectId));
+  }
+
+  /** An explicit link must name a material approval on this project. */
+  async function resolveApprovalId(
+    projectId: string,
+    approvalId: string | null | undefined,
+    materialName: string,
+  ): Promise<string | null> {
+    const approvals = await approvalsOf(projectId);
+    if (approvalId === null) return null;
+    if (approvalId === undefined) return approvals.forMaterial(materialName)?.id ?? null;
+    if (!approvals.has(approvalId)) throw new BadRequestError("That material approval is not on this project");
+    return approvalId;
   }
 
   async function hydrate(rows: MaterialOrderRow[]): Promise<MaterialOrder[]> {
@@ -89,7 +103,7 @@ export function materialsEquipmentService(
     const projectId = rows[0]!.project_id;
     const [deliveries, approvals] = await Promise.all([
       repository.listDeliveriesForOrders(rows.map((r) => r.id)),
-      repository.approvalStatusByMaterial(projectId),
+      approvalsOf(projectId),
     ]);
     const byOrder = new Map<string, MaterialDeliveryRow[]>();
     for (const delivery of deliveries) {
@@ -101,7 +115,7 @@ export function materialsEquipmentService(
       toMaterialOrder(
         row,
         byOrder.get(row.id) ?? [],
-        approvals.get(approvalKey(row.material_name)) ?? null,
+        approvals.forOrder(row),
       ),
     );
   }
@@ -177,6 +191,7 @@ export function materialsEquipmentService(
         rejected_reason: null,
         invoice_id: input.invoiceId ?? null,
         invoice_line_item_id: input.invoiceLineItemId ?? null,
+        approval_id: await resolveApprovalId(projectId, input.approvalId, input.materialName),
       });
       if (status === "Delivered") await repository.createMaterialProcurementFromOrder(row);
       return one(row);
@@ -209,30 +224,38 @@ export function materialsEquipmentService(
             `A ${input.status.toLowerCase()} order must say why — record the reason on the order`,
           );
         }
+        // Goods arrive through a delivery, which books the stock and the cost.
+        // A bare status change would close the order with nothing received.
+        if (input.status === "Delivered" || input.status === "PartiallyDelivered") {
+          throw new ConflictError("Record a delivery against the order — that books the stock and moves its status");
+        }
         // Placing an order for a material whose sample is still unapproved (or
-        // was rejected) is a commercial risk, so it takes a deliberate override.
-        if (input.status === "Ordered" && !input.force) {
-          const approvals = await repository.approvalStatusByMaterial(projectId);
-          const approval = approvals.get(approvalKey(current.material_name));
-          if (approval === "Pending" || approval === "Rejected" || approval === "Resubmit") {
-            throw new ConflictError(
-              `${current.material_name} has a ${approval.toLowerCase()} material approval — resolve it or order with an override note`,
-              { approvalStatus: approval },
-            );
+        // was rejected) is a commercial risk, so it takes a deliberate override
+        // that says why.
+        if (input.status === "Ordered") {
+          const approval = (await approvalsOf(projectId)).forOrder(current);
+          const status = approval?.status;
+          if (status === "Pending" || status === "Rejected" || status === "Resubmit") {
+            if (!input.force) {
+              throw new ConflictError(
+                `${current.material_name} has a ${status.toLowerCase()} material approval — resolve it or order with an override note`,
+                { approvalStatus: status, approvalId: approval?.id },
+              );
+            }
+            if (!optionalText(input.forceNote)) {
+              throw new BadRequestError("Say why this is being ordered before its material approval is resolved");
+            }
           }
         }
       }
 
       // A transition is the moment the thing happened: reaching Ordered dates
-      // the order, reaching Delivered dates the delivery, unless the caller
-      // states the real date.
+      // the order unless the caller states the real date. (Delivered is dated
+      // by the delivery that reaches it.)
       const stamps: Record<string, string | null> = {};
       const now = today();
       if (input.status === "Ordered" && current.status !== "Ordered" && !current.ordered_at && !input.orderedAt) {
         stamps["ordered_at"] = now;
-      }
-      if (input.status === "Delivered" && current.status !== "Delivered" && !current.delivered_at && !input.deliveredAt) {
-        stamps["delivered_at"] = now;
       }
       if (input.status === "Cancelled") stamps["cancel_reason"] = reason;
       if (input.status === "Rejected") stamps["rejected_reason"] = reason;
@@ -258,6 +281,9 @@ export function materialsEquipmentService(
           ? await resolveSupplier(projectId, input.supplierId ?? current.supplier_id, input.supplier)
           : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.approvalId !== undefined
+          ? { approval_id: await resolveApprovalId(projectId, input.approvalId, current.material_name) }
+          : {}),
         ...(input.priority !== undefined ? { priority: input.priority } : {}),
         ...(input.phaseId !== undefined ? { phase_id: input.phaseId } : {}),
         ...(input.activityId !== undefined ? { activity_id: input.activityId } : {}),

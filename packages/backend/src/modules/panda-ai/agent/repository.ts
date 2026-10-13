@@ -303,19 +303,22 @@ export function agentRepository(db: Knex) {
     },
 
     materials(projectId: string) {
-      return db("material_orders")
-        .where({ project_id: projectId })
-        .orderBy("created_at", "desc")
+      return db("material_orders as mo")
+        .leftJoin("approvals as ap", "ap.id", "mo.approval_id")
+        .where({ "mo.project_id": projectId })
+        .orderBy("mo.created_at", "desc")
         .select(
-          "id",
-          "material_name",
-          "quantity",
-          "unit",
-          "supplier",
-          "status",
-          "needed_by",
-          "estimated_cost",
-          "currency",
+          "mo.id",
+          "ap.title as approval_title",
+          "ap.status as approval_status",
+          "mo.material_name",
+          "mo.quantity",
+          "mo.unit",
+          "mo.supplier",
+          "mo.status",
+          "mo.needed_by",
+          "mo.estimated_cost",
+          "mo.currency",
         );
     },
 

@@ -12,6 +12,7 @@ import { filesRepository } from "../files/repository.ts";
 import { filesService } from "../files/service.ts";
 import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
 import { materialsEquipmentService } from "../materials-equipment/service.ts";
+import { buildMaterialsServices } from "../materials-equipment/wiring.ts";
 import { suppliersRepository } from "../suppliers/repository.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
 import { logger } from "../../lib/logger.ts";
@@ -127,6 +128,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
   const tasks = tasksService(tasksRepository(fastify.db), { notifications });
   const projects = projectsRepository(fastify.db);
   const orders = materialsEquipmentService(materialsEquipmentRepository(fastify.db));
+  const procurement = buildMaterialsServices(fastify);
   const suppliers = suppliersRepository(fastify.db);
 
   const service = materialsLedgerService(materialsLedgerRepository(fastify.db), {
@@ -162,6 +164,35 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     // material has auto-reorder enabled, we go further and raise a "Requested"
     // material order against the preferred supplier so procurement can act on
     // it immediately rather than discovering the shortfall later.
+    receiptOrder: async (projectId, orderId) => {
+      const order = await procurement.service.getMaterialOrder(projectId, orderId).catch(() => null);
+      if (!order) return null;
+      return {
+        materialName: order.materialName,
+        unit: order.unit,
+        stageId: order.phaseId,
+        // Goods count against an order once it is approved; before that there
+        // is nothing agreed to receive them against.
+        receivable: ["Approved", "Ordered", "PartiallyDelivered", "Delivered"].includes(order.status),
+      };
+    },
+    // Accepting the receipt is the moment the goods count; the order learns of
+    // them now, not when the crew claimed them.
+    onReceiptApproved: async ({ projectId, entryId, materialOrderId, quantity, occurredAt, deliveryNote, actorId }) => {
+      // The stock is already accepted; an order that has since been closed
+      // must not undo that, so a failure here is logged, not thrown.
+      try {
+        await procurement.deliveries.record(
+          projectId,
+          materialOrderId,
+          { deliveredQty: quantity, deliveredAt: occurredAt.slice(0, 10), deliveryNote, notes: "Logged on site and approved" },
+          actorId,
+          { ledgerEntryId: entryId },
+        );
+      } catch (error) {
+        logger.warn({ err: error, projectId, entryId, materialOrderId }, "Approved receipt not recorded on its order");
+      }
+    },
     onLowStock: ({
       projectId,
       materialName,
