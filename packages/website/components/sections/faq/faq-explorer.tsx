@@ -3,6 +3,7 @@
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { faq, type FaqItem as FaqItemData } from "@/content/faq";
+import { AskQuestion } from "./ask-question";
 import { FaqItem } from "./faq-item";
 
 /** Every word typed must appear somewhere in the question or its answer. */
@@ -70,13 +71,10 @@ export function FaqExplorer({ items }: { items: ReadonlyArray<FaqItemData> }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-4 border border-line bg-white px-4 py-5 text-[0.9375rem]">
-          {faq.search.empty}{" "}
-          <a href={faq.search.emptyAction.href} className="font-semibold text-brand underline underline-offset-4">
-            {faq.search.emptyAction.label}
-          </a>
-        </p>
+        <p className="mt-4 border border-line bg-white px-4 py-5 text-[0.9375rem]">{faq.search.empty}</p>
       )}
+
+      {query.trim().length >= 3 ? <AskQuestion question={query} /> : null}
     </div>
   );
 }

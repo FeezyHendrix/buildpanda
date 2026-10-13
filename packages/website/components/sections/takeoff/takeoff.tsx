@@ -10,7 +10,7 @@ import { TakeoffSteps } from "./takeoff-steps";
 /** Panda AI: a drawing goes in, an itemised takeoff sheet comes out. */
 export function Takeoff() {
   return (
-    <Section theme="dark" className="overflow-hidden">
+    <Section theme="dark" id="how-it-works" className="scroll-mt-(--nav-height) overflow-hidden">
       <div className="site-container py-16 lg:py-24">
         <EyebrowPill>{takeoff.eyebrow}</EyebrowPill>
         <h2 className="mt-4 text-[clamp(2rem,1.2rem+2.9vw,3.5rem)] leading-[1.05] font-medium tracking-[-0.03em] text-balance">
