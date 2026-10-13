@@ -122,12 +122,14 @@ export const config = {
       .trim(),
     logoUrl: optional("EMAIL_LOGO_URL", "https://buildpanda.io/logo.png"),
     walkthroughVideoUrl: optional("WALKTHROUGH_VIDEO_URL", "https://buildpanda.io"),
-    // Inboxes that receive "Book a consultation" leads from the marketing
-    // site. Comma-separated.
-    leadsNotifyAddresses: optional(
-      "LEADS_NOTIFY_EMAIL",
-      "buildpanda.io@gmail.com,michaelade.build@gmail.com",
-    )
+    // Inboxes that receive leads from the marketing site (demo and
+    // consultation requests, FAQ questions). Comma-separated.
+    leadsNotifyAddresses: optional("LEADS_NOTIFY_EMAIL", "michael@buildpanda.io")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+    // Copied on every lead email. Comma-separated; set it empty for none.
+    leadsCcAddresses: optional("LEADS_CC_EMAIL", "innocent@buildpanda.io")
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean),
