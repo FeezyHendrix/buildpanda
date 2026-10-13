@@ -1,5 +1,5 @@
 import { getRandomBytes } from "expo-crypto";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { API_BASE_URL } from "./api-base-url";
 import { createSession, type PayloadSession } from "./payload-crypto";
 
 // Hermes has no crypto.getRandomValues; expo-crypto reads the OS generator.

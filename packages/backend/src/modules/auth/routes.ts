@@ -35,9 +35,15 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         `http://${request.headers.host ?? "localhost"}`,
       );
 
+      // The body reaching here is already parsed (and, on test and app,
+      // decrypted), so Better Auth is handed plain JSON: the sealed content
+      // type and the sealed length no longer describe it.
+      const headers = toHeaders(request.headers);
+      headers.delete("content-length");
+      if (request.body) headers.set("content-type", "application/json");
       const req = new Request(url.toString(), {
         method: request.method,
-        headers: toHeaders(request.headers),
+        headers,
         ...(request.body ? { body: JSON.stringify(request.body) } : {}),
       });
 
@@ -58,6 +64,9 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
       reply.status(response.status);
       response.headers.forEach((value, key) => {
+        // Fastify sets the length of what it actually sends, which differs
+        // from Better Auth's once the reply is sealed.
+        if (key === "content-length") return;
         reply.header(key, value);
       });
 
