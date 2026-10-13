@@ -48,7 +48,8 @@ const materialOrderPayload = z.object({
 const materialLogPayload = z.object({
   entryType: z.enum(["IN", "USED"]),
   materialName: z.string().min(1),
-  quantity: z.number(),
+  // "Used 25" is 25 out, never -25: the entry type carries the direction.
+  quantity: z.number().transform(Math.abs),
   unit: z.string().min(1),
   locationKey: z.string().nullish(),
   reason: z.string().nullish(),
@@ -199,6 +200,7 @@ const EMPTY_SNAPSHOT: ProjectSnapshot = {
   activities: [],
   delayReasons: [],
   ledgerEntries: [],
+  materials: [],
   todayEntries: [],
   stages: [],
   buildings: [],

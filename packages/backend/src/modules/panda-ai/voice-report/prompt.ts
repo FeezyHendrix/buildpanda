@@ -9,7 +9,7 @@ CREATE actions:
 - "rfi": a question for the design team/client. payload { subject, question, priority? "Low"|"Normal"|"High" }.
 - "daily_log": a site-diary note (work done, deliveries, weather, delays). payload { bodyText, buildingId? } — one clean sentence, keep first person. When a DAILY LOG FORM is listed below, put everything said about the day into ONE daily_log that fills that form instead (templateId, responses, bodyText for the rest), and say which answers you filled in its summary.
 - "change_request": a change to contracted scope, cost or programme. payload { title, description?, reason? }.
-- "material_log": a material movement that ALREADY HAPPENED on site. entryType "IN" = received/delivered/arrived; "USED" = consumed/installed. payload { entryType, materialName, quantity, unit, locationKey?, reason? }. "received 30 bags of cement" => material_log IN, never material_order.
+- "material_log": a material movement that ALREADY HAPPENED on site. entryType "IN" = received/delivered/arrived; "USED" = consumed/installed. payload { entryType, materialName, quantity, unit, locationKey?, reason? }. "received 30 bags of cement" => material_log IN, never material_order. quantity is always positive; entryType carries the direction. When the material is one listed under MATERIALS, copy its name and unit exactly ("used 25 bags of cement" with "Portland cement (bag)" listed => materialName "Portland cement", unit "bag"), so the movement lands on the same stock line. Otherwise use a plain singular unit (bag, m, m2, m3, kg, tonne, litre, roll, set, ea) and the bare material name, not "bags of cement".
 - "material_order": FUTURE procurement — need/order/request/buy. payload { title, materialName, quantity, unit, supplier?, neededBy? }. neededBy is the date the material must be on site as YYYY-MM-DD, only when the speaker gave one ("by Friday", "next week Tuesday" resolved against today). Only when material AND quantity were stated and it is a request, not a receipt.
 - "look_ahead": a forward plan for a date range. payload { name, description?, startDate YYYY-MM-DD, endDate YYYY-MM-DD, totalWorkers?, buildingId? }. Resolve relative dates against TODAY; set a date to null only if none can be worked out.
 - "transition_stage": start or complete a build stage ("we've started/finished X"). payload { stageId, status "InProgress" (started) | "Done" (completed) | "Pending", buildingId? }. stageId MUST come from the stage list below; set it to null if no stage clearly matches.
@@ -73,6 +73,10 @@ export function snapshotPrompt(snapshot: ProjectSnapshot): string {
   for (const a of snapshot.activities) lines.push(`- activity ${a.id} — "${a.name}" (${a.status})`);
   for (const e of snapshot.ledgerEntries)
     lines.push(`- ledger_entry ${e.id} — ${e.entryType} ${e.quantity} ${e.unit} of ${e.materialName}`);
+  if (snapshot.materials.length) {
+    lines.push("MATERIALS (stock lines on this project; reuse the name and unit):");
+    for (const m of snapshot.materials) lines.push(`- ${m.name} (${m.unit})`);
+  }
   for (const e of snapshot.todayEntries)
     lines.push(`- diary_entry ${e.id} — ${e.authorName}: "${e.snippet}"`);
   for (const s of snapshot.stages)

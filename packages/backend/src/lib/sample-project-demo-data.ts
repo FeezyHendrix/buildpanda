@@ -174,7 +174,8 @@ async function addSampleMaterials(trx: Knex.Transaction, ctx: DemoContext, mater
     delivery_location: "Main Duplex dry room",
     notes: "Supplier confirmed stock for next pour.",
   });
-  await trx("material_ledger_entries").insert({
+  // On hand (280) must be what the ledger adds up to: 400 in, 120 used.
+  await trx("material_ledger_entries").insert([{
     id: generateId("mle"),
     project_id: ctx.projectId,
     idempotency_key: `${ctx.projectId}:sample-cement-in`,
@@ -193,7 +194,26 @@ async function addSampleMaterials(trx: Knex.Transaction, ctx: DemoContext, mater
     notes_html: "<p>Received against approved supplier quote.</p>",
     stage_id: ctx.phaseIds[1],
     approval_status: "Approved",
-  });
+  }, {
+    id: generateId("mle"),
+    project_id: ctx.projectId,
+    idempotency_key: `${ctx.projectId}:sample-cement-used`,
+    entry_type: "USED",
+    status: "Posted",
+    material_id: materialId,
+    material_name_snapshot: "Portland cement",
+    unit_snapshot: "bag",
+    location_key: "default",
+    quantity: 120,
+    stock_delta: -120,
+    occurred_at: ctx.weeksFromNow(-1).toISOString(),
+    timestamp_suspect: false,
+    negative_stock: false,
+    reason: "Ground-floor slab pour",
+    notes_html: null,
+    stage_id: ctx.phaseIds[1],
+    approval_status: "Approved",
+  }]);
 }
 
 async function addSampleTasks(trx: Knex.Transaction, ctx: DemoContext, boardId: string, todoColumnId: string, doingColumnId: string): Promise<void> {

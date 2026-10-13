@@ -242,6 +242,12 @@ export interface SnapshotLedgerEntry {
   unit: string;
 }
 
+/** A stock line on the project, so a spoken movement lands on the same one. */
+export interface SnapshotMaterial {
+  name: string;
+  unit: string;
+}
+
 export interface SnapshotDailyLogEntry {
   id: string;
   logDate: string;
@@ -270,6 +276,7 @@ export interface ProjectSnapshot {
   activities: SnapshotActivity[];
   delayReasons: SnapshotDelayReason[];
   ledgerEntries: SnapshotLedgerEntry[];
+  materials: SnapshotMaterial[];
   todayEntries: SnapshotDailyLogEntry[];
   stages: SnapshotStage[];
   buildings: SnapshotBuilding[];
