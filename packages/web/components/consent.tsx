@@ -101,7 +101,7 @@ export function ConsentBanner() {
       className="fixed inset-x-0 bottom-0 z-[60] border-t border-line bg-white/95 backdrop-blur"
     >
       <div className="site-container flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
-        <p className="max-w-3xl text-sm leading-relaxed text-ink-soft">
+        <p className="max-w-3xl text-sm leading-relaxed text-muted">
           We use cookies that are needed to run the site, and, only if you agree,
           analytics that tell us which pages people read. You can change your
           mind at any time from the footer. See our{" "}
@@ -116,14 +116,14 @@ export function ConsentBanner() {
           <button
             type="button"
             onClick={() => choose("essential")}
-            className="inline-flex h-10 items-center justify-center rounded-full border border-line px-4 text-sm font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-line px-4 text-sm font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
           >
             Essential only
           </button>
           <button
             type="button"
             onClick={() => choose("analytics")}
-            className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-4 text-sm font-semibold text-white transition-colors hover:opacity-90"
+            className="inline-flex h-10 items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
           >
             Accept analytics
           </button>

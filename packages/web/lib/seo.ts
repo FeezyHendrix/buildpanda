@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { site } from "@/content/site";
+import { site } from "./site";
 
 /**
  * next.config.mjs sets trailingSlash: true, so /about 308-redirects to /about/.
@@ -23,7 +23,7 @@ const ogImage = {
   url: "/opengraph-image/",
   width: 1200,
   height: 630,
-  alt: "BuildPanda: the construction operating system for Africa",
+  alt: "BuildPanda: run every project from estimate to handover, on one system",
 };
 
 interface PageSeo {

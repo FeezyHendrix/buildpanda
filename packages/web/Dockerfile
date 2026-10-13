@@ -7,12 +7,6 @@ FROM node:22-alpine AS base
 WORKDIR /app
 
 FROM base AS build
-# NEXT_PUBLIC_* values are baked into the bundle at build time, so Railway's
-# service variables of the same name must reach this stage as build args.
-ARG NEXT_PUBLIC_LEADS_ENDPOINT
-ARG NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-ENV NEXT_PUBLIC_LEADS_ENDPOINT=$NEXT_PUBLIC_LEADS_ENDPOINT
-ENV NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=$NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
 COPY package.json ./
 # No workspace dependencies, so the package installs standalone and the image
 # does not need the rest of the monorepo.

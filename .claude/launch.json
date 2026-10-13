@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
+      "name": "website",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@buildpanda/web", "dev"],
+      "runtimeArgs": ["--filter", "@buildpanda/website", "dev"],
       "port": 3002
     }
   ]

@@ -5,11 +5,3 @@ next-env.d.ts
 
 # Vercel
 .vercel
-
-# Local agent working files (not pushed)
-/AGENTS.md
-/CLAUDE.md
-/DESIGN.md
-/prompts/
-/.agents/
-/.claude/
