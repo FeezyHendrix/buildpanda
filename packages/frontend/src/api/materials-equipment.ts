@@ -32,6 +32,8 @@ export interface MaterialOrderInput {
   currency?: "NGN" | "USD";
   deliveryLocation?: string | null;
   notes?: string | null;
+  /** The material approval it is placed against; the server matches one by material when omitted. */
+  approvalId?: string | null;
 }
 
 /**

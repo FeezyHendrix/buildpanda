@@ -32,6 +32,27 @@ const COLUMN_COUNT = 8;
  * by a void reason. A live receipt's free text is a note, and it is never the
  * delivery note — that has a column and a label of its own.
  */
+/**
+ * Where a receipt came from: the order it counts against, or nothing — an
+ * unplanned delivery, which is allowed but worth a manager's second look.
+ */
+function ReceiptSource({ entry }: { entry: LedgerEntry }) {
+  if (entry.materialOrderTitle) {
+    return (
+      <p className="mt-0.5 text-xs text-ink-muted">
+        <span className="font-medium text-gray-700">Order:</span> {entry.materialOrderTitle}
+      </p>
+    );
+  }
+  return (
+    <Badge tone="neutral" size="sm" variant="outline" className="mt-1">
+      Unplanned delivery
+    </Badge>
+  );
+}
+
+ReceiptSource.displayName = "ReceiptSource";
+
 function reasonLabel(entry: LedgerEntry): string {
   if (entry.entryType === "VOID") return "Reversal reason";
   if (entry.status === "Voided") return "Void reason";
@@ -156,6 +177,7 @@ function LedgerTableRow({ entry, canManage, approving, onVoid, onApprove }: RowP
           {entry.materialName}
         </p>
         {entry.stageName ? <p className="mt-0.5 text-xs text-ink-muted">{entry.stageName}</p> : null}
+        {entry.entryType === "IN" ? <ReceiptSource entry={entry} /> : null}
         {entry.reason ? (
           <p className="mt-0.5 text-xs text-ink-muted">
             <span className="font-medium text-gray-700">{reasonLabel(entry)}:</span>{" "}

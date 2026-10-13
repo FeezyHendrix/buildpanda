@@ -8,6 +8,7 @@ import {
   useMaterialApproval,
 } from "@/hooks/use-material-approvals";
 import { MATERIAL_APPROVAL_STATUS_META } from "./material-approval-card";
+import { MaterialApprovalOrders } from "./material-approval-orders";
 import { formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { MaterialApprovalDetail } from "@/api/material-approvals";
@@ -42,6 +43,8 @@ interface Props {
   projectId: string;
   approvalId: string | null;
   canComment?: boolean;
+  /** May raise a material order from an approved request. */
+  canOrder?: boolean;
 }
 
 function MaterialApprovalDetailDialog({
@@ -50,6 +53,7 @@ function MaterialApprovalDetailDialog({
   projectId,
   approvalId,
   canComment = false,
+  canOrder = false,
 }: Props) {
   const { data: approval, isPending } = useMaterialApproval(projectId, approvalId ?? undefined);
   const addComment = useAddMaterialApprovalComment();
@@ -151,6 +155,7 @@ function MaterialApprovalDetailDialog({
                   </div>
                 ) : null}
 
+                <MaterialApprovalOrders projectId={projectId} approval={approval} canOrder={canOrder} />
                 <p className="mt-5 text-xs font-medium uppercase text-ink-muted">
                   Discussion ({approval.comments.length})
                 </p>

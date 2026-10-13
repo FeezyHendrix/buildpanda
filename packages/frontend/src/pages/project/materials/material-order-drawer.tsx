@@ -9,6 +9,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/atoms/table";
+import { Link } from "react-router-dom";
 import { DetailDrawer } from "@/components/molecules/detail-drawer";
 import { useMaterialDeliveries } from "@/hooks/use-materials-equipment";
 import { formatCurrency } from "@/lib/formatters";
@@ -34,6 +35,7 @@ function DeliveryRow({ delivery, unit }: { delivery: MaterialDelivery; unit: str
         {delivery.receivedByName ? (
           <p className="mt-0.5 text-xs text-ink-muted">Signed by {delivery.receivedByName}</p>
         ) : null}
+        {delivery.notes ? <p className="mt-0.5 text-xs text-ink-muted">{delivery.notes}</p> : null}
       </TableCell>
       <TableCell>
         {delivery.rejected ? (
@@ -133,6 +135,30 @@ export function MaterialOrderDrawer({
           <Line label="Estimated cost" value={formatCurrency(order.estimatedCost, order.currency)} />
           <Line label="Needed by" value={formatDate(order.neededBy)} />
           <Line label="Expected delivery" value={formatDate(order.expectedDeliveryAt)} />
+        </div>
+
+        <div className="rounded-lg border border-line-hair p-3">
+          <p className="text-xs font-medium uppercase text-ink-muted">Material approval</p>
+          {order.approvalId ? (
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <Link
+                to={`/project/${projectId}/material-approvals?approval=${order.approvalId}`}
+                className="text-sm font-medium text-primary-600 hover:underline"
+              >
+                {order.approvalTitle ?? "View approval"}
+              </Link>
+              {approval ? (
+                <Badge tone={approval.tone} size="sm" variant="outline">
+                  {approval.label}
+                </Badge>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-ink-muted">
+              No material approval covers this material. It can still be ordered; raise one on Material
+              approvals if the specification needs sign-off.
+            </p>
+          )}
         </div>
 
         {order.notes ? (

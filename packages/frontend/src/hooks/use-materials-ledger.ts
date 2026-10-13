@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { materialsLedgerApi, type LogEntryInput } from "@/api/materials-ledger";
-import { materialLedgerKeys } from "./query-keys";
+import { materialKeys, materialLedgerKeys } from "./query-keys";
 import type {
   LedgerEntryType,
   ReorderPolicyInput,
@@ -53,7 +53,11 @@ export function useApproveMaterialEntry(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (entryId: string) => materialsLedgerApi.approveEntry(projectId, entryId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) }),
+    // Approving a receipt against an order records the delivery on it.
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) });
+      void qc.invalidateQueries({ queryKey: materialKeys.all(projectId) });
+    },
   });
 }
 
