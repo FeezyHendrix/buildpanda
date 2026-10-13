@@ -1,6 +1,7 @@
 import { useUrlState } from "@/hooks/use-url-state";
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useMaterialApproval } from "@/hooks/use-material-approvals";
 import { Button } from "@/components/atoms/button";
 import { CreateButton } from "@/components/molecules/create-button";
 import { SearchInput } from "@/components/atoms/search-input";
@@ -57,6 +58,35 @@ export default function ProjectMaterials() {
   const [importOpen, setImportOpen] = useState(false);
   const [dialog, setDialog] = useState<OrderDialog>(null);
   const advanceOrder = useUpdateMaterialOrder();
+
+  // "Order this material" on an approved request lands here with its id: the
+  // new order opens filled in from the approval and linked to it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromApprovalId = searchParams.get("fromApproval") ?? undefined;
+  const { data: fromApproval } = useMaterialApproval(project.id, fromApprovalId);
+  useEffect(() => {
+    if (!fromApproval || !canRequest) return;
+    setDialog({
+      kind: "create",
+      prefill: {
+        approvalId: fromApproval.id,
+        approvalTitle: fromApproval.title,
+        // The approval's title reads as a request ("Approve 42.5N cement");
+        // the order is for the material itself.
+        title: fromApproval.materialName,
+        materialName: fromApproval.materialName,
+        quantity: fromApproval.quantity,
+        unit: fromApproval.unit,
+        neededBy: fromApproval.neededBy ?? "",
+        phaseId: fromApproval.phaseId,
+        activityId: fromApproval.activityId,
+      },
+    });
+    setSearchParams((params) => {
+      params.delete("fromApproval");
+      return params;
+    }, { replace: true });
+  }, [fromApproval, canRequest, setSearchParams]);
 
   const committed = orders
     .filter(isLive)

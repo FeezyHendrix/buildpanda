@@ -13,11 +13,20 @@ import { cn } from "@/lib/utils";
 
 const PRIORITIES: readonly RequestPriority[] = ["Low", "Normal", "High", "Critical"] as const;
 
+/** A new order raised from an approved material request, filled in from it. */
+export type OrderPrefill = Pick<MaterialOrderInput, "title" | "materialName" | "quantity" | "unit" | "neededBy"> & {
+  approvalId: string;
+  approvalTitle: string;
+  phaseId: string | null;
+  activityId: string | null;
+};
+
 export interface MaterialOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
   initial: MaterialOrder | null;
+  prefill?: OrderPrefill;
   onSubmit: (values: MaterialOrderInput) => void;
   isSubmitting: boolean;
   error: string | null;
@@ -29,6 +38,7 @@ export function MaterialOrderDialog({
   onOpenChange,
   projectId,
   initial,
+  prefill,
   onSubmit,
   isSubmitting,
   error,
@@ -64,7 +74,15 @@ export function MaterialOrderDialog({
     setLink({ phaseId: initial?.phaseId ?? null, activityId: initial?.activityId ?? null });
     setDeliveryLocation(initial?.deliveryLocation ?? "");
     setNotes(initial?.notes ?? "");
-  }, [initial, open]);
+    if (!initial && prefill) {
+      setTitle(prefill.title);
+      setMaterialName(prefill.materialName);
+      setQuantity(String(prefill.quantity));
+      setUnit(prefill.unit);
+      if (prefill.neededBy) setNeededBy(prefill.neededBy.slice(0, 10));
+      setLink({ phaseId: prefill.phaseId, activityId: prefill.activityId });
+    }
+  }, [initial, prefill, open]);
 
   function handleMaterialName(value: string): void {
     setMaterialName(value);
@@ -85,7 +103,11 @@ export function MaterialOrderDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={initial ? "Edit material order" : "New material order"}
-      description="Name the stage and activity it unlocks, price it at a rate, and say who is supplying it."
+      description={
+        !initial && prefill
+          ? `Placed against the approved request “${prefill.approvalTitle}”.`
+          : "Name the stage and activity it unlocks, price it at a rate, and say who is supplying it."
+      }
       submitLabel={initial ? "Save changes" : "Create order"}
       submitDisabled={!valid}
       submitting={isSubmitting}
@@ -109,6 +131,7 @@ export function MaterialOrderDialog({
           currency: "NGN",
           deliveryLocation: deliveryLocation.trim() || null,
           notes: notes.trim() || null,
+          ...(!initial && prefill ? { approvalId: prefill.approvalId } : {}),
         });
       }}
     >

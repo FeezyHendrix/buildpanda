@@ -804,7 +804,12 @@ export interface MaterialOrder extends LifecycleLinks {
   deliveredQuantity: number;
   outstandingQuantity: number;
   deliveries: MaterialDelivery[];
-  /** Status of the material-approval request covering this material, if any. */
+  /**
+   * The material approval this order relies on — the newest request in its
+   * resubmission chain — and its status. Null when none covers the material.
+   */
+  approvalId: string | null;
+  approvalTitle: string | null;
   approvalStatus: string | null;
   createdAt: string;
   updatedAt: string;
@@ -1506,6 +1511,8 @@ export interface LedgerEntry {
   loggedById: string | null;
   loggedByName: string | null;
   materialOrderId: string | null;
+  /** The order a receipt arrived against; a receipt without one is an unplanned delivery. */
+  materialOrderTitle: string | null;
   taskId: string | null;
   activityId: string | null;
   reversalForEntryId: string | null;

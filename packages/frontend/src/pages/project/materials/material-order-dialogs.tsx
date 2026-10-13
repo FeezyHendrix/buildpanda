@@ -14,7 +14,7 @@ import { errorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import type { MaterialOrder } from "@/lib/project-types";
 import { ForceOrderDialog } from "./force-order-dialog";
-import { MaterialOrderDialog } from "./material-order-dialog";
+import { MaterialOrderDialog, type OrderPrefill } from "./material-order-dialog";
 import { MaterialOrderDrawer } from "./material-order-drawer";
 import { RecordDeliveryDialog } from "./record-delivery-dialog";
 
@@ -23,7 +23,8 @@ import { RecordDeliveryDialog } from "./record-delivery-dialog";
  * booleans, and every mutation that a dialog owns lives here with it.
  */
 export type OrderDialog =
-  | { kind: "create" }
+  /** `prefill` carries an approved material request the order is raised from. */
+  | { kind: "create"; prefill?: OrderPrefill }
   | { kind: "edit"; order: MaterialOrder }
   | { kind: "delete"; order: MaterialOrder }
   | { kind: "detail"; order: MaterialOrder }
@@ -125,6 +126,7 @@ export function MaterialOrderDialogs({
         }}
         projectId={projectId}
         initial={dialog?.kind === "edit" ? dialog.order : null}
+        prefill={dialog?.kind === "create" ? dialog.prefill : undefined}
         onSubmit={upsert}
         isSubmitting={createOrder.isPending || updateOrder.isPending}
         error={
