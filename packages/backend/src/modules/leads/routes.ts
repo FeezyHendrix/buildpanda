@@ -4,13 +4,14 @@ import {
   consultationLeadEmail,
   type ConsultationLead,
 } from "../../lib/email-templates.ts";
+import { websiteQuestionEmail } from "../../lib/website-question-email.ts";
 import { config } from "../../config/index.ts";
 import { leadsRepository } from "./repository.ts";
-import { leadsService } from "./service.ts";
+import { cleanPublicQuestion, leadsService, type PublicQuestion } from "./service.ts";
 import { LEAD_STATUSES } from "./types.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
-import { leadsRateLimit } from "../../plugins/security.ts";
+import { leadsRateLimit, questionRateLimit } from "../../plugins/security.ts";
 
 const consultationBody = {
   type: "object",
@@ -25,6 +26,20 @@ const consultationBody = {
     source: { type: "string", maxLength: 100 },
   },
   required: ["name", "email", "phone", "location", "projectType"],
+  additionalProperties: false,
+} as const;
+
+const questionBody = {
+  type: "object",
+  properties: {
+    // ASCII-only, no quotes or angle brackets: the address is echoed into a
+    // mailto link and the team's inbox, so it gets no room to carry markup.
+    email: { type: "string", pattern: "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,24}$", maxLength: 254 },
+    question: { type: "string", minLength: 3, maxLength: 2000 },
+    name: { type: "string", maxLength: 120 },
+    company: { type: "string", maxLength: 200 },
+  },
+  required: ["email", "question"],
   additionalProperties: false,
 } as const;
 
@@ -98,6 +113,39 @@ const leadRoutes: FastifyPluginAsync = async (fastify) => {
         { leadId: lead.id, email: body.email, projectType: body.projectType },
         "Consultation lead received",
       );
+      return reply.status(201).send({ received: true });
+    },
+  );
+
+  // The website's "Ask us anything" box: a question the FAQ did not answer
+  // becomes a lead the team replies to, like a consultation request.
+  fastify.post<{ Body: PublicQuestion }>(
+    "/leads/question",
+    {
+      schema: { body: questionBody },
+      config: { rateLimit: questionRateLimit },
+      // A question is a few hundred bytes; refuse anything that is not.
+      bodyLimit: 8 * 1024,
+    },
+    async (request, reply) => {
+      const question = cleanPublicQuestion(request.body);
+      // Bots get the same reply as people, so they cannot tell they were dropped.
+      if (!question) {
+        request.log.warn("Website question dropped as automated");
+        return reply.status(201).send({ received: true });
+      }
+      const lead = await service.createLead({
+        name: question.name ?? question.email,
+        email: question.email,
+        projectType: "Website question",
+        message: question.question,
+        source: "website-faq",
+        orgId: null,
+      });
+      const { subject, html } = websiteQuestionEmail(question);
+      await sendEmail({ to: config.mail.leadsNotifyAddresses, toName: "BuildPanda Team", subject, html });
+      // No address or question text in the log: the lead row holds those.
+      request.log.info({ leadId: lead.id }, "Website question received");
       return reply.status(201).send({ received: true });
     },
   );

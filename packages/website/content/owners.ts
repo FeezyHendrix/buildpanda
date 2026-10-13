@@ -7,9 +7,10 @@ export type OwnerPhaseId = "inception" | "construction" | "inspections" | "compl
 
 export const owners = {
   meta: {
-    title: "For owners",
+    // What owners search for: building a house in Nigeria, often from abroad.
+    title: "Build your home in Nigeria from anywhere",
     description:
-      "BuildPanda's managed construction service: we run your build, and every stage, payment certificate and inspection report goes on the record where you can read it.",
+      "Managed construction for homeowners and the diaspora: BuildPanda runs your build in Nigeria, with independent inspections and every stage, payment and report on the record for you to see.",
   },
   hero: {
     eyebrow: "Managed Construction Service",

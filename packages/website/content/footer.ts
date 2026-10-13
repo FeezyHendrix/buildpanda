@@ -7,21 +7,23 @@ export const footer = {
   description:
     "The construction management platform that takes you from inception to completion and handover, whether you build from Lagos or from the diaspora",
   backedBy: hero.backedBy,
-  // PLACEHOLDER targets: /for-contractors, /blog and /terms do not exist in this app yet.
   columns: [
     {
       title: "Product",
       links: [
-        { label: "For Contractors", href: "/for-contractors" },
-        { label: "For Owners", href: "/for-owners" },
+        { label: "For Contractors", href: "/" },
+        { label: "For Owners", href: "/for-owners/" },
+        { label: "Book a Demo", href: "/talk-to-us/" },
       ],
     },
     {
       title: "Company",
       links: [
-        { label: "About Us", href: "/about" },
-        { label: "Blog", href: "/blog" },
-        { label: "Terms & Policies", href: "/terms" },
+        { label: "About Us", href: "/about/" },
+        { label: "Guides", href: "/blog/" },
+        { label: "Terms of Service", href: "/terms-of-service/" },
+        { label: "Privacy Policy", href: "/privacy/" },
+        { label: "Data Policy", href: "/data-policy/" },
       ],
     },
   ],

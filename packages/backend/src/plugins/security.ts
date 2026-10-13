@@ -33,6 +33,16 @@ export const leadsRateLimit: RateLimitOptions = {
   timeWindow: 60_000,
 };
 
+/**
+ * The website's question box is public, unauthenticated and emails the team,
+ * so it is the cheapest thing on the API to abuse. A person asks a handful of
+ * questions; anything faster is a script.
+ */
+export const questionRateLimit: RateLimitOptions = {
+  max: 3,
+  timeWindow: 10 * 60_000,
+};
+
 const securityPlugin: FastifyPluginAsync = async (fastify) => {
   // Rich text is stored raw and rendered with dangerouslySetInnerHTML on the
   // web, so a daily-log entry or RFI comment could otherwise carry markup that
