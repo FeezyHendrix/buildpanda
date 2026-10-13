@@ -1,55 +1,61 @@
 import type { Metadata } from "next";
-import { JsonLd } from "@/components/json-ld";
-import { ConsultationForm } from "@/components/sections/owners/consultation-form";
-import { PageHeader } from "@/components/sections/page/page-header";
-import { Section } from "@/components/ui/section";
-import { site } from "@/content/site";
-import { breadcrumbJsonLd } from "@/lib/json-ld";
 import { pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/json-ld";
+import { Container } from "@/components/ui";
+import { CheckIcon } from "@/components/icons";
+import { CalendlyWidget } from "@/components/calendly-widget";
 
 export const metadata: Metadata = pageMetadata({
   path: "talk-to-us",
-  title: "Book a demo of BuildPanda",
+  title: "Book a construction software demo or consultation",
   description:
-    "See BuildPanda on one of your own projects: estimates and takeoffs, site diaries, inspections, materials and payments. Book a 30-minute demo with the team in Lagos.",
+    "Book a BuildPanda software demo or discuss your construction project. Tell us about your build to explore the tools or managed service you need.",
+  socialTitle: "Tell us about the job and we will say which product fits",
 });
 
-const POINTS = [
-  "We set up one of your real jobs, not a sample project",
-  "Your estimators, site team and office see their own part of it",
-  "Pricing is per project, quoted on the call, with no implementation fee",
+const assurances = [
+  "A team that understands your building project",
+  "A clear plan from land and design through to handover",
+  "Inspections you can request, with the report on the record",
+  "One dashboard you can watch from anywhere in the world",
 ];
 
-/** Where every "Book a demo" on the site lands. */
 export default function TalkToUsPage() {
   return (
-    <main id="main">
-      <JsonLd data={breadcrumbJsonLd([{ name: "Book a demo", path: "talk-to-us" }])} />
-      <PageHeader
-        eyebrow="Book a demo"
-        title="See BuildPanda on one of your own projects"
-        lead="Tell us about your company and the job you want to run. We will set it up and walk your team through it, from the estimate to the first site diary."
-      />
-      <Section theme="light" className="border-t border-line">
-        <div className="site-container grid gap-10 py-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,35.375rem)] lg:gap-x-20 lg:py-20">
-          <div>
-            <ul className="space-y-4">
-              {POINTS.map((point) => (
-                <li key={point} className="flex gap-3 leading-normal">
-                  <span aria-hidden="true" className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" />
-                  {point}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-8 text-ink-soft">
-              Prefer email? <a className="font-semibold text-brand underline underline-offset-4" href={`mailto:${site.email}`}>{site.email}</a>
-              <br />
-              Or call {site.phones.join(" or ")}.
-            </p>
+    <>
+      <JsonLd data={breadcrumbJsonLd([{ name: "Talk to us", path: "talk-to-us" }])} />
+  <section className="bg-surface-faint py-20 sm:py-24">
+        <Container>
+          <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-16">
+            <div className="flex flex-col gap-6">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+                Book a consultation
+              </span>
+              <h1 className="text-balance text-3xl font-bold leading-tight text-ink sm:text-4xl">
+                Not sure who to trust with your build? Start here.
+              </h1>
+              <p className="text-pretty text-base leading-relaxed text-muted sm:text-lg">
+                Tell us about the home you want to build. We will walk you through
+                how BuildPanda manages your project from inception to handover, and
+                answer every question, with no obligation.
+              </p>
+              <ul className="flex flex-col gap-3">
+                {assurances.map((item) => (
+                  <li key={item} className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
+                      <CheckIcon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="text-sm leading-relaxed text-ink">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <CalendlyWidget />
           </div>
-          <ConsultationForm projectType="Software demo" source="website:talk-to-us" submitLabel="Book a demo" />
-        </div>
-      </Section>
-    </main>
+        </Container>
+      </section>
+    </>
   );
 }

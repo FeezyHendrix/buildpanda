@@ -1,87 +1,90 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import localFont from "next/font/local";
-import { Footer } from "@/components/sections/footer/footer";
-import { Navbar } from "@/components/sections/navbar/navbar";
-import { Analytics, ConsentBanner } from "@/components/consent";
-import { JsonLd } from "@/components/json-ld";
-import { site } from "@/content/site";
-import { organizationJsonLd, websiteJsonLd } from "@/lib/json-ld";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
+import { site } from "@/lib/site";
 import { canonicalUrl } from "@/lib/seo";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/json-ld";
+import { Analytics, ConsentBanner } from "@/components/consent";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const GA_MEASUREMENT_ID = "G-LTCX5C0F7N";
 
-// Condensed display face, used only for the hero's lifecycle list.
-// NOTE: this is the foundry's trial file; a licensed copy is needed before launch.
-const druk = localFont({
-  src: "./fonts/DrukXCond-Super-Trial.otf",
-  variable: "--font-druk",
-  weight: "900",
+/**
+ * Self-hosted rather than next/font/google. Fetching the face at build time
+ * made every build depend on Google being reachable, and the site's own
+ * requests depend on a third party at runtime. Both files are the variable
+ * font, so one file covers 400 through 800.
+ */
+const jakarta = localFont({
+  src: [
+    { path: "../public/fonts/plus-jakarta-sans-latin.woff2", weight: "400 800", style: "normal" },
+    { path: "../public/fonts/plus-jakarta-sans-latin-ext.woff2", weight: "400 800", style: "normal" },
+  ],
+  variable: "--font-jakarta",
   display: "swap",
-  preload: false,
 });
-
-const defaultTitle = `${site.name}: construction management software for Africa`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: { default: defaultTitle, template: `%s | ${site.name}` },
+  title: {
+    default: `${site.name}: verified construction delivery`,
+    template: `%s | ${site.name}`,
+  },
   description: site.description,
   applicationName: site.name,
   keywords: [
     "construction management software",
-    "construction management software Nigeria",
-    "construction project management software Africa",
-    "building project management app",
-    "quantity takeoff software",
+    "construction project management software",
+    "payment certificates construction",
+    "site inspection software",
+    "construction programme and delay tracking",
     "bill of quantities software",
-    "site diary app",
-    "construction inspection software",
-    "material management construction",
-    "build in Nigeria from abroad",
-    "diaspora building project Nigeria",
+    "extension of time claims",
+    "managed construction service",
+    "remote construction project management",
     "BuildPanda",
   ],
-  authors: [{ name: site.name, url: site.url }],
-  creator: site.name,
-  publisher: site.name,
-  category: "Construction software",
+  authors: [{ name: site.name }],
   alternates: { canonical: canonicalUrl("") },
   openGraph: {
     type: "website",
-    locale: "en_NG",
     url: canonicalUrl(""),
     siteName: site.name,
-    title: defaultTitle,
+    title: `${site.name}: verified construction delivery`,
     description: site.description,
   },
-  twitter: { card: "summary_large_image", title: defaultTitle, description: site.description },
+  twitter: {
+    card: "summary_large_image",
+    title: `${site.name}: verified construction delivery`,
+    description: site.description,
+  },
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
-  icons: { icon: "/favicon.ico", apple: "/logo.png" },
-  // Search Console ownership, set per deploy without a code change.
-  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
-    : undefined,
+  icons: { icon: "/favicon.ico" },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className={`${inter.variable} ${druk.variable}`}>
+    <html lang="en" className={jakarta.variable}>
       <body className="font-sans antialiased">
-        <a href="#main" className="skip-link">
+        <a href="#main-content" className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-md bg-white px-5 py-3 font-semibold text-brand shadow-lg focus:translate-y-0">
           Skip to content
         </a>
         <JsonLd data={[organizationJsonLd, websiteJsonLd]} />
         <Navbar />
-        {children}
+        <main id="main-content" tabIndex={-1}>{children}</main>
         <Footer />
         {/* Analytics load only after consent; see components/consent.tsx. */}
-        <Analytics measurementId={site.gaMeasurementId} />
+        <Analytics measurementId={GA_MEASUREMENT_ID} />
         <ConsentBanner />
       </body>
     </html>

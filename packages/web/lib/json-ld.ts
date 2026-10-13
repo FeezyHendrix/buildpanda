@@ -1,4 +1,5 @@
-import { site } from "@/content/site";
+import { site } from "./site";
+import { faqItems } from "./faq";
 import { canonicalUrl } from "./seo";
 
 const organization = {
@@ -36,8 +37,8 @@ export const websiteJsonLd = {
 };
 
 /**
- * The software product, kept separate from the managed build service on
- * /for-owners/ so the two things we sell are two entities, not one blurred one.
+ * The software product, kept separate from the build service on /construction/
+ * so the two things we sell are two entities rather than one blurred one.
  * No offers block: there is no published price, and inventing one to win a
  * rich result would be a lie in the markup.
  */
@@ -48,21 +49,29 @@ export const softwareJsonLd = {
   applicationCategory: "BusinessApplication",
   applicationSubCategory: "Construction management software",
   operatingSystem: "Web, iOS, Android",
-  areaServed: ["Nigeria", "Ghana", "Kenya", "South Africa", "Africa"],
   url: `${site.url}/`,
   publisher: { "@id": `${site.url}/#organization` },
   description:
     "Construction management software covering estimates and proposals, programme and delays, site diaries, inspections, variations, and payment certificates that trace to work that was signed off.",
   featureList: [
-    "Estimates, bills of quantities and drawing takeoffs",
+    "Estimates and proposals",
     "Programme, look-aheads and delay records",
     "Site diary and daily logs",
     "Inspections with pass or fail reports",
     "Variations and extensions of time",
     "Payment applications and certificates",
-    "Material approvals, orders, deliveries and stock",
-    "Offline mobile app for site crews",
   ],
+};
+
+/** Keep structured answers in sync with the visible homepage FAQ. */
+export const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqItems.map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: { "@type": "Answer", text: item.a },
+  })),
 };
 
 /** Inner pages are two levels deep at most, so a trail is cheap and tells the
@@ -77,22 +86,5 @@ export function breadcrumbJsonLd(trail: { name: string; path: string }[]) {
       name: crumb.name,
       item: canonicalUrl(crumb.path),
     })),
-  };
-}
-
-/** A guide on the blog: who wrote it, when, and that it belongs to this site. */
-export function articleJsonLd(article: { title: string; description: string; path: string; published: string; updated?: string }) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: article.title,
-    description: article.description,
-    mainEntityOfPage: canonicalUrl(article.path),
-    datePublished: article.published,
-    dateModified: article.updated ?? article.published,
-    author: { "@id": `${site.url}/#organization` },
-    publisher: { "@id": `${site.url}/#organization` },
-    image: `${site.url}/opengraph-image/`,
-    inLanguage: "en",
   };
 }
