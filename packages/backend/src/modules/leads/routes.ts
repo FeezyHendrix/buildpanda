@@ -105,7 +105,10 @@ const leadRoutes: FastifyPluginAsync = async (fastify) => {
       const { subject, html } = consultationLeadEmail(body);
       await sendEmail({
         to: config.mail.leadsNotifyAddresses,
+        cc: config.mail.leadsCcAddresses,
         toName: "BuildPanda Team",
+        // Replying answers the person who asked, not the notification sender.
+        replyTo: { address: body.email, name: body.name.replace(/[\r\n]+/g, " ") },
         subject,
         html,
       });
@@ -143,7 +146,14 @@ const leadRoutes: FastifyPluginAsync = async (fastify) => {
         orgId: null,
       });
       const { subject, html } = websiteQuestionEmail(question);
-      await sendEmail({ to: config.mail.leadsNotifyAddresses, toName: "BuildPanda Team", subject, html });
+      await sendEmail({
+        to: config.mail.leadsNotifyAddresses,
+        cc: config.mail.leadsCcAddresses,
+        toName: "BuildPanda Team",
+        replyTo: { address: question.email, name: question.name ?? question.email },
+        subject,
+        html,
+      });
       // No address or question text in the log: the lead row holds those.
       request.log.info({ leadId: lead.id }, "Website question received");
       return reply.status(201).send({ received: true });
