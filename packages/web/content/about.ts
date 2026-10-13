@@ -2,9 +2,9 @@ export type ValueId = "trust" | "money" | "distance" | "people";
 
 export const about = {
   meta: {
-    title: "About us",
+    title: "About BuildPanda",
     description:
-      "BuildPanda is a construction and technology company on a mission to make building a home transparent, accountable and stress-free.",
+      "BuildPanda is a Lagos construction and technology company making building in Africa transparent and accountable, for contractors who run projects and owners who pay for them.",
   },
   hero: {
     eyebrow: "About Us",

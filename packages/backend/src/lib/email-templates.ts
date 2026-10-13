@@ -8,7 +8,7 @@ import { config } from "../config/index.ts";
  * Outlook and Apple Mail.
  */
 
-const BRAND = {
+export const BRAND = {
   primary: "#004DE7",
   primaryDark: "#0037A4",
   primaryTint: "#E6EDFD",
@@ -28,10 +28,10 @@ const BRAND = {
   warningTint: "#FEF3E2",
 } as const;
 
-const FONT_STACK =
+export const FONT_STACK =
   "'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

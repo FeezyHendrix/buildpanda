@@ -6,7 +6,7 @@ export const hero = {
   pitch:
     "BuildPanda connects estimating, project management, site progress, inspections, milestones, and payments into one powerful construction operating system.",
   primaryAction: navActions.demo,
-  // PLACEHOLDER target: the "How it works" section is not built yet.
+  // The product walk-through starts at the takeoff section.
   secondaryAction: { id: "how-it-works", label: "How it works", href: "#how-it-works" },
   backedBy: {
     label: "Backed by",

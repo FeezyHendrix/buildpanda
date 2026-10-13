@@ -12,17 +12,17 @@ export const navEntries: ReadonlyArray<NavEntry> = [
   {
     id: "construction",
     label: "Construction",
-    // PLACEHOLDER target: the /for-contractors page does not exist in this app yet.
+    // The home page is the contractors' page; /for-contractors redirects there.
     items: [
-      { id: "for-contractors", label: "For Contractors", href: "/for-contractors" },
-      { id: "for-owners", label: "For Owners", href: "/for-owners" },
+      { id: "for-contractors", label: "For Contractors", href: "/" },
+      { id: "for-owners", label: "For Owners", href: "/for-owners/" },
     ],
   },
-  { id: "about", label: "About Us", href: "/about" },
+  { id: "about", label: "About Us", href: "/about/" },
+  { id: "blog", label: "Guides", href: "/blog/" },
 ];
 
 export const navActions = {
   login: { id: "login", label: "Login", href: site.appUrl },
-  // PLACEHOLDER target: the demo-booking destination is not decided.
-  demo: { id: "demo", label: "Book a Demo", href: "#book-a-demo" },
+  demo: { id: "demo", label: "Book a Demo", href: "/talk-to-us/" },
 } as const satisfies Record<string, NavLink>;
