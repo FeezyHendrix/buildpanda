@@ -7,7 +7,17 @@ import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import { resolveFileUrl } from "@/hooks/use-files";
 import type { Task, TaskColumn } from "@/lib/project-types";
-import { ENTITY_META, LinkGlyph, PriorityBadge, firstImageFileId, htmlToText, isTaskOverdue } from "./task-ui";
+import {
+  ENTITY_META,
+  LinkGlyph,
+  PriorityBadge,
+  findDoneColumn,
+  findReopenColumn,
+  firstImageFileId,
+  htmlToText,
+  isTaskOverdue,
+} from "./task-ui";
+import { TaskCompleteToggle } from "./task-complete-toggle";
 import { TaskMoveMenu } from "./task-move-menu";
 
 export function TaskCard({
@@ -28,9 +38,12 @@ export function TaskCard({
     disabled: !canManage,
   });
   const due = formatDayMonth(task.dueDate) || null;
+  const doneColumn = findDoneColumn(columns);
+  const reopenColumn = findReopenColumn(columns);
+  const isDone = Boolean(doneColumn && task.columnId === doneColumn.id);
   // A past due date was a neutral grey chip with nothing to distinguish it
   // (finding #28); overdue now reads as overdue, with a word as well as a colour.
-  const overdue = isTaskOverdue(task);
+  const overdue = isTaskOverdue(task, isDone);
   const coverFileId = firstImageFileId(task.descriptionHtml);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -86,7 +99,16 @@ export function TaskCard({
       )}
       <div className="p-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <PriorityBadge priority={task.priority} />
+          <div className="flex min-w-0 items-center gap-1.5">
+            {canManage && doneColumn ? (
+              <TaskCompleteToggle
+                done={isDone}
+                taskTitle={task.title}
+                onToggle={() => onMove(isDone ? (reopenColumn?.id ?? task.columnId) : doneColumn.id)}
+              />
+            ) : null}
+            <PriorityBadge priority={task.priority} />
+          </div>
           {canManage ? (
             <TaskMoveMenu
               taskTitle={task.title}
