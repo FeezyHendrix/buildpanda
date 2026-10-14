@@ -717,15 +717,6 @@ export interface BudgetPhase {
   actual: number;
 }
 
-export interface MaterialProcurement {
-  id: string;
-  name: string;
-  purchasedAt: string;
-  receipt: string;
-  amount: number;
-  thumbnailTone: Tone;
-}
-
 export type MaterialOrderStatus =
   | "Draft"
   | "Requested"
@@ -798,7 +789,6 @@ export interface MaterialOrder extends LifecycleLinks {
   cancelReason: string | null;
   rejectedReason: string | null;
   requestedById: string | null;
-  procurementId: string | null;
   /** Computed by the backend, never stored: past its needed-by, or promised after it. */
   late: boolean;
   deliveredQuantity: number;
@@ -908,7 +898,6 @@ export interface ProjectFinances {
   amountPaidToDate: number;
   contractTerms: ContractTerms;
   budgetAllocation: BudgetPhase[];
-  materialsProcured: MaterialProcurement[];
   milestones: MilestonePayment[];
   ledger: PaymentLedgerEntry[];
 }

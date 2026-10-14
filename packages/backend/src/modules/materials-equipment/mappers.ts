@@ -155,7 +155,6 @@ export function toMaterialOrder(
     cancelReason: row.cancel_reason,
     rejectedReason: row.rejected_reason,
     requestedById: row.requested_by_id,
-    procurementId: row.procurement_id,
     late: isMaterialOrderLate(row),
     deliveredQuantity: delivered,
     outstandingQuantity: Math.max(0, Math.round((quantity - delivered) * 100) / 100),

@@ -83,7 +83,6 @@ export interface MaterialOrder extends LifecycleLinks {
   cancelReason: string | null;
   rejectedReason: string | null;
   requestedById: string | null;
-  procurementId: string | null;
   /** Computed, never stored: past its needed-by, or promised after it. */
   late: boolean;
   deliveredQuantity: number;
@@ -186,7 +185,6 @@ export interface MaterialOrderRow {
   notes: string | null;
   cancel_reason: string | null;
   rejected_reason: string | null;
-  procurement_id: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
