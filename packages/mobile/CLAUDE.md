@@ -1,14 +1,25 @@
 # BuildPanda Field — Agent Guide
 
-Expo / React Native app for site crews. Offline-first: **only the sign-in screen
-may require the network.** Everything past it reads from SQLite and queues its
-writes.
+Expo / React Native app for site crews. Offline-first: authorized work reads
+from SQLite and queues its writes. Offline access requires an eligible cached
+permission snapshot; without one, protected work waits for access to be resolved.
+
+## RBAC is foundational
+
+Follow the [repository RBAC requirements](../../AGENTS.md#rbac-is-foundational)
+and [mobile permission requirements and open findings](AGENTS.md). Gate views,
+routes, actions, cached reads, and local writes with effective resource/action
+permissions. Server enforcement remains mandatory. Deferring the first
+permission check until sync is a defect, including for approval decisions.
 
 ## Before you mark any UI work complete
 
 Run this checklist. Inconsistency has been the single most common defect in this
 package — not broken code, but four screens each doing the same thing four ways.
 
+- [ ] **RBAC** — verify allowed and denied views/actions, direct routes, and data
+      access. Check permissions before local mutations or queueing; cover missing
+      access, offline use, reconnect, revocation, and scope changes as applicable.
 - [ ] **Chrome** — every screen renders inside `<Page>`. No screen builds its own
       header, safe-area padding, or scroll container.
 - [ ] **Create is a full page, never a bottom sheet.** `/tools/<thing>/new`.
@@ -47,6 +58,9 @@ app/                screens. Never call fetch or drizzle directly.
 
 ## Offline rules
 
+- Check the current scoped permission snapshot before protected local reads,
+  writes, or enqueueing. Deny access when the snapshot is missing or ineligible;
+  refresh on reconnect and enforce server authorization on every pushed action.
 - A local write and its outbox row are inserted **in the same transaction**.
 - Server pulls never overwrite a row with `isPendingSync = 1`.
 - IDs for un-synced rows are prefixed `local_`; a child whose parent is still

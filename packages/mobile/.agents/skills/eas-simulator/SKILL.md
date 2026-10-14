@@ -8,6 +8,18 @@ allowed-tools: "Bash(npx *eas-cli@*), Bash(npx *agent-device@*), Bash(npx expo *
 
 # EAS Simulator
 
+## BuildPanda RBAC requirement
+
+RBAC is foundational to BuildPanda. Apply the [repository RBAC rules](../../../../../AGENTS.md#rbac-is-foundational) to this skill's work.
+
+Every protected view, route, action, data read/write, offline operation, and AI
+tool must respect the current user's effective resource/action permissions.
+Gate client visibility and behavior and enforce authorization on the server.
+Deny access when permission is unknown; validate it before offline writes or
+queueing. Sign-in, account type, feature flags, and a later API/sync rejection
+do not replace RBAC. Verify allowed and denied access for affected behavior
+before calling the work complete.
+
 > **EAS service - costs apply.** EAS Simulator runs on Expo Application Services cloud infrastructure, a paid product with free-tier limits; remote simulator sessions use your plan's compute allowance. See https://expo.dev/pricing.
 
 EAS Simulator runs a remote iOS simulator or Android emulator on EAS infrastructure that you drive from your machine — from the CLI, from an AI agent (via `agent-device`), and from a browser preview. It's the unlock for **environments that can't run a simulator locally** (Linux boxes, cloud/background agents like Cursor Cloud), and for letting an agent *verify* a change on a real device instead of only reasoning about code.

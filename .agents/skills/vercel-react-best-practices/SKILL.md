@@ -9,6 +9,18 @@ metadata:
 
 # Vercel React Best Practices
 
+## BuildPanda RBAC requirement
+
+RBAC is foundational to BuildPanda. Apply the [repository RBAC rules](../../../AGENTS.md#rbac-is-foundational) to this skill's work.
+
+Every protected view, route, action, data read/write, offline operation, and AI
+tool must respect the current user's effective resource/action permissions.
+Gate client visibility and behavior and enforce authorization on the server.
+Deny access when permission is unknown; validate it before offline writes or
+queueing. Sign-in, account type, feature flags, and a later API/sync rejection
+do not replace RBAC. Verify allowed and denied access for affected behavior
+before calling the work complete.
+
 Comprehensive performance optimization guide for React and Next.js applications, maintained by Vercel. Contains 70 rules across 8 categories, prioritized by impact to guide automated refactoring and code generation.
 
 ## When to Apply

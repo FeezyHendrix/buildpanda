@@ -4,6 +4,18 @@ license: "MIT"
 ---
 # EAS Update Insights
 
+## BuildPanda RBAC requirement
+
+RBAC is foundational to BuildPanda. Apply the [repository RBAC rules](../../../../../AGENTS.md#rbac-is-foundational) to this skill's work.
+
+Every protected view, route, action, data read/write, offline operation, and AI
+tool must respect the current user's effective resource/action permissions.
+Gate client visibility and behavior and enforce authorization on the server.
+Deny access when permission is unknown; validate it before offline writes or
+queueing. Sign-in, account type, feature flags, and a later API/sync rejection
+do not replace RBAC. Verify allowed and denied access for affected behavior
+before calling the work complete.
+
 > **EAS service - costs apply.** Insights cover updates published through EAS Update, a paid Expo Application Services product with free-tier limits. Update delivery and the data behind these commands count against your plan's EAS Update usage. Review https://expo.dev/pricing.
 
 Query the health of published EAS Update directly from the CLI: launches, failed launches, crash rates, unique users, payload size, the embedded-vs-OTA user split per channel, and the most popular updates per runtime version. The data is the same data that powers the update and channel detail pages on expo.dev; these commands expose it in the terminal in human and JSON form.

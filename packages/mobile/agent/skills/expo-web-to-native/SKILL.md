@@ -4,6 +4,18 @@ license: "MIT"
 ---
 # Web to Native
 
+## BuildPanda RBAC requirement
+
+RBAC is foundational to BuildPanda. Apply the [repository RBAC rules](../../../../../AGENTS.md#rbac-is-foundational) to this skill's work.
+
+Every protected view, route, action, data read/write, offline operation, and AI
+tool must respect the current user's effective resource/action permissions.
+Gate client visibility and behavior and enforce authorization on the server.
+Deny access when permission is unknown; validate it before offline writes or
+queueing. Sign-in, account type, feature flags, and a later API/sync rejection
+do not replace RBAC. Verify allowed and denied access for affected behavior
+before calling the work complete.
+
 A web React app does not *convert* to native — there is no transpiler. It **migrates**, screen by screen, the way a strangler fig grows around a tree and slowly replaces it: stand up a native shell, run the whole web UI inside it on day one, then strangle each screen into native in priority order. This skill is the spine that orders the work; each step hands off to an existing Expo skill rather than re-explaining it. It operationalizes Expo's [From Web to Native with React](https://expo.dev/blog/from-web-to-native-with-react) — read that for the why.
 
 ```mermaid
