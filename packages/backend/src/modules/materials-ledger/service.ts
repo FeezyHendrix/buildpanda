@@ -299,7 +299,7 @@ export function materialsLedgerService(
         unit: catalog.unit,
           locationKey: (input.locationKey || "default").trim(),
           stageId: input.stageId ?? null,
-          approvalStatus: input.approvalStatus ?? "Pending",
+          approvalStatus: input.approvalStatus ?? "Approved",
           supplier: input.supplier ?? null,
           deliveryNote: input.deliveryNote ?? null,
         quantity: input.quantity,
