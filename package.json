@@ -21,7 +21,9 @@
     "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build",
     "version:patch": "node scripts/version.mjs patch",
     "version:minor": "node scripts/version.mjs minor",
-    "version:major": "node scripts/version.mjs major"
+    "version:major": "node scripts/version.mjs major",
+    "sync:shared": "node scripts/sync-shared.mjs",
+    "check:shared": "node scripts/sync-shared.mjs --check"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

@@ -1,3 +1,4 @@
+// Generated from packages/shared/payload-crypto.ts. Edit that file, then run `pnpm sync:shared`.
 import { gcm } from "@noble/ciphers/aes";
 import { x25519 } from "@noble/curves/ed25519";
 import { hkdf } from "@noble/hashes/hkdf";
@@ -9,7 +10,7 @@ import { sha256 } from "@noble/hashes/sha256";
  *
  * Not a security boundary: TLS protects the wire, and this page holds the
  * session key. It keeps request and response bodies out of plain sight in the
- * network panel on test and app. Mirrored in packages/frontend.
+ * network panel on test and app.
  */
 
 export const KEY_HEADER = "x-bp-key";
