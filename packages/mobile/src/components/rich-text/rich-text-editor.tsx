@@ -16,12 +16,14 @@ export function RichTextEditor({
   value,
   onChange,
   placeholder,
+  label,
   projectId,
   compact = false,
 }: {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  label?: string;
   projectId?: string;
   /** Caps the height so a composer in a page footer leaves room above the keyboard. */
   compact?: boolean;
@@ -30,7 +32,7 @@ export function RichTextEditor({
 
   return (
     <View className="overflow-hidden rounded-xl border border-hairline bg-surface">
-      <Editor value={value} onChangeHtml={onChange} placeholder={placeholder} compact={compact} dom={{ matchContents: true }} />
+      <Editor label={label} value={value} onChangeHtml={onChange} placeholder={placeholder} compact={compact} dom={{ matchContents: true }} />
       {projectId ? (
         <AttachmentButtons
           projectId={projectId}

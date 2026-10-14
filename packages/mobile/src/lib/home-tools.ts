@@ -1,3 +1,5 @@
+import { features, scheduleAccess } from "./feature-access";
+import type { AccessRequirement } from "./access-requirement";
 import type Ionicons from "@expo/vector-icons/Ionicons";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -24,24 +26,24 @@ export interface HomeTool {
   href: string;
   /** Route prefixes that count as opening this tool. */
   paths: string[];
-  permission: [resource: string, action: string];
+  permission: AccessRequirement;
 }
 
 /** Every tool the Home screen can surface, in the order a new user sees them. */
 export const HOME_TOOLS: readonly HomeTool[] = [
-  { key: "dailyLog", label: "Daily log", icon: "clipboard-outline", href: "/tools/daily-log", paths: ["/tools/daily-log"], permission: ["dailyLog", "view"] },
-  { key: "tasks", label: "Tasks", icon: "checkbox-outline", href: "/tools/tasks", paths: ["/tools/tasks"], permission: ["tasks", "view"] },
-  { key: "materialLog", label: "Material log", icon: "cube-outline", href: "/tools/material-log", paths: ["/tools/material-log"], permission: ["materials", "view"] },
-  { key: "updates", label: "Updates", icon: "chatbubbles-outline", href: "/tools/updates", paths: ["/tools/updates"], permission: ["updates", "view"] },
-  { key: "expenses", label: "Expenses", icon: "receipt-outline", href: "/tools/expenses", paths: ["/tools/expenses"], permission: ["finances", "viewCosts"] },
-  { key: "schedule", label: "Schedule", icon: "calendar-outline", href: "/(tabs)/schedule", paths: ["/tools/schedule", "/schedule"], permission: ["schedule", "view"] },
-  { key: "rfis", label: "RFIs", icon: "help-circle-outline", href: "/tools/rfis", paths: ["/tools/rfis"], permission: ["rfis", "view"] },
-  { key: "materialOrders", label: "Orders", icon: "cart-outline", href: "/tools/materials", paths: ["/tools/materials"], permission: ["materials", "view"] },
-  { key: "materialApprovals", label: "Approvals", icon: "checkmark-done-outline", href: "/tools/material-approvals", paths: ["/tools/material-approvals"], permission: ["materials", "view"] },
-  { key: "lookAheads", label: "Look aheads", icon: "list-outline", href: "/tools/look-aheads", paths: ["/tools/look-aheads"], permission: ["schedule", "view"] },
-  { key: "changeRequests", label: "Changes", icon: "swap-horizontal-outline", href: "/tools/change-requests", paths: ["/tools/change-requests"], permission: ["change-requests", "view"] },
-  { key: "plans", label: "Plans", icon: "map-outline", href: "/tools/plan-review", paths: ["/tools/plan-review"], permission: ["documents", "view"] },
-  { key: "pandaAi", label: "Panda AI", icon: "sparkles-outline", href: "/tools/panda-ai", paths: ["/tools/panda-ai"], permission: ["project", "view"] },
+  { key: "dailyLog", label: "Daily log", icon: "clipboard-outline", href: "/tools/daily-log", paths: ["/tools/daily-log"], permission: features.dailyLog.read },
+  { key: "tasks", label: "Tasks", icon: "checkbox-outline", href: "/tools/tasks", paths: ["/tools/tasks"], permission: features.tasks.read },
+  { key: "materialLog", label: "Material log", icon: "cube-outline", href: "/tools/material-log", paths: ["/tools/material-log"], permission: features.materialLog.read },
+  { key: "updates", label: "Updates", icon: "chatbubbles-outline", href: "/tools/updates", paths: ["/tools/updates"], permission: features.updates.read },
+  { key: "expenses", label: "Expenses", icon: "receipt-outline", href: "/tools/expenses", paths: ["/tools/expenses"], permission: features.expenses.read },
+  { key: "schedule", label: "Schedule", icon: "calendar-outline", href: "/(tabs)/schedule", paths: ["/tools/schedule", "/schedule"], permission: scheduleAccess },
+  { key: "rfis", label: "RFIs", icon: "help-circle-outline", href: "/tools/rfis", paths: ["/tools/rfis"], permission: features.rfis.read },
+  { key: "materialOrders", label: "Orders", icon: "cart-outline", href: "/tools/materials", paths: ["/tools/materials"], permission: features.materialOrders.read },
+  { key: "materialApprovals", label: "Approvals", icon: "checkmark-done-outline", href: "/tools/material-approvals", paths: ["/tools/material-approvals"], permission: features.materialApprovals.read },
+  { key: "lookAheads", label: "Look aheads", icon: "list-outline", href: "/tools/look-aheads", paths: ["/tools/look-aheads"], permission: features.schedule.read },
+  { key: "changeRequests", label: "Changes", icon: "swap-horizontal-outline", href: "/tools/change-requests", paths: ["/tools/change-requests"], permission: features.changeRequests.read },
+  { key: "plans", label: "Plans", icon: "map-outline", href: "/tools/plan-review", paths: ["/tools/plan-review"], permission: features.documents.read },
+  { key: "pandaAi", label: "Panda AI", icon: "sparkles-outline", href: "/tools/panda-ai", paths: ["/tools/panda-ai"], permission: features.project.read },
 ];
 
 /** What a new user starts with, before the app has learned anything. */

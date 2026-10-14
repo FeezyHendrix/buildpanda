@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { projectAccess } from "@/lib/project-access-store";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
 import { rfisApi, type RfiStatusTransition, type UpsertRfiInput } from "@/api/rfis";
@@ -25,13 +27,14 @@ export function useLocalRfis(db: Db, projectId: string) {
   const { storageOwnerId } = useFieldSession();
   const changes = useLocalChangeRequests(db, projectId, false);
   const stageRfis = usePersistentQuery({
+    projectId, permission: features.rfis.read,
     queryKey: ["rfis", projectId, "stage", stageId ?? "all"], ownerId: storageOwnerId,
     queryFn: () => rfisApi.list(projectId, stageId), enabled: Boolean(stageId) && isOnline,
   });
   const query = useMemo(() => rfisRepository.listQuery(db, projectId), [db, projectId]);
   const live = useLiveQuery(query, [query]);
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "rfis", "view")) return;
     let cancelled = false;
     rfisApi.list(projectId)
       .then((rows) => {

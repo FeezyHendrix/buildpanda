@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { router } from "expo-router";
 import { useCallback } from "react";
 import { FlatList, View, type ListRenderItemInfo } from "react-native";
@@ -13,7 +15,7 @@ import { useSyncState } from "@/lib/sync-provider";
 
 const channelKey = (channel: Channel) => channel.id;
 
-export default function Messages() {
+function Messages() {
   const { projectId, storageOwnerId } = useFieldSession();
   const { isOnline } = useSyncState();
   const project = useProject(projectId);
@@ -22,7 +24,7 @@ export default function Messages() {
   return (
     <Page title="Messages" projectName={project.data?.name} projectPending={project.isPending}
       onPressProject={() => router.push("/select-project")} scroll={false}
-      rightButtons={<HeaderIconButton icon="create-outline" label="New direct message" onPress={() => router.push("/messages/new")} />}>
+      rightButtons={<HeaderIconButton permission={features.workspaceMessages.actions.create} icon="create-outline" label="New direct message" onPress={() => router.push("/messages/new")} />}>
       <Text tone="secondary" className="pb-4 text-sm">Project channels and direct messages</Text>
       {!isOnline ? <Text tone="secondary" className="pb-3 text-xs">Offline · Showing saved conversations</Text> : null}
       {inbox.error || inbox.accessDenied ? <View className="gap-2 pb-3"><Text tone="danger" className="text-sm">{inbox.accessDenied ? "Some conversations are no longer available to this account." : "Couldn’t refresh conversations. Your saved messages are available."}</Text><Button variant="secondary" onPress={() => { void inbox.refetch(); }}>Try again</Button></View> : null}
@@ -33,3 +35,5 @@ export default function Messages() {
     </Page>
   );
 }
+
+export default withProjectPermission(Messages, "/(tabs)/messages");

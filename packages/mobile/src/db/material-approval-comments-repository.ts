@@ -1,8 +1,12 @@
+import { repositoryAccess, requireDbPermission } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { randomUUID } from "expo-crypto";
 import { asc, eq } from "drizzle-orm";
 import type { ApprovalComment } from "@/api/material-approvals";
 import type { Db } from "./client";
-import { materialApprovalComments, outbox, type MaterialApprovalCommentRow } from "./schema";
+import { materialApprovals, materialApprovalComments, outbox, type MaterialApprovalCommentRow } from "./schema";
+
+const access = repositoryAccess(features.materialApprovals);
 
 export const MATERIAL_APPROVAL_COMMENTS_RESOURCE = "material-approval-comments";
 
@@ -37,22 +41,25 @@ export const materialApprovalCommentsRepository = {
     db
       .select()
       .from(materialApprovalComments)
-      .where(eq(materialApprovalComments.approvalId, approvalId))
+      .where(access.where(db, materialApprovalComments.projectId, eq(materialApprovalComments.approvalId, approvalId)))
       .orderBy(asc(materialApprovalComments.createdAt)),
 
   findById: async (db: Db, id: string) => {
     const [row] = await db
       .select()
       .from(materialApprovalComments)
-      .where(eq(materialApprovalComments.id, id))
+      .where(access.where(db, materialApprovalComments.projectId, eq(materialApprovalComments.id, id)))
       .limit(1);
     return row;
   },
 
   /** Comment row and its outbox entry are written together so they can't diverge. */
   async createLocal(db: Db, projectId: string, comment: ApprovalCommentDraft): Promise<string> {
+    access.record(db, materialApprovals, comment.approvalId, projectId);
+    access.require(db, projectId);
+    requireDbPermission(db, projectId, "comments", "post");
     const id = `local_${randomUUID()}`;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "comment", (tx) => {
       tx.insert(materialApprovalComments).values({
         id,
         approvalId: comment.approvalId,
@@ -78,12 +85,12 @@ export const materialApprovalCommentsRepository = {
     const [existing] = await db
       .select()
       .from(materialApprovalComments)
-      .where(eq(materialApprovalComments.id, localRowId))
+      .where(access.where(db, materialApprovalComments.projectId, eq(materialApprovalComments.id, localRowId)))
       .limit(1);
     if (!existing) return;
 
-    await db.transaction((tx) => {
-      tx.delete(materialApprovalComments).where(eq(materialApprovalComments.id, localRowId)).run();
+    await access.transaction(db, existing.projectId, "read", (tx) => {
+      tx.delete(materialApprovalComments).where(access.where(db, materialApprovalComments.projectId, eq(materialApprovalComments.id, localRowId))).run();
       tx.insert(materialApprovalComments).values({
         id: server.id,
         approvalId: server.approvalId,
@@ -103,9 +110,10 @@ export const materialApprovalCommentsRepository = {
     projectId: string,
     rows: readonly ApprovalComment[],
   ): Promise<void> {
+    access.require(db, projectId);
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       for (const row of rows) {
         tx
           .insert(materialApprovalComments)

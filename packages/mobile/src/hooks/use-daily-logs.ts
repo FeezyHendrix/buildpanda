@@ -1,4 +1,5 @@
 import { missingBuilding, useProjectBuilding } from "./use-project-building";
+import { projectAccess } from "@/lib/project-access-store";
 import { filterBuildingRows } from "@/lib/building-scope";
 import { useSyncState } from "@/lib/sync-provider";
 import { useStageScope } from "@/lib/stage-scope";
@@ -23,7 +24,7 @@ export function useDailyLogDays(db: Db, projectId: string) {
   const loggedActivities = useLiveQuery(activitiesQuery, [activitiesQuery]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "dailyLog", "view")) return;
     let cancelled = false;
     dailyLogsApi
       .list(projectId)
@@ -65,7 +66,7 @@ export function useDailyLogDay(db: Db, projectId: string, logDate: string, build
   const liveEntries = useLiveQuery(entriesQuery, [entriesQuery]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "dailyLog", "view")) return;
     let cancelled = false;
     dailyLogsApi
       .day(projectId, logDate, buildingId)

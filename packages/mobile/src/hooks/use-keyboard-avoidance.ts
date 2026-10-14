@@ -42,6 +42,8 @@ export function useKeyboardAvoidance() {
 
   const reveal = useCallback(() => {
     clearTimeout(timer.current);
+    // Browsers reveal their focused input; the native focus API is unavailable on web.
+    if (Platform.OS === "web") return;
     // wait for KeyboardAvoidingView to shrink the scroll area first
     timer.current = setTimeout(() => {
       const input = TextInput.State.currentlyFocusedInput();

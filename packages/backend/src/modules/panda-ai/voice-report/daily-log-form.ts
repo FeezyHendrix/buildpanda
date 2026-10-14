@@ -99,22 +99,23 @@ export function normalizeDailyLogForm(payload: SpokenDailyLog, snapshot: Project
     bodyText: payload.bodyText,
     templateId: form.id,
     templateName: form.name,
+    templateFields: form.fields,
     responses,
     formText: renderResponses(form.fields, responses).text,
   };
 }
 
-export function formMissingFields(payload: DailyLogPayload, snapshot: ProjectSnapshot): MissingField[] {
+export function formReviewFields(payload: DailyLogPayload, snapshot: ProjectSnapshot): MissingField[] {
   const form = snapshot.dailyLogForm;
   if (!form || payload.templateId !== form.id) return [];
-  const answered = payload.responses ?? {};
   return form.fields
-    .filter((f) => f.type !== "section" && f.required && (answered[f.id] === undefined || answered[f.id] === null))
+    .filter((f) => f.type !== "section")
     .map((f): MissingField => {
       const name = `${RESPONSE_FIELD_PREFIX}${f.id}`;
-      if (f.type === "number") return { name, label: f.unit ? `${f.label} (${f.unit})` : f.label, type: "number" };
-      if (f.type === "select") return { name, label: f.label, type: "select", options: f.options.map((o) => ({ value: o, label: o })) };
-      if (f.type === "yes_no") return { name, label: f.label, type: "select", options: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }] };
-      return { name, label: f.label, type: "text" };
+      const common = { name, required: f.required, helpText: f.helpText ?? undefined };
+      if (f.type === "number") return { ...common, label: f.unit ? `${f.label} (${f.unit})` : f.label, type: "number" };
+      if (f.type === "select") return { ...common, label: f.label, type: "select", options: f.options.map((o) => ({ value: o, label: o })) };
+      if (f.type === "yes_no") return { ...common, label: f.label, type: "boolean" };
+      return { ...common, label: f.label, type: f.type === "long_text" ? "long_text" : "text" };
     });
 }

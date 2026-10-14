@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { View } from "react-native";
@@ -58,7 +59,7 @@ function Dashboard({ db, projectId, buildingId }: { db: Db; projectId: string; b
   );
 }
 
-export default function Home() {
+function Home() {
   const { projectId } = useFieldSession();
   const project = useProject(projectId);
   const { buildingId } = useProjectBuilding();
@@ -83,3 +84,5 @@ export default function Home() {
     </Page>
   );
 }
+
+export default withProjectPermission(Home, "/(tabs)/overview");

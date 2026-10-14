@@ -9,8 +9,8 @@ Follow the [repository RBAC requirements](AGENTS.md#rbac-is-foundational).
 RBAC must govern protected views, routes, actions, data access, offline queues,
 and AI tools across every app. Use effective resource/action permissions on
 the client and enforce them independently on the backend. Unknown access must
-deny protected behavior. The [mobile findings](packages/mobile/AGENTS.md) remain
-unresolved until implemented and verified.
+deny protected behavior. The [mobile guide](packages/mobile/AGENTS.md) records the shared implementation
+pattern and its verification boundaries.
 
 ## Skills (source of truth)
 

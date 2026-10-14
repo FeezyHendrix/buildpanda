@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { PermissionGate, withProjectPermission } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
@@ -159,7 +161,7 @@ function HeroCard({ stages, keyDates }: { stages: Stage[]; keyDates: KeyDate[] }
       ) : null}
 
       <View className="mt-3 flex-row gap-2">
-        <Pressable
+        <PermissionGate permission={features.stages.read}><Pressable
           onPress={() => router.push("/tools/schedule/stages" as never)}
           accessibilityRole="button"
           className="h-11 flex-1 flex-row items-center justify-center gap-1 rounded-xl bg-surface-alt active:bg-hairline"
@@ -168,8 +170,8 @@ function HeroCard({ stages, keyDates }: { stages: Stage[]; keyDates: KeyDate[] }
             All build stages
           </Text>
           <Ionicons name="chevron-forward" size={14} color={ICON_MUTED} />
-        </Pressable>
-        <Pressable
+        </Pressable></PermissionGate>
+        <PermissionGate permission={features.schedule.read}><Pressable
           onPress={() => router.push("/tools/schedule/chart" as never)}
           accessibilityRole="button"
           className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-primary-50 active:bg-primary-100"
@@ -178,7 +180,7 @@ function HeroCard({ stages, keyDates }: { stages: Stage[]; keyDates: KeyDate[] }
           <Text weight="semibold" tone="brand" className="text-[13px]">
             Project chart
           </Text>
-        </Pressable>
+        </Pressable></PermissionGate>
       </View>
     </Card>
   );
@@ -209,7 +211,7 @@ function LookAheadsSection({ db, projectId }: { db: Db; projectId: string }) {
           ))}
         </Card>
       )}
-      <Pressable
+      <PermissionGate permission={features.schedule.actions.create}><Pressable
         onPress={() => router.push("/tools/look-aheads/new")}
         accessibilityRole="button"
         className="mt-2 min-h-14 flex-row items-center justify-center gap-1.5 self-start rounded-full bg-primary-50 px-5 active:bg-primary-100"
@@ -218,7 +220,7 @@ function LookAheadsSection({ db, projectId }: { db: Db; projectId: string }) {
         <Text weight="semibold" tone="brand" className="text-[13px]">
           New look ahead
         </Text>
-      </Pressable>
+      </Pressable></PermissionGate>
     </View>
   );
 }
@@ -244,7 +246,7 @@ function Section({
   );
 }
 
-export default function Schedule() {
+function Schedule() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
   const { data: project } = useProject(projectId);
@@ -274,7 +276,7 @@ export default function Schedule() {
 
           <HeroCard stages={stages.data ?? []} keyDates={keyDates.data ?? []} />
 
-          <Section
+          <PermissionGate permission={features.schedule.read}><Section
             title="Site activity"
             onSeeAll={() => router.push("/tools/schedule/activities" as never)}
             isEmpty={(activities.data ?? []).length === 0}
@@ -283,11 +285,11 @@ export default function Schedule() {
             {activityPreview(activities.data ?? []).map((activity) => (
               <ActivityRow key={activity.id} activity={activity} />
             ))}
-          </Section>
+          </Section></PermissionGate>
 
-          {ready && db && projectId ? <LookAheadsSection db={db} projectId={projectId} /> : null}
+          {ready && db && projectId ? <PermissionGate permission={features.schedule.read}><LookAheadsSection db={db} projectId={projectId} /></PermissionGate> : null}
 
-          <Section
+          <PermissionGate permission={features.keyDates.read}><Section
             title="Key dates"
             onSeeAll={() => router.push("/tools/schedule/key-dates" as never)}
             isEmpty={(keyDates.data ?? []).length === 0}
@@ -296,9 +298,11 @@ export default function Schedule() {
             {keyDatePreview(keyDates.data ?? []).map((keyDate) => (
               <KeyDateRow key={keyDate.id} keyDate={keyDate} />
             ))}
-          </Section>
+          </Section></PermissionGate>
         </View>
       )}
     </Page>
   );
 }
+
+export default withProjectPermission(Schedule, "/(tabs)/schedule");

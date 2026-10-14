@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { PermissionGate } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { router } from "expo-router";
@@ -274,7 +276,7 @@ export function MarkupPanel({
         ) : null}
         <View className="flex-1" />
         {busy ? <Spinner size="xs" /> : null}
-        <Pressable
+        <PermissionGate permission={features.documents.actions.markup}><Pressable
           onPress={() => onResolve(!resolved)}
           disabled={busy}
           accessibilityRole="button"
@@ -282,8 +284,8 @@ export function MarkupPanel({
           className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
         >
           <Ionicons name={resolved ? "refresh-outline" : "checkmark-circle-outline"} size={22} color={ICON_SUCCESS} />
-        </Pressable>
-        <Pressable
+        </Pressable></PermissionGate>
+        <PermissionGate permission={features.documents.actions.markup}><Pressable
           onPress={onDelete}
           disabled={busy}
           accessibilityRole="button"
@@ -291,7 +293,7 @@ export function MarkupPanel({
           className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
         >
           <Ionicons name="trash-outline" size={20} color={ICON_DANGER} />
-        </Pressable>
+        </Pressable></PermissionGate>
         <Pressable
           onPress={onClose}
           accessibilityRole="button"
@@ -328,7 +330,7 @@ export function MarkupPanel({
         ) : null}
       </ScrollView>
 
-      <View className="flex-row items-center gap-2 px-4 pb-3 pt-1">
+      <PermissionGate permission={features.documents.actions.markup}><View className="flex-row items-center gap-2 px-4 pb-3 pt-1">
         <TextInput
           value={draft}
           onChangeText={setDraft}
@@ -347,7 +349,7 @@ export function MarkupPanel({
         >
           <Ionicons name="send" size={18} color={draft.trim() && !busy ? ICON_INVERSE : ICON_SUBTLE} />
         </Pressable>
-      </View>
+      </View></PermissionGate>
     </View>
   );
 }

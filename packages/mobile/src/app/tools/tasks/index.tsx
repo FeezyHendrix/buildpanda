@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -83,13 +85,13 @@ function TaskList({ db, projectId, buildingId, full, tab }: { db: Db; projectId:
   );
 }
 
-export default function Tasks() {
+function Tasks() {
   const { projectId } = useFieldSession();
   const { buildingId, isLoading: buildingsLoading, refetch: reloadBuildings } = useProjectBuilding();
   const { db, ready } = useLocalDb();
-  const { can } = useProjectAccess();
+  const {  snapshot } = useProjectAccess();
   // Managers see the whole board; everyone else only their own tasks.
-  const full = can("tasks", "add");
+  const full = snapshot?.capabilities.canSeeFullTaskBoard === true;
   const [tab, setTab] = useState<Tab>("mine");
 
   return (
@@ -97,7 +99,7 @@ export default function Tasks() {
       buildingScope
       title="Tasks"
       onBack={() => goBack()}
-      rightButtons={full ? <HeaderIconButton icon="add" label="New task" onPress={() => router.push("/tools/tasks/new")} /> : undefined}
+      rightButtons={<HeaderIconButton permission={features.tasks.actions.create} icon="add" label="New task" onPress={() => router.push("/tools/tasks/new")} />}
     >
       <View className="gap-4">
         {full ? <SegmentedTabs tabs={TABS} active={tab} onChange={setTab} /> : null}
@@ -112,3 +114,5 @@ export default function Tasks() {
     </Page>
   );
 }
+
+export default withProjectPermission(Tasks, "/tools/tasks/index");

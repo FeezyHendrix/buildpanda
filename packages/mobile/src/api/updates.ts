@@ -41,6 +41,11 @@ export interface CreateUpdateInput {
 }
 
 export const updatesApi = {
+  edit: (projectId: string, updateId: string, body: { title?: string; description?: string }) =>
+    request<ProjectUpdate>(`/projects/${projectId}/updates/${updateId}`, { method: "PUT", body: JSON.stringify(body) }),
+  remove: (projectId: string, updateId: string) => request<void>(`/projects/${projectId}/updates/${updateId}`, { method: "DELETE" }),
+  comment: (projectId: string, updateId: string, body: string) =>
+    request<unknown>(`/projects/${projectId}/updates/${updateId}/comments`, { method: "POST", body: JSON.stringify({ body }) }),
   list: (projectId: string) => request<ProjectUpdate[]>(`/projects/${projectId}/updates`),
 
   create: (projectId: string, body: CreateUpdateInput) =>

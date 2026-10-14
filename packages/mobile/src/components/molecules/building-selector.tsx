@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { useProjectAccess } from "@/lib/project-access-provider";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -8,7 +10,9 @@ import { WorkspaceSheet } from "./workspace-sheet";
 
 export function BuildingSelector() {
   const scope = useProjectBuilding();
+  const { allows } = useProjectAccess();
   const [open, setOpen] = useState(false);
+  if (!allows(features.buildings.read)) return null;
   const label = scope.building?.name ?? (scope.buildingId ? "Selected building" : "Choose a building");
 
   // Every project is created with exactly one real building, so this bar had

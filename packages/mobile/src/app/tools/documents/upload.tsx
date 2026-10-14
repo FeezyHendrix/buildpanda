@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as DocumentPicker from "expo-document-picker";
@@ -21,7 +22,7 @@ interface PickedFile {
   size: number;
 }
 
-export default function UploadDocument() {
+function UploadDocument() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
   const { isOnline } = useSyncState();
@@ -135,3 +136,5 @@ export default function UploadDocument() {
     </Page>
   );
 }
+
+export default withProjectPermission(UploadDocument, "/tools/documents/upload");

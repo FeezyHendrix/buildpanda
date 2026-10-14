@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
@@ -31,7 +32,7 @@ function UpdateBody({ db, projectId, id }: { db: Db; projectId: string; id: stri
   return <UpdateCard update={update} expanded />;
 }
 
-export default function UpdateDetail() {
+function UpdateDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -48,3 +49,5 @@ export default function UpdateDetail() {
     </Page>
   );
 }
+
+export default withProjectPermission(UpdateDetail, "/tools/updates/[id]");

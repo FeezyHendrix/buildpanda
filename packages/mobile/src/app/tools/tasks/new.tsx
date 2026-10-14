@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useState } from "react";
 import { DateField } from "@/components/molecules/date-field";
 import { Pressable, View } from "react-native";
@@ -16,7 +17,7 @@ import { useSyncState } from "@/lib/sync-provider";
 // A task is a record the crew works from, so it is authored on a full page.
 // It lands in To do on the current building's board.
 
-export default function NewTask() {
+function NewTask() {
   const { projectId } = useFieldSession();
   const { buildingId } = useProjectBuilding();
   const { db } = useLocalDb();
@@ -101,3 +102,5 @@ export default function NewTask() {
     </Page>
   );
 }
+
+export default withProjectPermission(NewTask, "/tools/tasks/new");

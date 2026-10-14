@@ -12,6 +12,7 @@ on:
     branches: [master, prod]
     paths:
       - "packages/mobile/**"
+      - "packages/voice-actions/**"
   workflow_dispatch:
 
 concurrency:

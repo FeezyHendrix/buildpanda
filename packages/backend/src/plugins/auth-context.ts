@@ -5,9 +5,7 @@ import { config } from "../config/index.ts";
 import { enterLlmContext } from "../lib/llm-context.ts";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "../lib/errors.ts";
 import {
-  BUILTIN_ROLES,
   mapAllows,
-  resolvePermissionMap,
   type PermissionMap,
 } from "../lib/permissions.ts";
 import {
@@ -17,7 +15,8 @@ import {
   type ProjectSectionPermissions,
 } from "../lib/authorization.ts";
 import type { ProjectRow } from "../modules/projects/types.ts";
-import type { AccessContextRows } from "./access-cache.ts";
+import { accessContextRepository } from "../modules/access-context/repository.ts";
+import { resolveAccessContext } from "../modules/access-context/service.ts";
 
 export interface AuthUser {
   id: string;
@@ -67,24 +66,6 @@ declare module "fastify" {
   }
 }
 
-interface MemberRoleRow {
-  organizationId: string;
-  role: string;
-}
-
-interface ParticipantRoleRow {
-  project_id: string;
-  role: string;
-  permissions: Record<string, string> | null;
-  grants: Record<string, string[]> | null;
-}
-
-interface OrgRoleRow {
-  organizationId: string;
-  role: string;
-  permission: string;
-}
-
 function toHeaders(record: FastifyRequest["headers"]): Headers {
   const headers = new Headers();
   for (const [key, value] of Object.entries(record)) {
@@ -104,26 +85,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
     return project;
   }
 
-  async function loadAccessContextRows(userId: string): Promise<AccessContextRows> {
-    const memberRows = await fastify.db<MemberRoleRow>("member")
-      .where({ userId })
-      .select("organizationId", "role");
-
-    // Skips the custom-role DB query when all roles are built-in (common path).
-    const allBuiltin = memberRows.every((r) => BUILTIN_ROLES.has(r.role));
-    const orgIds = memberRows.map((r) => r.organizationId);
-    const customRoleRows: OrgRoleRow[] = !allBuiltin && orgIds.length
-      ? await fastify.db<OrgRoleRow>("organizationRole")
-          .whereIn("organizationId", orgIds)
-          .select("organizationId", "role", "permission")
-      : [];
-
-    const participantRows = await fastify.db<ParticipantRoleRow>("project_participants")
-      .where({ user_id: userId, status: "active" })
-      .select("project_id", "role", "permissions", "grants");
-
-    return { memberRows, customRoleRows, participantRows };
-  }
+  const accessRepository = accessContextRepository(fastify.db);
   fastify.decorateRequest("requireAuth", function requireAuth(this: FastifyRequest) {
     if (!this.user) {
       throw new UnauthorizedError();
@@ -247,7 +209,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
         };
         let { memberRows, customRoleRows, participantRows } = await fastify.accessCache.load(
           session.user.id,
-          () => loadAccessContextRows(session.user.id),
+          () => accessRepository.load(session.user.id),
         );
 
         const sessionOrgId = session.session.activeOrganizationId ?? null;
@@ -278,33 +240,12 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
 
         touchLastActivity(fastify.db, session.user.id);
 
-        request.orgRoles = new Map(memberRows.map((row) => [row.organizationId, row.role]));
-
-        const byOrg = new Map<string, OrgRoleRow[]>();
-        for (const r of customRoleRows) {
-          const list = byOrg.get(r.organizationId);
-          if (list) list.push(r);
-          else byOrg.set(r.organizationId, [r]);
-        }
-
-        request.orgPermissions = new Map(
-          memberRows.map((r) => [
-            r.organizationId,
-            resolvePermissionMap(r.role, byOrg.get(r.organizationId) ?? []),
-          ]),
-        );
-
-        request.projectRoles = new Map(participantRows.map((row) => [row.project_id, row.role]));
-        request.projectSectionPermissions = new Map(
-          participantRows
-            .filter((row) => row.permissions && Object.keys(row.permissions).length > 0)
-            .map((row) => [row.project_id, row.permissions as ProjectSectionPermissions]),
-        );
-        request.projectGrants = new Map(
-          participantRows
-            .filter((row) => row.grants && Object.keys(row.grants).length > 0)
-            .map((row) => [row.project_id, row.grants as Record<string, readonly string[]>]),
-        );
+        const resolved = resolveAccessContext(session.user.id, { memberRows, customRoleRows, participantRows });
+        request.orgRoles = resolved.orgRoles;
+        request.orgPermissions = resolved.orgPermissions;
+        request.projectRoles = resolved.projectRoles ?? new Map();
+        request.projectSectionPermissions = resolved.projectSectionPermissions ?? new Map();
+        request.projectGrants = resolved.projectGrants ?? new Map();
       }
     } catch (error) {
       request.log.warn({ err: error }, "Failed to resolve auth session");

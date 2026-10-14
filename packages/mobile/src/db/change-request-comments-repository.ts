@@ -1,8 +1,12 @@
+import { repositoryAccess, requireDbPermission } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { randomUUID } from "expo-crypto";
 import { asc, eq } from "drizzle-orm";
 import type { ChangeRequestComment } from "@/api/change-requests";
 import type { Db } from "./client";
-import { changeRequestComments, outbox, type ChangeRequestCommentRow } from "./schema";
+import { changeRequests, changeRequestComments, outbox, type ChangeRequestCommentRow } from "./schema";
+
+const access = repositoryAccess(features.changeRequests);
 
 export const CHANGE_REQUEST_COMMENTS_RESOURCE = "change-request-comments";
 
@@ -28,7 +32,7 @@ export const changeRequestCommentsRepository = {
     db
       .select()
       .from(changeRequestComments)
-      .where(eq(changeRequestComments.changeRequestId, changeRequestId))
+      .where(access.where(db, changeRequestComments.projectId, eq(changeRequestComments.changeRequestId, changeRequestId)))
       .orderBy(asc(changeRequestComments.createdAt)),
 
   /** Comment row and its outbox entry are written together so they can't diverge. */
@@ -39,9 +43,12 @@ export const changeRequestCommentsRepository = {
     body: string,
     authorName: string,
   ): Promise<string> {
+    access.record(db, changeRequests, changeRequestId, projectId);
+    access.require(db, projectId, "comment");
+    requireDbPermission(db, projectId, "comments", "post");
     const id = `local_${randomUUID()}`;
 
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "comment", (tx) => {
       tx.insert(changeRequestComments).values({
         id,
         changeRequestId,
@@ -75,9 +82,9 @@ export const changeRequestCommentsRepository = {
           changeRequestId: changeRequestComments.changeRequestId,
         })
         .from(changeRequestComments)
-        .where(eq(changeRequestComments.id, localId))
+        .where(access.where(db, changeRequestComments.projectId, eq(changeRequestComments.id, localId)))
         .limit(1).all();
-      tx.delete(changeRequestComments).where(eq(changeRequestComments.id, localId)).run();
+      tx.delete(changeRequestComments).where(access.where(db, changeRequestComments.projectId, eq(changeRequestComments.id, localId))).run();
       tx.insert(changeRequestComments).values({
         id: server.id,
         changeRequestId: server.changeRequestId || local?.changeRequestId || "",
@@ -98,9 +105,10 @@ export const changeRequestCommentsRepository = {
     projectId: string,
     rows: readonly ChangeRequestComment[],
   ): Promise<void> {
+    access.require(db, projectId);
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       for (const row of rows) {
         tx
           .insert(changeRequestComments)
@@ -127,6 +135,6 @@ export const changeRequestCommentsRepository = {
     await db
       .update(changeRequestComments)
       .set({ isPendingSync: false, serverLastSyncedAt: Date.now() })
-      .where(eq(changeRequestComments.id, id));
+      .where(access.where(db, changeRequestComments.projectId, eq(changeRequestComments.id, id)));
   },
 };

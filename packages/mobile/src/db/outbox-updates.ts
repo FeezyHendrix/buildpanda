@@ -1,3 +1,4 @@
+import { features } from "@/lib/feature-access";
 import { File } from "expo-file-system";
 import { uploadProjectFile } from "@/api/files";
 import { updatesApi, type CreateUpdateMediaInput, type UpdateCategory } from "@/api/updates";
@@ -44,6 +45,7 @@ export async function pushUpdateOutboxItem(db: Db, item: OutboxRow): Promise<Out
       file.stagedUri,
       file.fileName,
       file.mimeType ?? "application/octet-stream",
+      features.updates.actions.create,
     );
     const url = `${API_BASE_URL}/files/${uploaded.id}/view`;
     await updatesRepository.setMediaUrl(db, file.id, url);

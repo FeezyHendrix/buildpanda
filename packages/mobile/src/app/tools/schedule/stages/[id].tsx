@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
@@ -10,7 +11,7 @@ import { useStages } from "@/hooks/use-stages";
 import { formatDate } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
 
-export default function StageDetail() {
+function StageDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const query = useStages(projectId, true, null);
@@ -50,3 +51,5 @@ export default function StageDetail() {
     </Page>
   );
 }
+
+export default withProjectPermission(StageDetail, "/tools/schedule/stages/[id]");

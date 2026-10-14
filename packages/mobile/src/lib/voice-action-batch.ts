@@ -1,6 +1,8 @@
 import type { ProposedAction } from "@/api/voice-report-types";
 
-export type AppliedVoiceAction = { awaitingApproval?: boolean } | void;
+import type { VoiceExecutionResult } from "./voice/types";
+
+export type AppliedVoiceAction = VoiceExecutionResult | void;
 
 /** Retain completed actions when a later write fails, so retry cannot duplicate them. */
 export async function applyVoiceActionBatch(

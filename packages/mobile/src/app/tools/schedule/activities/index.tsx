@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { ActivityRow } from "@/components/molecules/schedule/rows";
 import { router } from "expo-router";
 import { Pressable } from "react-native";
@@ -5,7 +6,7 @@ import { ScheduleListScreen } from "@/components/molecules/schedule/list-screen"
 import { useActivities } from "@/hooks/use-activities";
 import { useFieldSession } from "@/lib/field-session";
 
-export default function Activities() {
+function Activities() {
   const { projectId } = useFieldSession();
   const activities = useActivities(projectId);
   const data = activities.data ?? [];
@@ -32,3 +33,5 @@ export default function Activities() {
     />
   );
 }
+
+export default withProjectPermission(Activities, "/tools/schedule/activities");

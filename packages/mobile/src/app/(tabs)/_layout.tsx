@@ -1,3 +1,7 @@
+import { useProjectAccess } from "@/lib/project-access-provider";
+import { routePermission } from "@/lib/mobile-routes";
+import { PermissionGate } from "@/components/molecules/permission-gate";
+import { captureAccess } from "@/lib/feature-access";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Redirect, Tabs, router } from "expo-router";
 import { useState } from "react";
@@ -26,6 +30,7 @@ const RIGHT_TABS = [
 ] as const;
 
 export default function TabsLayout() {
+  const { allows } = useProjectAccess();
   const insets = useSafeAreaInsets();
   const { user, isResolving } = useAuthGate();
   const [recording, setRecording] = useState(false);
@@ -64,6 +69,7 @@ export default function TabsLayout() {
           name={name}
           options={{
             title,
+            href: allows(routePermission(name)) ? undefined : null,
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons name={focused ? iconActive : icon} size={size} color={color} />
             ),
@@ -75,7 +81,8 @@ export default function TabsLayout() {
         name="record"
         options={{
           title: "Capture",
-          tabBarButton: () => <MicTabButton onPress={() => setRecording(true)} />,
+          tabBarButton: () => allows(captureAccess) ? <MicTabButton onPress={() => setRecording(true)} /> : null,
+          tabBarItemStyle: !allows(captureAccess) ? { display: "none" } : undefined,
         }}
       />
 
@@ -85,6 +92,7 @@ export default function TabsLayout() {
           name={name}
           options={{
             title,
+            href: allows(routePermission(name)) ? undefined : null,
             tabBarBadge: name === "messages" && unread > 0 ? (unread > 99 ? "99+" : unread) : undefined,
             tabBarBadgeStyle: { backgroundColor: palette.primary500, color: "white", fontFamily: "Inter_600SemiBold" },
             tabBarIcon: ({ color, size, focused }) => (
@@ -95,7 +103,7 @@ export default function TabsLayout() {
       ))}
     </Tabs>
     <ConnectionBanner />
-    <VoiceCaptureSheet
+    <PermissionGate permission={captureAccess}><VoiceCaptureSheet
       visible={recording}
       onClose={() => setRecording(false)}
       onRecorded={(result) => {
@@ -103,7 +111,7 @@ export default function TabsLayout() {
         // the page opens once there is something to transcribe and review
         router.push(`/capture?uri=${encodeURIComponent(result.uri)}&seconds=${result.durationSeconds}` as never);
       }}
-    />
+    /></PermissionGate>
     </View>
   );
 }

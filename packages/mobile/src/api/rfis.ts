@@ -33,6 +33,7 @@ export interface Rfi {
   question: string;
   questionHtml: string | null;
   status: RfiStatus;
+  visibility: "internal" | "shared";
   priority: RfiPriority;
   ballInCourtId: string | null;
   ballInCourtName: string | null;
@@ -51,6 +52,7 @@ export interface RfiComment {
   authorName: string;
   body: string;
   contentHtml: string | null;
+  isProposedResponse: boolean;
   createdAt: string;
 }
 

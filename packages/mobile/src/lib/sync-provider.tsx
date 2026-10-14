@@ -1,3 +1,4 @@
+import { useProjectAccess } from "./project-access-provider";
 import NetInfo, { useNetInfo } from "@react-native-community/netinfo";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { focusManager, onlineManager } from "@tanstack/react-query";
@@ -80,10 +81,11 @@ function QueueWatcher({
   onCounts: (counts: QueueCounts) => void;
   syncNow: () => Promise<FlushResult | undefined>;
 }) {
-  const query = useMemo(() => outboxQuery(db), [db]);
+  const { generation, ready } = useProjectAccess();
+  const query = useMemo(() => outboxQuery(db), [db, generation, ready]);
   const live = useLiveQuery(query, [query]);
 
-  const rows = live.data;
+  const rows = ready ? live.data : [];
   useEffect(() => {
     if (!rows) return;
     onCounts({
@@ -93,7 +95,7 @@ function QueueWatcher({
   }, [rows, onCounts]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !ready) return;
     const sync = () => {
       if (AppState.currentState === "active" || AppState.currentState === null) {
         void syncNow().catch(() => undefined);
@@ -108,7 +110,7 @@ function QueueWatcher({
       subscription.remove();
       clearInterval(timer);
     };
-  }, [db, isOnline, syncNow]);
+  }, [db, isOnline, syncNow, ready]);
 
   return null;
 }

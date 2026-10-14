@@ -1,5 +1,6 @@
 import { useStageScope } from "@/lib/stage-scope";
 import { missingBuilding, useProjectBuilding } from "./use-project-building";
+import { projectAccess } from "@/lib/project-access-store";
 import { filterBuildingRows } from "@/lib/building-scope";
 import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
@@ -18,7 +19,7 @@ export function useLocalLookAheads(db: Db, projectId: string) {
   const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "schedule", "view")) return;
     let cancelled = false;
     lookAheadsApi
       .list(projectId)

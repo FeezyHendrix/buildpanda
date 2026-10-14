@@ -1,8 +1,9 @@
 import type { FastifyPluginAsync } from "fastify";
 import multipart from "@fastify/multipart";
 import { config } from "../../config/index.ts";
-import { canProjectPermission } from "../../lib/authorization.ts";
-import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { fileAccessRepository } from "./access-repository.ts";
+import { requireFileRead, requireFileStaging } from "./access.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { filesRepository } from "./repository.ts";
 import { filesService } from "./service.ts";
 
@@ -13,13 +14,6 @@ const fileIdParams = {
   properties: { id: { type: "string", minLength: 1 } },
 } as const;
 
-const STAGING_PERMISSIONS = [
-  ["documents", "upload"],
-  ["updates", "post"],
-  ["dailyLog", "create"],
-  ["materials", "request"],
-] as const;
-
 const fileRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(multipart, {
     limits: {
@@ -29,6 +23,7 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   const service = filesService(filesRepository(fastify.db));
+  const access = fileAccessRepository(fastify.db);
 
   fastify.post("/files", async (request, reply) => {
     const user = request.requireAuth();
@@ -40,24 +35,7 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       projectField && !Array.isArray(projectField) && projectField.type === "field"
         ? String(projectField.value) || null
         : null;
-    if (projectId) {
-      const project = await request.requireProjectAccess(projectId);
-      const canStage = STAGING_PERMISSIONS.some(([resource, action]) =>
-        canProjectPermission(
-          { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-          {
-            userId: user.id,
-            orgRoles: request.orgRoles,
-            projectRoles: request.projectRoles,
-            orgPermissions: request.orgPermissions,
-            projectSectionPermissions: request.projectSectionPermissions,
-          },
-          resource,
-          action,
-        ),
-      );
-      if (!canStage) throw new ForbiddenError("Your role does not allow you to upload files to this project");
-    }
+    if (projectId) await requireFileStaging(request, projectId);
 
     const uploaded = await service.upload(user.id, {
       fileName: part.filename,
@@ -72,14 +50,10 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     "/files/:id/url",
     { schema: { params: fileIdParams } },
     async (request) => {
-      const user = request.requireAuth();
+      request.requireAuth();
       const row = await service.findRow(request.params.id);
       if (!row) throw new NotFoundError("File");
-      if (row.project_id) {
-        await request.requireProjectAccess(row.project_id);
-      } else if (row.owner_id !== user.id) {
-        throw new ForbiddenError();
-      }
+      await requireFileRead(request, row, access);
       const url = await service.presignViewUrl(row);
       return { url };
     },
@@ -89,8 +63,11 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     "/files/:id",
     { schema: { params: fileIdParams } },
     async (request) => {
-      const user = request.requireAuth();
-      return service.getMetadata(user.id, request.params.id);
+      request.requireAuth();
+      const row = await service.findRow(request.params.id);
+      if (!row) throw new NotFoundError("File");
+      await requireFileRead(request, row, access);
+      return { id: row.id, fileName: row.file_name, mimeType: row.mime_type, sizeBytes: Number(row.size_bytes) };
     },
   );
 
@@ -98,17 +75,10 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     "/files/:id/download",
     { schema: { params: fileIdParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      // Same access rule as /files/:id/url: project-linked files are readable
-      // by anyone with project access (update photos are viewed by the whole
-      // project team, not just the uploader); unlinked files stay owner-only.
+      request.requireAuth();
       const row = await service.findRow(request.params.id);
       if (!row) throw new NotFoundError("File");
-      if (row.project_id) {
-        await request.requireProjectAccess(row.project_id);
-      } else if (row.owner_id !== user.id) {
-        throw new ForbiddenError();
-      }
+      await requireFileRead(request, row, access);
       const handle = await service.open(row);
       reply.header("Content-Type", handle.mimeType);
       reply.header("Content-Length", handle.sizeBytes);

@@ -1,3 +1,5 @@
+import { requireCurrentAccess } from "@/lib/project-access-store";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
@@ -9,7 +11,8 @@ import { Page } from "@/components/molecules/page";
 import SheetCanvas from "@/components/plan-review/sheet-canvas.dom";
 import { SHEET_TOOL } from "@/components/plan-review/markup-types";
 import { SheetPager } from "@/components/plan-review/sheet-controls";
-import { documentCacheDirUri } from "@/lib/download-file";
+import { documentCacheDirUri, requireCachedFile, verifyCachedFile } from "@/lib/download-file";
+import { useSyncState } from "@/lib/sync-provider";
 import { palette } from "@/constants/colors";
 import { goBack } from "@/lib/navigation";
 
@@ -26,7 +29,9 @@ function PdfViewer({ uri }: { uri: string }) {
     let cancelled = false;
     setBytes(null);
     setError(null);
+    const ticket = requireCachedFile(uri);
     readAsStringAsync(uri, { encoding: EncodingType.Base64 }).then((value) => {
+      requireCurrentAccess(ticket);
       if (!cancelled) setBytes(value);
     }).catch(() => {
       if (!cancelled) setError("This saved file could not be opened. Download it again when you have signal.");
@@ -51,16 +56,26 @@ function PdfViewer({ uri }: { uri: string }) {
   );
 }
 
-export default function DocumentViewer() {
+function DocumentViewer() {
   const { uri, name } = useLocalSearchParams<{ uri: string; name?: string }>();
   const [webError, setWebError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [verifiedUri, setVerifiedUri] = useState<string | null>(null);
+  const { isOnline } = useSyncState();
+  useEffect(() => {
+    let active = true;
+    setVerifiedUri(null);
+    if (uri) void verifyCachedFile(uri).then(() => { if (active) setVerifiedUri(uri); }).catch(() => undefined);
+    return () => { active = false; };
+  }, [uri, isOnline]);
   const isPdf = /\.pdf(?:$|[?#])/i.test(name || uri || "");
   const isImage = /\.(png|jpe?g|gif|webp|heic|bmp)(?:$|[?#])/i.test(name || uri || "");
 
+  let available = false;
+  try { if (uri && verifiedUri === uri && (!uri.includes("/messages/") || isOnline)) { requireCachedFile(uri); available = true; } } catch { /* Invalid deep links never open local files. */ }
   return (
     <Page title={name || "Document"} onBack={goBack} scroll={false} showSync={false}>
-      {!uri ? (
+      {!available ? (
         <View className="items-center py-12"><Text tone="secondary">This file isn&apos;t available offline yet.</Text></View>
       ) : isPdf ? <PdfViewer key={uri} uri={uri} /> : webError ? (
         <View className="gap-4 py-8">
@@ -72,7 +87,8 @@ export default function DocumentViewer() {
       ) : (
         <WebView
           key={`${uri}:${attempt}`} source={{ uri }} style={{ flex: 1 }}
-          originWhitelist={["*"]} allowFileAccess allowingReadAccessToURL={documentCacheDirUri()}
+          originWhitelist={["file://*"]} javaScriptEnabled={false} allowFileAccess allowingReadAccessToURL={documentCacheDirUri(uri)}
+          onShouldStartLoadWithRequest={(request) => request.url === uri || request.url === "about:blank"}
           startInLoadingState renderLoading={() => <Spinner />}
           onError={() => setWebError(true)} onHttpError={() => setWebError(true)}
         />
@@ -80,3 +96,5 @@ export default function DocumentViewer() {
     </Page>
   );
 }
+
+export default withProjectPermission(DocumentViewer, "/tools/documents/view");

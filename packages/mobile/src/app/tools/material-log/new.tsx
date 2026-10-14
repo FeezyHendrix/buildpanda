@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
@@ -27,8 +29,8 @@ const MOVEMENTS = [
 // crew logs what arrives; usage is logged by people who manage materials.
 
 function LogForm({ db, projectId }: { db: Db; projectId: string }) {
-  const { can } = useProjectAccess();
-  const canLogUsage = can("materials", "manage");
+  const { allows } = useProjectAccess();
+  const canLogUsage = allows(features.materialLog.actions.usage);
   const known = useKnownMaterials(db, projectId);
   const logMaterial = useLogMaterial(db, projectId);
   const { data: session } = useSession();
@@ -153,7 +155,7 @@ function LogForm({ db, projectId }: { db: Db; projectId: string }) {
   );
 }
 
-export default function NewMaterialLogEntry() {
+function NewMaterialLogEntry() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
   if (!ready || !db || !projectId) {
@@ -165,3 +167,5 @@ export default function NewMaterialLogEntry() {
   }
   return <LogForm key={projectId} db={db} projectId={projectId} />;
 }
+
+export default withProjectPermission(NewMaterialLogEntry, "/tools/material-log/new");

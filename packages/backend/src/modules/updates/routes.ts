@@ -254,6 +254,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
       // client could only be given a voice by also being let to publish.
       const project = await request.requireProjectPermission(request.params.id, "comments", "post");
       const user = request.requireAuth();
+      await request.requireProjectPermission(project.id, "updates", "view");
       const comment = await service.addComment(
         project.id,
         request.params.updateId,

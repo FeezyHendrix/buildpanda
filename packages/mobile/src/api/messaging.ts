@@ -1,3 +1,6 @@
+import { channelRequirement } from "@/lib/messaging-access";
+import { features, messagingAccess } from "@/lib/feature-access";
+import { projectAccess, requireAccess, requireCurrentAccess } from "@/lib/project-access-store";
 import { request } from "./client";
 
 export interface Channel {
@@ -42,19 +45,45 @@ export interface Message {
 const channelPath = (id: string) => `/channels/${encodeURIComponent(id)}`;
 const messagePath = (id: string) => `/messages/${encodeURIComponent(id)}`;
 
+async function authorizedChannel(id: string, write = false): Promise<Channel> {
+  const ticket = requireAccess(projectAccess.getState().scope?.projectId ?? "", messagingAccess);
+  const channel = await request<Channel>(channelPath(id));
+  requireCurrentAccess(ticket);
+  requireAccess(ticket.scope!.projectId, channelRequirement(channel, write));
+  if (write && channel.archivedAt) throw new Error("This conversation is read only.");
+  return channel;
+}
+async function inChannel<T>(id: string, write: boolean, run: () => Promise<T>) {
+  const channel = await authorizedChannel(id, write);
+  const ticket = requireAccess(projectAccess.getState().scope?.projectId ?? "", channelRequirement(channel, write));
+  const data = await run();
+  requireCurrentAccess(ticket);
+  return data;
+}
+async function authorizedMessage(id: string) {
+  const message = await request<Message>(messagePath(id));
+  await authorizedChannel(message.channelId);
+  return message;
+}
 export const messagingApi = {
   channels: () => request<Channel[]>("/channels"),
   projectChannels: (projectId: string) => request<Channel[]>(`/projects/${encodeURIComponent(projectId)}/channels`),
-  channel: (id: string) => request<Channel>(channelPath(id)),
-  members: (id: string) => request<ChannelMember[]>(`${channelPath(id)}/members`),
-  messages: (id: string, before?: string) => request<Message[]>(`${channelPath(id)}/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ""}`),
-  message: (id: string) => request<Message>(messagePath(id)),
-  thread: (id: string) => request<Message[]>(`${messagePath(id)}/thread`),
-  send: (id: string, body: string, parentMessageId?: string) => request<Message>(`${channelPath(id)}/messages`, {
+  channel: (id: string) => authorizedChannel(id),
+  members: (id: string) => inChannel(id, false, () => request<ChannelMember[]>(`${channelPath(id)}/members`)),
+  messages: (id: string, before?: string) => inChannel(id, false, () => request<Message[]>(`${channelPath(id)}/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ""}`)),
+  message: authorizedMessage,
+  thread: async (id: string) => {
+    const root = await authorizedMessage(id);
+    return inChannel(root.channelId, false, () => request<Message[]>(`${messagePath(id)}/thread`));
+  },
+  send: (id: string, body: string, parentMessageId?: string) => inChannel(id, true, () => request<Message>(`${channelPath(id)}/messages`, {
     method: "POST", body: JSON.stringify({ body, ...(parentMessageId ? { parentMessageId } : {}) }),
-  }),
-  markRead: (id: string, lastReadMessageId: string) => request<void>(`${channelPath(id)}/members/me`, {
+  })),
+  markRead: (id: string, lastReadMessageId: string) => inChannel(id, false, () => request<void>(`${channelPath(id)}/members/me`, {
     method: "PATCH", body: JSON.stringify({ lastReadMessageId }),
-  }),
-  openDm: (userId: string) => request<Channel>("/channels/dm", { method: "POST", body: JSON.stringify({ userId }) }),
+  })),
+  openDm: (userId: string) => {
+    requireAccess(projectAccess.getState().scope?.projectId ?? "", features.workspaceMessages.actions.create);
+    return request<Channel>("/channels/dm", { method: "POST", body: JSON.stringify({ userId }) });
+  },
 };

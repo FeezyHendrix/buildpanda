@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { router } from "expo-router";
 import { View } from "react-native";
@@ -33,7 +35,7 @@ function UpdatesList({ db, projectId }: { db: Db; projectId: string }) {
   );
 }
 
-export default function ProjectUpdates() {
+function ProjectUpdates() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
 
@@ -44,7 +46,7 @@ export default function ProjectUpdates() {
       title="Updates"
       onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton icon="add" label="New update" onPress={() => router.push("./new")} />
+        <HeaderIconButton permission={features.updates.actions.create} icon="add" label="New update" onPress={() => router.push("./new")} />
       }
     >
       {ready && db && projectId ? (
@@ -57,3 +59,5 @@ export default function ProjectUpdates() {
     </Page>
   );
 }
+
+export default withProjectPermission(ProjectUpdates, "/tools/updates");

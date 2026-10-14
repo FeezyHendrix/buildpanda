@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { isIsoDate } from "@/lib/dates";
 import { goBack } from "@/lib/navigation";
 import { useLocalSearchParams } from "expo-router";
@@ -127,7 +128,7 @@ function Editor({ db, projectId, lookAheadId }: { db: Db; projectId: string; loo
   );
 }
 
-export default function EditLookAhead() {
+function EditLookAhead() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -144,3 +145,5 @@ export default function EditLookAhead() {
 
   return <Editor db={db} projectId={projectId} lookAheadId={id} />;
 }
+
+export default withProjectPermission(EditLookAhead, "/tools/look-aheads/edit/[id]");

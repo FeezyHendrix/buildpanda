@@ -1,3 +1,6 @@
+import { projectAccess } from "./project-access-store";
+import { clearSavedProjectAccess } from "./access-storage";
+import { clearDocumentCache } from "./download-file";
 import {
   createContext,
   useCallback,
@@ -128,6 +131,8 @@ export function FieldSessionProvider({ children }: { children: ReactNode }) {
         organizationId,
         projectId: nextProjectId,
       };
+      clearSavedProjectAccess();
+      projectAccess.setScope(next);
       setScope(next);
       writeScope(next);
     },
@@ -146,6 +151,8 @@ export function FieldSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearProject = useCallback(() => {
+    clearSavedProjectAccess();
+    projectAccess.setScope(null);
     setScope(null);
     writeScope(null);
   }, []);
@@ -174,6 +181,9 @@ export function useFieldSession(): FieldSession {
 
 /** The only path that ends a session — everything else keeps the user signed in. */
 export async function signOutAndClearScope(): Promise<void> {
+  clearSavedProjectAccess();
+  projectAccess.setScope(null);
+  void clearDocumentCache().catch(() => undefined);
   try {
     // The Expo auth plugin clears its local cookie and live session before
     // sending the request. A missing connection must not prevent local logout.

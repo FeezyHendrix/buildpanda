@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { StageRow } from "@/components/molecules/schedule/rows";
 import { router } from "expo-router";
 import { Pressable } from "react-native";
@@ -5,7 +6,7 @@ import { ScheduleListScreen } from "@/components/molecules/schedule/list-screen"
 import { useStages } from "@/hooks/use-stages";
 import { useFieldSession } from "@/lib/field-session";
 
-export default function Stages() {
+function Stages() {
   const { projectId } = useFieldSession();
   const stages = useStages(projectId);
   const data = stages.data ?? [];
@@ -32,3 +33,5 @@ export default function Stages() {
     />
   );
 }
+
+export default withProjectPermission(Stages, "/tools/schedule/stages");
