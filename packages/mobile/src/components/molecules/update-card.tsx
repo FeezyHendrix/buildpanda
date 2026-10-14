@@ -1,8 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, View } from "react-native";
-import type { ProjectUpdate } from "@/api/updates";
-import { Card, Text } from "@/components/atoms";
-import { ICON_AMBER } from "@/constants/colors";
+import { Card, PendingBadge, Text } from "@/components/atoms";
+import { ICON_AMBER, ICON_MUTED } from "@/constants/colors";
+import type { LocalProjectUpdate } from "@/db/updates-repository";
 import { formatDate } from "@/lib/dates";
 
 /**
@@ -14,7 +14,7 @@ export function UpdateCard({
   onPress,
   expanded = false,
 }: {
-  update: ProjectUpdate;
+  update: LocalProjectUpdate;
   onPress?: () => void;
   expanded?: boolean;
 }) {
@@ -36,6 +36,7 @@ export function UpdateCard({
             </Text>
           </View>
         ) : null}
+        {update.isPendingSync ? <PendingBadge /> : null}
       </View>
 
       <Text weight="bold" className="text-[15px]">
@@ -45,9 +46,19 @@ export function UpdateCard({
         {update.description}
       </Text>
 
-      <Text tone="muted" className="pt-1 text-[11px]">
-        {update.author.name} · {formatDate(update.createdAt)}
-      </Text>
+      <View className="flex-row items-center gap-2 pt-1">
+        <Text tone="muted" className="min-w-0 flex-1 text-[11px]">
+          {update.author.name} · {formatDate(update.createdAt)}
+        </Text>
+        {update.media.length > 0 ? (
+          <View className="flex-row items-center gap-1">
+            <Ionicons name="images-outline" size={11} color={ICON_MUTED} />
+            <Text tone="muted" className="text-[11px]">
+              {update.media.length}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </Card>
   );
 

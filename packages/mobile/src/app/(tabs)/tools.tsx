@@ -6,6 +6,8 @@ import { Page } from "@/components/molecules/page";
 import { UpdateCard } from "@/components/molecules/update-card";
 import { ICON_BRAND } from "@/constants/colors";
 import { TabletMinWidth } from "@/constants/theme";
+import type { Db } from "@/db/client";
+import { useLocalDb } from "@/db/provider";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectUpdates } from "@/hooks/use-updates";
@@ -60,14 +62,45 @@ function ToolCard({ tool, isWide }: { tool: FieldTool; isWide: boolean }) {
   );
 }
 
+/** The same SQLite-backed feed the Updates screen reads, so a queued update shows here too. */
+function UpdatesFeed({ db, projectId }: { db: Db; projectId: string }) {
+  const { data: updates, isPending } = useProjectUpdates(db, projectId);
+
+  return (
+    <FlatList
+      data={updates}
+      keyExtractor={(update) => update.id}
+      showsVerticalScrollIndicator={false}
+      contentContainerClassName="gap-3 pb-6"
+      renderItem={({ item }) => (
+        <UpdateCard
+          update={item}
+          onPress={() => router.push(`/tools/updates/${item.id}` as never)}
+        />
+      )}
+      ListEmptyComponent={
+        isPending ? (
+          <View className="py-8">
+            <Spinner size="md" />
+          </View>
+        ) : (
+          <Text tone="secondary" className="py-8 text-center text-[13px]">
+            No updates have been posted for this project yet.
+          </Text>
+        )
+      }
+    />
+  );
+}
+
 export default function ToolsTab() {
   const { width } = useWindowDimensions();
   const { projectId, organizationId } = useFieldSession();
+  const { db, ready } = useLocalDb();
   const isWide = width >= TabletMinWidth;
 
   const { data: organizations } = useOrganizations();
   const { data: project } = useProject(projectId);
-  const { data: updates, isPending: updatesPending } = useProjectUpdates(projectId);
 
   return (
     <Page
@@ -102,29 +135,13 @@ export default function ToolsTab() {
             </Text>
           </Pressable>
         </View>
-        <FlatList
-          data={updates ?? []}
-          keyExtractor={(update) => update.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerClassName="gap-3 pb-6"
-          renderItem={({ item }) => (
-            <UpdateCard
-              update={item}
-              onPress={() => router.push(`/tools/updates/${item.id}` as never)}
-            />
-          )}
-          ListEmptyComponent={
-            updatesPending ? (
-              <View className="py-8">
-                <Spinner size="md" />
-              </View>
-            ) : (
-              <Text tone="secondary" className="py-8 text-center text-[13px]">
-                No updates have been posted for this project yet.
-              </Text>
-            )
-          }
-        />
+        {ready && db && projectId ? (
+          <UpdatesFeed key={projectId} db={db} projectId={projectId} />
+        ) : (
+          <View className="py-8">
+            <Spinner size="md" />
+          </View>
+        )}
       </View>
 
     </Page>
