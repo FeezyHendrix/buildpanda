@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { BuildingUnavailable } from "@/components/molecules/building-unavailable";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import { SegmentedTabs } from "@/components/molecules/segmented-tabs";
@@ -84,7 +85,7 @@ function TaskList({ db, projectId, buildingId, full, tab }: { db: Db; projectId:
 
 export default function Tasks() {
   const { projectId } = useFieldSession();
-  const { buildingId } = useProjectBuilding();
+  const { buildingId, isLoading: buildingsLoading, refetch: reloadBuildings } = useProjectBuilding();
   const { db, ready } = useLocalDb();
   const { can } = useProjectAccess();
   // Managers see the whole board; everyone else only their own tasks.
@@ -102,8 +103,10 @@ export default function Tasks() {
         {full ? <SegmentedTabs tabs={TABS} active={tab} onChange={setTab} /> : null}
         {ready && db && projectId && buildingId ? (
           <TaskList key={`${projectId}:${buildingId}`} db={db} projectId={projectId} buildingId={buildingId} full={full} tab={full ? tab : "mine"} />
-        ) : (
+        ) : !ready || buildingsLoading ? (
           <View className="items-center py-12"><Spinner size="md" /></View>
+        ) : (
+          <BuildingUnavailable onReload={() => void reloadBuildings()} />
         )}
       </View>
     </Page>

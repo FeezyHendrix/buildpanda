@@ -10,6 +10,7 @@ import {
 } from "@/api/daily-logs";
 import { Button, Card, Field, OptionRow, PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_BRAND } from "@/constants/colors";
+import { BuildingUnavailable } from "@/components/molecules/building-unavailable";
 import { Page } from "@/components/molecules/page";
 import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import type { Db } from "@/db/client";
@@ -282,7 +283,7 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
 export default function DailyLogDay() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const { projectId } = useFieldSession();
-  const { buildingId } = useProjectBuilding();
+  const { buildingId, isLoading: buildingsLoading, refetch: reloadBuildings } = useProjectBuilding();
   const { db, ready } = useLocalDb();
 
   const label = date ? formatLongDayLabel(date) || date : undefined;
@@ -291,10 +292,12 @@ export default function DailyLogDay() {
     <Page buildingScope title="Daily log" description={label} onBack={() => goBack()}>
       {ready && db && projectId && date && buildingId ? (
         <DayEditor key={`${projectId}:${buildingId}:${date}`} db={db} projectId={projectId} logDate={date} buildingId={buildingId} />
-      ) : (
+      ) : !ready || buildingsLoading ? (
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>
+      ) : (
+        <BuildingUnavailable onReload={() => void reloadBuildings()} />
       )}
     </Page>
   );
