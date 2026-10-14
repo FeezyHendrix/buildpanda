@@ -45,7 +45,7 @@ function Dashboard({ db, projectId, buildingId }: { db: Db; projectId: string; b
     materialLog: <MaterialLogCard key="materialLog" db={db} projectId={projectId} awaiting={summary.awaiting} />,
     expenses: <ExpensesCard key="expenses" db={db} projectId={projectId} />,
     schedule: <ScheduleCard key="schedule" projectId={projectId} />,
-    updates: <UpdatesCard key="updates" projectId={projectId} />,
+    updates: <UpdatesCard key="updates" db={db} projectId={projectId} />,
   };
 
   return (

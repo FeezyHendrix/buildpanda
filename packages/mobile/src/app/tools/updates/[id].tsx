@@ -1,33 +1,48 @@
 import { goBack } from "@/lib/navigation";
 import { useLocalSearchParams } from "expo-router";
-import { useMemo } from "react";
 import { View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { UpdateCard } from "@/components/molecules/update-card";
-import { useProjectUpdates } from "@/hooks/use-updates";
+import type { Db } from "@/db/client";
+import { useLocalDb } from "@/db/provider";
+import { useProjectUpdate } from "@/hooks/use-updates";
 import { useFieldSession } from "@/lib/field-session";
+
+function UpdateBody({ db, projectId, id }: { db: Db; projectId: string; id: string }) {
+  const { update, isPending } = useProjectUpdate(db, projectId, id);
+
+  if (isPending && !update) {
+    return (
+      <View className="items-center py-12">
+        <Spinner size="md" />
+      </View>
+    );
+  }
+  if (!update) {
+    return (
+      <View className="items-center py-12">
+        <Text tone="secondary" className="text-[13px]">
+          This update is no longer available.
+        </Text>
+      </View>
+    );
+  }
+  return <UpdateCard update={update} expanded />;
+}
 
 export default function UpdateDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
-  const { data, isPending } = useProjectUpdates(projectId, false);
-
-  const update = useMemo(() => (data ?? []).find((row) => row.id === id), [data, id]);
+  const { db, ready } = useLocalDb();
 
   return (
     <Page title="Update" onBack={() => goBack()}>
-      {isPending && !update ? (
-        <View className="items-center py-12">
-          <Spinner size="md" />
-        </View>
-      ) : update ? (
-        <UpdateCard update={update} expanded />
+      {ready && db && projectId && id ? (
+        <UpdateBody db={db} projectId={projectId} id={id} />
       ) : (
         <View className="items-center py-12">
-          <Text tone="secondary" className="text-[13px]">
-            This update is no longer available.
-          </Text>
+          <Spinner size="md" />
         </View>
       )}
     </Page>

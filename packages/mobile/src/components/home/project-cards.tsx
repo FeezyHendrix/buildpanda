@@ -77,9 +77,9 @@ export function ExpensesCard({ db, projectId }: { db: Db; projectId: string }) {
   );
 }
 
-export function UpdatesCard({ projectId }: { projectId: string }) {
-  const updates = useProjectUpdates(projectId);
-  const latest = (updates.data ?? []).slice(0, 2);
+export function UpdatesCard({ db, projectId }: { db: Db; projectId: string }) {
+  const updates = useProjectUpdates(db, projectId);
+  const latest = updates.data.slice(0, 2);
   return (
     <HomeCard title="Recent updates" href="/tools/updates">
       {latest.length === 0 ? (
