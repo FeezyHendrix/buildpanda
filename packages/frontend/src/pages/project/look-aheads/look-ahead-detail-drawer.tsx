@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Dialog } from "@base-ui/react/dialog";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -79,7 +80,7 @@ export function LookAheadDetailDrawer({
               </div>
               {lookAhead.description && (
                 <p className="mt-4 rounded-lg bg-surface-alt p-4 text-sm leading-6 text-gray-700">
-                  {lookAhead.description}
+                  <ContentText value={lookAhead.description} />
                 </p>
               )}
             </section>

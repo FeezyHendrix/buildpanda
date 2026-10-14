@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Link } from "react-router-dom";
 import { parseLinks, firstExternalUrl } from "@/lib/linkify";
 import { useLinkPreview } from "@/hooks/use-chat";
@@ -55,7 +56,7 @@ export function LinkPreviewCard({ text }: { text: string }) {
         )}
         <div className="truncate text-sm font-semibold text-ink">{preview.title}</div>
         {preview.description && (
-          <div className="mt-0.5 line-clamp-2 text-xs text-ink-muted">{preview.description}</div>
+          <div className="mt-0.5 line-clamp-2 text-xs text-ink-muted"><ContentText value={preview.description} /></div>
         )}
       </div>
     </a>

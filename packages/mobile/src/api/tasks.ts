@@ -22,6 +22,7 @@ export interface Task {
   columnId: string;
   title: string;
   description: string | null;
+  descriptionHtml?: string | null;
   dueDate: string | null;
   priority: TaskPriority;
   assignees: TaskAssignee[];

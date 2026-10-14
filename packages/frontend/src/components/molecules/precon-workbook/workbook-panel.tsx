@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -218,7 +219,7 @@ export function WorkbookPanel({ sessionId, active, compact, onSourceAction, onFo
 
       {editor.refusal ? (
         <p className="border-b border-warning-100 bg-warning-50 px-3 py-1.5 text-xs text-warning-800" role="status">
-          {editor.refusal.reason}
+          <ContentText value={editor.refusal.reason} />
         </p>
       ) : null}
 

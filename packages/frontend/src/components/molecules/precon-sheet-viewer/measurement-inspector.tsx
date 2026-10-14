@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import type { PreconBoqRow, PreconGeometry, PreconSheet } from "@/api/precon";
@@ -87,7 +88,7 @@ export function MeasurementInspector({ sessionId, row, sheet, rowGeometries, onL
       onClick={(e) => e.stopPropagation()}
     >
       <div>
-        <p className="truncate text-sm font-semibold text-gray-900">{row.description}</p>
+        <p className="truncate text-sm font-semibold text-gray-900"><ContentText value={row.description} /></p>
         <p className="text-xs text-gray-500">
           {tool ?? "Legacy · basis unconfirmed"} · {row.unit ?? "no unit"}
           {sheet?.scaleMmPerPt ? ` · 1:${scaleRatioOf(sheet.scaleMmPerPt)}` : " · no sheet scale"}

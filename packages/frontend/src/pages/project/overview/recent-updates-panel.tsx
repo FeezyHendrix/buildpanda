@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Link } from "react-router-dom";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
@@ -89,7 +90,7 @@ function UpdatePreview({ update }: { update: ProjectUpdate }) {
           {update.title}
         </h1>
         <p className="line-clamp-2 text-[12px] leading-4 text-[#606060]">
-          {update.description}
+          <ContentText value={update.description} />
         </p>
         <p className="text-[10px] font-medium text-black-300">
           {formatTimeAgo(update.createdAt)} • By {update.author.name}

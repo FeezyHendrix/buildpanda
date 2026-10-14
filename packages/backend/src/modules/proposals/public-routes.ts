@@ -1,9 +1,12 @@
+import { referencedFileIds } from "@buildpanda/rich-content";
+import { filesService } from "../files/service.ts";
+import { filesRepository } from "../files/repository.ts";
 import type { FastifyPluginAsync } from "fastify";
 import { estimateItemsService } from "./estimate-items-service.ts";
 import { proposalsRepository } from "./repository.ts";
 import { proposalTermsRepository } from "./terms-repository.ts";
 import { publicViewService } from "./public-view.ts";
-import { BadRequestError } from "../../lib/errors.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { proposalResponseEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
@@ -52,12 +55,28 @@ const publicProposalRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.get<{ Params: { token: string; fileId: string } }>(
+    "/proposals/public/:token/files/:fileId",
+    { config: { rateLimit: publicTokenRateLimit } },
+    async (request) => {
+      const { view } = await views.byToken(request.params.token);
+      // Only material already disclosed by this offer can be opened by its link.
+      if (!referencedFileIds(view).includes(request.params.fileId)) throw new NotFoundError("File");
+      const files = filesService(filesRepository(fastify.db));
+      const file = await files.findRow(request.params.fileId);
+      if (!file) throw new NotFoundError("File");
+      return { url: await files.presignViewUrl(file) };
+    },
+  );
+
   fastify.post<{ Params: { token: string }; Body: PublicRespondInput }>(
     "/proposals/public/:token/respond",
     { schema: { params: tokenParams, body: respondBody }, config: { rateLimit: publicTokenRateLimit } },
     async (request, reply) => {
       const { view, estimateId, orgId } = await views.byToken(request.params.token);
       const { proposal, estimate } = view;
+      const published = new Set(referencedFileIds(view));
+      if (referencedFileIds(request.body).some((id) => !published.has(id))) throw new NotFoundError("Attachment");
 
       if (estimate.status !== "Sent") {
         throw new BadRequestError("This proposal is no longer open for responses.");

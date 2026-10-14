@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -181,7 +182,7 @@ function LedgerTableRow({ entry, canManage, approving, onVoid, onApprove }: RowP
         {entry.reason ? (
           <p className="mt-0.5 text-xs text-ink-muted">
             <span className="font-medium text-gray-700">{reasonLabel(entry)}:</span>{" "}
-            {entry.reason}
+            <ContentText value={entry.reason} />
           </p>
         ) : null}
       </TableCell>

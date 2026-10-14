@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import {
@@ -35,7 +36,7 @@ function LineRow({ item, currency }: { item: PurchaseOrderItem; currency: string
   return (
     <TableRow tone={item.overReceived ? "muted" : "default"}>
       <TableCell>
-        <p className="font-medium text-ink">{item.description}</p>
+        <p className="font-medium text-ink"><ContentText value={item.description} /></p>
       </TableCell>
       <TableCell align="right" className="whitespace-nowrap tabular-nums">
         {item.quantity}
@@ -160,7 +161,7 @@ export function PurchaseOrderDrawer({
         {purchaseOrder.notes ? (
           <div>
             <p className="text-xs font-medium uppercase text-ink-muted">Notes</p>
-            <p className="mt-1 text-sm text-ink text-pretty">{purchaseOrder.notes}</p>
+            <p className="mt-1 text-sm text-ink text-pretty"><ContentText value={purchaseOrder.notes} /></p>
           </div>
         ) : null}
 

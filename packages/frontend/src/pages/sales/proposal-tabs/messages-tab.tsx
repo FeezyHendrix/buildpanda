@@ -1,3 +1,5 @@
+import { ContentText } from "@/components/molecules/rich-content";
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -39,14 +41,14 @@ export function MessagesTab({ proposalId }: Props) {
                 <span className="text-sm font-medium text-gray-800">{c.authorName}</span>
                 <span className="text-xs text-gray-400">{formatActivityTimestamp(c.createdAt)}</span>
               </div>
-              <p className="whitespace-pre-line text-sm text-gray-700">{c.body}</p>
+              <p className="whitespace-pre-line text-sm text-gray-700"><ContentText value={c.body} /></p>
             </div>
           ))}
         </div>
       )}
 
       <div className="flex flex-col gap-2">
-        <textarea
+        <ImageTextarea
           rows={3}
           value={body}
           onChange={(e) => setBody(e.target.value)}

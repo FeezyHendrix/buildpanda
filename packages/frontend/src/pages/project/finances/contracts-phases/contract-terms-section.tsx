@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -323,7 +324,7 @@ export function ContractTermsSection() {
         title="Contract notes"
         description="Free-form notes about this contract — key clauses, referenced documents, agreed exclusions."
       >
-        <textarea
+        <ImageTextarea
           id="contract-notes"
           value={form.contractNotes}
           onChange={(e) => set("contractNotes", e.target.value)}

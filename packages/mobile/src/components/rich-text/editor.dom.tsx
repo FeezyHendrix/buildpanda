@@ -1,6 +1,9 @@
 "use dom";
 
-import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
+import { LinkNode } from "@lexical/link";
+import { fileIdFromPath } from "@buildpanda/rich-content";
+import { FileImageNode, ImageResolver } from "./image-node";
+import { HtmlSyncPlugin, type EditorAttachment } from "./html-sync-plugin";
 import {
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
@@ -13,11 +16,10 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
-import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { $getRoot, $insertNodes, FORMAT_TEXT_COMMAND, type EditorState, type LexicalEditor } from "lexical";
-import { useEffect, useRef } from "react";
+import { FORMAT_TEXT_COMMAND } from "lexical";
+
 import { palette } from "@/constants/colors";
 
 const THEME = {
@@ -34,6 +36,10 @@ const STYLES = `
   .rt-toolbar button:active { background:${palette.surfaceAlt}; }
   .rt-input { min-height:150px; padding:12px; outline:none; font-size:16px; line-height:1.5; color:${palette.black500}; }
   .rt-input:empty:before { content: attr(data-placeholder); color:${palette.grey200}; }
+  .rt-readonly .rt-input { min-height:0; padding:0; }
+  .rt-image { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
+  .rt-image img { max-width:100%; max-height:320px; object-fit:contain; border-radius:8px; align-self:flex-start; }
+  .rt-image button { min-height:44px; align-self:flex-start; border:0; border-radius:8px; padding:8px 12px; color:${palette.black500}; background:${palette.surfaceAlt}; }
   .rt-bold { font-weight:700; }
   .rt-italic { font-style:italic; }
   .rt-ul, .rt-ol { padding-left:22px; margin:6px 0; }
@@ -69,31 +75,25 @@ function Toolbar() {
   );
 }
 
-function InitialHtml({ html }: { html: string }) {
-  const [editor] = useLexicalComposerContext();
-  const done = useRef(false);
-  useEffect(() => {
-    if (done.current || !html) return;
-    done.current = true;
-    editor.update(() => {
-      const dom = new DOMParser().parseFromString(html, "text/html");
-      const nodes = $generateNodesFromDOM(editor, dom);
-      const root = $getRoot();
-      root.clear();
-      root.select();
-      $insertNodes(nodes);
-    });
-  }, [editor, html]);
-  return null;
-}
-
 export default function Editor({
   value,
   onChangeHtml,
   placeholder = "Write here…",
   label,
   compact = false,
+  readOnly = false,
+  resolveImage,
+  onOpenImage,
+  onOpenFile,
+  accessVersion = "",
+  attachment,
 }: {
+  readOnly?: boolean;
+  resolveImage: (fileId: string) => Promise<string>;
+  onOpenImage?: (fileId: string, name: string) => Promise<void>;
+  onOpenFile?: (fileId: string) => Promise<void>;
+  accessVersion?: string;
+  attachment?: EditorAttachment;
   value: string;
   onChangeHtml: (html: string) => void;
   placeholder?: string;
@@ -103,17 +103,24 @@ export default function Editor({
   dom?: import("expo/dom").DOMProps;
 }) {
   return (
-    <div className={compact ? "rt-shell rt-compact" : "rt-shell"}>
+    <ImageResolver.Provider value={{ resolve: resolveImage, version: accessVersion, open: onOpenImage }}>
+    <div className={`rt-shell${compact ? " rt-compact" : ""}${readOnly ? " rt-readonly" : ""}`}
+      onClick={(event) => {
+        const link = event.target instanceof Element ? event.target.closest('a') : null;
+        const fileId = fileIdFromPath(link?.getAttribute('href') ?? '');
+        if (fileId) { event.preventDefault(); event.stopPropagation(); void onOpenFile?.(fileId); }
+      }}>
       <style>{STYLES}</style>
       <LexicalComposer
         initialConfig={{
           namespace: "field-notes",
           theme: THEME,
-          nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode],
+          nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, FileImageNode],
+          editable: !readOnly,
           onError: (error: Error) => console.error(error),
         }}
       >
-        <Toolbar />
+        {!readOnly ? <Toolbar /> : null}
         <RichTextPlugin
           contentEditable={<ContentEditable className="rt-input" aria-label={label ?? placeholder} data-placeholder={placeholder} />}
           placeholder={null}
@@ -121,13 +128,9 @@ export default function Editor({
         />
         <HistoryPlugin />
         <ListPlugin />
-        <InitialHtml html={value} />
-        <OnChangePlugin
-          onChange={(_state: EditorState, editor: LexicalEditor) =>
-            editor.read(() => onChangeHtml($generateHtmlFromNodes(editor, null)))
-          }
-        />
+        <HtmlSyncPlugin value={value} onChange={onChangeHtml} attachment={attachment} />
       </LexicalComposer>
     </div>
+    </ImageResolver.Provider>
   );
 }

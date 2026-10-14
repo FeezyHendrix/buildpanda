@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
@@ -197,7 +198,7 @@ export function OrgTab() {
             </div>
             <div className="flex flex-col gap-1.5 sm:col-span-3">
               <Label htmlFor="org-payment-inst">Payment instructions</Label>
-              <textarea
+              <ImageTextarea
                 id="org-payment-inst"
                 value={paymentInstructions}
                 onChange={(e) => setPaymentInstructions(e.target.value)}

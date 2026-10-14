@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useLatestInsight,
@@ -198,7 +199,7 @@ export default function ProjectPandaAi() {
             <Card className="col-span-1 flex flex-col md:col-span-2 p-6">
               <h2 className="font-semibold text-gray-900">AI Summary</h2>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
-                {insight.summary || "No summary provided."}
+                <ContentText value={insight.summary || "No summary provided."} />
               </p>
             </Card>
           </div>

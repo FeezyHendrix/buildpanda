@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
@@ -154,7 +155,7 @@ export function UpsertRequestDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="request-notes">Notes</Label>
-        <textarea
+        <ImageTextarea
           id="request-notes"
           value={values.notes}
           onChange={(e) => update("notes", e.target.value)}

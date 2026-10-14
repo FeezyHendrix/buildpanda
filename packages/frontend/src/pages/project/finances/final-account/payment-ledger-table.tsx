@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
@@ -24,7 +25,7 @@ function LedgerRow({ entry, currency }: { entry: PaymentLedgerEntry; currency: C
           {entry.type}
         </Badge>
       </TableCell>
-      <TableCell>{entry.description}</TableCell>
+      <TableCell><ContentText value={entry.description} /></TableCell>
       <TableCell align="right" className={cn("font-medium tabular-nums", AMOUNT_CLASS[entry.type])}>
         {formatCurrency(entry.amount, currency)}
       </TableCell>

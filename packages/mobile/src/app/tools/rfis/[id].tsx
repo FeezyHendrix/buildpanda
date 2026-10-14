@@ -1,3 +1,4 @@
+import { RichContent } from "@/components/rich-text/rich-content";
 import { useProjectAccess } from "@/lib/project-access-provider";
 import { anyOf } from "@/lib/access-requirement";
 import { features } from "@/lib/feature-access";
@@ -85,7 +86,7 @@ function CommentThread({
               </Text>
             )}
           </View>
-          <Text className="pt-1 text-[15px]">{comment.body}</Text>
+          <RichContent html={comment.contentHtml} text={comment.body} />
         </View>
       ))}
     </Card>
@@ -201,6 +202,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
             number={rfi.number}
             subject={rfi.subject}
             question={rfi.question}
+            questionHtml={rfi.questionHtml}
             status={rfi.status}
             priority={rfi.priority}
             ballInCourtName={rfi.ballInCourtName}
@@ -208,6 +210,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
             costImpact={rfi.costImpact}
             scheduleImpact={rfi.scheduleImpact}
             officialResponse={rfi.officialResponse}
+            officialResponseHtml={officialComment?.contentHtml ?? rfi.officialResponseHtml}
             officialRespondedByName={officialComment?.authorName ?? null}
             officialRespondedAt={officialComment?.createdAt ?? null}
             officialResponsePending={officialComment?.isPendingSync ?? false}

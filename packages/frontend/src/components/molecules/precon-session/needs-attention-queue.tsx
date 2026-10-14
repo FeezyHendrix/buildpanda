@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useMemo } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
@@ -91,7 +92,7 @@ export function NeedsAttentionQueue({ sessionId, rows, sheetByRow, selectedRowId
                     selected ? "border-primary-600 bg-primary-50/50" : "border-transparent",
                   )}
                 >
-                  <span className="min-w-0 flex-1 truncate text-gray-800">{row.description}</span>
+                  <span className="min-w-0 flex-1 truncate text-gray-800"><ContentText value={row.description} /></span>
                   <span className="shrink-0 tabular-nums text-gray-500">
                     {row.qty ?? "—"} {row.unit ?? ""}
                   </span>

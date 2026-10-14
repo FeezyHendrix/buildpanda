@@ -1,31 +1,35 @@
-import type { FastifyRequest } from "fastify";
-import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import type { AuthorizationRequest } from "../../lib/authorization-request.ts";
+import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import type { FilesRepository } from "./repository.ts";
 import type { FileAccessRepository } from "./access-repository.ts";
 import { requireFileRead } from "./access.ts";
 
-/** Uploaded IDs and inline file URLs both create a disclosure in the destination record. */
-export function referencedFileIds(body: unknown): string[] {
-  const ids = new Set<string>();
-  function visit(value: unknown, key = "") {
-    if (typeof value === "string") {
-      if (/^(?:fileIds?|file_ids?)$|(?:FileIds?|_file_ids?)$/.test(key) && value) ids.add(value);
-      for (const match of value.matchAll(/\/files\/([a-zA-Z0-9_-]+)(?=\/|[?"'<>\s]|$)/g)) ids.add(match[1]!);
-    } else if (Array.isArray(value)) value.forEach((item) => visit(item, key));
-    else if (value && typeof value === "object") Object.entries(value).forEach(([name, item]) => visit(item, name));
-  }
-  visit(body);
-  return [...ids];
-}
+import { embeddedImages, imageError, MAX_CONTENT_IMAGES, referencedFileIds } from "@buildpanda/rich-content";
+export { referencedFileIds } from "@buildpanda/rich-content";
 
-export async function requireProjectFileReferences(request: FastifyRequest, projectId: string, files: FilesRepository, access: FileAccessRepository) {
+export async function requireProjectFileReferences(request: AuthorizationRequest & { body?: unknown }, projectId: string | undefined, files: FilesRepository, access: FileAccessRepository) {
   const ids = referencedFileIds(request.body);
   if (!ids.length) return;
-  await request.requireProjectAccess(projectId);
+  request.requireAuth();
+  if (projectId) await request.requireProjectAccess(projectId);
+  const imageIds = new Set<string>();
+  function inspect(value: unknown) {
+    if (typeof value === 'string') {
+      const images = embeddedImages(value);
+      if (images.length > MAX_CONTENT_IMAGES) throw new BadRequestError('A field can contain up to 20 images.');
+      images.forEach((image) => imageIds.add(image.fileId));
+    } else if (Array.isArray(value)) value.forEach(inspect);
+    else if (value && typeof value === 'object') Object.values(value).forEach(inspect);
+  }
+  inspect(request.body);
   const rows = await files.findByIds(ids);
   if (rows.length !== ids.length) throw new NotFoundError("Attachment");
   for (const file of rows) {
     if (file.project_id && file.project_id !== projectId) throw new ForbiddenError("The attachment belongs to another project.");
+    if (imageIds.has(file.id)) {
+      const error = imageError(file.mime_type, Number(file.size_bytes));
+      if (error) throw new BadRequestError(error);
+    }
     // Check before the new reference exists; otherwise linking a denied file could grant its read access.
     await requireFileRead(request, file, access);
   }

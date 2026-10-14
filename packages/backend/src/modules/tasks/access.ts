@@ -1,9 +1,9 @@
-import type { FastifyRequest } from "fastify";
+import type { AuthorizationRequest, AuthorizedProject } from "../../lib/authorization-request.ts";
 import type { ProjectRow } from "../projects/types.ts";
 import { canSeeAllTasks } from "../../lib/authorization.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
 
-export function canSeeFullTaskBoard(request: FastifyRequest, project: Pick<ProjectRow, "id" | "owner_id" | "organization_id">): boolean {
+export function canSeeFullTaskBoard(request: AuthorizationRequest, project: Pick<ProjectRow, "id" | "owner_id" | "organization_id">): boolean {
   const user = request.requireAuth();
   const orgId = project.organization_id;
   return canSeeAllTasks(
@@ -19,7 +19,7 @@ export function canSeeFullTaskBoard(request: FastifyRequest, project: Pick<Proje
   );
 }
 
-export function assertCompanyTaskAccess(request: FastifyRequest, project: ProjectRow): void {
+export function assertCompanyTaskAccess(request: AuthorizationRequest, project: AuthorizedProject): void {
   const user = request.requireAuth();
   if (project.owner_id === user.id) return;
   if (project.organization_id && request.orgRoles.has(project.organization_id)) return;

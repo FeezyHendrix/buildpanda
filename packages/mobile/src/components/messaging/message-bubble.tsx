@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/rich-text/rich-content";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { memo, useState } from "react";
@@ -42,7 +43,7 @@ export const MessageBubble = memo(function MessageBubble({ message, ownerId, onR
       <View className={cn("rounded-2xl border px-4 py-3", mine ? "rounded-br-sm border-primary-100 bg-primary-50" : "rounded-bl-sm border-line bg-surface")}>
         {message.deletedAt ? <Text tone="secondary" className="text-sm italic">Message deleted</Text> : <>
           {message.quotedMessage ? <View className="mb-2 border-l-2 border-primary-500 pl-3"><Text weight="semibold" className="text-xs">{message.quotedMessage.authorName || "Teammate"}</Text><Text tone="secondary" numberOfLines={3} className="pt-1 text-xs">{message.quotedMessage.deleted ? "Message deleted" : message.quotedMessage.body}</Text></View> : null}
-          {message.body ? <Text selectable className="text-base leading-6">{message.body}</Text> : null}
+          {message.body ? <ContentText selectable className="text-base leading-6" value={message.body} /> : null}
           {(message.attachments ?? []).map((file) => <Attachment key={file.fileId} file={file} />)}
           {message.resolvedReferences?.map((reference) => <Text key={`${reference.type}:${reference.id}`} tone="secondary" className="pt-2 text-xs">{reference.restricted ? "Restricted project record" : reference.title || "Project record"}</Text>)}
           {message.reactions?.length ? <View className="mt-2 flex-row flex-wrap gap-2">{message.reactions.map((reaction) => <View key={reaction.emoji} className="rounded-full border border-line bg-surface px-2 py-1"><Text className="text-xs">{reaction.emoji} {reaction.count}</Text></View>)}</View> : null}

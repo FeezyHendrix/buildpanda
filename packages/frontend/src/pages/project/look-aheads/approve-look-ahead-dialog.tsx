@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { INPUT_CLASS } from "@/components/atoms/input";
@@ -53,7 +54,7 @@ function ApproveLookAheadDialog({ open, onOpenChange, projectId, lookAhead }: Ap
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="approve-note">Note (optional)</Label>
-        <textarea
+        <ImageTextarea
           id="approve-note"
           rows={3}
           value={note}

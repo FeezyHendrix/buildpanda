@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { CHANGE_TYPE_LABELS } from "@/components/molecules/upsert-change-request-dialog";
@@ -127,7 +128,7 @@ export function ChangeRequestRevisions({ cr }: { cr: ChangeRequestDetail }) {
             </div>
             <p className="mt-1 text-xs text-ink-muted">by {revision.actorName}</p>
             {revision.reason ? (
-              <p className="mt-1 text-sm leading-6 text-gray-700">{revision.reason}</p>
+              <p className="mt-1 text-sm leading-6 text-gray-700"><ContentText value={revision.reason} /></p>
             ) : null}
           </li>
         ))}

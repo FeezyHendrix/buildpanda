@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { FileUpload } from "@/components/atoms/file-upload";
@@ -96,7 +97,7 @@ export function UploadComplianceDocDialog({ open, onOpenChange }: Props) {
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="compliance-notes">Notes</Label>
-        <Input id="compliance-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Insurer, cover limit, broker" />
+        <ImageTextarea id="compliance-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Insurer, cover limit, broker" />
       </div>
     </FormDialog>
   );

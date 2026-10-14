@@ -1,6 +1,8 @@
 import type { AccessRequirement } from "./access.ts";
 
 export interface VoiceField {
+  /** Inline pictures belong to narrative records; conversations have their own attachment contract. */
+  images?: boolean;
   type: "text" | "long_text" | "rich_text" | "boolean" | "number" | "date" | "select" | "file";
   label: string;
   required?: boolean;

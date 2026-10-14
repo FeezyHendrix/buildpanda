@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
@@ -152,7 +153,7 @@ function UpsertMaterialApprovalDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="ma-spec">Specification</Label>
-        <textarea
+        <ImageTextarea
           id="ma-spec"
           value={specification}
           onChange={(e) => setSpecification(e.target.value)}
@@ -238,7 +239,7 @@ function UpsertMaterialApprovalDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="ma-notes">Notes</Label>
-        <textarea
+        <ImageTextarea
           id="ma-notes"
           value={description}
           onChange={(e) => setDescription(e.target.value)}

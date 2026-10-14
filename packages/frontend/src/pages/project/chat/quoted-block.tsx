@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/lib/project-types";
 
@@ -31,7 +32,7 @@ export function QuotedBlock({
           quoted.deleted && "italic text-ink-muted",
         )}
       >
-        {body}
+        <ContentText value={body} />
       </span>
     </button>
   );

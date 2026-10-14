@@ -1,3 +1,4 @@
+import { FILE_STAGING_PERMISSIONS } from "@buildpanda/rich-content/access";
 import { allOf, anyOf, capability, defineFeature, grant, workspaceGrant } from "./access.ts";
 
 const comment = grant("comments", "post");
@@ -33,7 +34,4 @@ export const messagingAccess = anyOf(features.messages.read, features.workspaceM
 
 export const scheduleAccess = anyOf(features.schedule.read, features.stages.read, features.keyDates.read);
 /** Staging bytes never authorizes attaching them to a protected record. */
-export const uploadAccess = anyOf(features.documents.actions.create, features.documents.actions.markup,
-  features.updates.actions.create, features.dailyLog.actions.create, features.materialOrders.actions.create,
-  features.expenses.actions.create, features.rfis.actions.create, features.rfis.actions.comment,
-  features.changeRequests.actions.create, features.changeRequests.actions.comment);
+export const uploadAccess = anyOf(...FILE_STAGING_PERMISSIONS.map(([resource, action]) => grant(resource, action)));

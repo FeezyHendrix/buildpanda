@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { PinPopover, TEXTAREA_CLASS, type PopoverAnchor } from "@/components/molecules/markup-thread/pin-popover";
@@ -36,7 +37,7 @@ export function PinComposerPopover({
       <p className="mt-1.5 truncate text-xs text-gray-500">
         {lineLabel ? `On line: ${lineLabel}` : "Not tied to a bill line — select a line first to attach it"}
       </p>
-      <textarea
+      <ImageTextarea
         autoFocus
         rows={3}
         value={body}

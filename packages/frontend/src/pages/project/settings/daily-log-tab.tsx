@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -60,7 +61,7 @@ function TemplateRow({ template, canManage, actions }: { template: DailyLogTempl
     <TableRow onClick={canManage && template.active ? () => actions.onEdit(template) : undefined}>
       <TableCell>
         <p className="font-medium text-ink">{template.name}</p>
-        {template.description ? <p className="text-xs text-gray-400">{template.description}</p> : null}
+        {template.description ? <p className="text-xs text-gray-400"><ContentText value={template.description} /></p> : null}
       </TableCell>
       <TableCell align="right" className="tabular-nums">{questionCount(template)}</TableCell>
       <TableCell>

@@ -35,6 +35,7 @@ export const drawingMarkupComments = sqliteTable(
     markupId: text("markup_id").notNull(),
     projectId: text("project_id").notNull(),
     body: text("body").notNull().default(""),
+    bodyHtml: text("body_html"),
     mediaKind: text("media_kind"),
     /** A durable local path to media that has not been uploaded yet. */
     stagedMediaUri: text("staged_media_uri"),

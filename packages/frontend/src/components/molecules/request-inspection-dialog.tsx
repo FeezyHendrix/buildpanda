@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useMemo, useState } from "react";
 import { useInspectionDraft } from "@/hooks/use-inspection-draft";
 import { FormDrawer } from "./form-drawer";
@@ -161,7 +162,7 @@ function InspectionRequestForm({
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="inspection-description">What needs inspecting?</Label>
-          <textarea
+          <ImageTextarea
             id="inspection-description"
             value={description}
             onChange={(e) => draft.setField("description", e.target.value)}

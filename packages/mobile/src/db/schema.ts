@@ -28,6 +28,7 @@ export const rfis = sqliteTable(
     ballInCourtName: text("ball_in_court_name"),
     dueDate: text("due_date"),
     officialResponse: text("official_response"),
+    officialResponseHtml: text("official_response_html"),
     // Set when the RFI was raised from a plan markup, so the server can link
     // it back to the sheet and pin it came from.
     documentId: text("document_id"),
@@ -269,8 +270,10 @@ export const materialApprovals = sqliteTable(
     activityId: text("activity_id"),
     activityName: text("activity_name"),
     description: text("description"),
+    descriptionHtml: text("description_html"),
     status: text("status").notNull().default("Pending"),
     response: text("response"),
+    responseHtml: text("response_html"),
     dueDate: text("due_date"),
     requestedReviewerId: text("requested_reviewer_id"),
     requestedReviewerName: text("requested_reviewer_name"),

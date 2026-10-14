@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
@@ -75,7 +76,7 @@ export function RecordDepositDialog({ open, onOpenChange, projectId, currency }:
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="deposit-description">What this covers</Label>
-        <input
+        <ImageTextarea
           id="deposit-description"
           value={description}
           onChange={(event) => setDescription(event.target.value)}

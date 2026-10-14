@@ -1,3 +1,4 @@
+import { ContentText, RichContent } from "@/components/rich-text/rich-content";
 import { View } from "react-native";
 import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
 import type { LocalMaterialApprovalComment } from "@/db/material-approval-comments-repository";
@@ -24,9 +25,7 @@ function Section({ title, body }: { title: string; body: string }) {
       <Text weight="bold" className="pb-1.5 text-base">
         {title}
       </Text>
-      <Text tone="secondary" className="text-[15px]">
-        {body}
-      </Text>
+      <ContentText tone="secondary" className="text-[15px]" value={body} />
     </View>
   );
 }
@@ -70,7 +69,7 @@ function CommentThread({
               </Text>
             )}
           </View>
-          <Text className="pt-1 text-[15px]">{comment.body}</Text>
+          <ContentText className="pt-1 text-[15px]" value={comment.body} />
         </View>
       ))}
     </Card>
@@ -120,7 +119,7 @@ export function MaterialApprovalDetailBody({
       {approval.specification ? (
         <Section title="Specification" body={approval.specification} />
       ) : null}
-      {approval.description ? <Section title="Notes" body={approval.description} /> : null}
+      {approval.description || approval.descriptionHtml ? <View className="gap-2"><Text weight="bold">Notes</Text><RichContent html={approval.descriptionHtml} text={approval.description} /></View> : null}
 
       {approval.response || approval.reviewedByName ? (
         <View className="rounded-xl bg-surface-alt p-3">
@@ -128,7 +127,7 @@ export function MaterialApprovalDetailBody({
             Decision · {approval.status}
           </Text>
           {approval.response ? (
-            <Text className="pt-1.5 text-[15px]">{approval.response}</Text>
+            <RichContent html={approval.responseHtml} text={approval.response} />
           ) : null}
           {approval.reviewedByName ? (
             <Text tone="muted" className="pt-1 text-xs">

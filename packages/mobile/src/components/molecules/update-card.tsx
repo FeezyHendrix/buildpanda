@@ -1,3 +1,4 @@
+import { ContentText, RichContent } from "@/components/rich-text/rich-content";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, View } from "react-native";
 import { Card, PendingBadge, Text } from "@/components/atoms";
@@ -42,9 +43,7 @@ export function UpdateCard({
       <Text weight="bold" className="text-[15px]">
         {update.title}
       </Text>
-      <Text tone="secondary" className="text-[13px]" numberOfLines={expanded ? undefined : 4}>
-        {update.description}
-      </Text>
+      {expanded ? <RichContent html={update.descriptionHtml} text={update.description} /> : <ContentText tone="secondary" className="text-[13px]" numberOfLines={4} value={update.description} />}
 
       <View className="flex-row items-center gap-2 pt-1">
         <Text tone="muted" className="min-w-0 flex-1 text-[11px]">

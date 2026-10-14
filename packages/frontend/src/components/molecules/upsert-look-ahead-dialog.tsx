@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useMemo, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -142,7 +143,7 @@ function UpsertLookAheadDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="la-description">Description</Label>
-        <textarea
+        <ImageTextarea
           id="la-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}

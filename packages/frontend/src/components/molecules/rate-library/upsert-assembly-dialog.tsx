@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/atoms/button";
@@ -89,7 +90,7 @@ function ItemRow({
   return (
     <div className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-line p-3">
       <div className="flex flex-col gap-2">
-        <Input inputSize="sm" placeholder="Item, e.g. Plaster both faces" value={draft.description} onChange={(e) => onChange({ description: e.target.value })} />
+        <ImageTextarea rows={2} placeholder="Item, e.g. Plaster both faces" value={draft.description} onChange={(e) => onChange({ description: e.target.value })} />
         <div className="grid grid-cols-3 gap-2">
           <label className={LABEL}>
             Unit

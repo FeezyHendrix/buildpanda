@@ -69,7 +69,7 @@ function facts(approval: LocalMaterialApproval): string {
 function ApprovalRow({ approval }: { approval: LocalMaterialApproval }) {
   return (
     <Pressable
-      onPress={() => router.push(`./${approval.id}`)}
+      onPress={() => router.push({ pathname: '/tools/material-approvals/[id]', params: { id: approval.id } })}
       accessibilityRole="button"
       className="min-h-16 gap-1.5 border-b border-hairline px-4 py-3 active:bg-surface-alt"
     >
@@ -138,7 +138,7 @@ function MaterialApprovals() {
         <HeaderIconButton permission={features.materialApprovals.actions.create}
           icon="add"
           label="New approval request"
-          onPress={() => router.push("./new")}
+          onPress={() => router.push('/tools/material-approvals/new')}
         />
       }
     >

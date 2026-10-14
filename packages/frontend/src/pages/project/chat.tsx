@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useUrlState } from "@/hooks/use-url-state";
 import { useCachedMessages } from "./chat/use-cached-messages";
 import { useMessageDestination } from "./chat/use-message-destination";
@@ -240,7 +241,7 @@ export function ChatWorkspace({ projectId = "" }: { projectId?: string }) {
                       {pins.map((p: ChatMessage) => (
                         <div key={p.id} className="mb-2 p-2 hover:bg-surface-alt rounded group border-b border-line-hair last:border-0">
                           <div className="text-xs font-medium text-ink">{p.authorName}</div>
-                          <div className="text-xs text-ink truncate">{p.body}</div>
+                          <div className="text-xs text-ink truncate"><ContentText value={p.body} /></div>
                           <div className="mt-2 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => unpinMsg.mutate(p.id)} className="text-[10px] font-medium text-ink-muted hover:text-negative-500">Unpin</button>
                             <button onClick={() => { setThreadRootMsg(p); setShowPins(false); }} className="text-[10px] font-medium text-ink-muted hover:text-primary-500">Reply</button>

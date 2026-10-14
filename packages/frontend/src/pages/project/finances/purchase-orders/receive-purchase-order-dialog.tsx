@@ -1,3 +1,5 @@
+import { ContentText } from "@/components/molecules/rich-content";
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { INPUT_CLASS } from "@/components/atoms/input";
@@ -104,7 +106,7 @@ export function ReceivePurchaseOrderDialog({
             className="grid gap-2 rounded-lg bg-surface-alt p-3 sm:grid-cols-[1fr_140px] sm:items-end"
           >
             <div className="min-w-0">
-              <p className="font-medium text-ink">{item.description}</p>
+              <p className="font-medium text-ink"><ContentText value={item.description} /></p>
               <p className="mt-0.5 text-xs text-ink-muted tabular-nums">
                 {item.quantity} ordered · {item.receivedQuantity} already received ·{" "}
                 {item.outstandingQuantity} outstanding · {formatCurrency(item.unitPrice, currency)} each
@@ -142,7 +144,7 @@ export function ReceivePurchaseOrderDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="po-receive-note">Note</Label>
-        <textarea
+        <ImageTextarea
           id="po-receive-note"
           value={note}
           onChange={(event) => setNote(event.target.value)}

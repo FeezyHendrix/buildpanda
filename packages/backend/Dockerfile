@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV _JAVA_OPTIONS="-Djava.awt.headless=true"
 
 FROM base AS dev
+COPY packages/rich-content /rich-content
 COPY packages/voice-actions /voice-actions
 COPY packages/backend/package.json ./
 # RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
@@ -17,6 +18,7 @@ EXPOSE 3000
 CMD ["npx", "tsx", "watch", "src/server.ts"]
 
 FROM base AS build
+COPY packages/rich-content /rich-content
 COPY packages/voice-actions /voice-actions
 COPY packages/backend/package.json ./
 # RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
@@ -33,6 +35,7 @@ FROM base AS prod
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/package.json ./
+COPY --from=build /rich-content /rich-content
 COPY --from=build /voice-actions /voice-actions
 RUN npm install --omit=dev --include=optional --os=linux --cpu=x64 --libc=glibc
 COPY --from=build /app/dist ./dist

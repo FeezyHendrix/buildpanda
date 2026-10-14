@@ -1,3 +1,5 @@
+import { ContentText } from "@/components/molecules/rich-content";
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { Dialog } from "@base-ui/react/dialog";
 import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
@@ -131,7 +133,7 @@ function MaterialApprovalDetailDialog({
                       Notes
                     </p>
                     <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
-                      {approval.description}
+                      <ContentText value={approval.description} />
                     </p>
                   </div>
                 ) : null}
@@ -143,7 +145,7 @@ function MaterialApprovalDetailDialog({
                     </p>
                     <div className="mt-2 rounded-lg bg-surface-alt p-3">
                       <p className="whitespace-pre-wrap text-sm text-gray-900">
-                        {approval.response}
+                        <ContentText value={approval.response} />
                       </p>
                       {approval.reviewedByName ? (
                         <p className="mt-1 text-xs text-gray-500">
@@ -169,7 +171,7 @@ function MaterialApprovalDetailDialog({
                           <span className="text-sm font-medium text-gray-900">{c.authorName}</span>
                           <span className="text-xs text-gray-400">{formatWhen(c.createdAt)}</span>
                         </div>
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{c.body}</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600"><ContentText value={c.body} /></p>
                       </li>
                     ))}
                   </ul>
@@ -179,7 +181,7 @@ function MaterialApprovalDetailDialog({
               <footer className="flex items-center gap-2 border-t border-line-hair px-6 py-4">
                 {canComment ? (
                   <>
-                    <textarea
+                    <ImageTextarea
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                       rows={1}

@@ -1,3 +1,4 @@
+import { RichContent } from "@/components/rich-text/rich-content";
 import { features } from "@/lib/feature-access";
 import { withProjectPermission } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -54,6 +55,7 @@ function EntryRow({ row, first }: { row: MaterialLedgerEntryRow; first: boolean 
             {row.materialOrderTitle ? `Order: ${row.materialOrderTitle}` : "Unplanned delivery"}
           </Text>
         ) : null}
+        {row.notesHtml ? <RichContent html={row.notesHtml} projectId={row.projectId} /> : null}
       </View>
       {row.isPendingSync ? <PendingBadge /> : null}
     </View>

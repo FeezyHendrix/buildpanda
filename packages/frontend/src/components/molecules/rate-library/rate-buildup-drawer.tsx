@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { Button } from "@/components/atoms/button";
@@ -103,7 +104,7 @@ export function RateBuildupDrawer({ open, onOpenChange, cardId, currency, rate }
                 <option key={c} value={c}>{COMPONENT_LABEL[c]}</option>
               ))}
             </select>
-            <Input inputSize="sm" placeholder="Description" value={line.description} onChange={(e) => update(i, { description: e.target.value })} />
+            <ImageTextarea rows={2} placeholder="Description" value={line.description} onChange={(e) => update(i, { description: e.target.value })} />
             <Input inputSize="sm" type="number" min="0" step="any" inputMode="decimal" value={line.qty} onChange={(e) => update(i, { qty: e.target.value })} aria-label="Quantity" />
             <Input inputSize="sm" placeholder="unit" value={line.unit} onChange={(e) => update(i, { unit: e.target.value })} aria-label="Unit" />
             <Input inputSize="sm" type="number" min="0" step="any" inputMode="decimal" value={line.unitCost} onChange={(e) => update(i, { unitCost: e.target.value })} aria-label="Unit cost" />

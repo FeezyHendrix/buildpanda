@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Link } from "react-router-dom";
 import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -71,7 +72,7 @@ function OptionCard({ option, selection, selectable, onPick }: OptionCardProps) 
         ) : null}
       </div>
       {option.description ? (
-        <span className="line-clamp-2 text-xs text-gray-500">{option.description}</span>
+        <span className="line-clamp-2 text-xs text-gray-500"><ContentText value={option.description} /></span>
       ) : null}
       <div className="mt-1 flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-gray-900">
@@ -151,7 +152,7 @@ function SelectionCard({
             {selection.dueDate ? <span>Decide by {formatDayMonth(selection.dueDate)}</span> : null}
           </div>
           {selection.description ? (
-            <p className="mt-1.5 line-clamp-2 text-xs text-gray-500">{selection.description}</p>
+            <p className="mt-1.5 line-clamp-2 text-xs text-gray-500"><ContentText value={selection.description} /></p>
           ) : null}
         </div>
         {canManage ? (

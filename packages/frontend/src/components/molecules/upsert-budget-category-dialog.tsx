@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { FormDrawer } from "./form-drawer";
@@ -165,7 +166,7 @@ function UpsertBudgetCategoryDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="category-notes">Notes</Label>
-        <textarea
+        <ImageTextarea
           id="category-notes"
           value={values.notes}
           onChange={(e) => update("notes", e.target.value)}

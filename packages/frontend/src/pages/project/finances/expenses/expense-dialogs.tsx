@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useMemo, useState } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
@@ -277,7 +278,7 @@ export function UpsertTransactionDialog({
 
         <div className="space-y-2">
           <Label>Description</Label>
-          <textarea
+          <ImageTextarea
             className={textareaClass}
             value={values.description}
             onChange={(e) => setValues({ ...values, description: e.target.value })}

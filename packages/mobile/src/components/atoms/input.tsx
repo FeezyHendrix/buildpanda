@@ -1,3 +1,4 @@
+import { ImageTextInput } from "@/components/rich-text/image-text-input";
 import type { Ref } from "react";
 import { TextInput, View, type TextInputProps } from "react-native";
 import { ICON_SUBTLE } from "@/constants/colors";
@@ -25,15 +26,17 @@ interface FieldProps extends TextInputProps {
   label: string;
   error?: string;
   helperText?: string;
+  images?: boolean;
   className?: string;
 }
 
-export function Field({ label, error, helperText, className, onFocus, ...props }: FieldProps) {
+export function Field({ label, error, helperText, className, onFocus, images = true, ...props }: FieldProps) {
   const reveal = useKeyboardReveal();
+  const Input = props.multiline && images ? ImageTextInput : TextInput;
   return (
     <View className={cn("gap-2", className)}>
       <FieldLabel>{label}</FieldLabel>
-      <TextInput
+      <Input
         className={cn(
           "min-h-14 rounded-xl bg-surface-alt px-4 py-3 font-inter text-base text-black-500",
           props.multiline && "min-h-28",
