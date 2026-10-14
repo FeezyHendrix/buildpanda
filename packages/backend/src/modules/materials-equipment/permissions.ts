@@ -40,6 +40,7 @@ export function assertMaterialsAction(
     projectRoles: request.projectRoles,
     orgPermissions: request.orgPermissions,
     projectSectionPermissions: request.projectSectionPermissions,
+            projectGrants: request.projectGrants,
   };
   if (canProjectPermission(scope, ctx, "materials", action)) return;
   if (canProjectPermission(scope, ctx, "materials", "manage")) return;

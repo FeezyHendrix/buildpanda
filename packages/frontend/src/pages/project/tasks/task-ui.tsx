@@ -1,5 +1,5 @@
 import { Badge } from "@/components/atoms/badge";
-import type { TaskEntityType, TaskLinkType, TaskPriority } from "@/lib/project-types";
+import type { TaskColumn, TaskEntityType, TaskLinkType, TaskPriority } from "@/lib/project-types";
 import { INPUT_CLASS } from "@/components/atoms/input";
 
 export interface AssigneeOption {
@@ -15,10 +15,35 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Past its due date and not yet done. A done task is never "overdue". */
-export function isTaskOverdue(task: { dueDate: string | null; status?: string | null }, today = todayIso()): boolean {
-  if (!task.dueDate) return false;
-  if (task.status === "done" || task.status === "Done" || task.status === "completed") return false;
+// Completion is the task's column, not a field on the task: the backend counts
+// a task overdue only while its column's status is not "Done"
+// (modules/reporting/service.ts).
+const DONE_STATUS = "Done";
+
+export function isDoneColumn(column: Pick<TaskColumn, "status">): boolean {
+  return column.status === DONE_STATUS;
+}
+
+export function findDoneColumn(columns: readonly TaskColumn[]): TaskColumn | null {
+  return columns.find(isDoneColumn) ?? null;
+}
+
+/** Where a completed task returns to when it is reopened. */
+export function findReopenColumn(columns: readonly TaskColumn[]): TaskColumn | null {
+  return columns.find((column) => !isDoneColumn(column)) ?? null;
+}
+
+/**
+ * Past its due date and not yet done. `done` is passed in because this read
+ * `task.status`, which Task does not have — typed optional, so it silently
+ * stayed undefined and a finished task kept reading Overdue for ever.
+ */
+export function isTaskOverdue(
+  task: { dueDate: string | null },
+  done: boolean,
+  today = todayIso(),
+): boolean {
+  if (done || !task.dueDate) return false;
   return task.dueDate.slice(0, 10) < today;
 }
 

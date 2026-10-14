@@ -1,3 +1,6 @@
+import { useProjectAccess } from "@/lib/project-access-provider";
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -116,7 +119,7 @@ function CRDetailContent({ db, projectId, changeId }: { db: Db; projectId: strin
   );
 }
 
-export default function ChangeRequestDetail() {
+function ChangeRequestDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -145,6 +148,7 @@ export default function ChangeRequestDetail() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const { allows } = useProjectAccess();
   const canSend = body.trim().length > 0 && !sending;
 
   // The comment is written to SQLite and queued; no signal needed. A failure
@@ -170,14 +174,14 @@ export default function ChangeRequestDetail() {
       rightButtons={
         id ? (
           <>
-            <HeaderIconButton icon="create-outline" label="Edit change request" onPress={() => router.push(`/tools/change-requests/edit/${id}` as never)} />
-            <HeaderIconButton icon="trash-outline" label="Delete change request" onPress={confirmDelete} />
+            <HeaderIconButton permission={features.changeRequests.actions.edit} icon="create-outline" label="Edit change request" onPress={() => router.push(`/tools/change-requests/edit/${id}` as never)} />
+            <HeaderIconButton permission={features.changeRequests.actions.remove} icon="trash-outline" label="Delete change request" onPress={confirmDelete} />
           </>
         ) : null
       }
       scroll
       footer={
-        id ? (
+        id && allows(features.changeRequests.actions.comment) ? (
           <View className="gap-2">
             {sendError ? (
               <Text tone="danger" className="px-1 text-xs">
@@ -216,3 +220,5 @@ export default function ChangeRequestDetail() {
     </Page>
   );
 }
+
+export default withProjectPermission(ChangeRequestDetail, "/tools/change-requests/[id]");

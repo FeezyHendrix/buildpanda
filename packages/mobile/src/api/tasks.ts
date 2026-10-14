@@ -55,6 +55,11 @@ export interface CreateTaskInput {
 }
 
 export const tasksApi = {
+  update: (projectId: string, taskId: string, body: Partial<Pick<CreateTaskInput, "title" | "description" | "dueDate" | "priority" | "assignees">>) =>
+    request<Task>(`/projects/${projectId}/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify(body) }),
+  remove: (projectId: string, taskId: string) => request<void>(`/projects/${projectId}/tasks/${taskId}`, { method: "DELETE" }),
+  comment: (projectId: string, taskId: string, body: string) =>
+    request<unknown>(`/projects/${projectId}/tasks/${taskId}/comments`, { method: "POST", body: JSON.stringify({ body }) }),
   /** Without `full`, the server returns only tasks assigned to the caller. */
   board: (projectId: string, buildingId: string, full: boolean) => {
     const query = new URLSearchParams({ buildingId, scope: full ? "all" : "assigned" });

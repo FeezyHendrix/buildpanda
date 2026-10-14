@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { registerProjectMarkupAccess } from "./project-access.ts";
 import { validatorFor } from "../../plugins/request-validation.ts";
 import { preconAuditRepository } from "../panda-ai/pdf-takeoff/audit-repository.ts";
 import { preconRepository } from "../panda-ai/pdf-takeoff/repository.ts";
@@ -214,6 +215,7 @@ const createPreconMarkupBody = {
 } as const;
 
 const drawingMarkupRoutes: FastifyPluginAsync = async (fastify) => {
+  registerProjectMarkupAccess(fastify);
   // A markup anchors to a point, so a `null` must never be coerced into a 0
   // nobody clicked. Encapsulated: binds THIS subtree, not its siblings.
   fastify.setValidatorCompiler(validatorFor);

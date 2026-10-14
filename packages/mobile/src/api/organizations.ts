@@ -1,3 +1,4 @@
+import { clearSavedProjectAccess } from "@/lib/access-storage";
 import { authClient } from "@/lib/auth-client";
 
 export interface Organization {
@@ -18,6 +19,7 @@ export const organizationsApi = {
   },
 
   setActive: async (organizationId: string): Promise<void> => {
+    clearSavedProjectAccess();
     const result = await authClient.organization.setActive({ organizationId });
     if (result.error) throw new Error(result.error.message ?? "Could not switch workspace.");
   },

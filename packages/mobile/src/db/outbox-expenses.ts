@@ -1,3 +1,4 @@
+import { features } from "@/lib/feature-access";
 import { eq } from "drizzle-orm";
 import { expensesApi, type Expense } from "@/api/expenses";
 import { uploadProjectFile } from "@/api/files";
@@ -33,7 +34,7 @@ export async function pushExpenseOutboxItem(db: Db, item: OutboxRow): Promise<Ou
     let receiptFileId = row.receiptFileId;
     if (!receiptFileId && row.receiptStagedUri) {
       const name = row.receiptStagedUri.split("/").pop() ?? "receipt.jpg";
-      const uploaded = await uploadProjectFile(item.projectId, row.receiptStagedUri, name, row.receiptMimeType ?? "image/jpeg");
+      const uploaded = await uploadProjectFile(item.projectId, row.receiptStagedUri, name, row.receiptMimeType ?? "image/jpeg", features.expenses.actions.create);
       receiptFileId = uploaded.id;
       await expensesRepository.setReceiptFileId(db, row.id, uploaded.id);
     }

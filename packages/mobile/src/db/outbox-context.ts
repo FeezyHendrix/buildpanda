@@ -1,4 +1,5 @@
-import { eq, getTableColumns, sql } from "drizzle-orm";
+import { outboxReadWhere } from "./outbox-access";
+import { and, eq, getTableColumns, sql } from "drizzle-orm";
 import type { Db } from "./client";
 import { outbox, rfis, changeRequests, documents, materialOrders, materialApprovals, lookAheads, materialLedgerEntries, tasks, expenses } from "./schema";
 
@@ -7,15 +8,16 @@ export function outboxContextQuery(db: Db) {
     ...getTableColumns(outbox),
     title: sql<string>`coalesce(${rfis.subject}, ${changeRequests.title}, ${documents.fileName}, ${materialOrders.title}, ${materialApprovals.title}, ${lookAheads.name}, ${materialLedgerEntries.materialName}, ${tasks.title}, ${expenses.title}, ${outbox.entityId})`,
   }).from(outbox)
-    .leftJoin(rfis, eq(outbox.entityId, rfis.id))
-    .leftJoin(changeRequests, eq(outbox.entityId, changeRequests.id))
-    .leftJoin(documents, eq(outbox.entityId, documents.id))
-    .leftJoin(materialOrders, eq(outbox.entityId, materialOrders.id))
-    .leftJoin(materialApprovals, eq(outbox.entityId, materialApprovals.id))
-    .leftJoin(lookAheads, eq(outbox.entityId, lookAheads.id))
-    .leftJoin(materialLedgerEntries, eq(outbox.entityId, materialLedgerEntries.id))
-    .leftJoin(tasks, eq(outbox.entityId, tasks.id))
-    .leftJoin(expenses, eq(outbox.entityId, expenses.id));
+    .leftJoin(rfis, and(eq(outbox.entityId, rfis.id), eq(outbox.projectId, rfis.projectId), eq(outbox.resource, "rfis")))
+    .leftJoin(changeRequests, and(eq(outbox.entityId, changeRequests.id), eq(outbox.projectId, changeRequests.projectId), eq(outbox.resource, "change-requests")))
+    .leftJoin(documents, and(eq(outbox.entityId, documents.id), eq(outbox.projectId, documents.projectId), eq(outbox.resource, "documents")))
+    .leftJoin(materialOrders, and(eq(outbox.entityId, materialOrders.id), eq(outbox.projectId, materialOrders.projectId), eq(outbox.resource, "material-orders")))
+    .leftJoin(materialApprovals, and(eq(outbox.entityId, materialApprovals.id), eq(outbox.projectId, materialApprovals.projectId), eq(outbox.resource, "material-approvals")))
+    .leftJoin(lookAheads, and(eq(outbox.entityId, lookAheads.id), eq(outbox.projectId, lookAheads.projectId), eq(outbox.resource, "look-aheads")))
+    .leftJoin(materialLedgerEntries, and(eq(outbox.entityId, materialLedgerEntries.id), eq(outbox.projectId, materialLedgerEntries.projectId), eq(outbox.resource, "material-ledger")))
+    .leftJoin(tasks, and(eq(outbox.entityId, tasks.id), eq(outbox.projectId, tasks.projectId), eq(outbox.resource, "tasks")))
+    .leftJoin(expenses, and(eq(outbox.entityId, expenses.id), eq(outbox.projectId, expenses.projectId), eq(outbox.resource, "expenses")))
+    .where(outboxReadWhere(db));
 }
 
 const DETAIL_ROUTES: Record<string, string> = {

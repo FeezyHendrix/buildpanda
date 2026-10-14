@@ -7,7 +7,12 @@ export interface ProjectSnapshot {
   currency: string;
   progressPercent: number;
   budgetTotal: number;
-  budgetUsed: number;
+  /**
+   * Logged expenditure from the transaction ledger — NOT `projects.budget_used`,
+   * a column written once at creation and never again, which told the assistant
+   * nothing had been spent on every real project.
+   */
+  spendToDate: number;
   address: string;
   phaseCount: number;
   activityCount: number;
@@ -35,7 +40,8 @@ export type SnapshotSection =
   | "risks"
   | "keyDates"
   | "documents"
-  | "dailyLogs";
+  | "dailyLogs"
+  | "spend";
 
 function num(value: unknown): number {
   const n = Number(value);
@@ -61,14 +67,19 @@ export async function buildSnapshot(
 
   const none = <T,>(): Promise<T[]> => Promise.resolve([]);
   const maySeeProgramme = can("schedule", "view");
+  // Spend is the contractor's cost position, so it is finances:viewCosts — the
+  // same gate the budget and purchase-order tools use, not plain finances:view.
+  const maySeeSpend = can("finances", "viewCosts");
   const withheld: SnapshotSection[] = [];
+  if (!maySeeSpend) withheld.push("spend");
   if (!can("stages", "view")) withheld.push("phases");
   if (!maySeeProgramme) withheld.push("programme");
   if (!can("risks", "view")) withheld.push("risks");
   if (!can("key-dates", "view")) withheld.push("keyDates");
   if (!can("documents", "view")) withheld.push("documents");
   if (!can("dailyLog", "view")) withheld.push("dailyLogs");
-  const [phases, activities, delays, risks, keyDates, documents, dailyLogs] = await Promise.all([
+  const [spendToDate, phases, activities, delays, risks, keyDates, documents, dailyLogs] = await Promise.all([
+    maySeeSpend ? repo.transactionTotal(projectId) : Promise.resolve(0),
     can("stages", "view") ? repo.phases(projectId) : none<Awaited<ReturnType<typeof repo.phases>>[number]>(),
     maySeeProgramme ? repo.activities(projectId) : none<Awaited<ReturnType<typeof repo.activities>>[number]>(),
     maySeeProgramme ? repo.delays(projectId) : none<Awaited<ReturnType<typeof repo.delays>>[number]>(),
@@ -96,7 +107,7 @@ export async function buildSnapshot(
     currency: project.currency,
     progressPercent: num(project.progress_percent),
     budgetTotal: num(project.budget_total),
-    budgetUsed: num(project.budget_used),
+    spendToDate: num(spendToDate),
     address: project.address,
     phaseCount: phases.length,
     activityCount: activities.length,
@@ -133,8 +144,9 @@ export function snapshotToPrompt(s: ProjectSnapshot): string {
     `- Name: ${s.name}`,
     `- Status: ${s.status} (${s.progressPercent}% complete)`,
     `- Location: ${s.address}`,
-    `- Budget: ${s.budgetUsed} spent of ${s.budgetTotal} ${s.currency}`,
   ];
+  if (hidden.has("spend")) lines.push(`- Contract budget: ${s.budgetTotal} ${s.currency}`);
+  else lines.push(`- Budget: ${s.spendToDate} spent of ${s.budgetTotal} ${s.currency}`);
   if (!hidden.has("phases")) lines.push(`- Phases: ${s.phaseCount}`);
   if (!hidden.has("programme")) {
     lines.push(

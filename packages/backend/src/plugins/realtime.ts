@@ -4,7 +4,10 @@ import websocket from "@fastify/websocket";
 import { config } from "../config/index.ts";
 import { auth } from "../lib/auth.ts";
 import { RealtimeHub } from "../lib/realtime/index.ts";
-import { messagingRepository } from "../modules/messaging/repository.ts";
+import { messagingAccessRepository } from "../modules/messaging/access-repository.ts";
+import { conversationAccess } from "../modules/messaging/realtime-access.ts";
+import { accessContextRepository } from "../modules/access-context/repository.ts";
+import { resolveAccessContext } from "../modules/access-context/service.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -24,7 +27,11 @@ function toHeaders(record: Record<string, unknown>): Headers {
 const realtimePlugin: FastifyPluginAsync = async (fastify) => {
   const hub = new RealtimeHub(config.redis.url || null, fastify.log);
   fastify.decorate("realtime", hub);
-  const repo = messagingRepository(fastify.db);
+  const accessRepository = accessContextRepository(fastify.db);
+  const canReadConversation = conversationAccess(messagingAccessRepository(fastify.db), async (userId) => {
+    const rows = await fastify.accessCache.load(userId, () => accessRepository.load(userId));
+    return resolveAccessContext(userId, rows);
+  });
 
   // precon:<sessionId> channels authorize via membership of the organization
   // that owns the session (preconstruction is a sales-suite feature).
@@ -52,6 +59,7 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
   fastify.get("/ws", { websocket: true }, (socket, request) => {
     let userId: string | null = null;
     let userName = "";
+    let organizationId: string | null = null;
     let conn: ReturnType<typeof hub.register> | null = null;
     const pending: string[] = [];
     let closed = false;
@@ -72,7 +80,7 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
         const joiningUserId = userId;
         const authorize = isPreconChannel(channelId)
           ? canJoinPreconChannel(channelId.slice("precon:".length), userId)
-          : repo.isMember(channelId, userId);
+          : canReadConversation(channelId, userId, organizationId);
         void authorize
           .then((member) => {
             if (!member || !conn || closed) return;
@@ -112,7 +120,15 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
         if (closed) return;
         userId = session.user.id;
         userName = session.user.name ?? session.user.email ?? "";
-        conn = hub.register(userId, socket);
+        organizationId = session.session.activeOrganizationId ?? null;
+        const ownerId = userId;
+        conn = hub.register(userId, socket, async (payload) => {
+          const data = payload.data as { channelId?: string; ctaUrl?: string } | null;
+          const channelId = payload.channelId ?? data?.channelId ?? /[?&]channel=([^&]+)/.exec(data?.ctaUrl ?? "")?.[1];
+          if (!channelId) return true;
+          return isPreconChannel(channelId) ? canJoinPreconChannel(channelId.slice(7), ownerId)
+            : canReadConversation(channelId, ownerId, organizationId);
+        });
         const queued = pending.splice(0);
         for (const text of queued) process(text);
       });
@@ -125,4 +141,4 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
   fastify.log.info({ distributed: hub.distributed }, "Realtime hub ready");
 };
 
-export default fp(realtimePlugin, { name: "realtime", dependencies: ["database"] });
+export default fp(realtimePlugin, { name: "realtime", dependencies: ["database", "access-cache"] });

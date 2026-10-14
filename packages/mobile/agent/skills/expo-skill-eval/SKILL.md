@@ -4,6 +4,18 @@ license: "MIT"
 ---
 # Expo Skill Eval
 
+## BuildPanda RBAC requirement
+
+RBAC is foundational to BuildPanda. Apply the [repository RBAC rules](../../../../../AGENTS.md#rbac-is-foundational) to this skill's work.
+
+Every protected view, route, action, data read/write, offline operation, and AI
+tool must respect the current user's effective resource/action permissions.
+Gate client visibility and behavior and enforce authorization on the server.
+Deny access when permission is unknown; validate it before offline writes or
+queueing. Sign-in, account type, feature flags, and a later API/sync rejection
+do not replace RBAC. Verify allowed and denied access for affected behavior
+before calling the work complete.
+
 Evaluates skills in `plugins/expo/skills/` for trigger accuracy, generated code quality, and/or runtime rendering in Expo Go.
 
 Requirements: macOS with Xcode (iOS simulators), Android SDK with at least one AVD, and `bun`. No other device tooling is assumed.

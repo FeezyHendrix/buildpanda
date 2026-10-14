@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
@@ -105,10 +106,12 @@ function Editor({ db }: { db: Db }) {
   );
 }
 
-export default function CustomiseHome() {
+function CustomiseHome() {
   const { db, ready } = useLocalDb();
   if (!ready || !db) {
     return <Page title="Customise Home" onBack={() => goBack()}><View className="items-center py-12"><Spinner size="md" /></View></Page>;
   }
   return <Editor db={db} />;
 }
+
+export default withProjectPermission(CustomiseHome, "/tools/customise-home");

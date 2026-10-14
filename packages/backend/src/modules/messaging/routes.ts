@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import type { Knex } from "knex";
 import { BadRequestError } from "../../lib/errors.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
@@ -6,129 +6,16 @@ import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { messagingRepository } from "./repository.ts";
 import { messagingService } from "./service.ts";
+import { messagingAccessRepository } from "./access-repository.ts";
 import { referenceResolver, referenceableTypes } from "./references.ts";
 import { CHAT_EMAIL_QUEUE, CHAT_EMAIL_DELAY_MS } from "./chat-email-job.ts";
 import { tasksRepository } from "../tasks/repository.ts";
 import { tasksService } from "../tasks/service.ts";
-import type { ReferenceContext } from "./references.ts";
+import { referenceContext as refCtx } from "./request-context.ts";
 import type { MessageAttachment, MessageMention, MessageReference } from "./types.ts";
 
-const channelIdParams = {
-  type: "object",
-  required: ["id"],
-  additionalProperties: false,
-  properties: { id: { type: "string", minLength: 1 } },
-} as const;
-
-const messageIdParams = {
-  type: "object",
-  required: ["id"],
-  additionalProperties: false,
-  properties: { id: { type: "string", minLength: 1 } },
-} as const;
-
-const listMessagesQuery = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    before: { type: "string", minLength: 1, maxLength: 100 },
-    limit: { type: "integer", minimum: 1, maximum: 100 },
-  },
-} as const;
-
-const referenceItem = {
-  type: "object",
-  required: ["type", "id", "label"],
-  additionalProperties: false,
-  properties: {
-    type: { type: "string", minLength: 1, maxLength: 40 },
-    id: { type: "string", minLength: 1, maxLength: 100 },
-    label: { type: "string", maxLength: 300 },
-  },
-} as const;
-
-const mentionItem = {
-  type: "object",
-  required: ["kind"],
-  additionalProperties: false,
-  properties: {
-    kind: { type: "string", enum: ["user", "here", "channel"] },
-    userId: { type: "string", minLength: 1, maxLength: 100 },
-  },
-} as const;
-
-const attachmentItem = {
-  type: "object",
-  required: ["fileId", "url", "name"],
-  additionalProperties: false,
-  properties: {
-    fileId: { type: "string", minLength: 1, maxLength: 100 },
-    url: { type: "string", minLength: 1, maxLength: 2000 },
-    name: { type: "string", minLength: 1, maxLength: 300 },
-    mime: { type: "string", maxLength: 200 },
-    size: { type: "integer", minimum: 0 },
-  },
-} as const;
-
-const sendMessageBody = {
-  type: "object",
-  required: ["body"],
-  additionalProperties: false,
-  properties: {
-    body: { type: "string", maxLength: 8000 },
-    contentHtml: { type: ["string", "null"], maxLength: 50000 },
-    parentMessageId: { type: ["string", "null"], maxLength: 100 },
-    quotedMessageId: { type: ["string", "null"], maxLength: 100 },
-    references: { type: "array", maxItems: 50, items: referenceItem },
-    mentions: { type: "array", maxItems: 100, items: mentionItem },
-    attachments: { type: "array", maxItems: 20, items: attachmentItem },
-  },
-} as const;
-
-const editMessageBody = {
-  type: "object",
-  required: ["body"],
-  additionalProperties: false,
-  properties: {
-    body: { type: "string", maxLength: 8000 },
-    contentHtml: { type: ["string", "null"], maxLength: 50000 },
-  },
-} as const;
-
-const createChannelBody = {
-  type: "object",
-  required: ["type", "name"],
-  additionalProperties: false,
-  properties: {
-    type: { type: "string", enum: ["project", "org"] },
-    name: { type: "string", minLength: 1, maxLength: 80 },
-    projectId: { type: ["string", "null"], maxLength: 100 },
-    organizationId: { type: ["string", "null"], maxLength: 100 },
-    isPrivate: { type: "boolean" },
-    topic: { type: ["string", "null"], maxLength: 500 },
-    memberIds: { type: "array", maxItems: 200, items: { type: "string", minLength: 1, maxLength: 100 } },
-  },
-} as const;
-
-const membershipBody = {
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: {
-    muted: { type: "boolean" },
-    notifyLevel: { type: "string", enum: ["all", "mentions", "none"] },
-    lastReadMessageId: { type: "string", minLength: 1, maxLength: 100 },
-  },
-} as const;
-
-const addMembersBody = {
-  type: "object",
-  required: ["memberIds"],
-  additionalProperties: false,
-  properties: {
-    memberIds: { type: "array", minItems: 1, maxItems: 200, items: { type: "string", minLength: 1, maxLength: 100 } },
-  },
-} as const;
+import { channelIdParams, messageIdParams, listMessagesQuery, sendMessageBody, editMessageBody, createChannelBody, membershipBody, addMembersBody } from "./route-schemas.ts";
+import { filterConversations, registerMessagingAccess, requireConversationPermission } from "./access.ts";
 
 async function projectMemberIds(db: Knex, projectId: string): Promise<string[]> {
   const rows = await db("project_participants")
@@ -139,6 +26,7 @@ async function projectMemberIds(db: Knex, projectId: string): Promise<string[]> 
 }
 
 const messagingRoutes: FastifyPluginAsync = async (fastify) => {
+  registerMessagingAccess(fastify);
   const service = messagingService(messagingRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
     realtime: fastify.realtime,
@@ -157,17 +45,10 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     },
   });
 
-  function refCtx(request: FastifyRequest): ReferenceContext {
-    return {
-      userId: request.user?.id ?? "",
-      orgRoles: request.orgRoles,
-      projectRoles: request.projectRoles,
-    };
-  }
 
   fastify.get("/channels", async (request) => {
     const user = request.requireAuth();
-    return service.listChannels(user.id);
+    return filterConversations(request, await service.listChannels(user.id));
   });
 
   fastify.post<{
@@ -192,6 +73,7 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
       } else {
         request.requireOrgPermission("project", "create");
       }
+      await requireConversationPermission(request, { projectId: body.projectId ?? null, organizationId: body.organizationId ?? null }, "send");
       const channel = await service.createChannel(body, user.id);
       return reply.status(201).send(channel);
     },
@@ -470,7 +352,9 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const user = request.requireAuth();
       if (!request.query.q) return [];
-      return service.search(user.id, request.query.q, request.query.channelId);
+      const allowed = new Set((await filterConversations(request, await service.listChannels(user.id))).map((channel) => channel.id));
+      if (request.query.channelId && !allowed.has(request.query.channelId)) return [];
+      return (await service.search(user.id, request.query.q, request.query.channelId)).filter((message) => allowed.has(message.channelId));
     },
   );
 
@@ -500,15 +384,7 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const user = request.requireAuth();
       if (!request.query.q) return [];
-      const orgIds = [...request.orgRoles.keys()];
-      const participantProjectIds = [...request.projectRoles.keys()];
-      const rows = await fastify.db("projects")
-        .where(function () {
-          this.where("owner_id", user.id);
-          if (orgIds.length) this.orWhereIn("organization_id", orgIds);
-          if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
-        })
-        .pluck<string[]>("id");
+      const rows = await messagingAccessRepository(fastify.db).accessibleProjectIds(user.id, [...request.orgRoles.keys()], [...request.projectRoles.keys()]);
       const requestedTypes = request.query.types
         ? request.query.types.split(",").map((t) => t.trim()).filter(Boolean)
         : undefined;

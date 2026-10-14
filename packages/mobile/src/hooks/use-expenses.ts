@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { canAccess } from "@/lib/project-access-store";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
 import { expensesApi, type ExpenseCategory } from "@/api/expenses";
@@ -29,7 +31,7 @@ export function useExpenses(db: Db, projectId: string) {
   const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !canAccess(projectId, features.expenses.read)) return;
     let cancelled = false;
     expensesApi.list(projectId)
       .then((rows) => {
@@ -47,6 +49,7 @@ export function useExpenses(db: Db, projectId: string) {
 export function useExpenseCategories(projectId: string | undefined): ExpenseCategory[] {
   const { storageOwnerId } = useFieldSession();
   const query = usePersistentQuery({
+    permission: features.expenses.read, projectId,
     queryKey: ["expenses", projectId ?? "none", "categories"],
     ownerId: storageOwnerId,
     queryFn: () => expensesApi.categories(projectId!),

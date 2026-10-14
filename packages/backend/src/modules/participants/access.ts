@@ -2,6 +2,7 @@ import type { FastifyRequest } from "fastify";
 import { effectiveParticipantGrants, participantRole } from "../../lib/authorization.ts";
 import { statement } from "../../lib/permissions.ts";
 import type { ParticipantRole } from "./types.ts";
+import { canSeeFullTaskBoard } from "../tasks/access.ts";
 
 /**
  * What this caller is to this project and what the UI may therefore show. The
@@ -62,11 +63,20 @@ export function computeAccess(
     (permissions[resource] ?? []).includes(action);
 
   return {
+    userId: request.user!.id,
+    projectId: project.id,
+    organizationId: project.organization_id,
     relationship,
     orgRole: orgRole ?? null,
     permissions,
+    workspacePermissions: Object.fromEntries([...(request.orgPermissions.get(project.organization_id ?? "") ?? new Map())]
+      .map(([resource, actions]) => [resource, [...actions]])),
     sections: sections ?? null,
     capabilities: {
+      canViewInternalRfis: project.owner_id === request.user!.id || !!orgRole,
+      createsSharedRfis: request.projectRoles.get(project.id) === "client",
+      canAccessTaskBoard: allows("tasks", "view") && (project.owner_id === request.user!.id || !!orgRole),
+      canSeeFullTaskBoard: canSeeFullTaskBoard(request, project),
       canManage: isCompanyManager,
       canViewAll: relationship !== "none",
       canManageParticipants: isCompanyManager || allows("participants", "manage"),

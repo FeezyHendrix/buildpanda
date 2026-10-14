@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
@@ -53,7 +55,7 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
   );
 }
 
-export default function Materials() {
+function Materials() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
 
@@ -63,7 +65,7 @@ export default function Materials() {
       title="Materials"
       onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton
+        <HeaderIconButton permission={features.materialOrders.actions.create}
           icon="add"
           label="New material order"
           onPress={() => router.push("/tools/materials/new")}
@@ -80,3 +82,5 @@ export default function Materials() {
     </Page>
   );
 }
+
+export default withProjectPermission(Materials, "/tools/materials");

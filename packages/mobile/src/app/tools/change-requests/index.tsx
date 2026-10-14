@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
@@ -48,7 +50,7 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
   );
 }
 
-export default function ChangeRequests() {
+function ChangeRequests() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
 
@@ -58,7 +60,7 @@ export default function ChangeRequests() {
       title="Change requests"
       onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton
+        <HeaderIconButton permission={features.changeRequests.actions.create}
           icon="add"
           label="New change request"
           onPress={() => router.push("/tools/change-requests/new")}
@@ -75,3 +77,5 @@ export default function ChangeRequests() {
     </Page>
   );
 }
+
+export default withProjectPermission(ChangeRequests, "/tools/change-requests");

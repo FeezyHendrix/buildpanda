@@ -1,3 +1,5 @@
+import { channelRequirement } from "@/lib/messaging-access";
+import { useProjectAccess } from "@/lib/project-access-provider";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,6 +33,7 @@ function useActiveConversation() {
 
 export function Conversation({ channelId, threadId }: { channelId: string; threadId?: string }) {
   const { storageOwnerId, organizationId } = useFieldSession();
+  const { allows } = useProjectAccess();
   const { isOnline } = useSyncState();
   const active = useActiveConversation();
   const channel = useMessagingChannel(channelId, active);
@@ -41,7 +44,7 @@ export function Conversation({ channelId, threadId }: { channelId: string; threa
   const query = threadId ? thread : timeline;
   const { send, markRead } = useMessagingActions(channelId);
   const draftKey = messageDraftKey(storageOwnerId, organizationId, channelId, threadId);
-  const [body, setBody] = useState(() => { try { return queryStorage.getItem(draftKey) ?? ""; } catch { return ""; } });
+  const [body, setBody] = useState("");
   const [draftError, setDraftError] = useState("");
   const [history, setHistory] = useState<Message[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -52,7 +55,8 @@ export function Conversation({ channelId, threadId }: { channelId: string; threa
   const sendLock = useRef(false);
   const scrollAfterSend = useRef(false);
   const list = useRef<FlatList<Message>>(null);
-  const denied = channel.accessDenied || query.accessDenied || Boolean(threadId && (root.accessDenied || (root.data && root.data.channelId !== channelId)));
+  const denied = !isOnline || (channel.data !== undefined && !allows(channelRequirement(channel.data))) || channel.accessDenied || query.accessDenied || Boolean(threadId && (root.accessDenied || (root.data && root.data.channelId !== channelId)));
+  const canCompose = Boolean(allows(channelRequirement(channel.data, true)) && channel.data && !denied && !channel.data.archivedAt && (!threadId || (root.data && root.data.channelId === channelId)));
   const newest = query.data ?? EMPTY_MESSAGES;
   const messages = useMemo(() => mergeMessages(history, newest), [history, newest]);
   const reversed = useMemo(() => [...messages].reverse(), [messages]);
@@ -71,14 +75,20 @@ export function Conversation({ channelId, threadId }: { channelId: string; threa
     readMessage(latestId, { onError: () => { lastRead.current = undefined; } });
   }, [active, isOnline, atLatest, denied, latestId, query.dataUpdatedAt, readMessage]);
 
+  useEffect(() => {
+    if (!canCompose) { setBody(""); return; }
+    try { setBody(queryStorage.getItem(draftKey) ?? ""); } catch { setBody(""); }
+  }, [draftKey, canCompose]);
+
   function changeBody(value: string) {
+    if (!canCompose) return;
     setBody(value);
     try { queryStorage.setItem(draftKey, value); setDraftError(""); }
     catch { setDraftError("Your draft could not be saved on this device. Keep this conversation open until it sends."); }
   }
 
   async function submit() {
-    if (sendLock.current || !isOnline || !isSendableMessage(body) || denied || channel.data?.archivedAt) return;
+    if (!canCompose || sendLock.current || !isOnline || !isSendableMessage(body) || denied || channel.data?.archivedAt) return;
     sendLock.current = true;
     try {
       const message = await send.mutateAsync({ body: body.trim(), threadId });
@@ -105,8 +115,8 @@ export function Conversation({ channelId, threadId }: { channelId: string; threa
   const openThread = useCallback((message: Message) => {
     router.push({ pathname: "/messages/[id]", params: { id: channelId, thread: message.id } });
   }, [channelId]);
-  const renderMessage = useCallback(({ item }: ListRenderItemInfo<Message>) => <MessageBubble message={item} ownerId={storageOwnerId} onReply={threadId ? undefined : openThread} />, [storageOwnerId, threadId, openThread]);
-  const canCompose = Boolean(channel.data && !denied && !channel.data.archivedAt && (!threadId || (root.data && root.data.channelId === channelId)));
+  const renderMessage = useCallback(({ item }: ListRenderItemInfo<Message>) => <MessageBubble message={item} ownerId={storageOwnerId} onReply={threadId || !canCompose ? undefined : openThread} />, [storageOwnerId, threadId, openThread, canCompose]);
+
 
   return (
     <Page title={threadId ? "Thread" : name} description={threadId ? name : channel.data?.topic || undefined} onBack={goBack} scroll={false} showSync={false}
@@ -127,7 +137,7 @@ export function Conversation({ channelId, threadId }: { channelId: string; threa
           </Pressable>
         </View>
       </View> : undefined}>
-      {denied ? <View className="gap-4 py-12"><Text variant="heading" weight="semibold" className="text-lg">Conversation unavailable</Text><Text tone="secondary">This conversation is no longer available to your account.</Text><Button onPress={() => router.replace("/(tabs)/messages")}>Back to messages</Button></View> : <>
+      {denied ? <View className="gap-4 py-12"><Text variant="heading" weight="semibold" className="text-lg">Conversation unavailable</Text><Text tone="secondary">{isOnline ? "This conversation is no longer available to your account." : "Connect to verify conversation membership and load messages."}</Text><Button onPress={() => router.replace("/(tabs)/messages")}>Back to messages</Button></View> : <>
         {channel.data?.archivedAt ? <Text tone="secondary" className="pb-3 text-sm">Archived conversation · Read only</Text> : null}
         {query.error || channel.error || root.error ? <View className="gap-2 pb-3"><Text tone="secondary" className="text-xs">Couldn’t refresh this conversation. Showing saved messages.</Text><Button variant="secondary" onPress={() => { void query.refetch(); void channel.refetch(); if (threadId) void root.refetch(); }}>Try again</Button></View> : null}
         <FlatList ref={list} data={reversed} inverted keyExtractor={messageKey} renderItem={renderMessage}

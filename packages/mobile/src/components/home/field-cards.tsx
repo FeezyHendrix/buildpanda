@@ -1,3 +1,4 @@
+import { features } from "@/lib/feature-access";
 import { router } from "expo-router";
 import { View } from "react-native";
 import { Button, PendingBadge, Text } from "@/components/atoms";
@@ -25,13 +26,13 @@ export function DailyLogCard({ db, projectId, buildingId }: Scope) {
   const today = todayIso();
   const { entries } = useDailyLogDay(db, projectId, today, buildingId);
   const templates = useDailyLogTemplates(db, projectId);
-  const { can } = useProjectAccess();
+  const { allows } = useProjectAccess();
   const form = defaultTemplate(templates.data) ?? templates.data[0];
   const count = entries.length;
 
   return (
     <HomeCard title="Today's daily log" subtitle={count ? `${count} ${count === 1 ? "entry" : "entries"} so far` : "Nothing logged yet today"} href={`/tools/daily-log/${today}`}>
-      {can("dailyLog", "create") ? (
+      {allows(features.dailyLog.actions.create) ? (
         <Button
           variant={count ? "secondary" : "primary"}
           onPress={() => router.push((form ? `/tools/daily-log/fill?date=${today}&templateId=${encodeURIComponent(form.id)}` : `/tools/daily-log/${today}`) as never)}
@@ -50,9 +51,9 @@ function taskMeta(task: TaskRow, today: string): string {
 }
 
 export function TasksCard({ db, projectId, buildingId, myOpen }: Scope & { myOpen: readonly TaskRow[] }) {
-  const { can } = useProjectAccess();
+  const {  snapshot } = useProjectAccess();
   // opening Home keeps the board fresh, so the counts above are current
-  useTaskBoard(db, projectId, buildingId, can("tasks", "add"));
+  useTaskBoard(db, projectId, buildingId, snapshot?.capabilities.canSeeFullTaskBoard === true);
   const today = todayIso();
   return (
     <HomeCard title="My tasks" subtitle={myOpen.length ? `${myOpen.length} open` : undefined} href="/tools/tasks">
@@ -75,7 +76,7 @@ export function TasksCard({ db, projectId, buildingId, myOpen }: Scope & { myOpe
 
 export function MaterialLogCard({ db, projectId, awaiting }: Omit<Scope, "buildingId"> & { awaiting: number }) {
   const { entries } = useMaterialLog(db, projectId);
-  const { can } = useProjectAccess();
+  const { allows } = useProjectAccess();
   const recent = entries.filter((e) => e.entryType === "IN").slice(0, 3);
   return (
     <HomeCard title="Deliveries" subtitle={awaiting ? `${awaiting} awaiting approval` : "Material received on site"} href="/tools/material-log">
@@ -91,7 +92,7 @@ export function MaterialLogCard({ db, projectId, awaiting }: Omit<Scope, "buildi
           />
         ))
       )}
-      {can("materials", "request") ? (
+      {allows(features.materialLog.actions.create) ? (
         <View className="pt-3">
           <Button variant="secondary" onPress={() => router.push("/tools/material-log/new")}>Log a delivery</Button>
         </View>

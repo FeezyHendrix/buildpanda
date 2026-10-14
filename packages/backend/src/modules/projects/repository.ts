@@ -229,6 +229,22 @@ export function projectsRepository(db: Knex) {
         }
       });
     },
+
+    /**
+     * Logged expenditure per project. `projects.budget_used` is written once at
+     * creation and never again, so it is not spend — the transaction ledger is.
+     */
+    async spendByProjects(projectIds: string[]): Promise<Map<string, number>> {
+      if (projectIds.length === 0) return new Map();
+      const rows = await db("project_transactions")
+        .whereIn("project_id", projectIds)
+        .groupBy("project_id")
+        .select<{ project_id: string; total: string | null }[]>(
+          "project_id",
+          db.raw("COALESCE(SUM(amount), 0) as total"),
+        );
+      return new Map(rows.map((row) => [row.project_id, Number(row.total ?? 0)]));
+    },
   };
 }
 

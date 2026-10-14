@@ -5,6 +5,18 @@ description: Use when writing, extending or reviewing backend code in packages/b
 
 # Writing Backend Code (BuildPanda)
 
+## BuildPanda RBAC requirement
+
+RBAC is foundational to BuildPanda. Apply the [repository RBAC rules](../../../AGENTS.md#rbac-is-foundational) to this skill's work.
+
+Every protected view, route, action, data read/write, offline operation, and AI
+tool must respect the current user's effective resource/action permissions.
+Gate client visibility and behavior and enforce authorization on the server.
+Deny access when permission is unknown; validate it before offline writes or
+queueing. Sign-in, account type, feature flags, and a later API/sync rejection
+do not replace RBAC. Verify allowed and denied access for affected behavior
+before calling the work complete.
+
 ## Overview
 
 Tao-of-Node principles adapted to this repo: **modular monolith grouped by
@@ -51,9 +63,8 @@ await app.register(actionItemRoutes)
 const actionItemRoutes: FastifyPluginAsync = async (app) => {
   const service = actionItemService(actionItemRepository(app.db))
   app.get("/projects/:projectId/action-items", { schema: listSchema }, async (req) => {
-    req.requireAuth()
-    assertCanAccessProject(req.projectRoles, req.params.projectId)
-    return service.list(req.params.projectId, req.query.status)
+    const project = await req.requireProjectPermission(req.params.projectId, "tasks", "view")
+    return service.list(project.id, req.query.status)
   })
 }
 export default actionItemRoutes
@@ -88,10 +99,9 @@ app.patch("/action-items/:id", { schema }, async (req) => {
 
 // Good — routes.ts imports types, delegates everything past auth to the service
 import type { UpdateBody } from "./types.ts"
-app.patch("/action-items/:id", { schema: updateSchema }, async (req) => {
-  req.requireAuth()
-  assertCanModifyProject(req.projectRoles, req.params.projectId)
-  return service.update(req.params.id, req.body)   // service queries via repo and sends the email
+app.patch("/projects/:projectId/action-items/:id", { schema: updateSchema }, async (req) => {
+  const project = await req.requireProjectPermission(req.params.projectId, "tasks", "add")
+  return service.update(project.id, req.params.id, req.body) // service scopes the record to project.id
 })
 ```
 
@@ -181,30 +191,46 @@ app.get("/action-items/:id", async (req, reply) => {
   if (!item) return reply.code(404).send({ error: "not found" })   // duplicates the error plugin
   return item
 })
-// Good — throw; the error-handler plugin owns the response shape
+// Good — authorize the record's project before returning protected data.
 app.get("/action-items/:id", { schema: getSchema }, async (req) => {
   req.requireAuth()
-  return service.get(req.params.id)   // service throws NotFoundError; plugin renders it
+  const item = await service.get(req.params.id) // throws NotFoundError
+  await req.requireProjectPermission(item.projectId, "tasks", "view")
+  return item
 })
 ```
 
 ### Auth (authorization ≠ presentation)
 
-`request.requireAuth()` establishes identity; the helpers in
-`lib/authorization.ts` (`assertCanAccessProject`, `assertCanModifyProject`,
-`assertCanActAsClient`) decide permission, fed by `request.orgRoles` /
-`request.projectRoles`. `user.accountType` is a UI hint — never an
-authorization input. Public endpoints (token links, lead forms) skip
-`requireAuth()` but must validate strictly and log.
+`request.requireAuth()` establishes identity. Protected project operations
+must call `request.requireProjectPermission(projectId, resource, action)`, which
+uses `assertProjectPermission` in `lib/authorization.ts`. This composes effective
+organization permissions and participant grants/overrides within the project
+scope. Sign-in, project membership, generic write access, or `accountType` alone
+do not authorize a resource/action. Organization-scoped routes must use the
+corresponding organization permission guard.
+
+Apply checks to reads as well as mutations, downloads, sync pushes, and AI tool
+execution. Scope record lookups to the authorized project and enforce additional
+record rules such as reviewer identity or separation of duties. The client must
+also gate views, routes, and actions from the server-computed access response;
+backend enforcement is mandatory even when the client hides a control. A later
+403 must not be the first check for an offline action.
+
+Keep `modules/participants/access.ts` and `GET /projects/:id/access` aligned with
+backend authorization. Permission changes must invalidate cached access, and
+Panda AI must enforce the caller's permissions when each tool executes. Verify
+allowed and denied callers, participant overrides, and cross-scope requests for
+affected endpoints. Intentionally public endpoints (token links, lead forms)
+need their own explicit access/token constraints, strict validation, and logging.
 
 ```ts
 // Bad — accountType is self-declared; this is not a security boundary
 if (req.user.accountType === "company") await service.delete(id)
-// Good — permission comes from project participation
+// Good — authorize the exact action and scope the record to the project.
 app.delete("/projects/:projectId/action-items/:id", { schema: delSchema }, async (req) => {
-  req.requireAuth()
-  assertCanModifyProject(req.projectRoles, req.params.projectId)   // throws ForbiddenError if not allowed
-  await service.delete(req.params.id)
+  const project = await req.requireProjectPermission(req.params.projectId, "tasks", "remove")
+  await service.delete(project.id, req.params.id)
   return { ok: true }
 })
 ```
@@ -461,7 +487,7 @@ req.log.info({ projectId, count: items.length }, "listed action items")
 | Shape the response | `response` schema on the route (allowlist + fast serialize) |
 | 4xx/5xx | `throw new BadRequestError/NotFoundError/ForbiddenError(...)` |
 | Who is calling | `request.requireAuth()` → `{ id, email, ... }` |
-| May they touch this project | `assertCanModifyProject(req.projectRoles, projectId)` |
+| May they perform this project action | `await request.requireProjectPermission(projectId, resource, action)` |
 | Share a decorator across modules | wrap the plugin in `fastify-plugin` + declaration merge |
 | New table/column | Dated migration with `up`+`down` + CHECK for enums |
 | Env var | Add to `config/index.ts` (`required`/`optional`) + `.env.example` |
@@ -490,8 +516,8 @@ req.log.info({ projectId, count: items.length }, "listed action items")
   `pattern`.
 - Missing `down()` or the enum CHECK in a migration.
 - Interpolating user input into email HTML without `escapeHtml`.
-- Authorization by `accountType` — it is self-declared; only org membership and
-  project participation grant power.
+- Authorization by `accountType`, sign-in, or membership alone — check effective
+  resource/action permissions and scope for every protected operation.
 - `process.env["X"]` in a module instead of extending `config`.
 - Adding a library (TypeBox, env-schema, a test framework, a JWT plugin) to
   duplicate the schema/config/error/auth/test primitives the repo already owns

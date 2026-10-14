@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -140,7 +141,7 @@ function Editor({ db, projectId, changeId }: { db: Db; projectId: string; change
   );
 }
 
-export default function EditChangeRequest() {
+function EditChangeRequest() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -157,3 +158,5 @@ export default function EditChangeRequest() {
 
   return <Editor db={db} projectId={projectId} changeId={id} />;
 }
+
+export default withProjectPermission(EditChangeRequest, "/tools/change-requests/edit/[id]");

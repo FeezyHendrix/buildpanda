@@ -3,6 +3,8 @@ import { memo } from "react";
 import { Pressable } from "react-native";
 import { Spinner } from "@/components/atoms";
 import { ICON_DEFAULT } from "@/constants/colors";
+import type { AccessRequirement } from "@/lib/access-requirement";
+import { useProjectAccess } from "@/lib/project-access-provider";
 
 interface HeaderIconButtonProps {
   icon: React.ComponentProps<typeof Ionicons>["name"];
@@ -11,6 +13,7 @@ interface HeaderIconButtonProps {
   /** Shows the spinner in the icon's place and blocks a second press. */
   busy?: boolean;
   disabled?: boolean;
+  permission?: AccessRequirement;
 }
 
 /** The only way to put an action in the page header — keeps size and colour uniform. */
@@ -20,11 +23,14 @@ export const HeaderIconButton = memo(function HeaderIconButton({
   onPress,
   busy = false,
   disabled = false,
+  permission,
 }: HeaderIconButtonProps) {
+  const { allows } = useProjectAccess();
+  if (permission && !allows(permission)) return null;
   const blocked = busy || disabled;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => { if (!permission || allows(permission)) onPress(); }}
       disabled={blocked}
       accessibilityRole="button"
       accessibilityLabel={label}

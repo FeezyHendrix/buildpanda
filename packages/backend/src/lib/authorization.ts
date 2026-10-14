@@ -1,5 +1,5 @@
 import { ForbiddenError } from "./errors.ts";
-import { mapAllows, statement, type PermissionMap } from "./permissions.ts";
+import { isEmployeeRole, mapAllows, statement, type PermissionMap } from "./permissions.ts";
 import { PARTICIPANT_PERMISSIONS, ROLE_PRESET_SIDES } from "./role-presets.ts";
 import {
   composeParticipantPermissions,
@@ -200,13 +200,8 @@ export function canProjectPermission(
   resource: string,
   action: string,
 ): boolean {
-  if (project.ownerId === ctx.userId) return true;
-
-  const orgId = project.organizationId;
-  const orgPerms = orgId ? ctx.orgPermissions.get(orgId) : undefined;
-  if (orgPerms && mapAllows(orgPerms, resource, action)) return true;
-
-  return participantAllows(project, ctx, resource, action);
+  try { assertProjectPermission(project, ctx, resource, action); return true; }
+  catch (error) { if (error instanceof ForbiddenError) return false; throw error; }
 }
 
 // Resources that are org/sales surfaces, never a project-participant grant.
@@ -312,4 +307,19 @@ export function assertCanGrant(
       `Only an organization owner or admin can grant: ${privileged.join(", ")}`,
     );
   }
+}
+
+/** Organization grants never inherit from an unrelated project participant grant. */
+export function assertOrganizationPermission(organizationId: string, ctx: EnrichedAccessContext, resource: string, action: string): void {
+  const permissions = ctx.orgPermissions.get(organizationId);
+  if (!ctx.orgRoles.has(organizationId) || !permissions || !mapAllows(permissions, resource, action)) {
+    throw new ForbiddenError(`Your workspace permissions do not allow you to ${action} ${resource}`);
+  }
+}
+
+/** Record visibility shared by the task board and references to its records. */
+export function canSeeAllTasks(project: ProjectScope & { id: string }, ctx: EnrichedAccessContext): boolean {
+  if (project.ownerId === ctx.userId) return true;
+  const role = project.organizationId ? ctx.orgRoles.get(project.organizationId) : undefined;
+  return Boolean(role && role !== "viewer" && !isEmployeeRole(role)) || canProjectPermission(project, ctx, "tasks", "remove");
 }

@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
@@ -10,7 +11,7 @@ import { useKeyDates } from "@/hooks/use-key-dates";
 import { formatDate } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
 
-export default function KeyDateDetail() {
+function KeyDateDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const query = useKeyDates(projectId, true, null);
@@ -49,3 +50,5 @@ export default function KeyDateDetail() {
     </Page>
   );
 }
+
+export default withProjectPermission(KeyDateDetail, "/tools/schedule/key-dates/[id]");

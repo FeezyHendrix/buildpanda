@@ -2,6 +2,8 @@ import { Pressable, View, type PressableProps } from "react-native";
 import { Spinner, type SpinnerTone } from "./spinner";
 import { Text, type TextTone } from "./text";
 import { cn } from "@/lib/utils";
+import type { AccessRequirement } from "@/lib/access-requirement";
+import { useProjectAccess } from "@/lib/project-access-provider";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "md" | "lg";
@@ -12,6 +14,7 @@ interface ButtonProps extends Omit<PressableProps, "children" | "style"> {
   size?: ButtonSize;
   loading?: boolean;
   className?: string;
+  permission?: AccessRequirement;
 }
 
 const spinnerTone: Record<ButtonVariant, SpinnerTone> = {
@@ -48,8 +51,11 @@ export function Button({
   loading = false,
   disabled,
   className,
+  permission,
   ...props
 }: ButtonProps) {
+  const { allows } = useProjectAccess();
+  if (permission && !allows(permission)) return null;
   const isDisabled = disabled === true || loading;
 
   return (
@@ -65,6 +71,7 @@ export function Button({
         className,
       )}
       {...props}
+      onPress={(event) => { if (!permission || allows(permission)) props.onPress?.(event); }}
     >
       {loading ? (
         <Spinner size="sm" tone={spinnerTone[variant]} />

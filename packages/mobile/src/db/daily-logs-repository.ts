@@ -1,5 +1,7 @@
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { randomUUID } from "expo-crypto";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { isWeatherCondition, type DailyLogDay, type UpsertDailyLogInput } from "@/api/daily-logs";
 import type { Db } from "./client";
 import { localIsoDate } from "@/lib/dates";
@@ -15,6 +17,8 @@ import {
 } from "./schema";
 
 /** Composite key, because a daily log is identified by project + building + date. */
+const access = repositoryAccess(features.dailyLog);
+
 export function dayKey(projectId: string, logDate: string, buildingId?: string | null): string {
   return buildingId ? `${projectId}:${buildingId}:${logDate}` : `${projectId}:${logDate}`;
 }
@@ -76,11 +80,7 @@ export const dailyLogsRepository = {
       .select()
       .from(dailyLogActivities)
       .where(
-        and(
-          eq(dailyLogActivities.projectId, projectId),
-          eq(dailyLogActivities.logDate, logDate),
-          buildingId !== undefined ? eq(dailyLogActivities.buildingId, buildingId) : undefined,
-        ),
+        access.where(db, dailyLogActivities.projectId, eq(dailyLogActivities.projectId, projectId), eq(dailyLogActivities.logDate, logDate), buildingId !== undefined ? eq(dailyLogActivities.buildingId, buildingId) : undefined),
       ),
 
   /** Logs work against an activity and queues the push. */
@@ -97,8 +97,10 @@ export const dailyLogsRepository = {
       delayNote?: string | null;
     },
   ): Promise<void> {
+    access.require(db, projectId, "create");
+    if (input.delayReasonCode) repositoryAccess(features.schedule).require(db, projectId, "edit");
     const id = `${projectId}:${logDate}:${input.activityId}`;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx
         .insert(dailyLogActivities)
         .values({
@@ -141,21 +143,21 @@ export const dailyLogsRepository = {
     db
       .select()
       .from(dailyLogs)
-      .where(and(eq(dailyLogs.projectId, projectId), buildingId !== undefined ? eq(dailyLogs.buildingId, buildingId) : undefined))
+      .where(access.where(db, dailyLogs.projectId, eq(dailyLogs.projectId, projectId), buildingId !== undefined ? eq(dailyLogs.buildingId, buildingId) : undefined))
       .orderBy(desc(dailyLogs.logDate)),
 
   dayQuery: (db: Db, projectId: string, logDate: string, buildingId: string) =>
     db
       .select()
       .from(dailyLogs)
-      .where(eq(dailyLogs.id, dayKey(projectId, logDate, buildingId)))
+      .where(access.where(db, dailyLogs.projectId, eq(dailyLogs.id, dayKey(projectId, logDate, buildingId))))
       .limit(1),
 
   entriesQuery: (db: Db, projectId: string, logDate: string, buildingId: string) =>
     db
       .select()
       .from(dailyLogEntries)
-      .where(and(eq(dailyLogEntries.projectId, projectId), eq(dailyLogEntries.logDate, logDate), eq(dailyLogEntries.buildingId, buildingId)))
+      .where(access.where(db, dailyLogEntries.projectId, eq(dailyLogEntries.projectId, projectId), eq(dailyLogEntries.logDate, logDate), eq(dailyLogEntries.buildingId, buildingId)))
       .orderBy(asc(dailyLogEntries.createdAt)),
 
   /**
@@ -170,6 +172,7 @@ export const dailyLogsRepository = {
     logDate: string,
     input: UpsertDailyLogInput,
   ): Promise<void> {
+    access.require(db, projectId, "create");
     const id = dayKey(projectId, logDate, input.buildingId);
     const now = Date.now();
     // Forms send every field; voice actions may send only hours. Omitted
@@ -183,7 +186,7 @@ export const dailyLogsRepository = {
       summary: input.summary ?? null,
     };
 
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx
         .insert(dailyLogs)
         .values({
@@ -229,8 +232,9 @@ export const dailyLogsRepository = {
     bodyHtml?: string | null,
     buildingId?: string | null,
   ): Promise<void> {
+    access.require(db, projectId, "create");
     const id = `local_${randomUUID()}`;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx.insert(dailyLogEntries).values({
         id,
         projectId,
@@ -274,7 +278,7 @@ export const dailyLogsRepository = {
     },
   ): Promise<void> {
     const id = `local_${randomUUID()}`;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx.insert(dailyLogEntries).values({
         id,
         projectId,
@@ -304,9 +308,10 @@ export const dailyLogsRepository = {
    * Server days never clobber a building's day still holding local edits.
    */
   async upsertFromServer(db: Db, projectId: string, days: readonly DailyLogDay[]): Promise<void> {
+    access.require(db, projectId);
     if (days.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       for (const day of days) {
         tx
           .insert(dailyLogs)

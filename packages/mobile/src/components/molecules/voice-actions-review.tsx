@@ -1,36 +1,15 @@
+import { useProjectAccess } from "@/lib/project-access-provider";
+import { voiceRequirement } from "@/lib/voice-access";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { actionDefinition } from "@buildpanda/voice-actions";
 import type { ComponentProps } from "react";
 import { Pressable, View } from "react-native";
-import type { ProposedAction, ProposedActionKind } from "@/api/voice-report-types";
+import type { ProposedAction } from "@/api/voice-report-types";
 import { Card, Text } from "@/components/atoms";
 import { ICON_BRAND, ICON_DANGER, ICON_FAINT } from "@/constants/colors";
-import { outstandingFields, type MissingFieldValues } from "@/lib/voice-missing-fields";
+import { actionFields, reviewErrors, reviewValues, outstandingFields, type MissingFieldValues, type ReviewValue } from "@/lib/voice-missing-fields";
 import { cn } from "@/lib/utils";
-import { VoiceMissingFields } from "./voice-missing-fields";
-
-const META: Record<ProposedActionKind, { label: string; icon: ComponentProps<typeof Ionicons>["name"]; destructive?: boolean }> = {
-  rfi: { label: "Raise RFI", icon: "help-circle-outline" },
-  daily_log: { label: "Append Daily Log", icon: "clipboard-outline" },
-  change_request: { label: "Submit Change Request", icon: "swap-horizontal-outline" },
-  material_log: { label: "Log Material Movement", icon: "archive-outline" },
-  material_order: { label: "Request Material", icon: "cube-outline" },
-  look_ahead: { label: "Create look ahead", icon: "eye-outline" },
-  update_rfi: { label: "Update RFI", icon: "create-outline" },
-  transition_rfi: { label: "Change RFI Status", icon: "swap-vertical-outline" },
-  update_change_request: { label: "Update Change Request", icon: "create-outline" },
-  delete_change_request: { label: "Delete Change Request", icon: "trash-outline", destructive: true },
-  update_material_order: { label: "Update Material Request", icon: "create-outline" },
-  delete_material_order: { label: "Cancel Material Request", icon: "trash-outline", destructive: true },
-  update_look_ahead: { label: "Update look ahead", icon: "create-outline" },
-  delete_look_ahead: { label: "Delete look ahead", icon: "trash-outline", destructive: true },
-  update_daily_log: { label: "Update Daily Log", icon: "time-outline" },
-  log_activity: { label: "Log Activity Work", icon: "hammer-outline" },
-  comment_rfi: { label: "Respond to RFI", icon: "chatbubble-outline" },
-  comment_change_request: { label: "Comment on Change Request", icon: "chatbubble-outline" },
-  void_ledger_entry: { label: "Void Material Entry", icon: "trash-outline", destructive: true },
-  void_daily_log_entry: { label: "Void Diary Entry", icon: "trash-outline", destructive: true },
-  transition_stage: { label: "Update Build Stage", icon: "flag-outline" },
-};
+import { VoiceReviewForm } from "./voice-review-form";
 
 /** Icon + words, never colour alone — the badge has to read on a bright site. */
 function NeedsBadge({ count }: { count: number }) {
@@ -63,16 +42,20 @@ export function VoiceActionsReview({
   appliedIndexes?: ReadonlySet<number>;
   values: MissingFieldValues;
   onToggle: (index: number) => void;
-  onChangeField: (actionIndex: number, fieldName: string, value: string) => void;
+  onChangeField: (actionIndex: number, fieldName: string, value: ReviewValue) => void;
 }) {
+  const { allows } = useProjectAccess();
   return (
     <View className="gap-3">
       {actions.map((action, index) => {
-        const meta = META[action.kind];
+        if (!allows(voiceRequirement(action))) return null;
+        const meta = actionDefinition(action.kind);
         const applied = appliedIndexes?.has(index) ?? false;
         const included = includedIndexes.has(index);
-        const answers = values[index];
-        const showFields = included && action.missing.length > 0;
+        const answers = reviewValues(action, values[index]);
+        const fields = actionFields(action);
+        const showFields = included && !applied && fields.length > 0;
+        const errors = reviewErrors(action, values[index]);
         const outstanding = showFields ? outstandingFields(action, answers).length : 0;
         return (
           <Card key={index} className={cn("p-4", !included && "opacity-50")}>
@@ -84,19 +67,19 @@ export function VoiceActionsReview({
               className="min-h-11 flex-row items-start gap-3"
             >
               <View className={cn("h-10 w-10 items-center justify-center rounded-xl", meta.destructive ? "bg-error-50" : "bg-primary-50")}>
-                <Ionicons name={meta.icon} size={20} color={meta.destructive ? ICON_DANGER : ICON_BRAND} />
+                <Ionicons name={meta.icon as ComponentProps<typeof Ionicons>["name"]} size={20} color={meta.destructive ? ICON_DANGER : ICON_BRAND} />
               </View>
               <View className="min-w-0 flex-1">
                 <View className="flex-row flex-wrap items-center gap-2">
                   <Text tone={meta.destructive ? "danger" : "brand"} weight="semibold" className="text-[11px] uppercase">
-                    {applied ? "Saved" : meta.label}
+                    {applied ? "Applied" : meta.label}
                   </Text>
                   {outstanding > 0 ? <NeedsBadge count={outstanding} /> : null}
                 </View>
                 <Text weight="semibold" className="pt-0.5 text-[15px]" numberOfLines={2}>
                   {action.title}
                 </Text>
-                <Text tone="secondary" className="pt-1 text-[13px]" numberOfLines={3}>
+                <Text tone="secondary" className="pt-1 text-[13px]" >
                   {action.summary}
                 </Text>
                 {/* a filled form is a record: show every answer, not a teaser */}
@@ -106,6 +89,7 @@ export function VoiceActionsReview({
                     <Text className="text-[13px]">{action.payload.formText}</Text>
                   </View>
                 ) : null}
+                {meta.online ? <Text tone="secondary" className="pt-1 text-xs">Connection required</Text> : null}
               </View>
               <Ionicons
                 name={included || applied ? "checkmark-circle" : "ellipse-outline"}
@@ -116,12 +100,9 @@ export function VoiceActionsReview({
 
             {showFields ? (
               <View className="mt-4 gap-4 border-t border-hairline pt-4">
-                <Text tone="secondary" className="text-[12px]">
-                  Panda AI couldn&apos;t hear {action.missing.length === 1 ? "this" : "these"} — add{" "}
-                  {action.missing.length === 1 ? "it" : "them"} before saving.
-                </Text>
-                <VoiceMissingFields
-                  fields={action.missing}
+                {errors.length > 0 && outstanding === 0 ? <Text tone="danger">{errors.join(" ")}</Text> : null}
+                <VoiceReviewForm
+                  fields={fields}
                   values={answers}
                   onChangeField={(fieldName, value) => onChangeField(index, fieldName, value)}
                 />

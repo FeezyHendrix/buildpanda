@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ReactSVG } from "react-svg";
-import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { DocumentsIcon } from "@/components/atoms/project-nav-icons";
@@ -27,7 +26,6 @@ import {
   useDeleteDocument,
   useEditDocument,
 } from "@/hooks/use-documents";
-import { DOCUMENT_STATUS_TONE } from "@/lib/project-meta";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { formatShortDate } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
@@ -46,16 +44,6 @@ function getFileTypeIcon(fileName: string): string {
   if (ext === "pdf") return icons.pdf;
   // doc, docx, txt, csv, xlsx, xls, ppt, pptx, dwg, dxf, and anything else → doc icon
   return icons.doc;
-}
-
-const STATUS_ICON: Record<string, string> = {
-  Verified: icons.verified,
-  Pending: icons.pending,
-  Expired: icons.expired,
-};
-
-function getStatusIcon(status: string): string {
-  return STATUS_ICON[status] ?? icons.pending;
 }
 
 export function DocumentsTable({
@@ -82,13 +70,12 @@ export function DocumentsTable({
             <TableHeaderCell>File Name</TableHeaderCell>
             <TableHeaderCell>Category</TableHeaderCell>
             <TableHeaderCell>Date Uploaded</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
             <TableHeaderCell align="right">Actions</TableHeaderCell>
           </tr>
         </TableHead>
         <TableBody>
           {documents.length === 0 ? (
-            <TableEmptyRow colSpan={5}>
+            <TableEmptyRow colSpan={4}>
               <EmptyState
                 variant="inline"
                 icon={<DocumentsIcon />}
@@ -218,12 +205,6 @@ function DocumentRow({
         <TableCell className="text-gray-600">{doc.category}</TableCell>
         <TableCell className="whitespace-nowrap text-gray-600">
           {formatShortDate(doc.uploadedAt) || doc.uploadedAt}
-        </TableCell>
-        <TableCell>
-          <Badge tone={DOCUMENT_STATUS_TONE[doc.status]} size="md" className="flex w-fit items-center gap-1.5 bg-transparent">
-            <ReactSVG src={getStatusIcon(doc.status)} className="shrink-0" />
-            <p>{doc.status}</p>
-          </Badge>
         </TableCell>
         <TableCell>
           <RowMenu

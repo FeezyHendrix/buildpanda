@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { DateField } from "@/components/molecules/date-field";
 import { useLocalSearchParams } from "expo-router";
@@ -117,7 +118,7 @@ function Editor({ db, projectId, orderId }: { db: Db; projectId: string; orderId
   );
 }
 
-export default function EditMaterialOrder() {
+function EditMaterialOrder() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -134,3 +135,5 @@ export default function EditMaterialOrder() {
 
   return <Editor db={db} projectId={projectId} orderId={id} />;
 }
+
+export default withProjectPermission(EditMaterialOrder, "/tools/materials/edit/[id]");

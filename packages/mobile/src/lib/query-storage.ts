@@ -13,4 +13,16 @@ export const queryStorage = {
     if (Platform.OS === "web") globalThis.localStorage?.setItem(key, value);
     else SQLiteStorage.setItemSync(key, value);
   },
+  removeItem(key: string): void {
+    if (Platform.OS === "web") globalThis.localStorage?.removeItem(key);
+    else SQLiteStorage.removeItemSync(key);
+  },
+  clearProtected(): void {
+    const keys = Platform.OS === "web"
+      ? Object.keys(globalThis.localStorage ?? {})
+      : SQLiteStorage.getAllKeysSync();
+    for (const key of keys) {
+      if (key.startsWith("buildpanda_cache")) this.removeItem(key);
+    }
+  },
 };

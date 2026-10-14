@@ -1,5 +1,6 @@
 import { useStageScope } from "@/lib/stage-scope";
 import { matchesStage } from "@/lib/stage-filter";
+import { projectAccess } from "@/lib/project-access-store";
 import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
@@ -36,7 +37,7 @@ export function useLocalMaterialApprovals(db: Db, projectId: string, scoped = tr
   const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "materials", "view")) return;
     let cancelled = false;
     void (async () => {
       if (await hasPendingCreates(db, MATERIAL_APPROVALS_RESOURCE)) return;
@@ -85,7 +86,7 @@ export function useLocalMaterialApprovalComments(db: Db, projectId: string, appr
   const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "materials", "view")) return;
     // A queued request has no server id yet, so there is nothing to fetch.
     if (approvalId.startsWith("local_")) return;
     let cancelled = false;

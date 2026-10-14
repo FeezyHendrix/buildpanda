@@ -1,3 +1,4 @@
+import type { ExtendedAction, VoiceOptions, VoiceReviewField } from "@buildpanda/voice-actions";
 import type { TemplateField, TemplateResponses } from "../../daily-log-templates/types.ts";
 export interface RfiPayload {
   subject: string;
@@ -11,6 +12,7 @@ export interface DailyLogPayload {
   /** Set when the speech filled the project's daily log form. */
   templateId?: string | null;
   templateName?: string;
+  templateFields?: TemplateField[];
   responses?: TemplateResponses;
   /** The answers as readable text, for the review card and an offline fallback. */
   formText?: string;
@@ -32,7 +34,7 @@ export interface MaterialOrderPayload {
 }
 
 export interface MaterialLogPayload {
-  entryType: "IN" | "USED";
+  entryType: "IN" | "USED" | null;
   materialName: string;
   quantity: number;
   unit: string;
@@ -62,7 +64,7 @@ export interface RfiUpdatePayload {
 
 export interface RfiTransitionPayload {
   rfiId: string;
-  status: "Closed" | "Void" | "Open";
+  status: "Closed" | "Void" | "Open" | null;
 }
 
 export interface ChangeRequestUpdatePayload {
@@ -112,14 +114,14 @@ export interface LookAheadDeletePayload {
 
 export interface DailyLogUpdatePayload {
   buildingId?: string | null;
-  totalHours: number;
+  totalHours: number | null;
 }
 
 export interface ActivityLogPayload {
   activityId: string;
   /** Enriched server-side from the snapshot — the model never supplies it. */
   activityName: string;
-  hoursLogged: number;
+  hoursLogged: number | null;
   delayReasonCode?: string | null;
   delayNote?: string | null;
 }
@@ -152,7 +154,7 @@ export interface StageTransitionPayload {
   status: "Pending" | "InProgress" | "Done" | null;
 }
 
-export type MissingFieldType = "text" | "number" | "date" | "select";
+export type MissingFieldType = VoiceReviewField["type"];
 
 export interface MissingFieldOption {
   value: string;
@@ -161,14 +163,9 @@ export interface MissingFieldOption {
 
 // Server-computed, not model-authored: a required field the speaker never said,
 // which the reviewer fills in rather than the action being silently dropped.
-export interface MissingField {
-  name: string;
-  label: string;
-  type: MissingFieldType;
-  options?: MissingFieldOption[];
-}
+export interface MissingField extends VoiceReviewField {}
 
-export type DraftAction =
+export type LegacyDraftAction =
   | { kind: "rfi"; title: string; summary: string; payload: RfiPayload }
   | { kind: "daily_log"; title: string; summary: string; payload: DailyLogPayload }
   | { kind: "change_request"; title: string; summary: string; payload: ChangeRequestPayload }
@@ -191,7 +188,8 @@ export type DraftAction =
   | { kind: "void_daily_log_entry"; title: string; summary: string; payload: DailyLogEntryVoidPayload }
   | { kind: "transition_stage"; title: string; summary: string; payload: StageTransitionPayload };
 
-export type ProposedAction = DraftAction & { missing: MissingField[] };
+export type DraftAction = LegacyDraftAction | ExtendedAction;
+export type ProposedAction = DraftAction & { missing: MissingField[]; reviewFields?: MissingField[]; reviewOptions?: VoiceOptions };
 
 export interface SnapshotRfi {
   id: string;
@@ -269,6 +267,8 @@ export interface SnapshotBuilding {
 }
 
 export interface ProjectSnapshot {
+  allowedActionKinds?: readonly string[];
+  voiceOptions?: VoiceOptions;
   rfis: SnapshotRfi[];
   changeRequests: SnapshotChangeRequest[];
   materialOrders: SnapshotMaterialOrder[];

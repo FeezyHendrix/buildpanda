@@ -1,5 +1,6 @@
 import { StageField } from "@/components/molecules/stage-field";
 import { useStageScope } from "@/lib/stage-scope";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 
 import { useState } from "react";
@@ -13,7 +14,7 @@ import { useFieldSession } from "@/lib/field-session";
 import { useSyncState } from "@/lib/sync-provider";
 import { htmlToText } from "@/lib/html";
 
-export default function NewChangeRequest() {
+function NewChangeRequest() {
   const { projectId } = useFieldSession();
   const scope = useStageScope();
   const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
@@ -98,3 +99,5 @@ export default function NewChangeRequest() {
     </Page>
   );
 }
+
+export default withProjectPermission(NewChangeRequest, "/tools/change-requests/new");

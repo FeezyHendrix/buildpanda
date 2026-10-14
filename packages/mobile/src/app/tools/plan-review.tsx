@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
@@ -39,7 +40,7 @@ import { useFieldSession } from "@/lib/field-session";
 import { useProjectAssignees } from "@/hooks/use-participants";
 import { sheetLabel } from "@/components/plan-review/sheet-strip";
 
-export default function PlanReview() {
+function PlanReview() {
   const { projectId, userId } = useFieldSession();
   const { db, ready } = useLocalDb();
 
@@ -357,3 +358,5 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
     </Page>
   );
 }
+
+export default withProjectPermission(PlanReview, "/tools/plan-review");

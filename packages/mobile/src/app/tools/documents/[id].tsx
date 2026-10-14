@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -78,7 +79,7 @@ function VersionRow({
   );
 }
 
-export default function DocumentDetail() {
+function DocumentDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db } = useLocalDb();
@@ -195,3 +196,5 @@ export default function DocumentDetail() {
     </Page>
   );
 }
+
+export default withProjectPermission(DocumentDetail, "/tools/documents/[id]");

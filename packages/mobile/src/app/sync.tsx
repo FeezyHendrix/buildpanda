@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { outboxRecordPath } from "@/db/outbox-context";
 import { useProjects } from "@/hooks/use-projects";
@@ -154,7 +155,7 @@ function QueueList({ db, ready }: { db: Db; ready: boolean }) {
   );
 }
 
-export default function SyncPage() {
+function SyncPage() {
   const { db, ready } = useLocalDb();
   const sync = useSyncState();
   const [flushing, setFlushing] = useState(false);
@@ -222,3 +223,5 @@ export default function SyncPage() {
     </Page>
   );
 }
+
+export default withProjectPermission(SyncPage, "/sync");

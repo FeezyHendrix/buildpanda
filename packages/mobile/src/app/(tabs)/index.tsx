@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
 import { View } from "react-native";
@@ -57,7 +58,7 @@ function FileList({ db, projectId }: { db: Db; projectId: string }) {
   );
 }
 
-export default function Files() {
+function Files() {
   const { projectId, organizationId } = useFieldSession();
   const { db, ready } = useLocalDb();
   const { data: organizations } = useOrganizations();
@@ -91,3 +92,5 @@ export default function Files() {
     </Page>
   );
 }
+
+export default withProjectPermission(Files, "/(tabs)");

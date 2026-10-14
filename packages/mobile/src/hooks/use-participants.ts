@@ -1,3 +1,4 @@
+import { features } from "@/lib/feature-access";
 import { useMemo } from "react";
 import { participantsApi, toAssignees, type CommentAssignee } from "@/api/participants";
 import { useFieldSession } from "@/lib/field-session";
@@ -13,6 +14,8 @@ export function useProjectAssignees(projectId: string | undefined): CommentAssig
   const query = usePersistentQuery({
     queryKey: participantKeys.list(projectId),
     ownerId: storageOwnerId,
+    projectId,
+    permission: features.participants.read,
     queryFn: () => participantsApi.list(projectId!),
     enabled: Boolean(projectId),
   });

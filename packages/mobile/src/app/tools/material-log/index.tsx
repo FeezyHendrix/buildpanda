@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -105,7 +107,7 @@ function Ledger({ db, projectId, tab }: { db: Db; projectId: string; tab: Tab })
   );
 }
 
-export default function MaterialLog() {
+function MaterialLog() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
   const { can } = useProjectAccess();
@@ -118,7 +120,7 @@ export default function MaterialLog() {
       onBack={() => goBack()}
       rightButtons={
         can("materials", "request") ? (
-          <HeaderIconButton icon="add" label="Log material" onPress={() => router.push("/tools/material-log/new")} />
+          <HeaderIconButton permission={features.materialLog.actions.create} icon="add" label="Log material" onPress={() => router.push("/tools/material-log/new")} />
         ) : undefined
       }
     >
@@ -133,3 +135,5 @@ export default function MaterialLog() {
     </Page>
   );
 }
+
+export default withProjectPermission(MaterialLog, "/tools/material-log/index");
