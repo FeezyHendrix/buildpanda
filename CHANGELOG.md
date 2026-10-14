@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Versions are kept in sync across all workspace packages (`@buildpanda/backend`,
-`@buildpanda/frontend`, `@buildpanda/web`, `@buildpanda/admin`). Bump them with
+`@buildpanda/frontend`, `@buildpanda/website`, `@buildpanda/admin`). Bump them with
 `pnpm version:patch | version:minor | version:major`, then tag (see below).
 
 ## [Unreleased]

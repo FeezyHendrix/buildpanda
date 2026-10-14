@@ -51,11 +51,12 @@ export const config = {
     host: optional("HOST", "0.0.0.0"),
     port: optionalNumber("PORT", 3000),
     // Comma-separated list. Defaults include the app (5173), admin (5174) and
-    // marketing site (3001, posts consultation leads). In production this must
-    // include https://buildpanda.io (and www) for the lead form to work.
+    // marketing site (3002, packages/website: posts demo, consultation and
+    // question leads). In production this must include https://buildpanda.io
+    // (and www) for the lead forms to work.
     corsOrigins: optional(
       "CORS_ORIGIN",
-      "http://localhost:5173,http://localhost:5174,http://localhost:3001",
+      "http://localhost:5173,http://localhost:5174,http://localhost:3002",
     )
       .split(",")
       .map((value) => value.trim())
