@@ -1,13 +1,14 @@
 import { goBack } from "@/lib/navigation";
 import { router } from "expo-router";
 import { Pressable } from "react-native";
+import { buildingsApi, realBuildings } from "@/api/buildings";
 import { Text } from "@/components/atoms";
 import { PickerScreen, type PickerItem } from "@/components/molecules/picker-screen";
 import { useProjects } from "@/hooks/use-projects";
 import { useFieldSession } from "@/lib/field-session";
 
 export default function SelectProject() {
-  const { projectId, selectProject } = useFieldSession();
+  const { projectId, selectProject, selectBuilding } = useFieldSession();
   const { data, isPending, error, isStale, refetch } = useProjects();
 
   const items: PickerItem[] = (data ?? []).map((project) => ({
@@ -19,6 +20,16 @@ export default function SelectProject() {
   function handleSelect(id: string) {
     selectProject(id);
     router.replace("/(tabs)/overview");
+    // Resolve the one real building now, while there is probably signal: the
+    // daily log and task board are keyed by building locally, so going offline
+    // before opening a building-scoped screen used to make them unsaveable.
+    void buildingsApi
+      .list(id)
+      .then((all) => {
+        const real = realBuildings(all);
+        if (real.length === 1) selectBuilding(real[0]!.id);
+      })
+      .catch(() => undefined);
   }
 
   return (

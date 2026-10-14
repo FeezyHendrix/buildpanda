@@ -84,12 +84,22 @@ export function useDailyLogDay(db: Db, projectId: string, logDate: string, build
   return { day, entries, activities, isPending: (liveDay.updatedAt === undefined || liveEntries.updatedAt === undefined) && !liveDay.error && !liveEntries.error, error: liveDay.error ?? liveEntries.error };
 }
 
+// A project with one building has nothing to pick, so telling its crew to
+// "choose a building" was a dead end: the id is simply not on the device yet.
+function missingBuilding(buildingCount: number): Error {
+  return new Error(
+    buildingCount > 1
+      ? "Choose a building first."
+      : "Buildings have not reached this device yet. Reconnect once, then try again.",
+  );
+}
+
 export function useSaveDailyLog(db: Db | null, projectId: string | undefined) {
   const scope = useProjectBuilding();
   return async (logDate: string, input: UpsertDailyLogInput) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     const buildingId = input.buildingId ?? scope.buildingId;
-    if (!buildingId) throw new Error("Choose a building before saving a daily log.");
+    if (!buildingId) throw missingBuilding(scope.buildings.length);
     await dailyLogsRepository.upsertLocal(db, projectId, logDate, { ...input, buildingId });
     void flushOutbox(db).catch(() => undefined);
   };
@@ -106,7 +116,7 @@ export function useAddDailyLogEntry(db: Db | null, projectId: string | undefined
   ) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     const resolvedId = buildingId ?? scope.buildingId;
-    if (!resolvedId) throw new Error("Choose a building before adding a daily log entry.");
+    if (!resolvedId) throw missingBuilding(scope.buildings.length);
     await dailyLogsRepository.addEntryLocal(
       db,
       projectId,
