@@ -12,6 +12,7 @@ import {
   materialApprovalComments,
   materialApprovals,
   materialOrders,
+  projectUpdates,
   rfiComments,
   rfis,
 } from "./schema";
@@ -36,4 +37,5 @@ export const OUTBOX_TABLES: Record<string, SQLiteTable> = {
   "material-approval-comments": materialApprovalComments,
   "drawing-markups": drawingMarkups,
   "drawing-markup-comments": drawingMarkupComments,
+  updates: projectUpdates,
 };
