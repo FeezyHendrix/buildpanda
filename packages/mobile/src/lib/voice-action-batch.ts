@@ -8,9 +8,19 @@ export async function applyVoiceActionBatch(
   completed: Map<number, AppliedVoiceAction>,
   apply: (action: ProposedAction) => Promise<AppliedVoiceAction>,
 ): Promise<void> {
+  const failures: string[] = [];
   for (const { index, action } of actions) {
     if (completed.has(index)) continue;
-    const result = await apply(action);
-    completed.set(index, result);
+    try {
+      completed.set(index, await apply(action));
+    } catch (error) {
+      // Deliberate: one record the crew cannot save used to abandon every
+      // action after it, so a report of eight saved three and dropped the rest
+      // however often it was retried. Attempt all, name only what failed.
+      failures.push(
+        `${action.title}: ${error instanceof Error ? error.message : "could not be saved"}`,
+      );
+    }
   }
+  if (failures.length > 0) throw new Error(failures.join("\n"));
 }
