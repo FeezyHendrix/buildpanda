@@ -16,10 +16,8 @@ import {
 // Workaround for React 19 type issue with dnd-kit
 const SortableContext = BaseSortableContext as any;
 
-import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { useSetPageTitle } from "@/contexts/page-title-context";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
@@ -30,20 +28,19 @@ import {
   useUpdateTask,
   useMoveTask,
   useDeleteTask,
-  useAddColumn,
   useRenameColumn,
   useDeleteColumn,
   useReorderColumns,
 } from "@/hooks/use-tasks";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 import { canResourceAction, type Task, type TaskPriority } from "@/lib/project-types";
 import { type AssigneeOption } from "./tasks/task-ui";
 import { BoardColumn } from "./tasks/task-board-column";
 import { TaskDetailSheet } from "./tasks/task-detail-sheet";
 import { UpsertTaskDialog } from "./tasks/upsert-task-dialog";
-
-type TaskBoardScope = "assigned" | "all";
+import { TaskScopeTabs, type TaskBoardScope } from "./tasks/task-scope-tabs";
+import { TaskColumnAdder } from "./tasks/task-column-adder";
+import { findDoneColumn, findReopenColumn, isDoneColumn } from "./tasks/task-completion";
 
 export default function ProjectTasks() {
   useSetPageTitle(
@@ -65,7 +62,6 @@ export default function ProjectTasks() {
   const updateTask = useUpdateTask(project.id);
   const moveTask = useMoveTask(project.id);
   const deleteTask = useDeleteTask(project.id);
-  const addColumn = useAddColumn(project.id);
   const renameColumn = useRenameColumn(project.id);
   const deleteColumn = useDeleteColumn(project.id);
   const reorderColumns = useReorderColumns(project.id);
@@ -77,8 +73,6 @@ export default function ProjectTasks() {
   const [editing, setEditing] = useState<Task | null>(null);
   const [createColumnId, setCreateColumnId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Task | null>(null);
-  const [addingColumn, setAddingColumn] = useState(false);
-  const [newColumnName, setNewColumnName] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
@@ -156,6 +150,28 @@ export default function ProjectTasks() {
       (a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || a.position - b.position,
     );
 
+  const doneColumn = findDoneColumn(board.columns);
+  const reopenColumn = findReopenColumn(board.columns);
+
+  function nextPositionIn(columnId: string): number {
+    const existing = tasksByColumn.get(columnId) ?? [];
+    return (existing.length ? existing[existing.length - 1]!.position : 0) + 1000;
+  }
+
+  function handleToggleComplete(task: Task): void {
+    const current = board!.columns.find((c) => c.id === task.columnId);
+    const target = current && isDoneColumn(current) ? reopenColumn : doneColumn;
+    if (!target) {
+      toast("This board has no Done column");
+      return;
+    }
+    moveTask.mutate({
+      taskId: task.id,
+      columnId: target.id,
+      position: nextPositionIn(target.id),
+    });
+  }
+
   function openCreate(columnId: string): void {
     setEditing(null);
     setCreateColumnId(columnId);
@@ -179,18 +195,6 @@ export default function ProjectTasks() {
   function handleDialogOpenChange(open: boolean): void {
     setDialogOpen(open);
     if (!open) setFocusedTask(null);
-  }
-
-  function handleAddColumn(): void {
-    const name = newColumnName.trim();
-    if (!name) return;
-    addColumn.mutate(name, {
-      onSuccess: () => {
-        setNewColumnName("");
-        setAddingColumn(false);
-      },
-      onError: () => toast("Could not add column"),
-    });
   }
 
   function handleRenameColumn(columnId: string, name: string): void {
@@ -231,14 +235,10 @@ export default function ProjectTasks() {
     const task = board!.tasks.find((t) => t.id === taskId);
     if (!task || task.columnId === targetColumnId) return;
 
-    const targetTasks = tasksByColumn.get(targetColumnId) ?? [];
-    const lastPosition = targetTasks.length
-      ? targetTasks[targetTasks.length - 1]!.position
-      : 0;
     moveTask.mutate({
       taskId,
       columnId: targetColumnId,
-      position: lastPosition + 1000,
+      position: nextPositionIn(targetColumnId),
     });
   }
 
@@ -294,32 +294,7 @@ export default function ProjectTasks() {
   return (
     <div className="w-full px-4 lg:px-8 py-6">
       {canSeeAllTasks ? (
-        <div className="inline-flex items-center border-[0.5px] border-border bg-white">
-          <button
-            type="button"
-            onClick={() => setBoardScope("assigned")}
-            className={cn(
-              "h-9 px-4 text-[13px] font-medium transition-colors",
-              requestedScope === "assigned"
-                ? "bg-primary text-white"
-                : "text-[#131B2E] hover:bg-black/5",
-            )}
-          >
-            For me
-          </button>
-          <button
-            type="button"
-            onClick={() => setBoardScope("all")}
-            className={cn(
-              "h-9 px-4 text-[13px] font-medium transition-colors",
-              requestedScope === "all"
-                ? "bg-primary text-white"
-                : "text-[#131B2E] hover:bg-black/5",
-            )}
-          >
-            All Tasks
-          </button>
-        </div>
+        <TaskScopeTabs value={requestedScope} onChange={setBoardScope} />
       ) : null}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -337,65 +312,14 @@ export default function ProjectTasks() {
                 canAddCard={canAddTasks}
                 onAddCard={() => openCreate(column.id)}
                 onOpenTask={openDetail}
+                onToggleComplete={handleToggleComplete}
                 onRename={(name) => handleRenameColumn(column.id, name)}
                 onDelete={() => handleDeleteColumn(column.id)}
               />
             ))}
           </SortableContext>
 
-          {canManage && (
-            <div className="w-[85vw] shrink-0 snap-start sm:w-72">
-              {addingColumn ? (
-                <div className="flex flex-col gap-2 border border-[#EBEBEB] bg-white p-3">
-                  <input
-                    autoFocus
-                    value={newColumnName}
-                    onChange={(e) => setNewColumnName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAddColumn();
-                      if (e.key === "Escape") {
-                        setAddingColumn(false);
-                        setNewColumnName("");
-                      }
-                    }}
-                    placeholder="Column name"
-                    className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={handleAddColumn}
-                      disabled={!newColumnName.trim()}
-                    >
-                      Add
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setAddingColumn(false);
-                        setNewColumnName("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="lg"
-                  onClick={() => setAddingColumn(true)}
-                  className='w-[316px] flex justify-start bg-black-50 border-[0.3px] border-border'
-                >
-                  <PlusIcon className="size-4" />
-                  Add new column
-                </Button>
-              )}
-            </div>
-          )}
+          {canManage && <TaskColumnAdder projectId={project.id} />}
         </div>
       </DndContext>
 
@@ -408,6 +332,8 @@ export default function ProjectTasks() {
         projectId={project.id}
         taskId={detailTaskId}
         task={detailTask}
+        isDone={Boolean(doneColumn && detailTask?.columnId === doneColumn.id)}
+        onToggleComplete={canManage ? handleToggleComplete : undefined}
       />
 
       <UpsertTaskDialog
