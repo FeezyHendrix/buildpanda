@@ -3,6 +3,18 @@ import { buildingsApi, realBuildings } from "@/api/buildings";
 import { useFieldSession } from "@/lib/field-session";
 import { usePersistentQuery } from "@/lib/persistent-query";
 
+/**
+ * A project with one building has nothing to pick, so telling its crew to
+ * "choose a building" was a dead end: the id is simply not on the device yet.
+ */
+export function missingBuilding(buildingCount: number): Error {
+  return new Error(
+    buildingCount > 1
+      ? "Choose a building first."
+      : "Buildings have not reached this device yet. Reconnect once, then try again.",
+  );
+}
+
 /** A remembered building is usable offline, but confirmed removal invalidates it. */
 export function useProjectBuilding() {
   const { projectId, buildingId: savedId, selectBuilding, storageOwnerId } = useFieldSession();
