@@ -156,10 +156,6 @@ export function materialDeliveryService(
           });
         }
       }
-
-      if (updated && updated.status === "Delivered") {
-        await repository.createMaterialProcurementFromOrder(updated);
-      }
       return host.hydrateMaterialOrder(updated ?? order);
     },
 

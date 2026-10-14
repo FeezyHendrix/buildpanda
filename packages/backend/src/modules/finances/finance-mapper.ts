@@ -7,8 +7,6 @@ import type {
   FinanceEvent,
   FinanceEventRow,
   FinancesRow,
-  MaterialProcurement,
-  MaterialProcurementRow,
   MilestoneDispute,
   MilestoneDisputeRow,
   MilestonePayment,
@@ -42,17 +40,6 @@ export function toBudgetPhase(row: BudgetPhaseRow): BudgetPhase {
     name: row.name,
     planned: num(row.planned),
     actual: num(row.actual),
-  };
-}
-
-export function toMaterial(row: MaterialProcurementRow): MaterialProcurement {
-  return {
-    id: row.id,
-    name: row.name,
-    purchasedAt: row.purchased_at,
-    receipt: row.receipt,
-    amount: num(row.amount),
-    thumbnailTone: row.thumbnail_tone,
   };
 }
 
@@ -115,7 +102,6 @@ export function toEvent(row: FinanceEventRow): FinanceEvent {
 export function toFinances(
   summary: FinancesRow,
   budgetPhases: BudgetPhaseRow[],
-  materials: MaterialProcurementRow[],
   milestones: MilestonePaymentRow[],
   ledger: PaymentLedgerRow[],
 ): ProjectFinances {
@@ -140,7 +126,6 @@ export function toFinances(
     },
     contractTerms: toContractTerms(summary),
     budgetAllocation: budgetPhases.map(toBudgetPhase),
-    materialsProcured: materials.map(toMaterial),
     milestones: milestones.map(toMilestone),
     ledger: ledger.map(toLedgerEntry),
   };

@@ -107,17 +107,16 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
     },
 
     async getByProject(projectId: string): Promise<ProjectFinances> {
-      const [summary, budgetPhases, materials, milestones, ledger] = await Promise.all([
+      const [summary, budgetPhases, milestones, ledger] = await Promise.all([
         repository.findSummary(projectId),
         repository.listBudgetPhases(projectId),
-        repository.listMaterials(projectId),
         repository.listMilestones(projectId),
         repository.listLedger(projectId),
       ]);
 
       if (!summary) throw new NotFoundError("Project finances");
 
-      return toFinances(summary, budgetPhases, materials, milestones, ledger);
+      return toFinances(summary, budgetPhases, milestones, ledger);
     },
 
     async listCashFlowEntries(projectId: string): Promise<CashFlowEntry[]> {

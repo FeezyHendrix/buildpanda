@@ -3,6 +3,7 @@ import {
   inferAdditionalFields,
   organizationClient,
 } from "better-auth/client/plugins";
+import { payloadFetch } from "./payload-fetch";
 import { ac, roles } from "./permissions";
 
 // const hostname = window.location.hostname.split(".")[0];
@@ -14,6 +15,9 @@ import { ac, roles } from "./permissions";
 
 export const authClient = createAuthClient({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000",
+  // Auth replies (sessions, members, invitations) are encrypted like the rest
+  // of the API on test and app.
+  fetchOptions: { customFetchImpl: payloadFetch },
   plugins: [
     inferAdditionalFields({
       user: {

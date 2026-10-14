@@ -23,3 +23,18 @@ export function payloadSession(): Promise<PayloadSession | null> {
     });
   return pending;
 }
+
+/** The server's answer when this session's key no longer matches its own. */
+export const STALE_KEY_CODE = "payload_key_stale";
+
+/**
+ * Forget this tab's session so the next request fetches the key again: the
+ * server rotated it, or switched encryption on or off, while the tab was open.
+ */
+export function resetPayloadSession(): void {
+  pending = null;
+}
+
+export function isStaleKeyError(status: number | undefined, body: unknown): boolean {
+  return status === 400 && (body as { code?: unknown } | null)?.code === STALE_KEY_CODE;
+}

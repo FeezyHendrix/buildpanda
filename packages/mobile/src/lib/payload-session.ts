@@ -1,5 +1,5 @@
 import { getRandomBytes } from "expo-crypto";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { API_BASE_URL } from "./api-base-url";
 import { createSession, type PayloadSession } from "./payload-crypto";
 
 // Hermes has no crypto.getRandomValues; expo-crypto reads the OS generator.
@@ -25,4 +25,19 @@ export function payloadSession(): Promise<PayloadSession | null> {
       return null;
     });
   return pending;
+}
+
+/** The server's answer when this session's key no longer matches its own. */
+export const STALE_KEY_CODE = "payload_key_stale";
+
+/**
+ * Forget this app session's key so the next request fetches it again: the
+ * server rotated it, or switched encryption on or off, while the app ran.
+ */
+export function resetPayloadSession(): void {
+  pending = null;
+}
+
+export function isStaleKeyError(status: number | undefined, body: unknown): boolean {
+  return status === 400 && (body as { code?: unknown } | null)?.code === STALE_KEY_CODE;
 }

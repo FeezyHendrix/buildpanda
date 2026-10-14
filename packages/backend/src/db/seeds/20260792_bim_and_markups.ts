@@ -190,7 +190,7 @@ const LINKS: { id: string; modelId: string; guid: string; type: string; table: s
   { id: "bimlink_sample_2", modelId: "bim_sample_struct", guid: "8Wm1eQaY6RtkC3nZgPv4Ti", type: "phase", table: "project_phases", targetId: "p2" },
   { id: "bimlink_sample_3", modelId: "bim_sample_mep", guid: "ECs3lWgE9XzqI4uFmVb1Zo", type: "phase", table: "project_phases", targetId: "p3" },
   { id: "bimlink_sample_4", modelId: "bim_sample_arch", guid: "7Vk7dPzX1QsjB5lYfNu8Sh", type: "change_request", table: "change_requests", targetId: "chg1" },
-  { id: "bimlink_sample_5", modelId: "bim_sample_struct", guid: "DBr9kVfD4WypH8tElUa9Yn", type: "cost_item", table: "material_procurements", targetId: "mp1" },
+  { id: "bimlink_sample_5", modelId: "bim_sample_struct", guid: "DBr9kVfD4WypH8tElUa9Yn", type: "cost_item", table: "material_orders", targetId: "mo-seed-1" },
   { id: "bimlink_sample_6", modelId: "bim_sample_struct", guid: "AYo8gScA7TvmE1qBiRx6Vk", type: "activity", table: "activities", targetId: "act-1" },
 ];
 

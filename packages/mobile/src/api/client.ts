@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import { ENCRYPTED_CONTENT_TYPE, isEnvelope, KEY_HEADER, fitsSealLimit, open, seal, type PayloadSession } from "@/lib/payload-crypto";
-import { payloadSession, randomBytes } from "@/lib/payload-session";
+import { isStaleKeyError, payloadSession, randomBytes, resetPayloadSession } from "@/lib/payload-session";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -46,13 +46,38 @@ function describeError(body: ErrorBody | null, status: number): string {
   return reasons.length > 0 ? `${headline}: ${reasons.join("; ")}` : headline;
 }
 
+/** A reply sealed with a key this app session does not hold. */
+class StaleKey extends Error {}
+
 /** Reads a JSON body, opening it first when the server sealed it (test and app). */
 async function readJson(response: Response, session: PayloadSession | null): Promise<unknown> {
   const body: unknown = await response.json();
-  return session && isEnvelope(body) ? JSON.parse(open(session, body)) : body;
+  if (!isEnvelope(body)) return body;
+  if (!session) throw new StaleKey();
+  try {
+    return JSON.parse(open(session, body));
+  } catch {
+    throw new StaleKey();
+  }
 }
 
+/**
+ * One request, retried once with a fresh key when the server's changed while
+ * the app was open (rotated, or encryption switched on or off). Without the
+ * retry that answer is a 400, which the outbox would treat as permanent and
+ * fail a write that was never wrong.
+ */
 export async function request<T>(path: string, init?: RequestOptions): Promise<T> {
+  try {
+    return await attempt<T>(path, init);
+  } catch (error) {
+    if (!(error instanceof StaleKey)) throw error;
+    resetPayloadSession();
+    return attempt<T>(path, init);
+  }
+}
+
+async function attempt<T>(path: string, init?: RequestOptions): Promise<T> {
   const headers: Record<string, string> = {
     ...(init?.body ? { "Content-Type": "application/json" } : {}),
     ...init?.headers,
@@ -91,7 +116,11 @@ export async function request<T>(path: string, init?: RequestOptions): Promise<T
     });
 
     if (!response.ok) {
-      const failure = (await readJson(response, session).catch(() => null)) as ErrorBody | null;
+      const failure = (await readJson(response, session).catch((error: unknown) => {
+        if (error instanceof StaleKey) throw error;
+        return null;
+      })) as ErrorBody | null;
+      if (isStaleKeyError(response.status, failure)) throw new StaleKey();
       throw new ApiError(response.status, describeError(failure, response.status));
     }
     if (response.status === 204) return undefined as T;

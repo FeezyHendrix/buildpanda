@@ -57,7 +57,7 @@ file; that is how a page reaches four times the limit one commit at a time.
 - `packages/backend` — Fastify + Knex modular monolith (one domain per module, three
   layers: routes → service → repository; framework kept out of business logic).
 - `packages/frontend` — React Router SPA, React Query, Tailwind, atoms/molecules/organisms.
-- `packages/web`, `packages/admin` — secondary apps.
+- `packages/website` (marketing site, buildpanda.io), `packages/admin` — secondary apps.
 
 ## Commands
 

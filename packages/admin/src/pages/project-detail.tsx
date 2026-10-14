@@ -280,7 +280,6 @@ function FinancesTab({ id, currency }: { id: string; currency: string }) {
       adminApi.projectCollection<{
         summary: Row | null;
         budgetPhases: Row[];
-        materials: Row[];
         milestones: Row[];
         ledger: Row[];
       }>(id, "finances"),

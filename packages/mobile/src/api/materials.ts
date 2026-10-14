@@ -1,6 +1,6 @@
 import { request } from "./client";
 
-/** Mirrors MATERIAL_STATUS in the backend's materials-equipment routes. */
+/** Mirrors MATERIAL_ORDER_STATUSES in the backend's materials-equipment types. */
 export const MATERIAL_ORDER_STATUSES = [
   "Draft",
   "Requested",
@@ -9,6 +9,7 @@ export const MATERIAL_ORDER_STATUSES = [
   "PartiallyDelivered",
   "Delivered",
   "Cancelled",
+  "Rejected",
 ] as const;
 export type MaterialOrderStatus = (typeof MATERIAL_ORDER_STATUSES)[number];
 
@@ -21,6 +22,7 @@ export const MATERIAL_ORDER_STATUS_LABELS: Record<MaterialOrderStatus, string> =
   PartiallyDelivered: "Partially delivered",
   Delivered: "Delivered",
   Cancelled: "Cancelled",
+  Rejected: "Rejected",
 };
 
 export function materialOrderStatusLabel(status: string): string {

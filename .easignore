@@ -2,7 +2,7 @@
 **/node_modules
 .git
 packages/admin
-packages/web
+packages/website
 *.mp4
 ios
 android

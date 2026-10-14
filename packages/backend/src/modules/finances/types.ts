@@ -1,4 +1,4 @@
-import type { Currency, Tone } from "../projects/types.ts";
+import type { Currency } from "../projects/types.ts";
 
 export type MilestoneStatus = "Completed" | "InProgress" | "Pending";
 
@@ -47,15 +47,6 @@ export interface BudgetPhase {
   actual: number;
 }
 
-export interface MaterialProcurement {
-  id: string;
-  name: string;
-  purchasedAt: string;
-  receipt: string;
-  amount: number;
-  thumbnailTone: Tone;
-}
-
 export interface MilestonePayment {
   id: string;
   name: string;
@@ -92,7 +83,6 @@ export interface ProjectFinances {
   funding: FundingPosition;
   contractTerms: ContractTerms;
   budgetAllocation: BudgetPhase[];
-  materialsProcured: MaterialProcurement[];
   milestones: MilestonePayment[];
   ledger: PaymentLedgerEntry[];
 }
@@ -139,17 +129,6 @@ export interface BudgetPhaseRow {
   name: string;
   planned: string;
   actual: string;
-  sort_order: number;
-}
-
-export interface MaterialProcurementRow {
-  id: string;
-  project_id: string;
-  name: string;
-  purchased_at: string;
-  receipt: string;
-  amount: string;
-  thumbnail_tone: Tone;
   sort_order: number;
 }
 

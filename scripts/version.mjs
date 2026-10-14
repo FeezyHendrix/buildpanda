@@ -9,7 +9,7 @@ const PACKAGE_FILES = [
   "package.json",
   "packages/backend/package.json",
   "packages/frontend/package.json",
-  "packages/web/package.json",
+  "packages/website/package.json",
   "packages/admin/package.json",
 ];
 

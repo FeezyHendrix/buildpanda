@@ -31,7 +31,7 @@ const LINK_TARGET_TABLE: Record<BimLinkType, string> = {
   phase: "project_phases",
   activity: "activities",
   change_request: "change_requests",
-  cost_item: "material_procurements",
+  cost_item: "material_orders",
 };
 
 function toModel(row: BimModelRow): BimModel {

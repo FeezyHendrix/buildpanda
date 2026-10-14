@@ -525,16 +525,6 @@ export async function seed(knex: Knex): Promise<void> {
     { id: "bp6", project_id: PROJECT_ID, period: "2026-06", planned: 9_000_000, actual: 0 },
   ]);
 
-  await knex("material_procurements").insert([
-    { id: "mp1", project_id: PROJECT_ID, material_order_id: null, name: "16mm Reinforcement Steel (120 lengths)", purchased_at: "11-04-2026, 11:12 AM", receipt: "reciept_INV-4029.jpeg", amount: 3_420_000, thumbnail_tone: "brand", sort_order: 0 },
-    { id: "mp2", project_id: PROJECT_ID, material_order_id: null, name: "Dangote Grade 42.5 Cement (200 bags)", purchased_at: "10-04-2026, 11:12 AM", receipt: "reciept_INV-4028.jpeg", amount: 900_000, thumbnail_tone: "amber", sort_order: 1 },
-    { id: "mp3", project_id: PROJECT_ID, material_order_id: null, name: "Sandcrete blocks 9-inch (1,500 blocks)", purchased_at: "08-04-2026, 9:30 AM", receipt: "reciept_INV-4024.jpeg", amount: 720_000, thumbnail_tone: "orange", sort_order: 2 },
-    { id: "mp4", project_id: PROJECT_ID, material_order_id: null, name: "Sharp sand (40 tonnes)", purchased_at: "06-04-2026, 2:45 PM", receipt: "reciept_INV-4021.jpeg", amount: 480_000, thumbnail_tone: "gray", sort_order: 3 },
-    { id: "mp5", project_id: PROJECT_ID, material_order_id: null, name: "Granite chippings 3/4 (25 tonnes)", purchased_at: "05-04-2026, 10:15 AM", receipt: "reciept_INV-4019.jpeg", amount: 550_000, thumbnail_tone: "gray", sort_order: 4 },
-    { id: "mp6", project_id: PROJECT_ID, material_order_id: null, name: "12mm Reinforcement Steel (200 lengths)", purchased_at: "04-04-2026, 8:20 AM", receipt: "reciept_INV-4017.jpeg", amount: 4_400_000, thumbnail_tone: "brand", sort_order: 5 },
-    { id: "mp7", project_id: PROJECT_ID, material_order_id: null, name: "Binding wire 16 gauge (20 rolls)", purchased_at: "03-04-2026, 4:00 PM", receipt: "reciept_INV-4015.jpeg", amount: 170_000, thumbnail_tone: "amber", sort_order: 6 },
-  ]);
-
   await knex("milestone_payments").insert([
     { id: "m1", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, name: "Mobilisation & site setup", phase: "Preliminaries", status: "Completed", percent_complete: 100, amount: 6_000_000, proof_file_name: "mobilisation_signoff.pdf", proof_verified: true, inspector_sign_off: "Verified", sort_order: 0 },
     { id: "m2", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, name: "Substructure & foundations", phase: "Foundation", status: "Completed", percent_complete: 100, amount: 9_500_000, proof_file_name: "substructure_certificate.pdf", proof_verified: true, inspector_sign_off: "Verified", sort_order: 1 },
@@ -657,8 +647,6 @@ export async function seed(knex: Knex): Promise<void> {
       notes: "Resolved material-delivery delay risk on slab pour.",
     },
   ]);
-
-  await knex("material_procurements").where({ id: "mp5" }).update({ material_order_id: "mo-seed-2" });
 
   await knex("equipment_requests").insert([
     {
