@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { DateField } from "@/components/molecules/date-field";
 import { Image } from "expo-image";
@@ -41,7 +42,7 @@ async function pickReceipt(source: "camera" | "library"): Promise<Receipt | null
   return asset ? { uri: asset.uri, fileName: asset.fileName ?? "receipt.jpg", mimeType: asset.mimeType ?? "image/jpeg" } : null;
 }
 
-export default function NewExpense() {
+function NewExpense() {
   const { projectId } = useFieldSession();
   const { db } = useLocalDb();
   const logExpense = useLogExpense(db, projectId);
@@ -143,3 +144,5 @@ export default function NewExpense() {
     </Page>
   );
 }
+
+export default withProjectPermission(NewExpense, "/tools/expenses/new");

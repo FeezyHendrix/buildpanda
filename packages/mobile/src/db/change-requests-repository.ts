@@ -1,3 +1,5 @@
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { remapQueuedRecord } from "./sync-write-state";
 import { randomUUID } from "expo-crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -11,6 +13,8 @@ import { CHANGE_REQUEST_COMMENTS_RESOURCE } from "./change-request-comments-repo
 import type { Db } from "./client";
 import { enqueueDelete, enqueueUpdate } from "./enqueue-update";
 import { changeRequestComments, changeRequests, outbox, type ChangeRequestRow } from "./schema";
+
+const access = repositoryAccess(features.changeRequests);
 
 export function toChangeRequest(row: ChangeRequestRow): ChangeRequest & { isPendingSync: boolean } {
   return {
@@ -33,16 +37,17 @@ export const changeRequestsRepository = {
     db
       .select()
       .from(changeRequests)
-      .where(eq(changeRequests.projectId, projectId))
+      .where(access.where(db, changeRequests.projectId, eq(changeRequests.projectId, projectId)))
       .orderBy(desc(changeRequests.updatedAt)),
 
   /** One row for a detail or edit screen; re-runs only when that row changes. */
   byIdQuery: (db: Db, id: string) =>
-    db.select().from(changeRequests).where(eq(changeRequests.id, id)).limit(1),
+    db.select().from(changeRequests).where(access.where(db, changeRequests.projectId, eq(changeRequests.id, id))).limit(1),
 
   async createLocal(db: Db, projectId: string, input: UpsertChangeRequestInput): Promise<string> {
+    access.require(db, projectId, "edit");
     const id = `local_${randomUUID()}`;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx.insert(changeRequests).values({
         id,
         projectId,
@@ -71,7 +76,7 @@ export const changeRequestsRepository = {
   },
 
   async markSynced(db: Db, id: string): Promise<void> {
-    await db.update(changeRequests).set({ isPendingSync: false }).where(eq(changeRequests.id, id));
+    await db.update(changeRequests).set({ isPendingSync: false }).where(access.where(db, changeRequests.projectId, eq(changeRequests.id, id)));
   },
 
   /**
@@ -81,19 +86,21 @@ export const changeRequestsRepository = {
    * left behind would push against an id that no longer exists.
    */
   async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
-    await db.transaction((tx) => {
+    access.require(db, projectId, "edit");
+    access.record(db, changeRequests, id, projectId);
+    await access.transaction(db, projectId, "edit", (tx) => {
       const orphaned = tx
         .select({ id: changeRequestComments.id })
         .from(changeRequestComments)
-        .where(eq(changeRequestComments.changeRequestId, id)).all();
+        .where(access.where(db, changeRequestComments.projectId, eq(changeRequestComments.changeRequestId, id))).all();
       if (orphaned.length > 0) {
         const ids = orphaned.map((row) => row.id);
         tx
           .delete(outbox)
           .where(and(eq(outbox.resource, CHANGE_REQUEST_COMMENTS_RESOURCE), inArray(outbox.entityId, ids))).run();
-        tx.delete(changeRequestComments).where(inArray(changeRequestComments.id, ids)).run();
+        tx.delete(changeRequestComments).where(access.where(db, changeRequestComments.projectId, inArray(changeRequestComments.id, ids))).run();
       }
-      tx.delete(changeRequests).where(eq(changeRequests.id, id)).run();
+      tx.delete(changeRequests).where(access.where(db, changeRequests.projectId, eq(changeRequests.id, id))).run();
       enqueueDelete(tx, "change-requests", id, projectId, randomUUID());
     });
   },
@@ -105,7 +112,9 @@ export const changeRequestsRepository = {
     id: string,
     patch: Partial<UpsertChangeRequestInput>,
   ): Promise<void> {
-    await db.transaction((tx) => {
+    access.require(db, projectId, "edit");
+    access.record(db, changeRequests, id, projectId);
+    await access.transaction(db, projectId, "edit", (tx) => {
       tx
         .update(changeRequests)
         .set({
@@ -121,18 +130,19 @@ export const changeRequestsRepository = {
           isPendingSync: true,
           updatedAt: Date.now(),
         })
-        .where(eq(changeRequests.id, id)).run();
+        .where(access.where(db, changeRequests.projectId, eq(changeRequests.id, id))).run();
 
       enqueueUpdate(tx, "change-requests", id, projectId, randomUUID());
     });
   },
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: ChangeRequest) {
-    await db.transaction((tx) => {
-      const [local] = tx.select().from(changeRequests).where(eq(changeRequests.id, localId)).limit(1).all();
+    access.require(db, projectId);
+    await access.transaction(db, projectId, "read", (tx) => {
+      const [local] = tx.select().from(changeRequests).where(access.where(db, changeRequests.projectId, eq(changeRequests.id, localId))).limit(1).all();
       const hasEdits = remapQueuedRecord(tx, "change-requests", localId, server.id);
       if (!local) return;
-      tx.delete(changeRequests).where(eq(changeRequests.id, localId)).run();
+      tx.delete(changeRequests).where(access.where(db, changeRequests.projectId, eq(changeRequests.id, localId))).run();
       const values = {
         projectId,
         title: server.title,
@@ -161,15 +171,16 @@ export const changeRequestsRepository = {
       tx
         .update(changeRequestComments)
         .set({ changeRequestId: server.id })
-        .where(eq(changeRequestComments.changeRequestId, localId)).run();
+        .where(access.where(db, changeRequestComments.projectId, eq(changeRequestComments.changeRequestId, localId))).run();
     });
   },
 
   /** Server rows never overwrite one still waiting to be pushed. */
   async upsertFromServer(db: Db, projectId: string, rows: readonly ChangeRequest[]) {
+    access.require(db, projectId);
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       for (const row of rows) {
         tx
           .insert(changeRequests)
@@ -209,7 +220,7 @@ export const changeRequestsRepository = {
   },
 
   findById: async (db: Db, id: string) => {
-    const [row] = await db.select().from(changeRequests).where(eq(changeRequests.id, id)).limit(1);
+    const [row] = await db.select().from(changeRequests).where(access.where(db, changeRequests.projectId, eq(changeRequests.id, id))).limit(1);
     return row;
   },
 };

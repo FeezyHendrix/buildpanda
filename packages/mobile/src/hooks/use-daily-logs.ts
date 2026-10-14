@@ -1,4 +1,5 @@
-import { useProjectBuilding } from "./use-project-building";
+import { missingBuilding, useProjectBuilding } from "./use-project-building";
+import { projectAccess } from "@/lib/project-access-store";
 import { filterBuildingRows } from "@/lib/building-scope";
 import { useSyncState } from "@/lib/sync-provider";
 import { useStageScope } from "@/lib/stage-scope";
@@ -23,7 +24,7 @@ export function useDailyLogDays(db: Db, projectId: string) {
   const loggedActivities = useLiveQuery(activitiesQuery, [activitiesQuery]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "dailyLog", "view")) return;
     let cancelled = false;
     dailyLogsApi
       .list(projectId)
@@ -65,7 +66,7 @@ export function useDailyLogDay(db: Db, projectId: string, logDate: string, build
   const liveEntries = useLiveQuery(entriesQuery, [entriesQuery]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "dailyLog", "view")) return;
     let cancelled = false;
     dailyLogsApi
       .day(projectId, logDate, buildingId)
@@ -89,7 +90,7 @@ export function useSaveDailyLog(db: Db | null, projectId: string | undefined) {
   return async (logDate: string, input: UpsertDailyLogInput) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     const buildingId = input.buildingId ?? scope.buildingId;
-    if (!buildingId) throw new Error("Choose a building before saving a daily log.");
+    if (!buildingId) throw missingBuilding(scope.buildings.length);
     await dailyLogsRepository.upsertLocal(db, projectId, logDate, { ...input, buildingId });
     void flushOutbox(db).catch(() => undefined);
   };
@@ -106,7 +107,7 @@ export function useAddDailyLogEntry(db: Db | null, projectId: string | undefined
   ) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     const resolvedId = buildingId ?? scope.buildingId;
-    if (!resolvedId) throw new Error("Choose a building before adding a daily log entry.");
+    if (!resolvedId) throw missingBuilding(scope.buildings.length);
     await dailyLogsRepository.addEntryLocal(
       db,
       projectId,
@@ -135,7 +136,7 @@ export function useAddTemplateEntry(db: Db | null, projectId: string | undefined
   ) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     const buildingId = input.buildingId ?? scope.buildingId;
-    if (!buildingId) throw new Error("Choose a building before adding a daily log entry.");
+    if (!buildingId) throw missingBuilding(scope.buildings.length);
     const responses = cleanResponses(input.template.fields, input.responses);
     const missing = missingRequired(input.template.fields, responses);
     if (missing.length > 0) throw new Error(`Fill in the required fields: ${missing.join(", ")}`);

@@ -1,3 +1,4 @@
+import { features } from "@/lib/feature-access";
 import { useStageScope } from "@/lib/stage-scope";
 import { matchesStage } from "@/lib/stage-filter";
 import { useMemo } from "react";
@@ -16,6 +17,8 @@ export function useStages(projectId: string | undefined, enabled = true, scopeId
   const query = usePersistentQuery({
     queryKey: stageKeys.list(projectId),
     ownerId: storageOwnerId,
+    projectId,
+    permission: features.stages.read,
     queryFn: () => stagesApi.list(projectId!),
     enabled: enabled && Boolean(projectId),
   });

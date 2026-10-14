@@ -1,6 +1,7 @@
 import { StageField } from "@/components/molecules/stage-field";
 import { DateField } from "@/components/molecules/date-field";
 import { useStageScope } from "@/lib/stage-scope";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { isIsoDate } from "@/lib/dates";
 import { goBack } from "@/lib/navigation";
 
@@ -25,7 +26,7 @@ function reviewerOptions(assignees: readonly CommentAssignee[]): { value: string
   ];
 }
 
-export default function NewMaterialApproval() {
+function NewMaterialApproval() {
   const { projectId } = useFieldSession();
   const scope = useStageScope();
   const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
@@ -167,3 +168,5 @@ export default function NewMaterialApproval() {
     </Page>
   );
 }
+
+export default withProjectPermission(NewMaterialApproval, "/tools/material-approvals/new");

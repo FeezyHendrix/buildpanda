@@ -145,7 +145,7 @@ export function documentsService(
       if (input.fileId) {
         const file = await files.findById(input.fileId);
         if (!file) throw new NotFoundError("File");
-        if (file.owner_id !== ownerId) throw new ForbiddenError();
+        if (file.owner_id !== ownerId || (file.project_id && file.project_id !== projectId)) throw new ForbiddenError();
         fileId = file.id;
         fileName = fileName ?? file.file_name;
         sizeBytes = Number(file.size_bytes);
@@ -265,7 +265,7 @@ export function documentsService(
 
       const file = await files.findById(input.fileId);
       if (!file) throw new NotFoundError("File");
-      if (file.owner_id !== userId) throw new ForbiddenError();
+      if (file.owner_id !== userId || (file.project_id && file.project_id !== projectId)) throw new ForbiddenError();
 
       const sizeBytes = Number(file.size_bytes);
       const size = formatBytes(sizeBytes);

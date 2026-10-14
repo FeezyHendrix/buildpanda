@@ -5,6 +5,18 @@ description: Use when writing, extending or reviewing frontend code in packages/
 
 # Writing Frontend Code (BuildPanda)
 
+## BuildPanda RBAC requirement
+
+RBAC is foundational to BuildPanda. Apply the [repository RBAC rules](../../../AGENTS.md#rbac-is-foundational) to this skill's work.
+
+Every protected view, route, action, data read/write, offline operation, and AI
+tool must respect the current user's effective resource/action permissions.
+Gate client visibility and behavior and enforce authorization on the server.
+Deny access when permission is unknown; validate it before offline writes or
+queueing. Sign-in, account type, feature flags, and a later API/sync rejection
+do not replace RBAC. Verify allowed and denied access for affected behavior
+before calling the work complete.
+
 ## Overview
 
 Tao-of-React principles adapted to this repo: **small named functional
@@ -97,17 +109,31 @@ export const actionItemKeys = {
 
 // hooks/use-action-items.ts — React Query only; HTTP lives in the service file
 import { actionItemsApi, type Status, type UpsertActionItemInput } from "@/api/action-items"
+import { useProjectAccess } from "@/hooks/use-participants"
 export function useActionItems(projectId: string, status?: Status) {
-  return useQuery({
+  const { data: access, isError } = useProjectAccess(projectId)
+  const canRead = !isError && access?.permissions?.tasks?.includes("view") === true
+  const query = useQuery({
     queryKey: actionItemKeys.list(projectId, status),
-    queryFn: () => actionItemsApi.list(projectId, { status }),
-    enabled: Boolean(projectId),            // dependent query guard
+    queryFn: () => {
+      if (!canRead) throw new Error("You don't have access to action items.")
+      return actionItemsApi.list(projectId, { status })
+    },
+    enabled: Boolean(projectId) && canRead,
   })
+  // Disabling a query alone does not remove previously cached data.
+  return { ...query, data: canRead ? query.data : undefined }
 }
 export function useCreateActionItem(projectId: string) {
   const qc = useQueryClient()
+  const { data: access, isError } = useProjectAccess(projectId)
   return useMutation({
-    mutationFn: (input: UpsertActionItemInput) => actionItemsApi.create(projectId, input),
+    mutationFn: (input: UpsertActionItemInput) => {
+      if (isError || !access?.permissions?.tasks?.includes("add")) {
+        throw new Error("You don't have permission to add action items.")
+      }
+      return actionItemsApi.create(projectId, input)
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: actionItemKeys.all(projectId) }),
   })
 }
@@ -199,26 +225,55 @@ const openItems = items.filter(i => i.status === "open")
 
 ### Routing & access
 
-New pages: lazy import in `App.tsx` + a route entry, wrapped in the right guard
-(`RequireCompany` for company-only, `RequireAuth` for signed-in,
-`lib/route-guards.tsx`). `accountType` only picks what users *see* (owners →
-`/my-build`); the backend decides what they can *do*. Project pages live under
-`/project/:projectId` and read context from `project-layout.tsx`; add nav from
-the `project-sidebar.tsx` config, not hardcoded markup.
+New pages: lazy import in `App.tsx` + a route entry with authentication and
+resource/action authorization. `RequireAuth` and `RequireCompany` alone do not
+implement RBAC. `accountType` may select a landing page but grants no access to
+protected views or actions. Project pages live under `/project/:projectId` and
+read context from `project-layout.tsx`; add permission metadata to the
+`project-sidebar.tsx` config instead of hardcoding navigation.
+
+Use the server-derived map from `useProjectAccess` in `hooks/use-participants.ts`
+for project permissions and the organization permission response for org
+surfaces. Keep route guards, navigation, data queries, and action handlers in
+agreement. Check the exact action the API enforces; do not assume `view` permits
+mutation or `manage` grants every other action. Preserve record-level rules.
+
+`ProjectPermissionGate` / `OrgPermissionGate` are existing guard integration
+points. Verify their loading, error, and missing-access behavior when using
+them. The helpers re-exported from `lib/project-types.ts` deny missing protected
+access and require the exact action. Preserve this contract, including before
+mounting components that read cached data.
 
 ```tsx
-// App.tsx — lazy + guarded route
+// A resource guard inside the authenticated project route.
 const ActionItems = lazy(() => import("@/pages/project/action-items"))
-<Route path="/project/:projectId/action-items"
-  element={<RequireCompany><ActionItems /></RequireCompany>} />
+function ActionItemsGate() {
+  const { projectId } = useParams()
+  const { data: access, isPending, isError } = useProjectAccess(projectId)
+  if (isPending) return <Spinner />
+  if (isError || !access?.permissions?.tasks?.includes("view")) {
+    return <EmptyState title="You don't have access to action items." />
+  }
+  return <ActionItems />
+}
+<Route path="/project/:projectId/action-items" element={<ActionItemsGate />} />
 
-// project-sidebar.tsx — nav driven by an as const config (DRY), not repeated <Link> markup
+// Navigation must use the same effective permission map as the route.
 const PROJECT_NAV = [
-  { to: "action-items", label: "Action items", icon: ListTodo },
-  { to: "queries",      label: "Queries",      icon: MessageSquare },
+  { to: "action-items", label: "Action items", icon: ListTodo, resource: "tasks", action: "view" },
 ] as const
-return PROJECT_NAV.map(n => <SidebarLink key={n.to} {...n} />)
+// access is the current scoped map; clear it when access is invalidated/denied.
+return PROJECT_NAV
+  .filter(n => access?.permissions?.[n.resource]?.includes(n.action) === true)
+  .map(n => <SidebarLink key={n.to} to={n.to} label={n.label} icon={n.icon} />)
 ```
+
+Gate each create/edit/delete/approve/comment/upload control and its mutation
+handler independently of view access. Protected queries need a permission-aware
+`enabled` guard, and previously cached data must not render after access is lost.
+Invalidate permission state and remove access to protected cached data on
+revocation or scope changes. Verify allowed and denied roles, direct navigation,
+unknown access, and permission changes for affected UI.
 
 ### Forms & dialogs
 
@@ -231,9 +286,12 @@ surface `mutation.error?.message`; reset on success/close.
 export function UpsertActionItemDialog({ projectId, initial, onClose }: Props) {
   const isEdit = Boolean(initial)
   const [title, setTitle] = useState(initial?.title ?? "")
+  const { data: access, isError } = useProjectAccess(projectId)
+  const canSave = !isError && access?.permissions?.tasks?.includes("add") === true
   const create = useCreateActionItem(projectId)
-  const update = useUpdateActionItem(projectId)
+  const update = useUpdateActionItem(projectId) // enforces the action in its handler too
   const mutation = isEdit ? update : create
+  if (!canSave) return null
   return (
     <FormDrawer onClose={onClose} error={mutation.error?.message}>
       <input value={title} onChange={e => setTitle(e.target.value)} />
@@ -376,7 +434,8 @@ correctness rules vs measure-first optimizations.
 - `&&` rendering that can leak `0`; use ternaries (perf rule D-5).
 - Defining a child component inside a parent component (perf rule R-1).
 - Mirroring server/prop data into state via `useEffect` instead of deriving it (D-2).
-- Gating UI on `accountType` and assuming it's secure — it's presentation.
+- Using `accountType`, sign-in, feature flags, or eventual API rejection in place
+  of effective RBAC for views, routes, queries, and actions.
 - Separate "create" and "edit" dialogs — one upsert dialog, `initial` prop.
 - Hex colors that drift from the theme; check the Tailwind palette first.
 - Re-typing a colour/spacing/radius the design system already owns (e.g. a

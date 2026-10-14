@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
@@ -110,7 +111,7 @@ function FillForm({ db, projectId, logDate, buildingId }: { db: Db; projectId: s
   );
 }
 
-export default function FillDailyLog() {
+function FillDailyLog() {
   const { date } = useLocalSearchParams<{ date?: string }>();
   const { projectId } = useFieldSession();
   const { buildingId } = useProjectBuilding();
@@ -126,3 +127,5 @@ export default function FillDailyLog() {
   }
   return <FillForm key={`${projectId}:${buildingId}:${logDate}`} db={db} projectId={projectId} logDate={logDate} buildingId={buildingId} />;
 }
+
+export default withProjectPermission(FillDailyLog, "/tools/daily-log/fill");

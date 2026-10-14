@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
@@ -47,7 +49,7 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
   );
 }
 
-export default function LookAheads() {
+function LookAheads() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
 
@@ -58,7 +60,7 @@ export default function LookAheads() {
       title="Look aheads"
       onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton
+        <HeaderIconButton permission={features.schedule.actions.create}
           icon="add"
           label="New look ahead"
           onPress={() => router.push("/tools/look-aheads/new")}
@@ -75,3 +77,5 @@ export default function LookAheads() {
     </Page>
   );
 }
+
+export default withProjectPermission(LookAheads, "/tools/look-aheads");

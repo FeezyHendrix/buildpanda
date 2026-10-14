@@ -1,3 +1,7 @@
+import { canDecideMaterial } from "@/lib/access-policy";
+import { useProjectAccess } from "@/lib/project-access-provider";
+import { features } from "@/lib/feature-access";
+import { PermissionGate, withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams } from "expo-router";
@@ -28,13 +32,7 @@ function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
-/**
- * Decisions are written locally and queued, so the button does not wait on the
- * network and no permission is guessed at here. The backend remains the only
- * authority: `materials:approve` and the named-reviewer rule are enforced when
- * the outbox pushes, and a refusal surfaces on the sync screen as a failed item
- * rather than being pre-empted from `accountType`.
- */
+/** Record rules and effective grants are checked before a decision is queued. */
 function DecisionPanel({
   db,
   approval,
@@ -45,12 +43,15 @@ function DecisionPanel({
   projectId: string;
 }) {
   const decide = useDecideMaterialApproval(db, projectId);
+  const { permissions, userId, allows } = useProjectAccess();
+  const mayDecide = canDecideMaterial(permissions, userId, approval);
+  const mayReopen = approval.status === "Resubmit" && allows(features.materialApprovals.actions.reopen);
   const { data: session } = useSession();
   const [response, setResponse] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<ApprovalStatus | null>(null);
 
-  if (approval.status !== "Pending" && approval.status !== "Resubmit") return null;
+  if (!mayDecide && !mayReopen) return null;
 
   async function record(status: ApprovalStatus) {
     setError(null);
@@ -92,6 +93,7 @@ function DecisionPanel({
         className="min-h-20"
       />
 
+      <PermissionGate permission={features.materialApprovals.actions.decide} when={mayDecide}>
       <Button onPress={() => void record("Approved")} loading={busy === "Approved"} disabled={busy !== null}>
         Approve
       </Button>
@@ -112,8 +114,10 @@ function DecisionPanel({
         Reject
       </Button>
 
-      {approval.status === "Resubmit" ? (
+      </PermissionGate>
+      {mayReopen ? (
         <Button
+          permission={features.materialApprovals.actions.reopen}
           variant="ghost"
           onPress={() => void record("Pending")}
           loading={busy === "Pending"}
@@ -238,10 +242,10 @@ function ReadyScreen({
       onBack={() => goBack()}
       rightButtons={
         approval?.status === "Pending" ? (
-          <HeaderIconButton icon="trash-outline" label="Delete request" onPress={confirmDelete} />
+          <HeaderIconButton permission={features.materialApprovals.actions.remove} icon="trash-outline" label="Delete request" onPress={confirmDelete} />
         ) : null
       }
-      footer={<CommentComposer db={db} projectId={projectId} approvalId={approvalId} />}
+      footer={<PermissionGate permission={features.materialApprovals.actions.comment}><CommentComposer db={db} projectId={projectId} approvalId={approvalId} /></PermissionGate>}
     >
       {isPending ? (
         <View className="items-center py-12">
@@ -268,7 +272,7 @@ function ReadyScreen({
   );
 }
 
-export default function MaterialApprovalDetailScreen() {
+function MaterialApprovalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -284,3 +288,5 @@ export default function MaterialApprovalDetailScreen() {
   }
   return <ReadyScreen db={db} projectId={projectId} approvalId={id} />;
 }
+
+export default withProjectPermission(MaterialApprovalDetailScreen, "/tools/material-approvals/[id]");

@@ -1,6 +1,11 @@
+import { rfiReadWhere, requireRfiRead } from "./rfi-access";
+import { projectAccess } from "@/lib/project-access-store";
+import { requireDrawingReference } from "./record-permissions";
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { remapQueuedRecord } from "./sync-write-state";
 import { randomUUID } from "expo-crypto";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { desc, eq, isNull } from "drizzle-orm";
 import type { Rfi, RfiStatusTransition, UpsertRfiInput } from "@/api/rfis";
 import type { Db } from "./client";
 import { enqueueUpdate, reviveOrQueue } from "./enqueue-update";
@@ -16,6 +21,8 @@ function localId(): string {
  * the official response or when; the detail screen attributes it from the
  * official comment in the thread instead.
  */
+const access = repositoryAccess(features.rfis);
+
 export type LocalRfi = Omit<Rfi, "officialRespondedByName" | "officialRespondedAt"> & {
   isPendingSync: boolean;
 };
@@ -29,6 +36,7 @@ export function toRfi(row: RfiRow): LocalRfi {
     question: row.question,
     questionHtml: row.questionHtml,
     status: row.status as Rfi["status"],
+    visibility: row.visibility as Rfi["visibility"],
     priority: row.priority as Rfi["priority"],
     ballInCourtId: row.ballInCourtId,
     ballInCourtName: row.ballInCourtName,
@@ -49,6 +57,7 @@ function serverColumns(row: Rfi) {
     question: row.question,
     questionHtml: row.questionHtml ?? null,
     status: row.status,
+    visibility: row.visibility ?? "internal",
     priority: row.priority,
     ballInCourtId: row.ballInCourtId ?? null,
     ballInCourtName: row.ballInCourtName,
@@ -64,7 +73,7 @@ export const rfisRepository = {
     db
       .select()
       .from(rfis)
-      .where(and(eq(rfis.projectId, projectId), isNull(rfis.deletedAt)))
+      .where(rfiReadWhere(db, eq(rfis.projectId, projectId), isNull(rfis.deletedAt)))
       .orderBy(desc(rfis.updatedAt)),
 
   /** One RFI for a detail or edit screen; a soft-deleted one reads as absent. */
@@ -72,7 +81,7 @@ export const rfisRepository = {
     db
       .select()
       .from(rfis)
-      .where(and(eq(rfis.id, id), isNull(rfis.deletedAt)))
+      .where(rfiReadWhere(db, eq(rfis.id, id), isNull(rfis.deletedAt)))
       .limit(1),
 
   /** The RFI raised from one plan pin, or nothing; derived locally so it reads offline. */
@@ -80,7 +89,7 @@ export const rfisRepository = {
     db
       .select()
       .from(rfis)
-      .where(and(eq(rfis.sourceMarkupId, markupId), isNull(rfis.deletedAt)))
+      .where(rfiReadWhere(db, eq(rfis.sourceMarkupId, markupId), isNull(rfis.deletedAt)))
       .limit(1),
 
   /**
@@ -88,10 +97,12 @@ export const rfisRepository = {
    * and its outbox entry can never disagree if the app is killed mid-write.
    */
   async createLocal(db: Db, projectId: string, input: UpsertRfiInput): Promise<string> {
+    access.require(db, projectId, "create");
+    requireDrawingReference(db, projectId, input);
     const id = localId();
     const now = Date.now();
 
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx.insert(rfis).values({
         id,
         projectId,
@@ -99,7 +110,8 @@ export const rfisRepository = {
         question: input.question,
         questionHtml: input.questionHtml ?? null,
         priority: input.priority ?? "Normal",
-        status: "Draft",
+        status: input.ballInCourtId ? "Open" : "Draft",
+        visibility: projectAccess.getState().snapshot?.capabilities.createsSharedRfis ? "shared" : "internal",
         ballInCourtId: input.ballInCourtId ?? null,
         ballInCourtName: input.ballInCourtName ?? null,
         dueDate: input.dueDate ?? null,
@@ -129,7 +141,7 @@ export const rfisRepository = {
 
   /** Replaces the local placeholder with the row the server assigned. */
   async markSynced(db: Db, id: string): Promise<void> {
-    await db.update(rfis).set({ isPendingSync: false }).where(eq(rfis.id, id));
+    await db.update(rfis).set({ isPendingSync: false }).where(access.where(db, rfis.projectId, eq(rfis.id, id)));
   },
 
   /** Applies an edit locally and queues the push in one transaction. */
@@ -139,7 +151,9 @@ export const rfisRepository = {
     id: string,
     patch: Partial<UpsertRfiInput>,
   ): Promise<void> {
-    await db.transaction((tx) => {
+    access.require(db, projectId, "edit");
+    requireRfiRead(db, projectId, id);
+    await access.transaction(db, projectId, "edit", (tx) => {
       tx
         .update(rfis)
         .set({
@@ -155,7 +169,7 @@ export const rfisRepository = {
           isPendingSync: true,
           updatedAt: Date.now(),
         })
-        .where(eq(rfis.id, id)).run();
+        .where(access.where(db, rfis.projectId, eq(rfis.id, id))).run();
 
       enqueueUpdate(tx, "rfis", id, projectId, randomUUID());
     });
@@ -175,14 +189,16 @@ export const rfisRepository = {
     id: string,
     status: RfiStatusTransition,
   ): Promise<void> {
+    access.require(db, projectId, "edit");
+    requireRfiRead(db, projectId, id);
     if (id.startsWith("local_")) {
       throw new Error("This RFI has not reached the server yet. Try again once it has synced.");
     }
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "edit", (tx) => {
       tx
         .update(rfis)
         .set({ status, isPendingSync: true, updatedAt: Date.now() })
-        .where(eq(rfis.id, id)).run();
+        .where(access.where(db, rfis.projectId, eq(rfis.id, id))).run();
       reviveOrQueue(tx, {
         resource: "rfis",
         entityId: id,
@@ -199,15 +215,16 @@ export const rfisRepository = {
     localRowId: string,
     server: Rfi,
   ): Promise<void> {
-    await db.transaction((tx) => {
+    access.require(db, projectId);
+    await access.transaction(db, projectId, "read", (tx) => {
       const [local] = tx
         .select()
         .from(rfis)
-        .where(eq(rfis.id, localRowId))
+        .where(access.where(db, rfis.projectId, eq(rfis.id, localRowId)))
         .limit(1).all();
       const hasEdits = remapQueuedRecord(tx, "rfis", localRowId, server.id);
       if (!local) return;
-      tx.delete(rfis).where(eq(rfis.id, localRowId)).run();
+      tx.delete(rfis).where(access.where(db, rfis.projectId, eq(rfis.id, localRowId))).run();
       const values = {
         projectId,
         ...serverColumns(server),
@@ -231,15 +248,16 @@ export const rfisRepository = {
       }).run();
       // Responses written offline point at the local id. Moved here, in the
       // same transaction, so the outbox can push them now the RFI exists.
-      tx.update(rfiComments).set({ rfiId: server.id }).where(eq(rfiComments.rfiId, localRowId)).run();
+      tx.update(rfiComments).set({ rfiId: server.id }).where(access.where(db, rfiComments.projectId, eq(rfiComments.rfiId, localRowId))).run();
     });
   },
 
   /** Server rows never overwrite a row the crew member has edited locally. */
   async upsertFromServer(db: Db, projectId: string, rows: readonly Rfi[]): Promise<void> {
+    access.require(db, projectId);
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       for (const row of rows) {
         tx
           .insert(rfis)

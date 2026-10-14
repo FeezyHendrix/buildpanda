@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { router } from "expo-router";
 import { View } from "react-native";
 import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
@@ -60,18 +62,18 @@ function ExpenseList({ db, projectId, currency }: { db: Db; projectId: string; c
   );
 }
 
-export default function Expenses() {
+function Expenses() {
   const { projectId } = useFieldSession();
   const project = useProject(projectId);
   const { db, ready } = useLocalDb();
-  const { can } = useProjectAccess();
+  const { allows } = useProjectAccess();
 
   return (
     <Page
       stageScope
       title="Expenses"
       onBack={() => goBack()}
-      rightButtons={can("finances", "manage") ? <HeaderIconButton icon="add" label="Log expense" onPress={() => router.push("/tools/expenses/new")} /> : undefined}
+      rightButtons={allows(features.expenses.actions.create) ? <HeaderIconButton permission={features.expenses.actions.create} icon="add" label="Log expense" onPress={() => router.push("/tools/expenses/new")} /> : undefined}
     >
       {ready && db && projectId ? (
         <ExpenseList key={projectId} db={db} projectId={projectId} currency={project.data?.currency} />
@@ -81,3 +83,5 @@ export default function Expenses() {
     </Page>
   );
 }
+
+export default withProjectPermission(Expenses, "/tools/expenses/index");

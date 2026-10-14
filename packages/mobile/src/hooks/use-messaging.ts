@@ -1,3 +1,5 @@
+import { features, messagingAccess } from "@/lib/feature-access";
+import type { AccessRequirement } from "@/lib/access-requirement";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { ApiError } from "@/api/client";
@@ -10,10 +12,11 @@ import { visibleChannels } from "@/lib/messaging";
 type Snapshot<T> = { data: T; denied?: false } | { data: null; denied: true };
 
 /** Cache denials too: a revoked conversation must not reappear when offline. */
-function useMessagingQuery<T>(key: readonly string[], queryFn: () => Promise<T>, enabled: boolean, poll: number | false = false) {
-  const { storageOwnerId, organizationId } = useFieldSession();
+function useMessagingQuery<T>(key: readonly string[], queryFn: () => Promise<T>, enabled: boolean, poll: number | false = false, permission: AccessRequirement = messagingAccess) {
+  const { storageOwnerId, organizationId, projectId } = useFieldSession();
   const { isOnline } = useSyncState();
   const query = usePersistentQuery<Snapshot<T>>({
+    permission, projectId, persist: false,
     queryKey: ["messaging", organizationId, ...key], ownerId: storageOwnerId,
     enabled: enabled && isOnline,
     refetchInterval: enabled && isOnline ? poll : false,
@@ -30,7 +33,7 @@ function useMessagingQuery<T>(key: readonly string[], queryFn: () => Promise<T>,
 
 export function useMessagingChannels() {
   const { projectId, organizationId } = useFieldSession();
-  const project = useMessagingQuery(["project", projectId ?? ""], () => messagingApi.projectChannels(projectId!), Boolean(projectId), 30_000);
+  const project = useMessagingQuery(["project", projectId ?? ""], () => messagingApi.projectChannels(projectId!), Boolean(projectId), 30_000, features.messages.read);
   const all = useMessagingQuery(["channels"], messagingApi.channels, Boolean(organizationId), 30_000);
   const channels = useMemo(() => visibleChannels(
     (all.data ?? []).filter((channel) => !project.accessDenied || channel.type !== "project" || channel.projectId !== projectId),

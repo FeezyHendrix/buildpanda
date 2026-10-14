@@ -1,3 +1,6 @@
+import type { NotificationsService } from "../notifications/service.ts";
+import type { RealtimeHub } from "../../lib/realtime/index.ts";
+import type { ReferenceResolver } from "./references.ts";
 export type ChannelType = "project" | "org" | "dm" | "group_dm";
 export type MemberRole = "admin" | "member";
 export type NotifyLevel = "all" | "mentions" | "none";
@@ -125,4 +128,45 @@ export interface MessageRow {
   edited_at: Date | string | null;
   deleted_at: Date | string | null;
   created_at: Date | string;
+}
+
+export interface ChatEmailReminder {
+  userId: string;
+  channelId: string;
+  messageCreatedAt: string;
+  type: "chat_dm" | "chat_mention";
+  title: string;
+  projectId: string | null;
+}
+
+export interface MessagingDeps {
+  notifications?: NotificationsService;
+  realtime?: RealtimeHub;
+  references?: ReferenceResolver;
+  enqueueChatEmail?: (reminder: ChatEmailReminder) => Promise<void>;
+  createTask?: (
+    projectId: string,
+    input: { title: string; description?: string | null },
+    userId: string,
+  ) => Promise<{ id: string }>;
+}
+
+export interface CreateChannelInput {
+  type: "project" | "org";
+  name: string;
+  projectId?: string | null;
+  organizationId?: string | null;
+  isPrivate?: boolean;
+  topic?: string | null;
+  memberIds?: string[];
+}
+
+export interface SendMessageInput {
+  body: string;
+  contentHtml?: string | null;
+  references?: MessageReference[];
+  mentions?: MessageMention[];
+  attachments?: { fileId: string; url: string; name: string; mime?: string; size?: number }[];
+  parentMessageId?: string | null;
+  quotedMessageId?: string | null;
 }

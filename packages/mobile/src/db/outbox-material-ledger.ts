@@ -1,7 +1,7 @@
 import { materialsLedgerApi } from "@/api/materials-ledger";
 import type { Db } from "./client";
 import { materialLogRepository } from "./material-log-repository";
-import { done, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
+import { skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { type OutboxRow } from "./schema";
 
 /** A logged delivery or usage. The ledger is append-only, so only creates queue. */

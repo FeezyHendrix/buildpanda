@@ -3,7 +3,7 @@ import {
   type ApprovalStatus,
   type MaterialApproval,
   type MaterialApprovalCreateInput,
-} from "@/api/material-approvals";
+} from "@/api/material-approval-types";
 import type { MaterialApprovalRow } from "./schema";
 
 export interface LocalMaterialApproval {
@@ -23,6 +23,7 @@ export interface LocalMaterialApproval {
   description: string | null;
   status: ApprovalStatus;
   response: string | null;
+  requestedReviewerId: string | null;
   requestedReviewerName: string | null;
   reviewedByName: string | null;
   reviewedAt: string | null;
@@ -58,6 +59,7 @@ export function toMaterialApproval(row: MaterialApprovalRow): LocalMaterialAppro
     description: row.description,
     status: isApprovalStatus(row.status) ? row.status : "Pending",
     response: row.response,
+    requestedReviewerId: row.requestedReviewerId,
     requestedReviewerName: row.requestedReviewerName,
     reviewedByName: row.reviewedByName,
     reviewedAt: row.reviewedAt,

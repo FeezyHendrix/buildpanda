@@ -21,7 +21,7 @@ function Attachment({ file }: { file: Message["attachments"][number] }) {
       if (Platform.OS === "web") {
         await Linking.openURL(`${API_BASE_URL}/files/${encodeURIComponent(file.fileId)}/download`);
       } else {
-        const uri = await cacheFileById(file.fileId, file.name);
+        const uri = await cacheFileById(file.fileId, file.name, "messages");
         router.push({ pathname: "/tools/documents/view", params: { uri, name: file.name } });
       }
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Couldn’t open this attachment."); }

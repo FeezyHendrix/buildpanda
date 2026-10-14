@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
@@ -18,8 +19,8 @@ import { goBack } from "@/lib/navigation";
 
 function TaskDetail({ db, projectId, taskId }: { db: Db; projectId: string; taskId: string }) {
   const { data: task, isPending } = useTask(db, taskId);
-  const { can } = useProjectAccess();
-  const board = useTaskBoard(db, projectId, task?.buildingId ?? "", can("tasks", "add"));
+  const {  snapshot } = useProjectAccess();
+  const board = useTaskBoard(db, projectId, task?.buildingId ?? "", snapshot?.capabilities.canSeeFullTaskBoard === true);
   const moveTask = useMoveTask(db, projectId);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,7 +81,7 @@ function TaskDetail({ db, projectId, taskId }: { db: Db; projectId: string; task
   );
 }
 
-export default function TaskDetailScreen() {
+function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -94,3 +95,5 @@ export default function TaskDetailScreen() {
     </Page>
   );
 }
+
+export default withProjectPermission(TaskDetailScreen, "/tools/tasks/[id]");

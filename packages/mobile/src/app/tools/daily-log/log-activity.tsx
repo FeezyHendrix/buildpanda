@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useProjectBuilding } from "@/hooks/use-project-building";
 import { isIsoDate } from "@/lib/dates";
 import { todayIso } from "@/db/daily-logs-repository";
@@ -184,8 +185,10 @@ function ActivityPicker({ list, onPick }: { list: Activity[]; onPick: (activity:
   );
 }
 
-export default function LogActivity() {
+function LogActivity() {
   const { projectId } = useFieldSession();
   const { buildingId } = useProjectBuilding();
   return <LogActivityForm key={`${projectId}:${buildingId}`} />;
 }
+
+export default withProjectPermission(LogActivity, "/tools/daily-log/log-activity");

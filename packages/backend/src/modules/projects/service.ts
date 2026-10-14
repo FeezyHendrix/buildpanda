@@ -48,7 +48,7 @@ function toPhase(row: ProjectPhaseRow): ProjectPhase {
   };
 }
 
-function toProject(row: ProjectRow, phases: ProjectPhaseRow[]): Project {
+function toProject(row: ProjectRow, phases: ProjectPhaseRow[], spendToDate = 0): Project {
   return {
     id: row.id,
     ownerId: row.owner_id,
@@ -59,7 +59,7 @@ function toProject(row: ProjectRow, phases: ProjectPhaseRow[]): Project {
     risk: row.risk,
     progressPercent: row.progress_percent,
     budgetTotal: Number(row.budget_total),
-    budgetUsed: Number(row.budget_used),
+    budgetUsed: spendToDate,
     budgetMin: row.budget_min === null ? null : Number(row.budget_min),
     budgetMax: row.budget_max === null ? null : Number(row.budget_max),
     currency: row.currency,
@@ -83,21 +83,28 @@ export function projectsService(repository: ProjectsRepository) {
     ): Promise<Project[]> {
       const rows = await repository.listForUser(ownerId, orgRoles);
       if (rows.length === 0) return [];
-      const phases = await repository.findPhasesByProjects(rows.map((r) => r.id));
+      const ids = rows.map((r) => r.id);
+      const [phases, spend] = await Promise.all([
+        repository.findPhasesByProjects(ids),
+        repository.spendByProjects(ids),
+      ]);
       const grouped = new Map<string, ProjectPhaseRow[]>();
       for (const phase of phases) {
         const list = grouped.get(phase.project_id) ?? [];
         list.push(phase);
         grouped.set(phase.project_id, list);
       }
-      return rows.map((row) => toProject(row, grouped.get(row.id) ?? []));
+      return rows.map((row) => toProject(row, grouped.get(row.id) ?? [], spend.get(row.id) ?? 0));
     },
 
     async getById(id: string): Promise<Project> {
       const row = await repository.findById(id);
       if (!row) throw new NotFoundError("Project");
-      const phases = await repository.findPhasesByProject(id);
-      return toProject(row, phases);
+      const [phases, spend] = await Promise.all([
+        repository.findPhasesByProject(id),
+        repository.spendByProjects([id]),
+      ]);
+      return toProject(row, phases, spend.get(id) ?? 0);
     },
 
     async getByIdForUser(id: string, ctx: AccessContext): Promise<Project> {
@@ -107,8 +114,11 @@ export function projectsService(repository: ProjectsRepository) {
         { id: row.id, ownerId: row.owner_id, organizationId: row.organization_id },
         ctx,
       );
-      const phases = await repository.findPhasesByProject(id);
-      return toProject(row, phases);
+      const [phases, spend] = await Promise.all([
+        repository.findPhasesByProject(id),
+        repository.spendByProjects([id]),
+      ]);
+      return toProject(row, phases, spend.get(id) ?? 0);
     },
 
     async create(

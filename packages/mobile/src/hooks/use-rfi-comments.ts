@@ -1,3 +1,4 @@
+import { projectAccess } from "@/lib/project-access-store";
 import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
@@ -21,7 +22,7 @@ export function useRfiComments(db: Db, projectId: string, rfiId: string) {
   const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "rfis", "view")) return;
     // A queued RFI has no server id yet, so there is nothing to fetch.
     if (rfiId.startsWith("local_")) return;
     let cancelled = false;

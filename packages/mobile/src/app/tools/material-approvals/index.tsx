@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
@@ -122,7 +124,7 @@ function ApprovalList({ db, projectId, filter }: { db: Db; projectId: string; fi
   );
 }
 
-export default function MaterialApprovals() {
+function MaterialApprovals() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
   const [filter, setFilter] = useState<Filter>("all");
@@ -133,7 +135,7 @@ export default function MaterialApprovals() {
       title="Material approvals"
       onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton
+        <HeaderIconButton permission={features.materialApprovals.actions.create}
           icon="add"
           label="New approval request"
           onPress={() => router.push("./new")}
@@ -154,3 +156,5 @@ export default function MaterialApprovals() {
     </Page>
   );
 }
+
+export default withProjectPermission(MaterialApprovals, "/tools/material-approvals");

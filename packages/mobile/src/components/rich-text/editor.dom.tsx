@@ -40,14 +40,16 @@ const STYLES = `
   .rt-compact .rt-input { min-height:72px; max-height:140px; overflow-y:auto; }
 `;
 
-function Btn({ label, onPress }: { label: string; onPress: () => void }) {
+function Btn({ label, name, onPress }: { label: string; name: string; onPress: () => void }) {
   return (
     <button
       type="button"
+      aria-label={name}
+      onClick={onPress}
       // Keep the editor selection: prevent the toolbar from stealing focus on press.
       onMouseDown={(event) => {
         event.preventDefault();
-        onPress();
+
       }}
     >
       {label}
@@ -59,10 +61,10 @@ function Toolbar() {
   const [editor] = useLexicalComposerContext();
   return (
     <div className="rt-toolbar">
-      <Btn label="B" onPress={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")} />
-      <Btn label="I" onPress={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")} />
-      <Btn label="•" onPress={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)} />
-      <Btn label="1." onPress={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)} />
+      <Btn label="B" name="Bold" onPress={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")} />
+      <Btn label="I" name="Italic" onPress={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")} />
+      <Btn label="•" name="Bullet list" onPress={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)} />
+      <Btn label="1." name="Numbered list" onPress={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)} />
     </div>
   );
 }
@@ -89,11 +91,13 @@ export default function Editor({
   value,
   onChangeHtml,
   placeholder = "Write here…",
+  label,
   compact = false,
 }: {
   value: string;
   onChangeHtml: (html: string) => void;
   placeholder?: string;
+  label?: string;
   /** Short and capped, scrolling inside itself: for a composer pinned above the keyboard. */
   compact?: boolean;
   dom?: import("expo/dom").DOMProps;
@@ -111,7 +115,7 @@ export default function Editor({
       >
         <Toolbar />
         <RichTextPlugin
-          contentEditable={<ContentEditable className="rt-input" data-placeholder={placeholder} />}
+          contentEditable={<ContentEditable className="rt-input" aria-label={label ?? placeholder} data-placeholder={placeholder} />}
           placeholder={null}
           ErrorBoundary={LexicalErrorBoundary}
         />

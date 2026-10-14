@@ -1,3 +1,5 @@
+import { projectAccess, requireAccess } from "./project-access-store";
+import { features } from "./feature-access";
 import type { SheetScale } from "@/components/plan-review/markup-types";
 import { storage } from "./storage";
 
@@ -13,7 +15,9 @@ import { storage } from "./storage";
 const PREFIX = "buildpanda_sheet_scale";
 
 function key(ownerId: string | undefined, documentVersionId: string): string {
-  return `${PREFIX}_${ownerId ?? "anon"}_${documentVersionId}`;
+  const ticket = requireAccess(projectAccess.getState().scope?.projectId ?? "", features.documents.read);
+  if (ownerId !== ticket.scope?.userId) throw new Error("Sheet owner changed.");
+  return `${PREFIX}_${ownerId}_${ticket.scope.organizationId}_${ticket.scope.projectId}_${documentVersionId}`;
 }
 
 export function readSheetScale(ownerId: string | undefined, documentVersionId: string): SheetScale | null {

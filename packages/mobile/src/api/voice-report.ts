@@ -1,4 +1,7 @@
-import { FileSystemUploadType, createUploadTask } from "expo-file-system/legacy";
+import { canAccess, requireAccess, requireCurrentAccess, revokeProjectAccess } from "@/lib/project-access-store";
+import { captureAccess } from "@/lib/feature-access";
+import { voiceRequirement } from "@/lib/voice-access";
+import { uploadRecording } from "./voice-upload";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import type { VoiceReport } from "./voice-report-types";
@@ -16,42 +19,14 @@ export async function requestVoiceReport(
   audioUri: string,
   signal?: AbortSignal,
 ): Promise<VoiceReport> {
+  const ticket = requireAccess(projectId, captureAccess);
   const headers: Record<string, string> = {};
   if (Platform.OS !== "web") headers.cookie = authClient.getCookie();
 
-  // Native multipart upload: React Native's FormData rejects the recording's file
-  // part ("unsupported FormDataPart implementation"), so expo-file-system streams
-  // the file straight from disk instead of building a FormData body.
-  const upload = createUploadTask(
-    `${API_BASE_URL}/projects/${projectId}/ai/voice-report`,
-    audioUri,
-    {
-      httpMethod: "POST",
-      uploadType: FileSystemUploadType.MULTIPART,
-      fieldName: "audio",
-      mimeType: "audio/m4a",
-      headers,
-    },
-  );
+  const result = await uploadRecording(`${API_BASE_URL}/projects/${projectId}/ai/voice-report`, audioUri, headers, signal);
 
-  let timedOut = false;
-  const cancel = () => { void upload.cancelAsync().catch(() => undefined); };
-  if (signal?.aborted) throw new Error("Recording processing was cancelled.");
-  signal?.addEventListener("abort", cancel, { once: true });
-  const timeout = setTimeout(() => { timedOut = true; cancel(); }, 120_000);
-  let result;
-  try {
-    result = await upload.uploadAsync();
-  } catch (error) {
-    if (timedOut) throw new Error("Processing timed out. Your recording is still available to retry.");
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-    signal?.removeEventListener("abort", cancel);
-  }
-  if (timedOut) throw new Error("Processing timed out. Your recording is still available to retry.");
-  if (!result || signal?.aborted) throw new Error("Recording processing was cancelled.");
-
+  requireCurrentAccess(ticket);
+  if ([401, 403].includes(result.status)) revokeProjectAccess();
   if (result.status < 200 || result.status >= 300) {
     let message = `Panda AI could not process that recording (${result.status}).`;
     try {
@@ -63,5 +38,6 @@ export async function requestVoiceReport(
     throw new Error(message);
   }
 
-  return JSON.parse(result.body) as VoiceReport;
+  const report = JSON.parse(result.body) as VoiceReport;
+  return { ...report, actions: report.actions.filter((action) => canAccess(projectId, voiceRequirement(action))) };
 }

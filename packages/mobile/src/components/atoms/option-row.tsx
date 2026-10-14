@@ -9,6 +9,7 @@ type Option<T extends string> = T | { value: T; label: string };
 
 interface OptionRowProps<T extends string> {
   label: string;
+  disabled?: boolean;
   options: readonly Option<T>[];
   value: T;
   onChange: (next: T) => void;
@@ -24,7 +25,7 @@ function normalise<T extends string>(option: Option<T>): { value: T; label: stri
  * wrap rather than scroll so nothing is hidden off the right edge; every
  * chip is a 44px target.
  */
-function OptionRowInner<T extends string>({ label, options, value, onChange }: OptionRowProps<T>) {
+function OptionRowInner<T extends string>({ label, options, value, onChange, disabled = false }: OptionRowProps<T>) {
   return (
     <View className="gap-2">
       <FieldLabel>{label}</FieldLabel>
@@ -35,9 +36,10 @@ function OptionRowInner<T extends string>({ label, options, value, onChange }: O
           return (
             <Pressable
               key={option.value}
+              disabled={disabled}
               onPress={() => onChange(option.value)}
               accessibilityRole="radio"
-              accessibilityState={{ selected: isActive }}
+              accessibilityState={{ selected: isActive, disabled }}
               className={cn(
                 "min-h-11 justify-center rounded-xl px-4",
                 isActive ? "bg-primary-500" : "bg-surface-alt",

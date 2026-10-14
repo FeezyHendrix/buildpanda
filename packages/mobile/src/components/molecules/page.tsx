@@ -125,16 +125,21 @@ function PageContent({
 }
 
 function BuildingPage(props: PageProps) {
-  const { buildingId, isLoading } = useProjectBuilding();
+  const { needsChoice, isLoading } = useProjectBuilding();
+  // Only a project with several buildings has a choice to make. Gating on
+  // "nothing selected" also blocked the single-building project whose list had
+  // not reached the device, telling a crew to choose from an empty picker —
+  // and sending no buildingId is safe, the server resolves the sole one.
+  const blocked = !props.buildingOptional && (isLoading || needsChoice);
   return (
-    <PageContent {...props} footer={buildingId ? props.footer : undefined}>
-      {buildingId || props.buildingOptional ? props.children : (
+    <PageContent {...props} footer={blocked ? undefined : props.footer}>
+      {blocked ? (
         <View className="items-center py-12">
           <Text tone="secondary" className="text-center">
             {isLoading ? "Loading buildings…" : "Choose a building above to see its records."}
           </Text>
         </View>
-      )}
+      ) : props.children}
     </PageContent>
   );
 }

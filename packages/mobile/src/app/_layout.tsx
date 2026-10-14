@@ -14,6 +14,7 @@ import { SyncProvider } from "@/lib/sync-provider";
 import { OfflinePlansProvider } from "@/lib/offline-plans-provider";
 import { StageScopeProvider } from "@/lib/stage-scope";
 import { useTrackToolOpens } from "@/hooks/use-home-tools";
+import { ProjectAccessProvider } from "@/lib/project-access-provider";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -63,6 +64,7 @@ export default function RootLayout() {
         <FieldSessionProvider>
           <StageScopeProvider>
           <LocalDbProvider>
+          <ProjectAccessProvider>
           <SyncProvider>
           <OfflinePlansProvider>
           <ToolOpenTracker />
@@ -79,6 +81,7 @@ export default function RootLayout() {
           </Stack>
           </OfflinePlansProvider>
           </SyncProvider>
+          </ProjectAccessProvider>
           </LocalDbProvider>
           </StageScopeProvider>
         </FieldSessionProvider>

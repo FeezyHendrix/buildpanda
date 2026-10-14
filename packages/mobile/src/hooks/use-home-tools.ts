@@ -23,8 +23,8 @@ export function useTrackToolOpens() {
 }
 
 export function useAllowedTools(): HomeTool[] {
-  const { can } = useProjectAccess();
-  return useMemo(() => HOME_TOOLS.filter((tool) => can(...tool.permission)), [can]);
+  const { allows } = useProjectAccess();
+  return useMemo(() => HOME_TOOLS.filter((tool) => allows(tool.permission)), [allows]);
 }
 
 /**

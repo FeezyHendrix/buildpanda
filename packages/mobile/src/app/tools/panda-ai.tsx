@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
@@ -38,7 +39,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-export default function PandaAiChat() {
+function PandaAiChat() {
   const { projectId } = useFieldSession();
   const { isOnline } = useSyncState();
   const { messages, streaming, activeTool, error, send, stop, reset } = usePandaAiChat(projectId);
@@ -157,3 +158,5 @@ export default function PandaAiChat() {
     </Page>
   );
 }
+
+export default withProjectPermission(PandaAiChat, "/tools/panda-ai");

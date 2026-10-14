@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
@@ -90,7 +91,7 @@ function Loaded({ db, projectId, orderId }: { db: Db; projectId: string; orderId
   return <DeliveryForm db={db} projectId={projectId} order={order} />;
 }
 
-export default function RecordDelivery() {
+function RecordDelivery() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -103,3 +104,5 @@ export default function RecordDelivery() {
   }
   return <Loaded db={db} projectId={projectId} orderId={id} />;
 }
+
+export default withProjectPermission(RecordDelivery, "/tools/materials/deliver/[id]");

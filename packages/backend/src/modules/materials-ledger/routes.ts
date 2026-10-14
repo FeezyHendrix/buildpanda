@@ -25,8 +25,8 @@ const RECEIVABLE: readonly string[] = ["Approved", "Ordered", "PartiallyDelivere
 
 /**
  * The crew on site see a delivery arrive, so anyone who can request materials
- * can log one received. It lands Pending and counts in stock only once a
- * manager approves it. Logging usage still needs `manage`.
+ * can log one received, and it counts toward stock straight away — there is no
+ * approval step. Logging usage still needs `manage`.
  */
 async function requireLogPermission(request: FastifyRequest, projectId: string, entryType: "IN" | "USED") {
   if (entryType === "IN") {

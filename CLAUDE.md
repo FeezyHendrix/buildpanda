@@ -3,6 +3,15 @@
 Monorepo (pnpm workspaces). Load the skill for the area you're touching **before**
 writing code — the skills hold the real conventions; this file is just the map.
 
+## RBAC is foundational
+
+Follow the [repository RBAC requirements](AGENTS.md#rbac-is-foundational).
+RBAC must govern protected views, routes, actions, data access, offline queues,
+and AI tools across every app. Use effective resource/action permissions on
+the client and enforce them independently on the backend. Unknown access must
+deny protected behavior. The [mobile guide](packages/mobile/AGENTS.md) records the shared implementation
+pattern and its verification boundaries.
+
 ## Skills (source of truth)
 
 | Working in | Load skill |
@@ -34,8 +43,10 @@ the conclusions:
 4. **Is it revision-scoped?** Anything anchored to a drawing or programme must
    record which revision it was made against, and must not silently carry over
    when that revision is superseded.
-5. **Who is allowed to do it?** Check the resource/action the backend enforces;
-   viewing a sheet and raising an RFI off it are different permissions.
+5. **Who is allowed to see and do it?** Map the resource/action for each view,
+   read, and mutation; implement client and backend guards, including offline
+   reads and writes. Viewing a sheet and raising an RFI off it are different
+   permissions. Verify both allowed and denied behavior.
 6. **Would a PM ask Panda AI about it?** If yes, it needs an agent tool (see
    Panda AI awareness below).
 
@@ -87,5 +98,7 @@ file; that is how a page reaches four times the limit one commit at a time.
   data, ask whether a PM would query Panda AI about it; if so, add an agent tool (query in
   `agent/repository.ts`, tool in `agent/tools.ts`, mention it in the `SYSTEM_PROMPT`). See
   the `writing-backend-code` skill, "Panda AI awareness".
-- **Authorization is not presentation**: `accountType` is self-declared; only org membership
-  and project participation grant power (backend skill, "Auth").
+- **RBAC governs visibility and behavior**: use effective organization permissions
+  and project participant grants/overrides for protected UI and server operations.
+  `accountType` is self-declared and grants no access. Follow the root
+  [RBAC requirements](AGENTS.md#rbac-is-foundational) in every skill.

@@ -1,8 +1,12 @@
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { randomUUID } from "expo-crypto";
 import { and, asc, desc, eq, notInArray } from "drizzle-orm";
 import type { LogMaterialEntryInput, MaterialLedgerEntry, MaterialStockLevel } from "@/api/materials-ledger";
 import type { Db } from "./client";
-import { materialLedgerEntries, materialStock, outbox } from "./schema";
+import { materialLedgerEntries, materialOrders, materialStock, outbox } from "./schema";
+
+const access = repositoryAccess(features.materialLog);
 
 export interface MaterialLogEntryInput {
   entryType: "IN" | "USED";
@@ -42,11 +46,11 @@ export const materialLogRepository = {
     db
       .select()
       .from(materialLedgerEntries)
-      .where(eq(materialLedgerEntries.projectId, projectId))
+      .where(access.where(db, materialLedgerEntries.projectId, eq(materialLedgerEntries.projectId, projectId)))
       .orderBy(desc(materialLedgerEntries.occurredAt)),
 
   stockQuery: (db: Db, projectId: string) =>
-    db.select().from(materialStock).where(eq(materialStock.projectId, projectId)).orderBy(asc(materialStock.materialName)),
+    db.select().from(materialStock).where(access.where(db, materialStock.projectId, eq(materialStock.projectId, projectId))).orderBy(asc(materialStock.materialName)),
 
   /**
    * The movement and its push in one transaction. The local id doubles as the
@@ -54,8 +58,10 @@ export const materialLogRepository = {
    * not a second delivery.
    */
   async createLocal(db: Db, projectId: string, input: MaterialLogEntryInput): Promise<string> {
+    access.require(db, projectId, input.entryType === "USED" ? "usage" : "create");
+    if (input.materialOrderId) access.record(db, materialOrders, input.materialOrderId, projectId);
     const id = `local_${randomUUID()}`;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, input.entryType === "USED" ? "usage" : "create", (tx) => {
       tx.insert(materialLedgerEntries).values({
         id,
         projectId,
@@ -69,6 +75,10 @@ export const materialLogRepository = {
         notesHtml: input.notesHtml,
         materialOrderId: input.entryType === "IN" ? input.materialOrderId ?? null : null,
         materialOrderTitle: input.entryType === "IN" ? input.materialOrderTitle ?? null : null,
+        // Explicit, not the column default, which still reads "Pending": the
+        // server no longer gates a log on approval, so a crew member must not
+        // watch their own entry sit "Awaiting approval" until it syncs.
+        approvalStatus: "Approved",
         isPendingSync: true,
         updatedAt: Date.now(),
       }).run();
@@ -85,7 +95,7 @@ export const materialLogRepository = {
   },
 
   findById: async (db: Db, id: string) => {
-    const [row] = await db.select().from(materialLedgerEntries).where(eq(materialLedgerEntries.id, id)).limit(1);
+    const [row] = await db.select().from(materialLedgerEntries).where(access.where(db, materialLedgerEntries.projectId, eq(materialLedgerEntries.id, id))).limit(1);
     return row;
   },
 
@@ -102,8 +112,8 @@ export const materialLogRepository = {
   }),
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: MaterialLedgerEntry) {
-    await db.transaction((tx) => {
-      tx.delete(materialLedgerEntries).where(eq(materialLedgerEntries.id, localId)).run();
+    await access.transaction(db, projectId, "read", (tx) => {
+      tx.delete(materialLedgerEntries).where(access.where(db, materialLedgerEntries.projectId, eq(materialLedgerEntries.id, localId))).run();
       const values = { ...serverValues(projectId, server), isPendingSync: false, updatedAt: Date.now() };
       tx.insert(materialLedgerEntries).values({ id: server.id, ...values })
         .onConflictDoUpdate({ target: materialLedgerEntries.id, set: values }).run();
@@ -117,13 +127,13 @@ export const materialLogRepository = {
    */
   async replaceEntries(db: Db, projectId: string, rows: readonly MaterialLedgerEntry[]) {
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       const ids = rows.map((row) => row.id);
-      tx.delete(materialLedgerEntries).where(and(
+      tx.delete(materialLedgerEntries).where(access.where(db, materialLedgerEntries.projectId, and(
         eq(materialLedgerEntries.projectId, projectId),
         eq(materialLedgerEntries.isPendingSync, false),
         ...(ids.length ? [notInArray(materialLedgerEntries.id, ids)] : []),
-      )).run();
+      ))).run();
       for (const row of rows) {
         const values = { ...serverValues(projectId, row), updatedAt: now };
         tx.insert(materialLedgerEntries).values({ id: row.id, ...values, isPendingSync: false })
@@ -134,8 +144,8 @@ export const materialLogRepository = {
   },
 
   async replaceStock(db: Db, projectId: string, rows: readonly MaterialStockLevel[]) {
-    await db.transaction((tx) => {
-      tx.delete(materialStock).where(eq(materialStock.projectId, projectId)).run();
+    await access.transaction(db, projectId, "read", (tx) => {
+      tx.delete(materialStock).where(access.where(db, materialStock.projectId, eq(materialStock.projectId, projectId))).run();
       for (const row of rows) {
         tx.insert(materialStock).values({
           id: `${projectId}:${row.materialId}:${row.locationKey}`,

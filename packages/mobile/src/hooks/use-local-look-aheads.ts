@@ -1,5 +1,6 @@
 import { useStageScope } from "@/lib/stage-scope";
-import { useProjectBuilding } from "./use-project-building";
+import { missingBuilding, useProjectBuilding } from "./use-project-building";
+import { projectAccess } from "@/lib/project-access-store";
 import { filterBuildingRows } from "@/lib/building-scope";
 import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
@@ -18,7 +19,7 @@ export function useLocalLookAheads(db: Db, projectId: string) {
   const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "schedule", "view")) return;
     let cancelled = false;
     lookAheadsApi
       .list(projectId)
@@ -49,7 +50,7 @@ export function useCreateLookAhead(db: Db | null, projectId: string | undefined)
   return async (input: CreateLookAheadInput) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     const buildingId = input.buildingId ?? scope.buildingId;
-    if (!buildingId) throw new Error("Choose a building before creating a look ahead.");
+    if (!buildingId) throw missingBuilding(scope.buildings.length);
     await lookAheadsRepository.createLocal(db, projectId, { ...input, buildingId });
     void flushOutbox(db).catch(() => undefined);
   };

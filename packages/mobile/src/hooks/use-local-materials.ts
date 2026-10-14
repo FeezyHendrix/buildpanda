@@ -1,5 +1,6 @@
 import { useStageScope } from "@/lib/stage-scope";
 import { matchesStage } from "@/lib/stage-filter";
+import { projectAccess } from "@/lib/project-access-store";
 import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
@@ -16,7 +17,7 @@ export function useLocalMaterialOrders(db: Db, projectId: string, scoped = true)
   const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "materials", "view")) return;
     let cancelled = false;
     materialsApi
       .list(projectId)

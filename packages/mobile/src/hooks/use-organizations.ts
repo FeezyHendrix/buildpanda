@@ -7,6 +7,7 @@ import { organizationKeys, projectKeys } from "./query-keys";
 export function useOrganizations() {
   const { storageOwnerId } = useFieldSession();
   return usePersistentQuery({
+    permission: null, persist: false,
     queryKey: organizationKeys.list(),
     ownerId: storageOwnerId,
     queryFn: organizationsApi.list,

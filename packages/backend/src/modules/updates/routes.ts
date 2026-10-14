@@ -249,8 +249,12 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates/:updateId/comments",
     { schema: { params: updateIdParams, body: commentBody } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "updates", "post");
+      // comments:post, as on RFIs, tasks, approvals and change requests.
+      // Gating this on updates:post conflated replying with authoring — a
+      // client could only be given a voice by also being let to publish.
+      const project = await request.requireProjectPermission(request.params.id, "comments", "post");
       const user = request.requireAuth();
+      await request.requireProjectPermission(project.id, "updates", "view");
       const comment = await service.addComment(
         project.id,
         request.params.updateId,

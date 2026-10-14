@@ -1,3 +1,6 @@
+import { features } from "@/lib/feature-access";
+import { useProjectAccess } from "@/lib/project-access-provider";
+import { PermissionGate } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -163,6 +166,8 @@ export function SheetControls({
   onToggleOpen: () => void;
 }) {
   const [colorOpen, setColorOpen] = useState(false);
+  const { allows } = useProjectAccess();
+  const canMarkup = allows(features.documents.actions.markup);
   return (
     <View className="absolute right-3 top-3 items-end gap-2">
       <View className="rounded-full border border-hairline bg-surface/95 p-1 shadow-sm">
@@ -172,7 +177,7 @@ export function SheetControls({
           onPress={onToggleOpen}
         />
       </View>
-      {open && colorOpen ? (
+      {open && colorOpen && canMarkup ? (
         <ColorRow
           color={color}
           onSelect={(value) => {
@@ -183,10 +188,10 @@ export function SheetControls({
       ) : null}
       {open ? (
         <View className="items-center gap-1 rounded-full border border-hairline bg-surface/95 p-1 shadow-sm">
-          {TOOLS.map((t) => (
+          {TOOLS.filter((t) => canMarkup || t.key === SHEET_TOOL.PAN).map((t) => (
             <RailButton key={t.key} icon={t.icon} label={t.label} active={tool === t.key} onPress={() => onSelectTool(t.key)} />
           ))}
-          <Pressable
+          <PermissionGate permission={features.documents.actions.markup}><Pressable
             onPress={() => setColorOpen((v) => !v)}
             accessibilityRole="button"
             accessibilityLabel="Markup colour"
@@ -196,7 +201,7 @@ export function SheetControls({
             <View className="h-6 w-6 rounded-full border-2 border-surface shadow-sm" style={{ backgroundColor: color }} />
           </Pressable>
           <View className="my-0.5 h-px w-6 bg-hairline" />
-          <RailButton icon="arrow-undo-outline" label="Undo last markup" disabled={!canUndo} onPress={onUndo} />
+          <RailButton icon="arrow-undo-outline" label="Undo last markup" disabled={!canUndo} onPress={onUndo} /></PermissionGate>
           <RailButton icon="scan-outline" label="Fit sheet to screen" onPress={onFit} />
           <View className="my-0.5 h-px w-6 bg-hairline" />
           {SHEET_LAYERS.map((layer) => {

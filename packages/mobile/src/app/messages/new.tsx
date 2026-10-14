@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
@@ -9,7 +10,7 @@ import { useFieldSession } from "@/lib/field-session";
 import { goBack } from "@/lib/navigation";
 import { useSyncState } from "@/lib/sync-provider";
 
-export default function NewMessage() {
+function NewMessage() {
   const { storageOwnerId, projectId } = useFieldSession();
   const { isOnline } = useSyncState();
   const inbox = useMessagingChannels();
@@ -37,3 +38,5 @@ export default function NewMessage() {
     </Page>
   );
 }
+
+export default withProjectPermission(NewMessage, "/messages/new");

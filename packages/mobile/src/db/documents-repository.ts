@@ -1,9 +1,14 @@
+import { requireCurrentAccess } from "@/lib/project-access-store";
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { and, asc, desc, eq, gt, inArray } from "drizzle-orm";
 import { randomUUID } from "expo-crypto";
 import type { DocumentGroup, ProjectDocument } from "@/api/documents";
 import { discardStagedMedia, stageMedia } from "@/lib/stage-media";
 import type { Db } from "./client";
 import { documentCategories, documents, outbox, type DocumentCategoryRow, type DocumentRow } from "./schema";
+
+const access = repositoryAccess(features.documents);
 
 export type { DocumentGroup };
 
@@ -98,7 +103,7 @@ export const documentsRepository = {
     db
       .select()
       .from(documents)
-      .where(and(eq(documents.projectId, projectId), gt(documents.lastAccessedAt ?? 0, 0)))
+      .where(access.where(db, documents.projectId, eq(documents.projectId, projectId), gt(documents.lastAccessedAt ?? 0, 0)))
       .orderBy(desc(documents.lastAccessedAt))
       .limit(5),
 
@@ -106,11 +111,11 @@ export const documentsRepository = {
     await db
       .update(documents)
       .set({ lastAccessedAt: Date.now() })
-      .where(eq(documents.id, documentId));
+      .where(access.where(db, documents.projectId, eq(documents.id, documentId)));
   },
 
   categoriesQuery: (db: Db, projectId: string) =>
-    db.select().from(documentCategories).where(eq(documentCategories.projectId, projectId)),
+    db.select().from(documentCategories).where(access.where(db, documentCategories.projectId, eq(documentCategories.projectId, projectId))),
 
   async upsertCategories(
     db: Db,
@@ -124,8 +129,9 @@ export const documentsRepository = {
       group: string;
     }[],
   ): Promise<void> {
+    access.require(db, projectId);
     if (rows.length === 0) return;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       for (const row of rows) {
         tx
           .insert(documentCategories)
@@ -156,7 +162,7 @@ export const documentsRepository = {
     db
       .select()
       .from(documents)
-      .where(eq(documents.projectId, projectId))
+      .where(access.where(db, documents.projectId, eq(documents.projectId, projectId)))
       .orderBy(asc(documents.fileName)),
 
   /**
@@ -169,12 +175,13 @@ export const documentsRepository = {
     projectId: string,
     rows: readonly ProjectDocument[],
   ): Promise<void> {
+    access.require(db, projectId);
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       const cached = new Map(
         tx.select().from(documents)
-          .where(inArray(documents.id, rows.map((row) => row.id)))
+          .where(access.where(db, documents.projectId, inArray(documents.id, rows.map((row) => row.id))))
           .all().map((row) => [row.id, row]),
       );
       for (const row of rows) {
@@ -200,10 +207,11 @@ export const documentsRepository = {
    * copy does not survive that.
    */
   async createLocal(db: Db, projectId: string, input: LocalDocumentInput): Promise<string> {
+    access.require(db, projectId, "create");
     const id = `local_${randomUUID()}`;
     const stagedUri = stageMedia(input.uri, id, input.fileName);
     try {
-      await db.transaction((tx) => {
+      await access.transaction(db, projectId, "create", (tx) => {
         tx.insert(documents).values({
           id,
           projectId,
@@ -249,20 +257,23 @@ export const documentsRepository = {
     localId: string,
     server: ProjectDocument,
   ): Promise<void> {
+    const ticket = access.require(db, projectId);
     const local = await this.findById(db, localId);
+    requireCurrentAccess(ticket);
     let localUri = local?.stagedUri ?? null;
     if (localUri && server.currentVersionId) {
       try {
-        localUri = (await import("@/lib/download-file")).cachePickedVersion(localUri, server.currentVersionId, server.fileName);
+        localUri = (await import("@/lib/download-file")).cachePickedVersion(ticket, localUri, server.currentVersionId, server.fileName);
       } catch {
         // The upload already succeeded. Keep its durable staged bytes if a
         // second copy cannot fit; retrying creation would duplicate the file.
       }
     }
+    requireCurrentAccess(ticket);
     const stagedUri = localUri === local?.stagedUri ? localUri : null;
     const values = { ...fromServer(projectId, server, Date.now()), localUri, stagedUri };
-    await db.transaction((tx) => {
-      tx.delete(documents).where(eq(documents.id, localId)).run();
+    await access.transaction(db, projectId, "read", (tx) => {
+      tx.delete(documents).where(access.where(db, documents.projectId, eq(documents.id, localId))).run();
       tx
         .insert(documents)
         .values({ id: server.id, ...values, mimeType: local?.mimeType ?? null })
@@ -279,7 +290,7 @@ export const documentsRepository = {
   },
 
   async findById(db: Db, documentId: string): Promise<DocumentRow | undefined> {
-    const [row] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+    const [row] = await db.select().from(documents).where(access.where(db, documents.projectId, eq(documents.id, documentId))).limit(1);
     return row;
   },
 };

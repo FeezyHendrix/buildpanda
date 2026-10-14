@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -135,7 +136,7 @@ function Editor({ db, projectId, rfiId }: { db: Db; projectId: string; rfiId: st
   );
 }
 
-export default function EditRfi() {
+function EditRfi() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -143,3 +144,5 @@ export default function EditRfi() {
   if (!(ready && db && projectId && id)) return <LoadingPage />;
   return <Editor db={db} projectId={projectId} rfiId={id} />;
 }
+
+export default withProjectPermission(EditRfi, "/tools/rfis/edit/[id]");

@@ -22,6 +22,7 @@ export const rfis = sqliteTable(
     question: text("question").notNull(),
     questionHtml: text("question_html"),
     status: text("status").notNull().default("Draft"),
+    visibility: text("visibility").notNull().default("internal"),
     priority: text("priority").notNull().default("Normal"),
     ballInCourtId: text("ball_in_court_id"),
     ballInCourtName: text("ball_in_court_name"),
@@ -64,6 +65,7 @@ export const rfiComments = sqliteTable(
       .default(sql`(unixepoch() * 1000)`),
     /** True when the reply is the official answer, posted via the respond endpoint. */
     official: integer("official", { mode: "boolean" }).notNull().default(false),
+    isProposedResponse: integer("is_proposed_response", { mode: "boolean" }).notNull().default(true),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     serverLastSyncedAt: integer("server_last_synced_at"),
   },
@@ -332,6 +334,7 @@ export type MaterialApprovalRow = typeof materialApprovals.$inferSelect;
 export type MaterialApprovalCommentRow = typeof materialApprovalComments.$inferSelect;
 
 export * from "./schema-drawing-markups";
+export * from "./schema-project-updates";
 export * from "./schema-daily-logs";
 export * from "./schema-material-log";
 export * from "./schema-tasks";

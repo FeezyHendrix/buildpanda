@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 
 import { useState } from "react";
@@ -13,7 +14,7 @@ import { useFieldSession } from "@/lib/field-session";
 import { htmlToText } from "@/lib/html";
 import { useSyncState } from "@/lib/sync-provider";
 
-export default function NewRfi() {
+function NewRfi() {
   const { projectId } = useFieldSession();
   const createRfi = useCreateLocalRfi();
   const assignees = useProjectAssignees(projectId);
@@ -125,3 +126,5 @@ export default function NewRfi() {
     </Page>
   );
 }
+
+export default withProjectPermission(NewRfi, "/tools/rfis/new");

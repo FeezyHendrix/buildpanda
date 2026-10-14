@@ -1,37 +1,63 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { router } from "expo-router";
+import { View } from "react-native";
+import { Spinner } from "@/components/atoms";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import { SearchableList } from "@/components/molecules/searchable-list";
-import { StaleBanner } from "@/components/molecules/stale-banner";
 import { UpdateCard } from "@/components/molecules/update-card";
+import type { Db } from "@/db/client";
+import { useLocalDb } from "@/db/provider";
 import { useProjectUpdates } from "@/hooks/use-updates";
 import { useFieldSession } from "@/lib/field-session";
 
-export default function ProjectUpdates() {
-  const { projectId } = useFieldSession();
-  const { data, isPending, isStale } = useProjectUpdates(projectId);
-  const updates = data ?? [];
+function UpdatesList({ db, projectId }: { db: Db; projectId: string }) {
+  const { data, isPending } = useProjectUpdates(db, projectId);
 
   return (
-    <Page stageScope scroll={false} title="Updates" onBack={() => goBack()}>
-      {isStale ? <StaleBanner what="updates" /> : null}
+    <SearchableList
+      data={data}
+      loading={isPending}
+      cards
+      fields={(update) => [update.title, update.description, update.author.name, update.category]}
+      placeholder="Search updates"
+      emptyTitle="No updates yet"
+      emptyBody="Posted project updates appear here. Add one to report progress, a delivery, an inspection or an issue from site."
+      renderItem={(update) => (
+        <UpdateCard
+          update={update}
+          onPress={() => router.push(`/tools/updates/${update.id}` as never)}
+        />
+      )}
+    />
+  );
+}
 
-      <SearchableList
-        key={projectId}
-        data={updates}
-        loading={isPending}
-        cards
-        fields={(update) => [update.title, update.description, update.author.name, update.category]}
-        placeholder="Search updates"
-        emptyTitle="No updates yet"
-        emptyBody="Published project updates appear here."
-        renderItem={(update) => (
-          <UpdateCard
-            update={update}
-            onPress={() => router.push(`/tools/updates/${update.id}` as never)}
-          />
-        )}
-      />
+function ProjectUpdates() {
+  const { projectId } = useFieldSession();
+  const { db, ready } = useLocalDb();
+
+  return (
+    <Page
+      stageScope
+      scroll={false}
+      title="Updates"
+      onBack={() => goBack()}
+      rightButtons={
+        <HeaderIconButton permission={features.updates.actions.create} icon="add" label="New update" onPress={() => router.push("./new")} />
+      }
+    >
+      {ready && db && projectId ? (
+        <UpdatesList key={projectId} db={db} projectId={projectId} />
+      ) : (
+        <View className="items-center py-12">
+          <Spinner size="md" />
+        </View>
+      )}
     </Page>
   );
 }
+
+export default withProjectPermission(ProjectUpdates, "/tools/updates");

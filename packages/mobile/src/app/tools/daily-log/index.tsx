@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
@@ -88,7 +89,7 @@ function DayList({ db, projectId }: { db: Db; projectId: string }) {
   );
 }
 
-export default function DailyLogIndex() {
+function DailyLogIndex() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
 
@@ -104,3 +105,5 @@ export default function DailyLogIndex() {
     </Page>
   );
 }
+
+export default withProjectPermission(DailyLogIndex, "/tools/daily-log");

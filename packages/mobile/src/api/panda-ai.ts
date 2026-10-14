@@ -1,3 +1,5 @@
+import { requireAccess, requireCurrentAccess, revokeProjectAccess } from "@/lib/project-access-store";
+import { features } from "@/lib/feature-access";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import { openStreamEvent, payloadFetch } from "@/lib/payload-fetch";
@@ -42,6 +44,7 @@ export async function streamChat(
   onDone: () => void,
   onError: (err: string) => void,
 ): Promise<void> {
+  const ticket = requireAccess(projectId, features.project.read);
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (Platform.OS !== "web") headers.cookie = authClient.getCookie();
 
@@ -56,7 +59,9 @@ export async function streamChat(
       signal,
     });
 
+    requireCurrentAccess(ticket);
     if (!response.ok) {
+      if ([401, 403].includes(response.status)) revokeProjectAccess();
       onError(`Panda AI returned ${response.status}`);
       return;
     }
@@ -69,6 +74,7 @@ export async function streamChat(
 
     while (true) {
       const { done, value } = await reader.read();
+      try { requireCurrentAccess(ticket); } catch (error) { await reader.cancel(); throw error; }
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
@@ -77,6 +83,7 @@ export async function streamChat(
 
       for (const sealed of events) {
         const ev = { ...sealed, data: await openStreamEvent(sealed.data) };
+        requireCurrentAccess(ticket);
         if (ev.event === "token") {
           const d = ev.data as { text?: string };
           if (d.text) onChunk(d.text);

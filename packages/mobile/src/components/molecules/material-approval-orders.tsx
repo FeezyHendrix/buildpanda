@@ -1,3 +1,4 @@
+import { features } from "@/lib/feature-access";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
@@ -32,7 +33,7 @@ function orderFromApproval(approval: LocalMaterialApproval): string {
  */
 export function MaterialApprovalOrders({ db, projectId, approval }: { db: Db; projectId: string; approval: LocalMaterialApproval }) {
   const { data: orders } = useLocalMaterialOrders(db, projectId, false);
-  const { can } = useProjectAccess();
+  const { allows } = useProjectAccess();
   const linked = orders.filter((order) => order.approvalId === approval.id);
   const approved = approval.status === "Approved";
 
@@ -63,7 +64,7 @@ export function MaterialApprovalOrders({ db, projectId, approval }: { db: Db; pr
       ) : (
         <Text tone="secondary" className="text-[13px]">Nothing has been ordered against this approval yet.</Text>
       )}
-      {approved && can("materials", "request") ? (
+      {approved && allows(features.materialOrders.actions.create) ? (
         <Button variant="secondary" onPress={() => router.push(orderFromApproval(approval) as never)}>
           Order this material
         </Button>

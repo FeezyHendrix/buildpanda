@@ -1,7 +1,10 @@
+import { requireAccess } from "@/lib/project-access-store";
+import { voiceRequirement } from "@/lib/voice-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { applyVoiceActionBatch, type AppliedVoiceAction } from "@/lib/voice-action-batch";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { requestVoiceReport } from "@/api/voice-report";
@@ -19,6 +22,7 @@ import {
   mergeMissingValues,
   outstandingCount,
   type MissingFieldValues,
+  type ReviewValue,
 } from "@/lib/voice-missing-fields";
 
 type Phase = "record" | "processing" | "review" | "saving" | "done";
@@ -35,10 +39,10 @@ function formatClock(totalSeconds: number): string {
  * Presented as a modal over the tabs; every created record goes through the
  * offline outbox, so a confirm on-site with no signal still lands.
  */
-export default function Capture() {
+function Capture() {
   // the recording already happened, in a sheet over whatever the crew member
   // was looking at; this page exists for the part that is genuinely a task
-  const { uri, seconds } = useLocalSearchParams<{ uri?: string; seconds?: string }>();
+  const { uri } = useLocalSearchParams<{ uri?: string; seconds?: string }>();
   const { projectId } = useFieldSession();
   const { isOnline } = useSyncState();
   const recorder = useVoiceRecorder();
@@ -50,6 +54,7 @@ export default function Capture() {
   const [fieldValues, setFieldValues] = useState<MissingFieldValues>({});
   const [error, setError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
+  const [queuedCount, setQueuedCount] = useState(0);
   const [awaitingCount, setAwaitingCount] = useState(0);
   const completed = useRef(new Map<number, AppliedVoiceAction>());
   const confirming = useRef(false);
@@ -116,7 +121,7 @@ export default function Capture() {
     });
   }, []);
 
-  const changeField = useCallback((actionIndex: number, fieldName: string, value: string) => {
+  const changeField = useCallback((actionIndex: number, fieldName: string, value: ReviewValue) => {
     setFieldValues((prev) => ({
       ...prev,
       [actionIndex]: { ...prev[actionIndex], [fieldName]: value },
@@ -133,12 +138,15 @@ export default function Capture() {
       const chosen = report.actions
         .map((action, index) => ({ action, index }))
         .filter((entry) => included.has(entry.index));
+      const prepared = chosen.map(({ action, index }) => ({ index, action: mergeMissingValues(action, fieldValues[index]) }));
+      for (const { action } of prepared) requireAccess(projectId ?? "", voiceRequirement(action));
       await applyVoiceActionBatch(
-        chosen.map(({ action, index }) => ({ index, action: mergeMissingValues(action, fieldValues[index]) })),
+        prepared,
         completed.current,
         applyAction,
       );
       setSavedCount(completed.current.size);
+      setQueuedCount([...completed.current.values()].filter((result) => result?.queued !== false).length);
       setAwaitingCount([...completed.current.values()].filter((result) => result?.awaitingApproval).length);
       setPhase("done");
     } catch (err) {
@@ -151,7 +159,7 @@ export default function Capture() {
       setIncluded((previous) => new Set([...previous].filter((index) => !completed.current.has(index))));
     }
 
-  }, [report, included, fieldValues, applyAction]);
+  }, [report, included, fieldValues, applyAction, projectId]);
 
   if (phase === "processing") {
     return (
@@ -178,17 +186,21 @@ export default function Capture() {
         <View className="flex-1 items-center justify-center px-6">
           <Ionicons name="checkmark-circle" size={56} color={ICON_SUCCESS} />
           <Text weight="bold" className="pt-4 text-lg">
-            {savedCount} {savedCount === 1 ? "record" : "records"} queued
+            {savedCount} {savedCount === 1 ? "action" : "actions"} applied
           </Text>
           <Text tone="secondary" className="pt-1 text-center text-[13px]">
-            They&apos;ll sync when you&apos;re online. You can edit them any time from Field Tools.
+            {queuedCount > 0 ? `${queuedCount} saved on this device for sync. Other actions completed online.` : "Your actions completed online."}
           </Text>
+          {[...new Set([...completed.current.values()].flatMap((result) => result?.notice ? [result.notice] : []))].map((notice) => <Text key={notice} tone="secondary" className="pt-2 text-center">{notice}</Text>)}
           {awaitingCount > 0 ? (
             <Text className="pt-2 text-center text-[13px] text-amber-600">
               {awaitingCount} awaiting a manager&apos;s approval before it counts toward stock.
             </Text>
           ) : null}
-          <View className="mt-8 w-full">
+          <View className="mt-8 w-full gap-3">
+            {[...completed.current.entries()].map(([index, result]) => result?.document ? (
+              <Button key={index} variant="secondary" onPress={() => router.push(`/tools/documents/${encodeURIComponent(result.document!.id)}` as never)}>{`Open ${result.document.name}`}</Button>
+            ) : null)}
             <Button onPress={close}>Done</Button>
           </View>
         </View>
@@ -276,7 +288,7 @@ export default function Capture() {
     <Page title="Voice note" showSync={false} onBack={close} scroll={false}>
       <View className="flex-1 items-center justify-between py-6">
         <Text tone="secondary" className="px-4 pt-6 text-center text-[15px]">
-          Describe what happened on site — Panda AI drafts the RFIs, logs and orders for you to review.
+          Describe what you need — tasks, expenses, approvals, messages, documents or site records. Review every action before applying.
         </Text>
 
         <View className="items-center">
@@ -334,3 +346,5 @@ export default function Capture() {
     </Page>
   );
 }
+
+export default withProjectPermission(Capture, "/capture");

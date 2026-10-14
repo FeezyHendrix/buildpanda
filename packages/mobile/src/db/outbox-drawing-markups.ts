@@ -1,3 +1,4 @@
+import { features } from "@/lib/feature-access";
 import { eq } from "drizzle-orm";
 import { drawingMarkupApi } from "@/api/drawing-markup";
 import { uploadProjectFile } from "@/api/files";
@@ -64,7 +65,7 @@ export async function pushDrawingMarkupCommentOutboxItem(db: Db, item: OutboxRow
   if (comment.stagedMediaUri && comment.mediaKind) {
     const name = comment.mediaKind === "audio" ? "voice-note.m4a" : "site-video.mov";
     const mime = comment.mediaKind === "audio" ? "audio/m4a" : "video/quicktime";
-    fileId = (await uploadProjectFile(item.projectId, comment.stagedMediaUri, name, mime)).id;
+    fileId = (await uploadProjectFile(item.projectId, comment.stagedMediaUri, name, mime, features.documents.actions.markup)).id;
   }
 
   await drawingMarkupApi.addComment(item.projectId, comment.markupId, {
