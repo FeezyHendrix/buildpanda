@@ -10,6 +10,14 @@ export function BuildingSelector() {
   const scope = useProjectBuilding();
   const [open, setOpen] = useState(false);
   const label = scope.building?.name ?? (scope.buildingId ? "Selected building" : "Choose a building");
+
+  // Every project is created with exactly one real building, so this bar had
+  // nothing to offer and just read "Choose a building" at a crew with nothing
+  // to choose. Keep it for a real choice, or to offer the reload.
+  const hasChoice = scope.buildings.length > 1;
+  const needsReload = !scope.isLoading && scope.buildings.length === 0;
+  if (!hasChoice && !needsReload) return null;
+
   return (
     <View className="border-b border-hairline bg-surface px-4 py-2">
       <Pressable
