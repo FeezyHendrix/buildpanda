@@ -12,7 +12,7 @@ import { pushLookAheadOutboxItem } from "./outbox-look-aheads";
 import { pushMaterialApprovalOutboxItem } from "./outbox-material-approvals";
 import { pushMaterialLedgerOutboxItem } from "./outbox-material-ledger";
 import { pushMaterialOrderOutboxItem } from "./outbox-material-orders";
-import { PermanentOutboxError } from "./outbox-handler";
+import { isPermanent, PermanentOutboxError } from "./outbox-handler";
 import { pushRfiOutboxItem } from "./outbox-rfis";
 import { pushTaskOutboxItem } from "./outbox-tasks";
 import { OUTBOX_TABLES } from "./outbox-tables";
@@ -28,11 +28,6 @@ const inFlight = new WeakMap<Db, Promise<FlushResult>>();
 function nextDelayMs(attempts: number): number {
   const base = Math.min(15_000 * 2 ** attempts, 30 * 60_000);
   return base * (0.8 + Math.random() * 0.4);
-}
-
-function isPermanent(error: unknown): boolean {
-  const status = (error as { status?: number } | null)?.status;
-  return typeof status === "number" && status >= 400 && status < 500 && status !== 401 && status !== 429;
 }
 
 function isAuthFailure(error: unknown): boolean {

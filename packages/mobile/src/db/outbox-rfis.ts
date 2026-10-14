@@ -9,8 +9,8 @@ import {
   type RfiStatusTransition,
 } from "@/api/rfis";
 import type { Db } from "./client";
-import { done, PermanentOutboxError, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { outbox, rfiComments, rfis, type OutboxRow } from "./schema";
+import { done, PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
+import { rfiComments, rfis, type OutboxRow } from "./schema";
 import { rfiCommentsRepository } from "./rfi-comments-repository";
 import { rfisRepository } from "./rfis-repository";
 
@@ -50,10 +50,7 @@ async function pushRfiComment(db: Db, item: OutboxRow): Promise<OutboxHandlerRes
     .from(rfiComments)
     .where(eq(rfiComments.id, item.entityId))
     .limit(1);
-  if (!comment) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!comment) return dropItem(db, item);
   if (comment.rfiId.startsWith("local_")) return done(false);
 
   if (comment.official) {
@@ -79,16 +76,12 @@ async function pushRfiComment(db: Db, item: OutboxRow): Promise<OutboxHandlerRes
     await rfiCommentsRepository.reconcileCreate(db, comment.id, server);
   }
 
-  await db.delete(outbox).where(eq(outbox.id, item.id));
-  return done(true);
+  return finishItem(db, item);
 }
 
 async function pushRfi(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
   const [row] = await db.select().from(rfis).where(eq(rfis.id, item.entityId)).limit(1);
-  if (!row) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!row) return dropItem(db, item);
 
   if (item.operation === "create") {
     // Raised from a pin whose own create has not landed: the markup's push
@@ -118,6 +111,7 @@ async function pushRfi(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
     }
     await rfisApi.transition(item.projectId, row.id, row.status);
     settleOutboxItem(db, item);
+    return done(true);
   } else {
     // The update endpoint refuses the source-sheet fields, so they stay off.
     await rfisApi.update(item.projectId, row.id, {
@@ -132,8 +126,8 @@ async function pushRfi(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
       scheduleImpact: row.scheduleImpact,
     });
     settleOutboxItem(db, item);
+    return done(true);
   }
 
-  await db.delete(outbox).where(eq(outbox.id, item.id));
-  return done(true);
+  return finishItem(db, item);
 }
