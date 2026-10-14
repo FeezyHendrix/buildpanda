@@ -1,4 +1,3 @@
-// Generated from packages/shared/payload-fetch.ts. Edit that file, then run `pnpm sync:shared`.
 import { ENCRYPTED_CONTENT_TYPE, fitsSealLimit, isEnvelope, KEY_HEADER, open, seal } from "./payload-crypto";
 import { isStaleKeyError, payloadSession, randomBytes, resetPayloadSession } from "./payload-session";
 
