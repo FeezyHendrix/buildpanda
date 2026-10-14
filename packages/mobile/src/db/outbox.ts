@@ -15,8 +15,9 @@ import { pushMaterialOrderOutboxItem } from "./outbox-material-orders";
 import { isPermanent, PermanentOutboxError } from "./outbox-handler";
 import { pushRfiOutboxItem } from "./outbox-rfis";
 import { pushTaskOutboxItem } from "./outbox-tasks";
+import { pushUpdateOutboxItem, UPDATES_RESOURCE } from "./outbox-updates";
 import { OUTBOX_TABLES } from "./outbox-tables";
-import { documents, drawingMarkupComments, expenses, outbox, type OutboxRow } from "./schema";
+import { documents, drawingMarkupComments, expenses, outbox, projectUpdateMedia, type OutboxRow } from "./schema";
 import { discardStagedMedia } from "../lib/stage-media";
 
 import { startSending, finishSending } from "./sync-write-state";
@@ -63,6 +64,7 @@ async function pushOutboxItem(db: Db, item: OutboxRow): Promise<boolean> {
     pushRfiOutboxItem,
     pushTaskOutboxItem,
     pushExpenseOutboxItem,
+    pushUpdateOutboxItem,
   ]) {
     const result = await handler(db, item);
     if (result.handled) return result.pushed;
@@ -174,26 +176,32 @@ export async function discardOutboxItem(db: Db, id: string): Promise<void> {
   const table = OUTBOX_TABLES[item.resource];
   // A queued upload or voice note has a file staged on disk that nothing
   // else will ever clean up once its row is gone.
-  const staged = item.operation === "create" ? await stagedFileFor(db, item) : null;
+  const staged = item.operation === "create" ? await stagedFilesFor(db, item) : [];
   await db.transaction((tx) => {
     if (table && item.operation === "create") {
       tx.run(sql`DELETE FROM ${table} WHERE id = ${item.entityId}`);
+      // An update's attachments are a child table, so OUTBOX_TABLES cannot
+      // reach them and they would outlive the update they belong to.
+      if (item.resource === UPDATES_RESOURCE) {
+        tx.delete(projectUpdateMedia).where(eq(projectUpdateMedia.updateId, item.entityId)).run();
+      }
     } else if (table && item.operation !== "delete") {
       tx.run(sql`UPDATE ${table} SET is_pending_sync = 0 WHERE id = ${item.entityId}`);
     }
     tx.delete(outbox).where(eq(outbox.id, item.id)).run();
   });
-  if (staged) discardStagedMedia(staged);
+  for (const uri of staged) discardStagedMedia(uri);
 }
 
-async function stagedFileFor(db: Db, item: OutboxRow): Promise<string | null> {
+/** Every staged path a discarded create leaves orphaned; an update has one per attachment. */
+async function stagedFilesFor(db: Db, item: OutboxRow): Promise<string[]> {
   if (item.resource === "documents") {
     const [row] = await db.select({ uri: documents.stagedUri }).from(documents).where(eq(documents.id, item.entityId)).limit(1);
-    return row?.uri ?? null;
+    return row?.uri ? [row.uri] : [];
   }
   if (item.resource === "expenses") {
     const [row] = await db.select({ uri: expenses.receiptStagedUri }).from(expenses).where(eq(expenses.id, item.entityId)).limit(1);
-    return row?.uri ?? null;
+    return row?.uri ? [row.uri] : [];
   }
   if (item.resource === "drawing-markup-comments") {
     const [row] = await db
@@ -201,7 +209,14 @@ async function stagedFileFor(db: Db, item: OutboxRow): Promise<string | null> {
       .from(drawingMarkupComments)
       .where(eq(drawingMarkupComments.id, item.entityId))
       .limit(1);
-    return row?.uri ?? null;
+    return row?.uri ? [row.uri] : [];
   }
-  return null;
+  if (item.resource === UPDATES_RESOURCE) {
+    const rows = await db
+      .select({ uri: projectUpdateMedia.stagedUri })
+      .from(projectUpdateMedia)
+      .where(eq(projectUpdateMedia.updateId, item.entityId));
+    return rows.flatMap((row) => (row.uri ? [row.uri] : []));
+  }
+  return [];
 }
