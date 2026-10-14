@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { changeCurrency, changeRequestsApi, changeStatus } from "@/api/change-requests";
 import type { Db } from "./client";
 import { changeRequestsRepository } from "./change-requests-repository";
-import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
+import { done, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { outbox, type OutboxRow } from "./schema";
 
 export async function pushChangeRequestOutboxItem(
@@ -14,15 +14,11 @@ export async function pushChangeRequestOutboxItem(
 
   if (item.operation === "delete") {
     await changeRequestsApi.remove(item.projectId, item.entityId);
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(true);
+    return finishItem(db, item);
   }
 
   const row = await changeRequestsRepository.findById(db, item.entityId);
-  if (!row) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!row) return dropItem(db, item);
 
   const status = changeStatus(row.status);
   const fields = {

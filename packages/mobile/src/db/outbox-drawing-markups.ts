@@ -4,23 +4,19 @@ import { uploadProjectFile } from "@/api/files";
 import type { MarkupGeometry } from "@/components/plan-review/markup-types";
 import type { Db } from "./client";
 import { drawingMarkupsRepository } from "./drawing-markups-repository";
-import { done, PermanentOutboxError, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { drawingMarkups, outbox, type OutboxRow } from "./schema";
+import { done, PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
+import { drawingMarkups, type OutboxRow } from "./schema";
 
 export async function pushDrawingMarkupOutboxItem(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
   if (item.resource !== "drawing-markups") return skipped;
 
   if (item.operation === "delete") {
     await drawingMarkupApi.remove(item.projectId, item.entityId);
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(true);
+    return finishItem(db, item);
   }
 
   const row = await drawingMarkupsRepository.findById(db, item.entityId);
-  if (!row) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!row) return dropItem(db, item);
 
   if (item.operation === "resolve") {
     // the row's current state is what is sent, so resolve-then-reopen before a flush sends once
@@ -29,8 +25,7 @@ export async function pushDrawingMarkupOutboxItem(db: Db, item: OutboxRow): Prom
       .update(drawingMarkups)
       .set({ isPendingSync: false, updatedAt: Date.now() })
       .where(eq(drawingMarkups.id, row.id));
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(true);
+    return finishItem(db, item);
   }
 
   if (item.operation !== "create") {
@@ -47,8 +42,7 @@ export async function pushDrawingMarkupOutboxItem(db: Db, item: OutboxRow): Prom
   });
   // this also moves any comment queued against the local id, in one transaction
   await drawingMarkupsRepository.reconcileCreate(db, row.id, server.id);
-  await db.delete(outbox).where(eq(outbox.id, item.id));
-  return done(true);
+  return finishItem(db, item);
 }
 
 /**
@@ -63,10 +57,7 @@ export async function pushDrawingMarkupCommentOutboxItem(db: Db, item: OutboxRow
   if (item.resource !== "drawing-markup-comments") return skipped;
 
   const comment = await drawingMarkupsRepository.commentById(db, item.entityId);
-  if (!comment) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!comment) return dropItem(db, item);
   if (comment.markupId.startsWith("local_")) return done(false);
 
   let fileId: string | null = null;
@@ -84,6 +75,5 @@ export async function pushDrawingMarkupCommentOutboxItem(db: Db, item: OutboxRow
     assigneeId: comment.assigneeId,
   });
   await drawingMarkupsRepository.markCommentSynced(db, comment.id, comment.stagedMediaUri);
-  await db.delete(outbox).where(eq(outbox.id, item.id));
-  return done(true);
+  return finishItem(db, item);
 }

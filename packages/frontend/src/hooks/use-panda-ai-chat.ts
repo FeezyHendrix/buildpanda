@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { openStreamEvent, payloadFetch } from "@/lib/payload-fetch";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -93,7 +94,9 @@ export function usePandaAiChat(projectId: string): PandaAiChat {
 
       void (async () => {
         try {
-          const response = await fetch(`${API_BASE}/projects/${projectId}/ai/chat`, {
+          // Through payloadFetch: on test and app the question is sealed and
+          // each streamed event comes back sealed, like the rest of the API.
+          const response = await payloadFetch(`${API_BASE}/projects/${projectId}/ai/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -112,7 +115,8 @@ export function usePandaAiChat(projectId: string): PandaAiChat {
             buffer += decoder.decode(value, { stream: true });
             const { events, rest } = parseSseChunk(buffer);
             buffer = rest;
-            for (const { event, data } of events) {
+            for (const { event, data: raw } of events) {
+              const data = await openStreamEvent(raw);
               if (event === "token") appendAssistant((data as { text: string }).text);
               else if (event === "tool") setActiveTool((data as { name: string }).name);
               else if (event === "navigate") setPendingNavigate((data as { path: string }).path);

@@ -1,10 +1,9 @@
 import { settleOutboxItem } from "./sync-write-state";
-import { eq } from "drizzle-orm";
 import { lookAheadsApi } from "@/api/look-aheads";
 import type { Db } from "./client";
 import { lookAheadsRepository, parseActivityIds } from "./look-aheads-repository";
-import { done, skipped, PermanentOutboxError, type OutboxHandlerResult } from "./outbox-handler";
-import { outbox, type OutboxRow } from "./schema";
+import { done, skipped, PermanentOutboxError, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
+import { type OutboxRow } from "./schema";
 
 export async function pushLookAheadOutboxItem(
   db: Db,
@@ -14,15 +13,11 @@ export async function pushLookAheadOutboxItem(
 
   if (item.operation === "delete") {
     await lookAheadsApi.remove(item.projectId, item.entityId);
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(true);
+    return finishItem(db, item);
   }
 
   const row = await lookAheadsRepository.findById(db, item.entityId);
-  if (!row) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!row) return dropItem(db, item);
 
   if (item.operation === "update" || item.operation === "set-activities") {
     if (item.operation === "set-activities") {
@@ -61,6 +56,5 @@ export async function pushLookAheadOutboxItem(
     activityIds: parseActivityIds(row.activityIds),
   });
   await lookAheadsRepository.reconcileCreate(db, item.projectId, row.id, server);
-  await db.delete(outbox).where(eq(outbox.id, item.id));
-  return done(true);
+  return finishItem(db, item);
 }

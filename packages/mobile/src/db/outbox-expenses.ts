@@ -4,7 +4,7 @@ import { uploadProjectFile } from "@/api/files";
 import { discardStagedMedia } from "@/lib/stage-media";
 import type { Db } from "./client";
 import { expensesRepository } from "./expenses-repository";
-import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
+import { done, skipped, type OutboxHandlerResult, dropItem } from "./outbox-handler";
 import { outbox, type ExpenseRow, type OutboxRow } from "./schema";
 
 /**
@@ -25,10 +25,7 @@ export async function pushExpenseOutboxItem(db: Db, item: OutboxRow): Promise<Ou
   if (item.resource !== "expenses") return skipped;
 
   const row = await expensesRepository.findById(db, item.entityId);
-  if (!row) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!row) return dropItem(db, item);
 
   const earlier = item.attempts > 0 || item.lastError ? await alreadyLogged(item.projectId, row) : undefined;
   let server = earlier;

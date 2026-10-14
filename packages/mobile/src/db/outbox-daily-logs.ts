@@ -6,8 +6,8 @@ import { ApiError } from "@/api/client";
 import type { TemplateResponses } from "@/api/daily-log-templates";
 import { htmlToText, textToParagraphHtml } from "@/lib/html";
 import type { Db } from "./client";
-import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { dailyLogActivities, dailyLogEntries, dailyLogs, outbox, type DailyLogEntryRow, type OutboxRow } from "./schema";
+import { done, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
+import { dailyLogActivities, dailyLogEntries, dailyLogs, type DailyLogEntryRow, type OutboxRow } from "./schema";
 
 export async function pushDailyLogOutboxItem(
   db: Db,
@@ -21,10 +21,7 @@ export async function pushDailyLogOutboxItem(
 
 async function pushDailyLog(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
   const [day] = await db.select().from(dailyLogs).where(eq(dailyLogs.id, item.entityId)).limit(1);
-  if (!day) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!day) return dropItem(db, item);
 
   await dailyLogsApi.upsert(item.projectId, day.logDate, {
     weatherCondition: isWeatherCondition(day.weatherCondition) ? day.weatherCondition : null,
@@ -45,10 +42,7 @@ async function pushDailyLogActivity(db: Db, item: OutboxRow): Promise<OutboxHand
     .from(dailyLogActivities)
     .where(eq(dailyLogActivities.id, item.entityId))
     .limit(1);
-  if (!logged) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!logged) return dropItem(db, item);
 
   await dailyLogsApi.linkActivity(item.projectId, logged.logDate, logged.activityId, logged.hoursLogged);
   if (logged.delayReasonCode) {
@@ -105,10 +99,7 @@ async function pushDailyLogEntry(db: Db, item: OutboxRow): Promise<OutboxHandler
     .from(dailyLogEntries)
     .where(eq(dailyLogEntries.id, item.entityId))
     .limit(1);
-  if (!entry) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!entry) return dropItem(db, item);
 
   const server = entry.templateId
     ? await pushTemplateEntry(item.projectId, entry)
@@ -134,6 +125,5 @@ async function pushDailyLogEntry(db: Db, item: OutboxRow): Promise<OutboxHandler
       isPendingSync: false,
     }).run();
   });
-  await db.delete(outbox).where(eq(outbox.id, item.id));
-  return done(true);
+  return finishItem(db, item);
 }

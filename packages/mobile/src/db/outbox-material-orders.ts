@@ -1,10 +1,9 @@
 import { settleOutboxItem } from "./sync-write-state";
-import { eq } from "drizzle-orm";
 import { MATERIAL_ORDER_STATUSES, materialsApi, type MaterialOrderStatus } from "@/api/materials";
 import type { Db } from "./client";
 import { materialsRepository } from "./materials-repository";
-import { done, PermanentOutboxError, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { outbox, type OutboxRow } from "./schema";
+import { done, PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
+import { type OutboxRow } from "./schema";
 
 function isMaterialOrderStatus(value: string): value is MaterialOrderStatus {
   return (MATERIAL_ORDER_STATUSES as readonly string[]).includes(value);
@@ -18,15 +17,11 @@ export async function pushMaterialOrderOutboxItem(
 
   if (item.operation === "delete") {
     await materialsApi.remove(item.projectId, item.entityId);
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(true);
+    return finishItem(db, item);
   }
 
   const row = await materialsRepository.findById(db, item.entityId);
-  if (!row) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!row) return dropItem(db, item);
 
   if (item.operation === "delivery") {
     // Goods against an order this device created wait for the create.
@@ -101,6 +96,5 @@ export async function pushMaterialOrderOutboxItem(
     ...(row.approvalId && !row.approvalId.startsWith("local_") ? { approvalId: row.approvalId } : {}),
   });
   await materialsRepository.reconcileCreate(db, item.projectId, row.id, server);
-  await db.delete(outbox).where(eq(outbox.id, item.id));
-  return done(true);
+  return finishItem(db, item);
 }

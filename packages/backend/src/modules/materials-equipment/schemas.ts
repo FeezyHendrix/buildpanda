@@ -214,7 +214,6 @@ export const materialOrderResponse = {
     cancelReason: { type: ["string", "null"] },
     rejectedReason: { type: ["string", "null"] },
     requestedById: { type: ["string", "null"] },
-    procurementId: { type: ["string", "null"] },
     late: { type: "boolean" },
     deliveredQuantity: { type: "number" },
     outstandingQuantity: { type: "number" },

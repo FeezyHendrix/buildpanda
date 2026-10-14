@@ -193,7 +193,6 @@ export function materialsEquipmentService(
         invoice_line_item_id: input.invoiceLineItemId ?? null,
         approval_id: await resolveApprovalId(projectId, input.approvalId, input.materialName),
       });
-      if (status === "Delivered") await repository.createMaterialProcurementFromOrder(row);
       return one(row);
     },
 
@@ -310,7 +309,6 @@ export function materialsEquipmentService(
           : {}),
       });
       if (!row) throw new NotFoundError("Material order");
-      if (row.status === "Delivered") await repository.createMaterialProcurementFromOrder(row);
       return one(row);
     },
 

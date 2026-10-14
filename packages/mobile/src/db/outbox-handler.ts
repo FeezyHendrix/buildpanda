@@ -1,5 +1,6 @@
+import { eq } from "drizzle-orm";
 import type { Db } from "./client";
-import type { OutboxRow } from "./schema";
+import { outbox, type OutboxRow } from "./schema";
 
 export interface OutboxHandlerResult {
   handled: boolean;
@@ -27,4 +28,25 @@ export class PermanentOutboxError extends Error {
     super(message);
     this.name = "PermanentOutboxError";
   }
+}
+
+/** The record behind a queued item is gone, so there is nothing left to send. */
+export async function dropItem(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
+  await db.delete(outbox).where(eq(outbox.id, item.id));
+  return done(false);
+}
+
+/** The push landed: the queued item has done its job. */
+export async function finishItem(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
+  await db.delete(outbox).where(eq(outbox.id, item.id));
+  return done(true);
+}
+
+/**
+ * A refusal the server will repeat however often the item is retried: any
+ * 4xx except 401 (sign in again) and 429 (slow down).
+ */
+export function isPermanent(error: unknown): boolean {
+  const status = (error as { status?: number } | null)?.status;
+  return typeof status === "number" && status >= 400 && status < 500 && status !== 401 && status !== 429;
 }

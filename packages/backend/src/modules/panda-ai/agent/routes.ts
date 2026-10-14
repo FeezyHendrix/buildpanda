@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { config } from "../../../config/index.ts";
 import { agentService } from "./service.ts";
+import { seal } from "../../../lib/payload-crypto.ts";
 
 const projectIdParams = {
   type: "object",
@@ -65,8 +66,14 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
           : {}),
       });
 
+      // The stream bypasses onSend, so each event is sealed here when the
+      // client holds a payload session (test and app): the answer carries
+      // project data just like any other API response.
+      const key = request.payloadKey;
       const send = (event: string, data: unknown): void => {
-        raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        const json = JSON.stringify(data);
+        const body = key ? JSON.stringify(seal(key, json, "response")) : json;
+        raw.write(`event: ${event}\ndata: ${body}\n\n`);
       };
 
       if (!service.isConfigured()) {

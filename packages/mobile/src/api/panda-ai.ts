@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
+import { openStreamEvent, payloadFetch } from "@/lib/payload-fetch";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -45,7 +46,9 @@ export async function streamChat(
   if (Platform.OS !== "web") headers.cookie = authClient.getCookie();
 
   try {
-    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/ai/chat`, {
+    // Sealed on test and app like the rest of the API: the question going
+    // out, and each streamed event coming back.
+    const response = await payloadFetch(`${API_BASE_URL}/projects/${projectId}/ai/chat`, {
       method: "POST",
       credentials: "include",
       headers,
@@ -72,7 +75,8 @@ export async function streamChat(
       const { events, rest } = parseSseChunk(buffer);
       buffer = rest;
 
-      for (const ev of events) {
+      for (const sealed of events) {
+        const ev = { ...sealed, data: await openStreamEvent(sealed.data) };
         if (ev.event === "token") {
           const d = ev.data as { text?: string };
           if (d.text) onChunk(d.text);

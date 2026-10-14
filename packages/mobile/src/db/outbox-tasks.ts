@@ -1,9 +1,8 @@
-import { eq } from "drizzle-orm";
 import { tasksApi } from "@/api/tasks";
 import { readCachedUser } from "@/lib/session-cache";
 import type { Db } from "./client";
-import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { outbox, type OutboxRow } from "./schema";
+import { done, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
+import { type OutboxRow } from "./schema";
 import { settleOutboxItem } from "./sync-write-state";
 import { tasksRepository } from "./tasks-repository";
 
@@ -12,10 +11,7 @@ export async function pushTaskOutboxItem(db: Db, item: OutboxRow): Promise<Outbo
   if (item.resource !== "tasks") return skipped;
 
   const row = await tasksRepository.findById(db, item.entityId);
-  if (!row) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!row) return dropItem(db, item);
 
   if (item.operation === "update") {
     await tasksApi.move(item.projectId, row.id, row.columnId, row.position);
@@ -25,6 +21,5 @@ export async function pushTaskOutboxItem(db: Db, item: OutboxRow): Promise<Outbo
 
   const server = await tasksApi.create(item.projectId, tasksRepository.toCreateInput(row));
   await tasksRepository.reconcileCreate(db, row, server, readCachedUser()?.id ?? null);
-  await db.delete(outbox).where(eq(outbox.id, item.id));
-  return done(true);
+  return finishItem(db, item);
 }
