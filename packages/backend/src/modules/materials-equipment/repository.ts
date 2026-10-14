@@ -132,7 +132,6 @@ const MATERIAL_SELECT = [
   "mo.notes",
   "mo.cancel_reason",
   "mo.rejected_reason",
-  "mp.id as procurement_id",
   "mo.created_at",
   "mo.updated_at",
 ] as const;
@@ -201,8 +200,7 @@ export function materialsEquipmentRepository(db: Knex) {
       .leftJoin("project_phases as pp", "pp.id", "mo.phase_id")
       .leftJoin("activities as a", "a.id", "mo.activity_id")
       .leftJoin("project_documents as pd", "pd.id", "mo.document_id")
-      .leftJoin("suppliers as sup", "sup.id", "mo.supplier_id")
-      .leftJoin("material_procurements as mp", "mp.material_order_id", "mo.id");
+      .leftJoin("suppliers as sup", "sup.id", "mo.supplier_id");
   }
 
   function equipmentBase() {
@@ -275,28 +273,6 @@ export function materialsEquipmentRepository(db: Knex) {
         .where({ "a.project_id": projectId, "a.kind": "material" })
         .orderBy("a.created_at", "desc")
         .select("a.id", "a.title", "a.status", "a.resubmitted_from_id", "d.material_name");
-    },
-
-    async createMaterialProcurementFromOrder(order: MaterialOrderRow): Promise<void> {
-      await db("material_procurements")
-        .insert({
-          id: `mp_${order.id}`,
-          project_id: order.project_id,
-          material_order_id: order.id,
-          name: order.material_name,
-          purchased_at: order.delivered_at ?? order.expected_delivery_at ?? order.needed_by,
-          receipt: order.document_name ?? `Material order ${order.id}`,
-          amount: order.actual_cost,
-          thumbnail_tone: "orange",
-          sort_order: 0,
-        })
-        .onConflict("id")
-        .merge({
-          name: order.material_name,
-          purchased_at: order.delivered_at ?? order.expected_delivery_at ?? order.needed_by,
-          receipt: order.document_name ?? `Material order ${order.id}`,
-          amount: order.actual_cost,
-        });
     },
 
     listEquipmentRequests(projectId: string, bucket?: EquipmentBucket): Promise<EquipmentRequestRow[]> {

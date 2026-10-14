@@ -375,14 +375,13 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: idParams } },
     async (request) => {
       const id = request.params.id;
-      const [summary, budgetPhases, materials, milestones, ledger] = await Promise.all([
+      const [summary, budgetPhases, milestones, ledger] = await Promise.all([
         fastify.db("project_finances").where({ project_id: id }).first(),
         repo.projectCollection("budget_phases", id, "sort_order", "asc"),
-        repo.projectCollection("material_procurements", id, "sort_order", "asc"),
         repo.projectCollection("milestone_payments", id, "sort_order", "asc"),
         repo.projectCollection("payment_ledger", id, "sort_order", "asc"),
       ]);
-      return { summary: summary ?? null, budgetPhases, materials, milestones, ledger };
+      return { summary: summary ?? null, budgetPhases, milestones, ledger };
     },
   );
 

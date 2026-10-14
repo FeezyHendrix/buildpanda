@@ -7,7 +7,6 @@ import type {
   FinanceEventRow,
   FinancesRow,
   LedgerType,
-  MaterialProcurementRow,
   MilestoneDisputeRow,
   MilestonePaymentRow,
   NewCashFlowEntryRecord,
@@ -104,11 +103,6 @@ export function financesRepository(db: Knex) {
     },
     listBudgetPhases(projectId: string): Promise<BudgetPhaseRow[]> {
       return db<BudgetPhaseRow>("budget_phases")
-        .where({ project_id: projectId })
-        .orderBy("sort_order", "asc");
-    },
-    listMaterials(projectId: string): Promise<MaterialProcurementRow[]> {
-      return db<MaterialProcurementRow>("material_procurements")
         .where({ project_id: projectId })
         .orderBy("sort_order", "asc");
     },
