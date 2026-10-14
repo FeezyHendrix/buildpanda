@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { canAccess } from "@/lib/project-access-store";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
 import { tasksApi } from "@/api/tasks";
@@ -24,7 +26,7 @@ export function useTaskBoard(db: Db, projectId: string, buildingId: string, full
   const rows = useLiveQuery(tasksQuery, [tasksQuery]);
 
   useEffect(() => {
-    if (!isOnline || !buildingId) return;
+    if (!isOnline || !buildingId || !canAccess(projectId, features.tasks.read)) return;
     let cancelled = false;
     tasksApi.board(projectId, buildingId, full)
       .then((board) => {
@@ -53,6 +55,7 @@ export function useTask(db: Db, id: string) {
 export function useAssignable(projectId: string | undefined) {
   const { storageOwnerId } = useFieldSession();
   const query = usePersistentQuery({
+    permission: features.tasks.read, projectId,
     queryKey: ["tasks", projectId ?? "none", "assignable"],
     ownerId: storageOwnerId,
     queryFn: () => tasksApi.assignable(projectId!),

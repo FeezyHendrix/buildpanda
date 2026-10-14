@@ -1,7 +1,11 @@
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { asc, eq } from "drizzle-orm";
 import type { DailyLogTemplate, TemplateField } from "@/api/daily-log-templates";
 import type { Db } from "./client";
 import { dailyLogTemplates, type DailyLogTemplateRow } from "./schema";
+
+const access = repositoryAccess(features.dailyLog);
 
 export interface LocalDailyLogTemplate {
   id: string;
@@ -46,7 +50,7 @@ export const dailyLogTemplatesRepository = {
     db
       .select()
       .from(dailyLogTemplates)
-      .where(eq(dailyLogTemplates.projectId, projectId))
+      .where(access.where(db, dailyLogTemplates.projectId, eq(dailyLogTemplates.projectId, projectId)))
       .orderBy(asc(dailyLogTemplates.position)),
 
   async list(db: Db, projectId: string): Promise<LocalDailyLogTemplate[]> {
@@ -56,8 +60,8 @@ export const dailyLogTemplatesRepository = {
 
   /** The server list is the whole truth: archived or deleted forms drop out here. */
   async replaceFromServer(db: Db, projectId: string, templates: readonly DailyLogTemplate[]): Promise<void> {
-    await db.transaction((tx) => {
-      tx.delete(dailyLogTemplates).where(eq(dailyLogTemplates.projectId, projectId)).run();
+    await access.transaction(db, projectId, "read", (tx) => {
+      tx.delete(dailyLogTemplates).where(access.where(db, dailyLogTemplates.projectId, eq(dailyLogTemplates.projectId, projectId))).run();
       templates
         .filter((t) => t.active)
         .forEach((t, position) => {

@@ -1,3 +1,9 @@
+import { reviewErrors } from "@/lib/voice-missing-fields";
+import { executeVoiceAction, isExtendedProposal } from "@/lib/voice/execute";
+import type { AppliedVoiceAction } from "@/lib/voice-action-batch";
+import { useSyncState } from "@/lib/sync-provider";
+import { requireAccess } from "@/lib/project-access-store";
+import { voiceRequirement } from "@/lib/voice-access";
 import { useActivities } from "./use-activities";
 import { useCallback } from "react";
 import { dailyLogsApi } from "@/api/daily-logs";
@@ -45,7 +51,7 @@ function spokenResponses(fields: readonly TemplateField[], payload: VoiceDailyLo
   for (const field of fields) {
     const value = typed[`response:${field.id}`];
     if (value === undefined || value === null || value === "") continue;
-    out[field.id] = field.type === "yes_no" ? value === "yes" : (value as string | number);
+    out[field.id] = field.type === "yes_no" ? (value === true || value === "yes") : (value as string | number);
   }
   return out;
 }
@@ -60,6 +66,7 @@ export function useApplyProposedAction() {
   const { db } = useLocalDb();
   const { projectId } = useFieldSession();
   const { user } = useAuthGate();
+  const { isOnline } = useSyncState();
 
   const createRfi = useCreateLocalRfi();
   const addDailyEntry = useAddDailyLogEntry(db, projectId);
@@ -75,11 +82,22 @@ export function useApplyProposedAction() {
   const { can } = useProjectAccess();
 
   return useCallback(
-    async (action: ProposedAction): Promise<{ awaitingApproval?: boolean } | void> => {
+    async (action: ProposedAction): Promise<AppliedVoiceAction> => {
       const requireProject = (): string => {
         if (!projectId) throw new Error("Project is not ready yet.");
         return projectId;
       };
+
+      const ticket = requireAccess(requireProject(), voiceRequirement(action));
+      const errors = reviewErrors(action);
+      if (errors.length) throw new Error(errors.join(" "));
+      if (isExtendedProposal(action)) {
+        if (!db || !user) throw new Error("Local database is not ready yet.");
+        const result = await executeVoiceAction(action, { db, projectId: requireProject(), userId: user.id,
+          authorName: user.name ?? "Field team", online: isOnline, ticket, options: action.reviewOptions ?? {} });
+        if (result.queued) void flushOutbox(db).catch(() => undefined);
+        return result;
+      }
 
       // Edits go to the local row and the outbox, never straight to the API:
       // a crew member reviewing a note out of signal must not lose them.
@@ -94,25 +112,24 @@ export function useApplyProposedAction() {
           await createRfi(action.payload);
           return;
         case "daily_log": {
-          const { templateId, formText, bodyText } = action.payload;
+          const { templateId, templateFields, bodyText, bodyHtml } = action.payload;
           const entryBuilding = action.payload.buildingId ?? buildingId;
           if (templateId) {
-            const form = db ? (await dailyLogTemplatesRepository.list(db, requireProject())).find((t) => t.id === templateId) : undefined;
+            const form = templateFields ? { id: templateId, fields: templateFields }
+              : db ? (await dailyLogTemplatesRepository.list(db, requireProject())).find((t) => t.id === templateId) : undefined;
             if (form) {
               await addTemplateEntry(localDateIso(), {
                 template: form,
                 responses: spokenResponses(form.fields, action.payload),
-                notesHtml: bodyText.trim() ? textToParagraphHtml(bodyText.trim()) : null,
+                notesHtml: bodyHtml ?? (bodyText.trim() ? textToParagraphHtml(bodyText.trim()) : null),
                 authorName: user?.name ?? "Field team",
                 buildingId: entryBuilding,
               });
               return;
             }
-            // the form never reached this phone: keep the answers as the note
-            await addDailyEntry(localDateIso(), [formText, bodyText.trim()].filter(Boolean).join("\n"), user?.name ?? "Field team", null, entryBuilding);
-            return;
+            throw new Error("Reconnect to load this diary form before applying. Your answers are still in review.");
           }
-          await addDailyEntry(localDateIso(), bodyText, user?.name ?? "Field team", null, entryBuilding);
+          await addDailyEntry(localDateIso(), bodyText, user?.name ?? "Field team", bodyHtml ?? null, entryBuilding);
           return;
         }
         case "change_request":
@@ -123,6 +140,7 @@ export function useApplyProposedAction() {
           // like a hand-logged one. Every entry waits for a manager before it
           // counts in stock, which the review screen tells the crew.
           const { entryType, materialName, quantity, unit, stageId, reason } = action.payload;
+          if (!entryType) throw new Error("Choose the material movement type.");
           if (entryType === "USED" && !can("materials", "manage")) {
             throw new Error("Only people who manage materials can log usage. Add it to the daily log instead.");
           }
@@ -132,7 +150,7 @@ export function useApplyProposedAction() {
             unit: unit || "item",
             quantity,
             stageId: stageId ?? null,
-            notesHtml: reason ? textToParagraphHtml(reason) : null,
+            notesHtml: action.payload.notesHtml ?? (reason ? textToParagraphHtml(reason) : null),
             loggedByName: user?.name ?? "Field team",
           });
           return { awaitingApproval: true };
@@ -152,8 +170,9 @@ export function useApplyProposedAction() {
           );
           return;
         case "transition_rfi":
+          if (!action.payload.status) throw new Error("Choose the new RFI status.");
           await queueEdit((database) =>
-            rfisRepository.transitionLocal(database, requireProject(), action.payload.rfiId, action.payload.status),
+            rfisRepository.transitionLocal(database, requireProject(), action.payload.rfiId, action.payload.status!),
           );
           return;
         case "update_change_request":
@@ -197,9 +216,11 @@ export function useApplyProposedAction() {
           );
           return;
         case "update_daily_log":
+          if (action.payload.totalHours === null) throw new Error("Enter the total hours.");
           await saveDailyLog(localDateIso(), { totalHours: action.payload.totalHours, buildingId: action.payload.buildingId ?? buildingId });
           return;
         case "log_activity": {
+          if (action.payload.hoursLogged === null) throw new Error("Enter the hours worked.");
           if (!db) throw new Error("Local database is not ready yet.");
           await dailyLogsRepository.logActivityLocal(db, requireProject(), localDateIso(), {
             activityId: action.payload.activityId,
@@ -213,14 +234,14 @@ export function useApplyProposedAction() {
           return;
         }
         case "comment_rfi":
-          await addRfiComment(action.payload.rfiId, action.payload.body, user?.name ?? "Field team");
+          await addRfiComment(action.payload.rfiId, action.payload.body, user?.name ?? "Field team", action.payload.contentHtml);
           return;
         case "transition_stage": {
           if (!action.payload.stageId || !action.payload.status) {
             throw new Error("Pick a stage and a status before applying this.");
           }
           await stagesApi.update(requireProject(), action.payload.stageId, { status: action.payload.status });
-          return;
+          return { queued: false };
         }
         case "comment_change_request":
           await queueEdit(async (database) => {
@@ -235,7 +256,7 @@ export function useApplyProposedAction() {
           return;
         case "void_ledger_entry":
           await materialsLedgerApi.voidEntry(requireProject(), action.payload.entryId, action.payload.reason);
-          return;
+          return { queued: false };
         case "void_daily_log_entry":
           await dailyLogsApi.voidEntry(
             requireProject(),
@@ -243,7 +264,7 @@ export function useApplyProposedAction() {
             action.payload.entryId,
             action.payload.reason,
           );
-          return;
+          return { queued: false };
         default: {
           const unhandled: never = action;
           throw new Error(`Unsupported voice action: ${JSON.stringify(unhandled)}`);
@@ -261,6 +282,7 @@ export function useApplyProposedAction() {
       addRfiComment,
       logMaterial,
       can,
+      isOnline,
       db,
       projectId,
       user,

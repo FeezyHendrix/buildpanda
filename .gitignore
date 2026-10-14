@@ -184,3 +184,12 @@ branch_structure.json
 !/packages/mobile/scripts/stage-scope.test.mjs
 !/packages/mobile/scripts/messaging.test.mjs
 !/packages/mobile/scripts/sqlite-worker.test.mjs
+
+# Mobile RBAC and voice contracts: explicit regression suite entry points.
+!/packages/backend/src/lib/mobile-rbac.test.ts
+!/packages/backend/src/modules/panda-ai/voice-report/coverage.test.ts
+!/packages/backend/src/modules/panda-ai/voice-report/context-db.test.ts
+!/packages/mobile/scripts/rbac/policies.test.mjs
+!/packages/mobile/scripts/rbac/repositories.test.mjs
+!/packages/mobile/scripts/rbac/session.test.mjs
+!/packages/mobile/scripts/voice/execution.test.mjs

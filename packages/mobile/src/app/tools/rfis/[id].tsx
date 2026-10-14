@@ -1,3 +1,7 @@
+import { useProjectAccess } from "@/lib/project-access-provider";
+import { anyOf } from "@/lib/access-requirement";
+import { features } from "@/lib/feature-access";
+import { PermissionGate, withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -106,6 +110,7 @@ function OfficialToggle({ value, onChange }: { value: boolean; onChange: (next: 
 
 function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; rfiId: string }) {
   const { data: rfi } = useLocalRfi(db, rfiId);
+  const { allows } = useProjectAccess();
   const { data: comments, isPending: commentsPending } = useRfiComments(db, projectId, rfiId);
   const { data: session } = useSession();
   const addComment = useAddRfiComment(db, projectId);
@@ -119,7 +124,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
 
   const bodyText = htmlToText(bodyHtml);
   const canSend = bodyText.length > 0 && !sending;
-  const canRespondOfficially = rfi ? RFI_RESPONDABLE_STATUSES.includes(rfi.status) : false;
+  const canRespondOfficially = rfi ? RFI_RESPONDABLE_STATUSES.includes(rfi.status) && allows(features.rfis.actions.officialResponse) : false;
   const postOfficial = official && canRespondOfficially;
 
   async function handleSend() {
@@ -156,7 +161,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
       title="RFI"
       onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton
+        <HeaderIconButton permission={features.rfis.actions.edit}
           icon="create-outline"
           label="Edit RFI"
           onPress={() => router.push(`/tools/rfis/edit/${rfiId}` as never)}
@@ -164,7 +169,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
       }
       scroll
       footer={
-        <View className="gap-2">
+        <PermissionGate permission={anyOf(features.rfis.actions.comment, features.rfis.actions.officialResponse)}><View className="gap-2">
           {error ? (
             <Text tone="danger" className="text-xs">
               {error}
@@ -179,6 +184,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
           />
           {canRespondOfficially ? <OfficialToggle value={official} onChange={setOfficial} /> : null}
           <Button
+            permission={postOfficial ? features.rfis.actions.officialResponse : features.rfis.actions.comment}
             onPress={handleSend}
             disabled={!canSend}
             loading={sending}
@@ -186,7 +192,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
           >
             {postOfficial ? "Post official response" : "Send response"}
           </Button>
-        </View>
+        </View></PermissionGate>
       }
     >
       {rfi ? (
@@ -207,12 +213,12 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
             officialResponsePending={officialComment?.isPendingSync ?? false}
           />
 
-          <RfiStatusActions
+          <PermissionGate permission={features.rfis.actions.transition}><RfiStatusActions
             status={rfi.status}
             notYetOnServer={rfi.id.startsWith("local_")}
             busy={transitioning}
             onTransition={handleTransition}
-          />
+          /></PermissionGate>
 
           <View>
             <Text weight="bold" className="pb-2 text-base">
@@ -236,7 +242,7 @@ function RfiDetailScreen({ db, projectId, rfiId }: { db: Db; projectId: string; 
   );
 }
 
-export default function RfiDetail() {
+function RfiDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -252,3 +258,5 @@ export default function RfiDetail() {
   }
   return <RfiDetailScreen db={db} projectId={projectId} rfiId={id} />;
 }
+
+export default withProjectPermission(RfiDetail, "/tools/rfis/[id]");

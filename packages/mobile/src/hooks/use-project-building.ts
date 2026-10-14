@@ -1,3 +1,4 @@
+import { features } from "@/lib/feature-access";
 import { useEffect } from "react";
 import { buildingsApi, realBuildings } from "@/api/buildings";
 import { useFieldSession } from "@/lib/field-session";
@@ -21,6 +22,8 @@ export function useProjectBuilding() {
   const query = usePersistentQuery({
     queryKey: ["projects", projectId, "buildings"],
     ownerId: storageOwnerId,
+    projectId,
+    permission: features.buildings.read,
     queryFn: () => buildingsApi.list(projectId!),
     enabled: Boolean(projectId),
   });

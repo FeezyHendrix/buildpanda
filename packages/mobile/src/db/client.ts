@@ -1,6 +1,8 @@
 import { drizzle } from "drizzle-orm/expo-sqlite";
 import { openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 import * as schema from "./schema";
+import { setDbOwner } from "./ownership";
+export { getDbOwner } from "./ownership";
 
 function createDatabase(raw: SQLiteDatabase) {
   return drizzle(raw, { schema });
@@ -10,7 +12,6 @@ export type Db = ReturnType<typeof createDatabase>;
 
 // Keep unsynced work in its owner's file when another person signs in.
 const databases = new Map<string, Db>();
-const owners = new WeakMap<Db, string>();
 const opening = new Map<string, Promise<Db>>();
 
 function fileNameFor(ownerId: string): string {
@@ -29,7 +30,7 @@ export function openDb(ownerId: string): Promise<Db> {
       await raw.execAsync("PRAGMA foreign_keys = ON;");
       const db = createDatabase(raw);
       databases.set(ownerId, db);
-      owners.set(db, ownerId);
+      setDbOwner(db, ownerId);
       return db;
     } catch (error) {
       await raw.closeAsync().catch(() => undefined);
@@ -38,9 +39,4 @@ export function openDb(ownerId: string): Promise<Db> {
   })().finally(() => opening.delete(ownerId));
   opening.set(ownerId, request);
   return request;
-}
-
-/** Lets a running sync stop when the device switches accounts. */
-export function getDbOwner(db: Db): string | undefined {
-  return owners.get(db);
 }

@@ -1,3 +1,4 @@
+import { projectAccess } from "@/lib/project-access-store";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
 import { updatesApi } from "@/api/updates";
@@ -46,7 +47,7 @@ export function useProjectUpdates(db: Db, projectId: string, scoped = true) {
   const liveMedia = useLiveQuery(mediaQuery, [mediaQuery]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "updates", "view")) return;
     let cancelled = false;
     void (async () => {
       if (await hasPendingCreates(db, UPDATES_RESOURCE)) return;

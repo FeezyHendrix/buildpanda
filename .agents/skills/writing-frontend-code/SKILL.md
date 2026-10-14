@@ -240,9 +240,9 @@ mutation or `manage` grants every other action. Preserve record-level rules.
 
 `ProjectPermissionGate` / `OrgPermissionGate` are existing guard integration
 points. Verify their loading, error, and missing-access behavior when using
-them. **Known gap:** helpers in `lib/project-types.ts` currently allow missing
-access; this is not the required behavior. Deny access until a valid permission
-map exists, including before mounting components that read cached data.
+them. The helpers re-exported from `lib/project-types.ts` deny missing protected
+access and require the exact action. Preserve this contract, including before
+mounting components that read cached data.
 
 ```tsx
 // A resource guard inside the authenticated project route.

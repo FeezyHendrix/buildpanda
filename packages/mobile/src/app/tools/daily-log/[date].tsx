@@ -1,3 +1,6 @@
+import { useProjectAccess } from "@/lib/project-access-provider";
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -75,6 +78,8 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
   const summaryValue = summary ?? day?.summary ?? "";
 
   const isVoided = day?.isVoided ?? false;
+  const { allows } = useProjectAccess();
+  const editable = !isVoided && allows(features.dailyLog.actions.create);
 
   async function handleSave() {
     setSaving(true);
@@ -134,8 +139,8 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
         </View>
       ) : null}
 
-      <View className={cn("gap-5", isVoided && "opacity-50")} pointerEvents={isVoided ? "none" : "auto"}>
-        <OptionRow
+      <View className={cn("gap-5", isVoided && "opacity-50")} pointerEvents={editable ? "auto" : "none"}>
+        <OptionRow disabled={!editable}
           label="Weather"
           options={WEATHER_LABELS}
           value={weatherValue ? WEATHER_CONDITION_LABELS[weatherValue] : ""}
@@ -144,7 +149,7 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
             setWeather(weatherValue && WEATHER_CONDITION_LABELS[weatherValue] === label ? null : weatherFromLabel(label))
           }
         />
-        <Field
+        <Field editable={editable}
           label="Temperature °C"
           value={temperatureValue}
           onChangeText={setTemperature}
@@ -152,14 +157,14 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
           placeholder="Not recorded"
         />
         <View className="flex-row gap-3">
-          <Field
+          <Field editable={editable}
             label="Workers expected"
             value={workersExpectedValue}
             onChangeText={setWorkersExpected}
             keyboardType="number-pad"
             className="flex-1"
           />
-          <Field
+          <Field editable={editable}
             label="Workers present"
             value={workersPresentValue}
             onChangeText={setWorkersPresent}
@@ -167,13 +172,13 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
             className="flex-1"
           />
         </View>
-        <Field
+        <Field editable={editable}
           label="Total hours"
           value={hoursValue}
           onChangeText={setHours}
           keyboardType="number-pad"
         />
-        <Field
+        <Field editable={editable}
           label="Summary"
           value={summaryValue}
           onChangeText={setSummary}
@@ -183,7 +188,7 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
           className="min-h-24"
         />
 
-        <Button onPress={handleSave} loading={saving}>
+        <Button permission={features.dailyLog.actions.create} onPress={handleSave} loading={saving}>
           Save log
         </Button>
       </View>
@@ -193,7 +198,7 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
           <Text weight="bold" className="text-base">
             Activities logged
           </Text>
-          {!isVoided ? (
+          {editable ? (
             <Pressable
               onPress={() => router.push(`/tools/daily-log/log-activity?date=${logDate}` as never)}
               accessibilityRole="button"
@@ -250,7 +255,7 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
           </Card>
         )}
 
-        {!isVoided && form ? (
+        {editable && form ? (
           <Button
             onPress={() => router.push(`/tools/daily-log/fill?date=${logDate}&templateId=${form.id}` as never)}
             accessibilityLabel={`Fill ${form.name}`}
@@ -259,7 +264,7 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
           </Button>
         ) : null}
 
-        {!isVoided ? (
+        {editable ? (
           <View className="gap-2 pt-1">
             {form ? <Text tone="secondary" className="text-[13px]">Or add a quick note</Text> : null}
             <RichTextEditor
@@ -280,7 +285,7 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
   );
 }
 
-export default function DailyLogDay() {
+function DailyLogDay() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const { projectId } = useFieldSession();
   const { buildingId, isLoading: buildingsLoading, refetch: reloadBuildings } = useProjectBuilding();
@@ -302,3 +307,5 @@ export default function DailyLogDay() {
     </Page>
   );
 }
+
+export default withProjectPermission(DailyLogDay, "/tools/daily-log/[date]");

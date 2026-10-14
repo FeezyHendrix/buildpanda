@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { isIsoDate, localIsoDate } from "@/lib/dates";
 import { DateField } from "@/components/molecules/date-field";
 import { goBack } from "@/lib/navigation";
@@ -120,8 +121,10 @@ function NewLookAheadForm() {
   );
 }
 
-export default function NewLookAhead() {
+function NewLookAhead() {
   const { projectId } = useFieldSession();
   const { buildingId } = useProjectBuilding();
   return <NewLookAheadForm key={`${projectId}:${buildingId}`} />;
 }
+
+export default withProjectPermission(NewLookAhead, "/tools/look-aheads/new");

@@ -1,4 +1,6 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { randomUUID } from "expo-crypto";
 import type { ProjectUpdate, UpdateCategory } from "@/api/updates";
 import { discardStagedMedia, stageMedia } from "@/lib/stage-media";
@@ -10,6 +12,8 @@ import {
   type ProjectUpdateMediaRow,
   type ProjectUpdateRow,
 } from "./schema";
+
+const access = repositoryAccess(features.updates);
 
 export const UPDATES_RESOURCE = "updates";
 
@@ -147,7 +151,7 @@ export const updatesRepository = {
     db
       .select()
       .from(projectUpdates)
-      .where(eq(projectUpdates.projectId, projectId))
+      .where(access.where(db, projectUpdates.projectId, eq(projectUpdates.projectId, projectId)))
       .orderBy(desc(projectUpdates.createdAt)),
 
   /** Every attachment on the project, so the feed can count and preview them. */
@@ -156,19 +160,20 @@ export const updatesRepository = {
       .select(mediaColumns)
       .from(projectUpdateMedia)
       .innerJoin(projectUpdates, eq(projectUpdateMedia.updateId, projectUpdates.id))
-      .where(eq(projectUpdates.projectId, projectId))
+      .where(access.where(db, projectUpdates.projectId, eq(projectUpdates.projectId, projectId)))
       .orderBy(asc(projectUpdateMedia.position)),
 
   async findById(db: Db, id: string): Promise<ProjectUpdateRow | undefined> {
-    const [row] = await db.select().from(projectUpdates).where(eq(projectUpdates.id, id)).limit(1);
+    const [row] = await db.select().from(projectUpdates).where(access.where(db, projectUpdates.projectId, eq(projectUpdates.id, id))).limit(1);
     return row;
   },
 
   async mediaFor(db: Db, updateId: string): Promise<ProjectUpdateMediaRow[]> {
     return db
-      .select()
+      .select(mediaColumns)
       .from(projectUpdateMedia)
-      .where(eq(projectUpdateMedia.updateId, updateId))
+      .innerJoin(projectUpdates, eq(projectUpdateMedia.updateId, projectUpdates.id))
+      .where(access.where(db, projectUpdates.projectId, eq(projectUpdateMedia.updateId, updateId)))
       .orderBy(asc(projectUpdateMedia.position));
   },
 
@@ -178,7 +183,9 @@ export const updatesRepository = {
    * rather than re-sending the bytes it already got up.
    */
   async setMediaUrl(db: Db, mediaId: string, url: string): Promise<void> {
-    await db.update(projectUpdateMedia).set({ url }).where(eq(projectUpdateMedia.id, mediaId));
+    await db.update(projectUpdateMedia).set({ url }).where(and(eq(projectUpdateMedia.id, mediaId),
+      inArray(projectUpdateMedia.updateId, db.select({ id: projectUpdates.id }).from(projectUpdates)
+        .where(access.where(db, projectUpdates.projectId)))));
   },
 
   /**
@@ -192,12 +199,13 @@ export const updatesRepository = {
     projectId: string,
     rows: readonly ProjectUpdate[],
   ): Promise<void> {
+    access.require(db, projectId);
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       const cached = new Map(
         tx.select().from(projectUpdates)
-          .where(inArray(projectUpdates.id, rows.map((row) => row.id)))
+          .where(access.where(db, projectUpdates.projectId, inArray(projectUpdates.id, rows.map((row) => row.id))))
           .all().map((row) => [row.id, row]),
       );
       for (const row of rows) {
@@ -224,6 +232,7 @@ export const updatesRepository = {
    * one update cannot overwrite each other.
    */
   async createLocal(db: Db, projectId: string, input: LocalUpdateInput): Promise<string> {
+    access.require(db, projectId, "create");
     const id = localId();
     const staged: {
       id: string;
@@ -247,7 +256,7 @@ export const updatesRepository = {
         });
       });
 
-      await db.transaction((tx) => {
+      await access.transaction(db, projectId, "create", (tx) => {
         tx.insert(projectUpdates).values({
           id,
           projectId,
@@ -308,11 +317,12 @@ export const updatesRepository = {
     localRowId: string,
     server: ProjectUpdate,
   ): Promise<void> {
+    access.require(db, projectId);
     const staged = await this.mediaFor(db, localRowId);
     const values = fromServer(projectId, server, Date.now());
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       tx.delete(projectUpdateMedia).where(eq(projectUpdateMedia.updateId, localRowId)).run();
-      tx.delete(projectUpdates).where(eq(projectUpdates.id, localRowId)).run();
+      tx.delete(projectUpdates).where(access.where(db, projectUpdates.projectId, eq(projectUpdates.id, localRowId))).run();
       tx
         .insert(projectUpdates)
         .values({ id: server.id, ...values })

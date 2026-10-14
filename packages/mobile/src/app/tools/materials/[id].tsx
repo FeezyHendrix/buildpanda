@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -46,7 +48,7 @@ function ApprovalLink({ approvalId, title, status }: { approvalId: string | null
 
 function MaterialDetail({ db, orderId }: { db: Db; orderId: string }) {
   const { data: order } = useLocalMaterialOrder(db, orderId);
-  const { can } = useProjectAccess();
+  const { allows } = useProjectAccess();
 
   if (!order) {
     return (
@@ -59,7 +61,7 @@ function MaterialDetail({ db, orderId }: { db: Db; orderId: string }) {
   const receivable = canRecordDelivery(order.status) && !order.id.startsWith("local_");
   // Signing for goods books stock and cost, so it is the approver's act; the
   // crew logs what arrived and a manager accepts it onto the order.
-  const canSign = can("materials", "approve");
+  const canSign = allows(features.materialOrders.actions.receive);
 
   return (
     <View className="gap-5">
@@ -106,7 +108,7 @@ function MaterialDetail({ db, orderId }: { db: Db; orderId: string }) {
 
       {receivable && canSign ? (
         <Button onPress={() => router.push(`/tools/materials/deliver/${order.id}` as never)}>Record a delivery</Button>
-      ) : receivable && can("materials", "request") ? (
+      ) : receivable && allows(features.materialLog.actions.create) ? (
         <View className="gap-2">
           <Button variant="secondary" onPress={() => router.push(`/tools/material-log/new?orderId=${order.id}` as never)}>
             Log a delivery
@@ -118,7 +120,7 @@ function MaterialDetail({ db, orderId }: { db: Db; orderId: string }) {
   );
 }
 
-export default function MaterialOrderDetail() {
+function MaterialOrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -149,8 +151,8 @@ export default function MaterialOrderDetail() {
       rightButtons={
         id ? (
           <>
-            <HeaderIconButton icon="create-outline" label="Edit material order" onPress={() => router.push(`/tools/materials/edit/${id}` as never)} />
-            <HeaderIconButton icon="trash-outline" label="Delete material order" onPress={confirmDelete} />
+            <HeaderIconButton permission={features.materialOrders.actions.edit} icon="create-outline" label="Edit material order" onPress={() => router.push(`/tools/materials/edit/${id}` as never)} />
+            <HeaderIconButton permission={features.materialOrders.actions.remove} icon="trash-outline" label="Delete material order" onPress={confirmDelete} />
           </>
         ) : null
       }
@@ -163,3 +165,5 @@ export default function MaterialOrderDetail() {
     </Page>
   );
 }
+
+export default withProjectPermission(MaterialOrderDetail, "/tools/materials/[id]");

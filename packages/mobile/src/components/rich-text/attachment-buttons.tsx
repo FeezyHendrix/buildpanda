@@ -1,3 +1,5 @@
+import { uploadAccess } from "@/lib/feature-access";
+import { useProjectAccess } from "@/lib/project-access-provider";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -45,6 +47,7 @@ async function pickDocument(): Promise<PickedAttachment | null> {
 }
 
 export function AttachmentButtons({ projectId, onUploaded, onError }: Props) {
+  const { allows } = useProjectAccess();
   const [busy, setBusy] = useState<"camera" | "library" | "file" | null>(null);
 
   async function handlePick(kind: "camera" | "library" | "file") {
@@ -62,6 +65,7 @@ export function AttachmentButtons({ projectId, onUploaded, onError }: Props) {
     }
   }
 
+  if (!allows(uploadAccess)) return null;
   return (
     <View className="flex-row flex-wrap gap-2 border-t border-hairline bg-surface px-3 py-2">
       <AttachmentButton icon="camera-outline" label="Camera" busy={busy === "camera"} onPress={() => handlePick("camera")} />

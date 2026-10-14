@@ -1,14 +1,29 @@
+import type { AccessRequirement } from "@/lib/access-requirement";
+import { messagingAccess, uploadAccess } from "@/lib/feature-access";
+import { projectAccess, requireAccess, requireCurrentAccess, revokeProjectAccess } from "@/lib/project-access-store";
 import { randomUUID } from "expo-crypto";
 import { Directory, File, Paths } from "expo-file-system";
 import { FileSystemUploadType, uploadAsync } from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
-import { ApiError } from "./client";
+import { ApiError, request } from "./client";
 
 export interface UploadedFile {
   readonly id: string;
   readonly fileName: string;
   readonly sizeBytes: number;
+}
+
+export async function verifyMessageAttachment(fileId: string): Promise<void> {
+  const ticket = requireAccess(projectAccess.getState().scope?.projectId ?? "", messagingAccess);
+  try {
+    await request(`/files/${encodeURIComponent(fileId)}`);
+    requireCurrentAccess(ticket);
+  } catch (error) {
+    requireCurrentAccess(ticket);
+    if (error instanceof ApiError && [401, 403].includes(error.status)) revokeProjectAccess();
+    throw error;
+  }
 }
 
 // The multipart filename is the last path segment of the uploaded URI, so the
@@ -28,7 +43,9 @@ export async function uploadProjectFile(
   uri: string,
   fileName: string,
   mimeType: string,
+  permission: AccessRequirement = uploadAccess,
 ): Promise<UploadedFile> {
+  const ticket = requireAccess(projectId, permission);
   const headers: Record<string, string> = {};
   if (Platform.OS !== "web") headers.cookie = authClient.getCookie();
 
@@ -47,6 +64,8 @@ export async function uploadProjectFile(
       headers,
     });
 
+    requireCurrentAccess(ticket);
+    if ([401, 403].includes(result.status)) revokeProjectAccess();
     if (result.status < 200 || result.status >= 300) {
       // carries the status so the outbox can tell a permanent rejection from a dropped connection
       throw new ApiError(result.status, `Upload failed (${result.status})`);

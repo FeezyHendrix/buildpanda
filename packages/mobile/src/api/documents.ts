@@ -40,6 +40,11 @@ export interface DocumentVersion {
 }
 
 export const documentsApi = {
+  rename: (projectId: string, documentId: string, fileName: string) =>
+    request<ProjectDocument>(`/projects/${projectId}/documents/${documentId}`, { method: "PUT", body: JSON.stringify({ fileName }) }),
+  addVersion: (projectId: string, documentId: string, body: { fileId: string; revisionLabel?: string; notes?: string }) =>
+    request<DocumentVersion>(`/projects/${projectId}/documents/${documentId}/versions`, { method: "POST", body: JSON.stringify(body) }),
+  remove: (projectId: string, documentId: string) => request<void>(`/projects/${projectId}/documents/${documentId}`, { method: "DELETE" }),
   categories: (projectId: string) =>
     request<DocumentCategory[]>(`/projects/${projectId}/documents/categories`),
 

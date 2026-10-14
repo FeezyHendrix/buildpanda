@@ -1,3 +1,8 @@
+import { approvalTierStatus } from "@/lib/api-access";
+import { requireMaterialApproval } from "./record-permissions";
+import { canRecordDelivery } from "@/api/materials";
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { remapQueuedRecord } from "./sync-write-state";
 import { randomUUID } from "expo-crypto";
 import { desc, eq } from "drizzle-orm";
@@ -24,6 +29,8 @@ function serverValues(row: MaterialOrder) {
     deliveredQuantity: row.deliveredQuantity ?? 0,
   };
 }
+
+const access = repositoryAccess(features.materialOrders);
 
 export function toMaterialOrder(row: MaterialOrderRow) {
   const delivered = row.deliveredQuantity + row.pendingDeliveryQty;
@@ -54,16 +61,18 @@ export const materialsRepository = {
     db
       .select()
       .from(materialOrders)
-      .where(eq(materialOrders.projectId, projectId))
+      .where(access.where(db, materialOrders.projectId, eq(materialOrders.projectId, projectId)))
       .orderBy(desc(materialOrders.updatedAt)),
 
   /** One row for a detail or edit screen; re-runs only when that row changes. */
   byIdQuery: (db: Db, id: string) =>
-    db.select().from(materialOrders).where(eq(materialOrders.id, id)).limit(1),
+    db.select().from(materialOrders).where(access.where(db, materialOrders.projectId, eq(materialOrders.id, id))).limit(1),
 
   async createLocal(db: Db, projectId: string, input: CreateMaterialOrderInput): Promise<string> {
+    access.require(db, projectId, "edit");
+    if (approvalTierStatus(input.status)) requireMaterialApproval(db, projectId);
     const id = `local_${randomUUID()}`;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx.insert(materialOrders).values({
         id,
         projectId,
@@ -91,13 +100,16 @@ export const materialsRepository = {
   },
 
   async markSynced(db: Db, id: string): Promise<void> {
-    await db.update(materialOrders).set({ isPendingSync: false }).where(eq(materialOrders.id, id));
+    await db.update(materialOrders).set({ isPendingSync: false }).where(access.where(db, materialOrders.projectId, eq(materialOrders.id, id)));
   },
 
   /** Removes the row locally and queues the push in one transaction. */
   async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
-    await db.transaction((tx) => {
-      tx.delete(materialOrders).where(eq(materialOrders.id, id)).run();
+    access.require(db, projectId, "edit");
+    access.record(db, materialOrders, id, projectId);
+    requireMaterialApproval(db, projectId);
+    await access.transaction(db, projectId, "edit", (tx) => {
+      tx.delete(materialOrders).where(access.where(db, materialOrders.projectId, eq(materialOrders.id, id))).run();
       enqueueDelete(tx, "material-orders", id, projectId, randomUUID());
     });
   },
@@ -118,10 +130,13 @@ export const materialsRepository = {
     id: string,
     patch: Partial<CreateMaterialOrderInput>,
   ): Promise<void> {
+    access.require(db, projectId, "edit");
+    access.record(db, materialOrders, id, projectId);
+    if (approvalTierStatus(patch.status)) requireMaterialApproval(db, projectId);
     const { status, ...fields } = patch;
     const hasFieldEdit = Object.values(fields).some((value) => value !== undefined);
 
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "edit", (tx) => {
       tx
         .update(materialOrders)
         .set({
@@ -136,7 +151,7 @@ export const materialsRepository = {
           isPendingSync: true,
           updatedAt: Date.now(),
         })
-        .where(eq(materialOrders.id, id)).run();
+        .where(access.where(db, materialOrders.projectId, eq(materialOrders.id, id))).run();
 
       if (hasFieldEdit) {
         enqueueUpdate(tx, "material-orders", id, projectId, randomUUID());
@@ -154,11 +169,12 @@ export const materialsRepository = {
   },
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: MaterialOrder) {
-    await db.transaction((tx) => {
-      const [local] = tx.select().from(materialOrders).where(eq(materialOrders.id, localId)).limit(1).all();
+    access.require(db, projectId);
+    await access.transaction(db, projectId, "read", (tx) => {
+      const [local] = tx.select().from(materialOrders).where(access.where(db, materialOrders.projectId, eq(materialOrders.id, localId))).limit(1).all();
       const hasEdits = remapQueuedRecord(tx, "material-orders", localId, server.id);
       if (!local) return;
-      tx.delete(materialOrders).where(eq(materialOrders.id, localId)).run();
+      tx.delete(materialOrders).where(access.where(db, materialOrders.projectId, eq(materialOrders.id, localId))).run();
       const values = {
         projectId,
         ...serverValues(server),
@@ -178,9 +194,10 @@ export const materialsRepository = {
   },
 
   async upsertFromServer(db: Db, projectId: string, rows: readonly MaterialOrder[]) {
+    access.require(db, projectId);
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       for (const row of rows) {
         tx
           .insert(materialOrders)
@@ -199,9 +216,10 @@ export const materialsRepository = {
    * next sync add up and go as one; the order shows them at once.
    */
   async recordDeliveryLocal(db: Db, projectId: string, id: string, quantity: number, note: string | null): Promise<void> {
-    await db.transaction((tx) => {
-      const [row] = tx.select().from(materialOrders).where(eq(materialOrders.id, id)).limit(1).all();
+    await access.transaction(db, projectId, "receive", (tx) => {
+      const [row] = tx.select().from(materialOrders).where(access.where(db, materialOrders.projectId, eq(materialOrders.id, id))).limit(1).all();
       if (!row) throw new Error("This order is no longer on this device.");
+      if (!canRecordDelivery(row.status) || id.startsWith("local_") || !Number.isFinite(quantity) || quantity <= 0) throw new Error("This order cannot receive this delivery.");
       const pending = row.pendingDeliveryQty + quantity;
       const delivered = row.deliveredQuantity + pending;
       tx.update(materialOrders).set({
@@ -210,7 +228,7 @@ export const materialsRepository = {
         status: delivered >= row.quantity ? "Delivered" : "PartiallyDelivered",
         isPendingSync: true,
         updatedAt: Date.now(),
-      }).where(eq(materialOrders.id, id)).run();
+      }).where(access.where(db, materialOrders.projectId, eq(materialOrders.id, id))).run();
       reviveOrQueue(tx, { resource: "material-orders", entityId: id, projectId, operation: "delivery", newId: randomUUID() });
     });
   },
@@ -222,11 +240,11 @@ export const materialsRepository = {
       pendingDeliveryQty: 0,
       pendingDeliveryNote: null,
       updatedAt: Date.now(),
-    }).where(eq(materialOrders.id, id));
+    }).where(access.where(db, materialOrders.projectId, eq(materialOrders.id, id)));
   },
 
   findById: async (db: Db, id: string) => {
-    const [row] = await db.select().from(materialOrders).where(eq(materialOrders.id, id)).limit(1);
+    const [row] = await db.select().from(materialOrders).where(access.where(db, materialOrders.projectId, eq(materialOrders.id, id))).limit(1);
     return row;
   },
 };

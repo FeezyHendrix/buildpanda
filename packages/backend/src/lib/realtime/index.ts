@@ -36,6 +36,8 @@ interface Socket {
   userId: string;
   send: (data: string) => void;
   channels: Set<string>;
+  authorize?: (payload: RealtimePayload) => Promise<boolean>;
+  delivery: Promise<void>;
 }
 
 const REDIS_CHANNEL = "buildpanda:realtime";
@@ -72,13 +74,14 @@ export class RealtimeHub {
     }
   }
 
-  register(userId: string, ws: WebSocket): Socket {
+  register(userId: string, ws: WebSocket, authorize?: Socket["authorize"]): Socket {
     const socket: Socket = {
       userId,
       send: (data) => {
         if (ws.readyState === ws.OPEN) ws.send(data);
       },
       channels: new Set(),
+      authorize, delivery: Promise.resolve(),
     };
     this.sockets.add(socket);
     const set = this.byUser.get(userId) ?? new Set<Socket>();
@@ -125,14 +128,25 @@ export class RealtimeHub {
   private deliverLocal(payload: RealtimePayload): void {
     const raw = JSON.stringify(payload);
     if (payload.userId) {
-      for (const socket of this.byUser.get(payload.userId) ?? []) socket.send(raw);
+      for (const socket of this.byUser.get(payload.userId) ?? []) this.sendAuthorized(socket, raw, payload);
       return;
     }
     if (payload.channelId) {
       for (const socket of this.sockets) {
-        if (socket.channels.has(payload.channelId)) socket.send(raw);
+        if (socket.channels.has(payload.channelId)) this.sendAuthorized(socket, raw, payload);
       }
     }
+  }
+
+  private sendAuthorized(socket: Socket, raw: string, payload: RealtimePayload): void {
+    if (!socket.authorize) { socket.send(raw); return; }
+    // Preserve message order while authorization reads the current grants.
+    socket.delivery = socket.delivery.then(async () => {
+      if (!this.sockets.has(socket)) return;
+      if (await socket.authorize!(payload)) {
+        if (this.sockets.has(socket) && (!payload.channelId || payload.userId || socket.channels.has(payload.channelId))) socket.send(raw);
+      } else if (payload.channelId) socket.channels.delete(payload.channelId);
+    }).catch((error: unknown) => this.logger.error({ err: error }, "Realtime authorization failed"));
   }
 
   async close(): Promise<void> {

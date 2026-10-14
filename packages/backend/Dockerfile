@@ -1,3 +1,4 @@
+# Build from the repository root: docker build -f packages/backend/Dockerfile .
 FROM node:22-bookworm-slim AS base
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -7,18 +8,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV _JAVA_OPTIONS="-Djava.awt.headless=true"
 
 FROM base AS dev
-COPY package.json ./
+COPY packages/voice-actions /voice-actions
+COPY packages/backend/package.json ./
 # RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
 RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps
-COPY . ./
+COPY packages/backend ./
 EXPOSE 3000
 CMD ["npx", "tsx", "watch", "src/server.ts"]
 
 FROM base AS build
-COPY package.json ./
+COPY packages/voice-actions /voice-actions
+COPY packages/backend/package.json ./
 # RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
 RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps
-COPY . ./
+COPY packages/backend ./
 # No entry list here: a positional argument replaces the `entry` map in
 # tsup.config.ts, which is what silently dropped the calculation worker from a
 # deployed image. `--no-dts` only skips declarations nothing in the image reads.
@@ -30,6 +33,7 @@ FROM base AS prod
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/package.json ./
+COPY --from=build /voice-actions /voice-actions
 RUN npm install --omit=dev --include=optional --os=linux --cpu=x64 --libc=glibc
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/knexfile.ts ./knexfile.ts

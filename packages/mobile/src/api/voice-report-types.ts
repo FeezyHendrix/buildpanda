@@ -1,11 +1,12 @@
-import type { TemplateResponses } from "./daily-log-templates";
+import type { ExtendedAction, VoiceOptions, VoiceReviewField } from "@buildpanda/voice-actions";
+import type { TemplateField, TemplateResponses } from "./daily-log-templates";
 import type { UpsertChangeRequestInput } from "./change-requests";
 import type { CreateLookAheadInput } from "./look-aheads";
 import type { LogMaterialEntryInput } from "./materials-ledger";
 import type { CreateMaterialOrderInput } from "./materials";
 import type { RfiStatusTransition, UpsertRfiInput } from "./rfis";
 
-export type MissingFieldType = "text" | "number" | "date" | "select";
+export type MissingFieldType = VoiceReviewField["type"];
 
 export interface MissingFieldOption {
   value: string;
@@ -14,12 +15,7 @@ export interface MissingFieldOption {
 
 // Mirrors the backend contract: a required field the speaker never said, which
 // the review screen collects before the action may be applied.
-export interface MissingField {
-  name: string;
-  label: string;
-  type: MissingFieldType;
-  options?: MissingFieldOption[];
-}
+export interface MissingField extends VoiceReviewField {}
 
 export interface StageTransitionPayload {
   stageId: string | null;
@@ -29,23 +25,25 @@ export interface StageTransitionPayload {
 /** A diary note, or, when the project has a daily log form, that form filled from the speech. */
 export interface VoiceDailyLogPayload {
   bodyText: string;
+  bodyHtml?: string;
   buildingId?: string | null;
   templateId?: string | null;
   templateName?: string;
+  templateFields?: TemplateField[];
   responses?: TemplateResponses;
   /** The answers as readable text, checked by the server against the form. */
   formText?: string;
 }
 
-export type DraftAction =
+export type LegacyDraftAction =
   | { kind: "rfi"; title: string; summary: string; payload: UpsertRfiInput }
   | { kind: "daily_log"; title: string; summary: string; payload: VoiceDailyLogPayload }
   | { kind: "change_request"; title: string; summary: string; payload: UpsertChangeRequestInput }
-  | { kind: "material_log"; title: string; summary: string; payload: LogMaterialEntryInput }
+  | { kind: "material_log"; title: string; summary: string; payload: Omit<LogMaterialEntryInput, "entryType"> & { entryType: LogMaterialEntryInput["entryType"] | null } }
   | { kind: "material_order"; title: string; summary: string; payload: CreateMaterialOrderInput }
   | { kind: "look_ahead"; title: string; summary: string; payload: CreateLookAheadInput }
   | { kind: "update_rfi"; title: string; summary: string; payload: { rfiId: string; patch: Partial<UpsertRfiInput> } }
-  | { kind: "transition_rfi"; title: string; summary: string; payload: { rfiId: string; status: RfiStatusTransition } }
+  | { kind: "transition_rfi"; title: string; summary: string; payload: { rfiId: string; status: RfiStatusTransition | null } }
   | {
       kind: "update_change_request";
       title: string;
@@ -67,7 +65,7 @@ export type DraftAction =
       payload: { lookAheadId: string; patch: Partial<CreateLookAheadInput> };
     }
   | { kind: "delete_look_ahead"; title: string; summary: string; payload: { lookAheadId: string } }
-  | { kind: "update_daily_log"; title: string; summary: string; payload: { totalHours: number; buildingId?: string | null } }
+  | { kind: "update_daily_log"; title: string; summary: string; payload: { totalHours: number | null; buildingId?: string | null } }
   | {
       kind: "log_activity";
       title: string;
@@ -75,12 +73,12 @@ export type DraftAction =
       payload: {
         activityId: string;
         activityName: string;
-        hoursLogged: number;
+        hoursLogged: number | null;
         delayReasonCode?: string | null;
         delayNote?: string | null;
       };
     }
-  | { kind: "comment_rfi"; title: string; summary: string; payload: { rfiId: string; body: string } }
+  | { kind: "comment_rfi"; title: string; summary: string; payload: { rfiId: string; body: string; contentHtml?: string } }
   | {
       kind: "comment_change_request";
       title: string;
@@ -96,7 +94,8 @@ export type DraftAction =
     }
   | { kind: "transition_stage"; title: string; summary: string; payload: StageTransitionPayload };
 
-export type ProposedAction = DraftAction & { missing: MissingField[] };
+export type DraftAction = LegacyDraftAction | ExtendedAction;
+export type ProposedAction = DraftAction & { missing: MissingField[]; reviewFields?: MissingField[]; reviewOptions?: VoiceOptions };
 
 export type ProposedActionKind = ProposedAction["kind"];
 

@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { KeyDateRow } from "@/components/molecules/schedule/rows";
 import { router } from "expo-router";
 import { Pressable } from "react-native";
@@ -5,7 +6,7 @@ import { ScheduleListScreen } from "@/components/molecules/schedule/list-screen"
 import { useKeyDates } from "@/hooks/use-key-dates";
 import { useFieldSession } from "@/lib/field-session";
 
-export default function KeyDates() {
+function KeyDates() {
   const { projectId } = useFieldSession();
   const keyDates = useKeyDates(projectId);
   const data = keyDates.data ?? [];
@@ -32,3 +33,5 @@ export default function KeyDates() {
     />
   );
 }
+
+export default withProjectPermission(KeyDates, "/tools/schedule/key-dates");

@@ -1,3 +1,4 @@
+import { projectAccess } from "@/lib/project-access-store";
 import { useCallback, useMemo, useState } from "react";
 import { AppState } from "react-native";
 import { useFocusEffect } from "expo-router";
@@ -46,7 +47,7 @@ export function usePageMarkups(
 
   useFocusEffect(
     useCallback(() => {
-      if (!isOnline || !sheetId || !versionId) return;
+      if (!isOnline || !projectAccess.can(projectId, "documents", "view") || !sheetId || !versionId) return;
       let cancelled = false;
       let refreshing = false;
       async function refresh() {
@@ -57,6 +58,7 @@ export function usePageMarkups(
           if (cancelled) return;
           await drawingMarkupsRepository.replacePage(
             db,
+            projectId,
             versionId!,
             pageNo,
             rows.filter(

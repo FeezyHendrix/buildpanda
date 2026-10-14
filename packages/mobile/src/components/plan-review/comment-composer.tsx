@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { useProjectAccess } from "@/lib/project-access-provider";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
@@ -70,6 +72,7 @@ export function CommentComposer({
   onCancel: () => void;
   onSubmit: (draft: PinCommentDraft) => void;
 }) {
+  const { allows } = useProjectAccess();
   const [mode, setMode] = useState<CommentMode>(COMMENT_MODE.TEXT);
   const [text, setText] = useState("");
   const [assigneeId, setAssigneeId] = useState(NOBODY);
@@ -219,7 +222,7 @@ export function CommentComposer({
       ) : null}
 
       <View className="pt-3">
-        <OptionRow label="Follow-up" options={FOLLOW_UPS} value={followUp} onChange={setFollowUp} />
+        <OptionRow label="Follow-up" options={FOLLOW_UPS.filter((option) => option.value === FOLLOW_UP.NONE || allows(option.value === FOLLOW_UP.RFI ? features.rfis.actions.create : features.materialApprovals.actions.create))} value={followUp} onChange={setFollowUp} />
       </View>
 
       <View className="flex-row items-center gap-2 pt-3">

@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
@@ -122,7 +124,7 @@ function LookAheadDetail({ db, projectId, lookAheadId }: { db: Db; projectId: st
   );
 }
 
-export default function LookAheadDetailPage() {
+function LookAheadDetailPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
@@ -153,8 +155,8 @@ export default function LookAheadDetailPage() {
       rightButtons={
         id ? (
           <>
-            <HeaderIconButton icon="create-outline" label="Edit look ahead" onPress={() => router.push(`/tools/look-aheads/edit/${id}` as never)} />
-            <HeaderIconButton icon="trash-outline" label="Delete look ahead" onPress={confirmDelete} />
+            <HeaderIconButton permission={features.schedule.actions.edit} icon="create-outline" label="Edit look ahead" onPress={() => router.push(`/tools/look-aheads/edit/${id}` as never)} />
+            <HeaderIconButton permission={features.schedule.actions.remove} icon="trash-outline" label="Delete look ahead" onPress={confirmDelete} />
           </>
         ) : null
       }
@@ -167,3 +169,5 @@ export default function LookAheadDetailPage() {
     </Page>
   );
 }
+
+export default withProjectPermission(LookAheadDetailPage, "/tools/look-aheads/[id]");

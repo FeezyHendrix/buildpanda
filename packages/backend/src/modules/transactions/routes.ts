@@ -1,4 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
+import { filesService } from "../files/service.ts";
+import { filesRepository } from "../files/repository.ts";
+import { fileAccessRepository } from "../files/access-repository.ts";
+import { requireFileAttachment } from "../files/access.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { stagesRepository } from "../stages/repository.ts";
 import {
@@ -94,6 +98,8 @@ function toFilters(query: Record<string, unknown>): TransactionListFilters {
 }
 
 const transactionRoutes: FastifyPluginAsync = async (fastify) => {
+  const files = filesService(filesRepository(fastify.db));
+  const fileAccess = fileAccessRepository(fastify.db);
   const stages = stagesRepository(fastify.db);
   const service = transactionsService(
     transactionsRepository(fastify.db),
@@ -221,6 +227,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
       );
       const user = request.requireAuth();
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
+      await requireFileAttachment(request, project.id, request.body.receiptFileId, files, fileAccess);
       const created = await service.create(project.id, orgId, user.id, request.body);
       return reply.status(201).send(created);
     },
@@ -239,6 +246,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
         "manage",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
+      await requireFileAttachment(request, project.id, request.body.receiptFileId, files, fileAccess);
       return service.edit(
         project.id,
         orgId,

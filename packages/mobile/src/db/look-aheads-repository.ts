@@ -1,6 +1,8 @@
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { remapQueuedRecord, isRecordSending } from "./sync-write-state";
 import { randomUUID } from "expo-crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { CreateLookAheadInput, LookAhead, UpdateLookAheadInput } from "@/api/look-aheads";
 import type { Db } from "./client";
 import { enqueueDelete, enqueueUpdate, reviveOrQueue } from "./enqueue-update";
@@ -10,6 +12,8 @@ import { lookAheads, outbox, type LookAheadRow } from "./schema";
  * What a screen edits locally: the full list of assigned activities. The
  * outbox turns it into the server's assign/unassign deltas on push.
  */
+const access = repositoryAccess(features.schedule);
+
 export type LookAheadPatch = Omit<UpdateLookAheadInput, "assignActivityIds" | "unassignActivityIds"> & {
   activityIds?: string[];
 };
@@ -50,16 +54,17 @@ export const lookAheadsRepository = {
     db
       .select()
       .from(lookAheads)
-      .where(and(eq(lookAheads.projectId, projectId), buildingId !== undefined ? eq(lookAheads.buildingId, buildingId) : undefined))
+      .where(access.where(db, lookAheads.projectId, eq(lookAheads.projectId, projectId), buildingId !== undefined ? eq(lookAheads.buildingId, buildingId) : undefined))
       .orderBy(desc(lookAheads.updatedAt)),
 
   /** One row for a detail or edit screen; re-runs only when that row changes. */
   byIdQuery: (db: Db, id: string) =>
-    db.select().from(lookAheads).where(eq(lookAheads.id, id)).limit(1),
+    db.select().from(lookAheads).where(access.where(db, lookAheads.projectId, eq(lookAheads.id, id))).limit(1),
 
   async createLocal(db: Db, projectId: string, input: CreateLookAheadInput): Promise<string> {
+    access.require(db, projectId, "edit");
     const id = `local_${randomUUID()}`;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx.insert(lookAheads).values({
         id,
         projectId,
@@ -86,20 +91,24 @@ export const lookAheadsRepository = {
   },
 
   async markSynced(db: Db, id: string): Promise<void> {
-    await db.update(lookAheads).set({ isPendingSync: false }).where(eq(lookAheads.id, id));
+    await db.update(lookAheads).set({ isPendingSync: false }).where(access.where(db, lookAheads.projectId, eq(lookAheads.id, id)));
   },
 
   /** Removes the row locally and queues the push in one transaction. */
   async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
-    await db.transaction((tx) => {
-      tx.delete(lookAheads).where(eq(lookAheads.id, id)).run();
+    access.require(db, projectId, "edit");
+    access.record(db, lookAheads, id, projectId);
+    await access.transaction(db, projectId, "edit", (tx) => {
+      tx.delete(lookAheads).where(access.where(db, lookAheads.projectId, eq(lookAheads.id, id))).run();
       enqueueDelete(tx, "look-aheads", id, projectId, randomUUID());
     });
   },
 
   /** Applies an edit locally and queues the push in one transaction. */
   async updateLocal(db: Db, projectId: string, id: string, patch: LookAheadPatch): Promise<void> {
-    await db.transaction((tx) => {
+    access.require(db, projectId, "edit");
+    access.record(db, lookAheads, id, projectId);
+    await access.transaction(db, projectId, "edit", (tx) => {
       tx
         .update(lookAheads)
         .set({
@@ -112,7 +121,7 @@ export const lookAheadsRepository = {
           isPendingSync: true,
           updatedAt: Date.now(),
         })
-        .where(eq(lookAheads.id, id)).run();
+        .where(access.where(db, lookAheads.projectId, eq(lookAheads.id, id))).run();
 
       enqueueUpdate(tx, "look-aheads", id, projectId, randomUUID());
       if (patch.activityIds !== undefined && (!id.startsWith("local_") || isRecordSending(tx, "look-aheads", id))) {
@@ -122,11 +131,12 @@ export const lookAheadsRepository = {
   },
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: LookAhead) {
-    await db.transaction((tx) => {
-      const [local] = tx.select().from(lookAheads).where(eq(lookAheads.id, localId)).limit(1).all();
+    access.require(db, projectId);
+    await access.transaction(db, projectId, "read", (tx) => {
+      const [local] = tx.select().from(lookAheads).where(access.where(db, lookAheads.projectId, eq(lookAheads.id, localId))).limit(1).all();
       const hasEdits = remapQueuedRecord(tx, "look-aheads", localId, server.id);
       if (!local) return;
-      tx.delete(lookAheads).where(eq(lookAheads.id, localId)).run();
+      tx.delete(lookAheads).where(access.where(db, lookAheads.projectId, eq(lookAheads.id, localId))).run();
       const values = {
         projectId,
         name: server.name,
@@ -153,9 +163,10 @@ export const lookAheadsRepository = {
   },
 
   async upsertFromServer(db: Db, projectId: string, rows: readonly LookAhead[]) {
+    access.require(db, projectId);
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       for (const row of rows) {
         tx
           .insert(lookAheads)
@@ -193,7 +204,7 @@ export const lookAheadsRepository = {
   },
 
   findById: async (db: Db, id: string) => {
-    const [row] = await db.select().from(lookAheads).where(eq(lookAheads.id, id)).limit(1);
+    const [row] = await db.select().from(lookAheads).where(access.where(db, lookAheads.projectId, eq(lookAheads.id, id))).limit(1);
     return row;
   },
 };

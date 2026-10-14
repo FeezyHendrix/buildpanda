@@ -1,3 +1,5 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
@@ -79,7 +81,7 @@ function RfiList({ db, projectId }: { db: Db; projectId: string }) {
   );
 }
 
-export default function Rfis() {
+function Rfis() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
 
@@ -89,7 +91,7 @@ export default function Rfis() {
       title="RFIs"
       onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton
+        <HeaderIconButton permission={features.rfis.actions.create}
           icon="add"
           label="New RFI"
           onPress={() => router.push("/tools/rfis/new")}
@@ -106,3 +108,5 @@ export default function Rfis() {
     </Page>
   );
 }
+
+export default withProjectPermission(Rfis, "/tools/rfis");

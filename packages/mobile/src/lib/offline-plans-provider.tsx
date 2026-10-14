@@ -1,3 +1,5 @@
+import { features } from "./feature-access";
+import { useProjectAccess } from "./project-access-provider";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { AppState } from "react-native";
 import { useLocalDb } from "@/db/provider";
@@ -11,13 +13,15 @@ const OfflinePlansContext = createContext({ ...INITIAL_PROGRESS, syncing: false,
 /** Project selection, reconnect and foreground all refresh the durable plan cache. */
 export function OfflinePlansProvider({ children }: { children: ReactNode }) {
   const { db, ready } = useLocalDb();
+  const { allows, generation } = useProjectAccess();
+  const permitted = allows(features.documents.read);
   const { projectId } = useFieldSession();
   const { isOnline } = useSyncState();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState({ projectId, db, ...INITIAL_PROGRESS, syncing: false });
 
   useEffect(() => {
-    if (!db || !ready || !projectId || !isOnline) return;
+    if (!db || !ready || !projectId || !isOnline || !permitted) return;
     let cancelled = false;
     let running = false;
     const refresh = async () => {
@@ -40,9 +44,9 @@ export function OfflinePlansProvider({ children }: { children: ReactNode }) {
     const listener = AppState.addEventListener("change", (next) => { if (next === "active") void refresh(); });
     const timer = setInterval(() => void refresh(), 60_000);
     return () => { cancelled = true; listener.remove(); clearInterval(timer); };
-  }, [db, ready, projectId, isOnline, attempt]);
+  }, [db, ready, projectId, isOnline, attempt, permitted, generation]);
 
-  const progress = state.db === db && state.projectId === projectId ? state : { ...INITIAL_PROGRESS, syncing: false };
+  const progress = permitted && state.db === db && state.projectId === projectId ? state : { ...INITIAL_PROGRESS, syncing: false };
   return (
     <OfflinePlansContext.Provider value={{ ...progress, syncing: isOnline && progress.syncing, retry: () => setAttempt((value) => value + 1) }}>
       {children}

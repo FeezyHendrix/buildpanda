@@ -1,3 +1,4 @@
+import { features } from "@/lib/feature-access";
 import { useStageScope } from "@/lib/stage-scope";
 import { matchesStage } from "@/lib/stage-filter";
 import { useMemo } from "react";
@@ -16,6 +17,8 @@ export function useActivities(projectId: string | undefined, enabled = true, sco
   const query = usePersistentQuery({
     queryKey: activityKeys.list(projectId),
     ownerId: storageOwnerId,
+    projectId,
+    permission: features.schedule.read,
     queryFn: () => activitiesApi.list(projectId!),
     enabled: enabled && Boolean(projectId),
   });
@@ -29,8 +32,9 @@ export function useActivities(projectId: string | undefined, enabled = true, sco
 
 /** The delay reasons a crew member can pick when work did not go to plan. */
 export function useDelayReasons() {
-  const { storageOwnerId } = useFieldSession();
+  const { storageOwnerId, projectId } = useFieldSession();
   return usePersistentQuery({
+    projectId, permission: features.schedule.read,
     queryKey: ["delay-reasons"],
     ownerId: storageOwnerId,
     queryFn: activitiesApi.delayReasons,

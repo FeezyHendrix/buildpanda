@@ -1,6 +1,7 @@
 import { StageField } from "@/components/molecules/stage-field";
 import { DateField } from "@/components/molecules/date-field";
 import { useStageScope } from "@/lib/stage-scope";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 
 import { useLocalSearchParams } from "expo-router";
@@ -25,7 +26,7 @@ type FromApproval = {
   stageId?: string;
 };
 
-export default function NewMaterialOrder() {
+function NewMaterialOrder() {
   const { projectId } = useFieldSession();
   const scope = useStageScope();
   // "Order this material" on an approved request opens this page filled in
@@ -125,3 +126,5 @@ export default function NewMaterialOrder() {
     </Page>
   );
 }
+
+export default withProjectPermission(NewMaterialOrder, "/tools/materials/new");

@@ -1,5 +1,6 @@
 import { StageField } from "@/components/molecules/stage-field";
 import { useStageScope } from "@/lib/stage-scope";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 
 import { useState } from "react";
@@ -29,7 +30,7 @@ const CATEGORIES: readonly UpdateCategory[] = [
 const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 2000;
 
-export default function NewProjectUpdate() {
+function NewProjectUpdate() {
   const { projectId } = useFieldSession();
   const scope = useStageScope();
   const { db, ready } = useLocalDb();
@@ -130,3 +131,5 @@ export default function NewProjectUpdate() {
     </Page>
   );
 }
+
+export default withProjectPermission(NewProjectUpdate, "/tools/updates/new");

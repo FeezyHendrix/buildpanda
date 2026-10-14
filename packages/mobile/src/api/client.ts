@@ -1,7 +1,11 @@
+import { messagingAccess } from "@/lib/feature-access";
+import { projectAccess } from "@/lib/project-access-store";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import { ENCRYPTED_CONTENT_TYPE, isEnvelope, KEY_HEADER, fitsSealLimit, open, seal, type PayloadSession } from "@/lib/payload-crypto";
 import { isStaleKeyError, payloadSession, randomBytes, resetPayloadSession } from "@/lib/payload-session";
+import { apiRequirement } from "@/lib/api-access";
+import { requireAccess, requireCurrentAccess, revokeProjectAccess } from "@/lib/project-access-store";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -78,6 +82,10 @@ export async function request<T>(path: string, init?: RequestOptions): Promise<T
 }
 
 async function attempt<T>(path: string, init?: RequestOptions): Promise<T> {
+  const messaging = /^\/(channels|messages)(?:\/|$)/.test(path);
+  const projectId = /^\/projects\/([^/?]+)/.exec(path)?.[1] ?? (messaging ? projectAccess.getState().scope?.projectId : undefined);
+  const permission = messaging ? messagingAccess : projectId ? apiRequirement(path, init?.method, typeof init?.body === "string" ? JSON.parse(init.body) : {}) : null;
+  const ticket = permission ? requireAccess(projectId!, permission) : null;
   const headers: Record<string, string> = {
     ...(init?.body ? { "Content-Type": "application/json" } : {}),
     ...init?.headers,
@@ -107,6 +115,7 @@ async function attempt<T>(path: string, init?: RequestOptions): Promise<T> {
   }, 30_000);
 
   try {
+    if (ticket) requireCurrentAccess(ticket);
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
       body,
@@ -116,6 +125,7 @@ async function attempt<T>(path: string, init?: RequestOptions): Promise<T> {
     });
 
     if (!response.ok) {
+      if (ticket && [401, 403].includes(response.status)) { requireCurrentAccess(ticket); revokeProjectAccess(); }
       const failure = (await readJson(response, session).catch((error: unknown) => {
         if (error instanceof StaleKey) throw error;
         return null;
@@ -123,8 +133,10 @@ async function attempt<T>(path: string, init?: RequestOptions): Promise<T> {
       if (isStaleKeyError(response.status, failure)) throw new StaleKey();
       throw new ApiError(response.status, describeError(failure, response.status));
     }
-    if (response.status === 204) return undefined as T;
-    return (await readJson(response, session)) as T;
+    if (response.status === 204) { if (ticket) requireCurrentAccess(ticket); return undefined as T; }
+    const data = (await readJson(response, session)) as T;
+    if (ticket) requireCurrentAccess(ticket);
+    return data;
   } catch (error) {
     if (timedOut) throw new ApiError(0, "The connection timed out. Your saved changes are still on this device.");
     throw error;

@@ -44,14 +44,15 @@ declare module "fastify" {
 // explicitly, so participant changes apply immediately.
 const TTL_SECONDS = 60;
 const KEY_PREFIX = "buildpanda:access-ctx:";
+const localCaches = new Set<AccessCache>();
 
 // Invalidation for callers outside the Fastify plugin — the better-auth
 // organization hooks fire on role and membership changes that never touch our
 // routes, so the request-scoped accessCache decorator is out of reach there.
-// This dels the same Redis key so a role change shows on the next request
-// instead of waiting out the 60s TTL. No-op without Redis (local dev), where
-// the per-worker Map is unreachable from here and the TTL self-heals anyway.
+// Invalidate local caches too when Redis is disabled, so role changes do not
+// wait for the fallback TTL in the same process.
 export async function invalidateAccessContext(userId: string): Promise<void> {
+  await Promise.all([...localCaches].map((cache) => cache.invalidate(userId)));
   if (!config.redis.url) return;
   const redis = new IORedis(config.redis.url, { maxRetriesPerRequest: 1 });
   redis.on("error", () => undefined);
@@ -119,7 +120,10 @@ const accessCachePlugin: FastifyPluginAsync = async (fastify) => {
       await redis.quit().catch(() => undefined);
     });
   } else {
-    fastify.decorate("accessCache", memoryCache());
+    const cache = memoryCache();
+    localCaches.add(cache);
+    fastify.decorate("accessCache", cache);
+    fastify.addHook("onClose", async () => { localCaches.delete(cache); });
   }
 };
 

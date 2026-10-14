@@ -7,7 +7,7 @@ permission snapshot; without one, protected work waits for access to be resolved
 ## RBAC is foundational
 
 Follow the [repository RBAC requirements](../../AGENTS.md#rbac-is-foundational)
-and [mobile permission requirements and open findings](AGENTS.md). Gate views,
+and [mobile permission requirements and shared pattern](AGENTS.md). Gate views,
 routes, actions, cached reads, and local writes with effective resource/action
 permissions. Server enforcement remains mandatory. Deferring the first
 permission check until sync is a defect, including for approval decisions.

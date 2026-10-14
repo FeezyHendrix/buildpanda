@@ -1,3 +1,4 @@
+import { extendedActions, type VoiceDefinition } from "@buildpanda/voice-actions";
 import { formPrompt } from "./daily-log-form.ts";
 import type { ProjectSnapshot } from "./types.ts";
 
@@ -34,10 +35,20 @@ Rules:
 - Extract every distinct action — one update can yield several.
 - Keep numbers, names, drawing references and measurements exactly as spoken.
 - Never fabricate quantities, dates, suppliers, costs or ids. If a required field was not stated and cannot be worked out, set it to null and STILL propose the action — the reviewer is shown the blank fields and fills them in. Do not downgrade a request into a daily_log just because a detail is missing.
-- Material nuance: received/arrived/delivered = material_log IN; used/installed/consumed = material_log USED; need/request/order = material_order; "change/cancel the order" = update_material_order/delete_material_order.
-- Only propose an update or delete when the speech clearly refers to one record in EXISTING RECORDS; if nothing matches, fall back to a daily_log note of what was said. This fallback is for updates to records that do not exist — never for a create whose fields are merely incomplete.
+- Material nuance: received/arrived/delivered against a named approved order = receive_material_order; other receipts = material_log IN; used/installed/consumed = material_log USED; need/request/order = material_order; "change/cancel the order" = update_material_order/delete_material_order.
+- Only propose an update or delete when the speech clearly refers to one record in EXISTING RECORDS; if nothing matches, leave the target null for the reviewer to choose. Never silently change the requested action into a diary entry.
 - "title" is a short label (max ~8 words). "summary" is one plain-English line describing what will happen, for the review card.
 - If nothing actionable was said, return an empty actions array.
+
+Additional supported actions (same review rules; null for unknown required values):
+${Object.entries(extendedActions).map(([kind, definition]) => {
+  const action: VoiceDefinition = definition;
+  const fields = Object.entries(action.fields).map(([name, field]) => `${name}: ${field.type}${field.choices ? ` (${field.choices.join("|")})` : ""}${field.source ? ` from ${field.source}` : ""}${field.required ? " required" : " optional"}`).join(", ");
+  return `- "${kind}": ${action.instruction} payload { ${fields} }`;
+}).join("\n")}
+For rich_text and long_text fields, supply the spoken words as a plain string, preserving paragraphs; never output HTML. Boolean fields take true or false, and null when not stated.
+Never produce file paths, URLs, file IDs or bytes for file fields. Leave file null for the reviewer to choose.
+Do not silently translate an unsupported request into a different action. Keep each distinct supported request in the actions array.
 
 Return JSON exactly: { "actions": [ { "kind", "title", "summary", "payload" } ] }`;
 
@@ -89,6 +100,20 @@ export function snapshotPrompt(snapshot: ProjectSnapshot): string {
     for (const d of snapshot.delayReasons) lines.push(`- ${d.code} — ${d.name}`);
   }
   lines.push(...formPrompt(snapshot.dailyLogForm));
+  for (const [source, options] of Object.entries(snapshot.voiceOptions ?? {})) {
+    lines.push(`${source} (authorized targets; IDs must match exactly):`);
+    for (const option of options) lines.push(JSON.stringify(option));
+  }
   return lines.join("\n");
 }
 
+
+/** Omit unavailable action definitions before the model sees the request. */
+export function classifySystem(allowedKinds?: readonly string[]): string {
+  if (!allowedKinds) return CLASSIFY_SYSTEM;
+  const allowed = new Set(allowedKinds);
+  return CLASSIFY_SYSTEM.split("\n").filter((line) => {
+    const kind = /^- "([a-z_]+)":/.exec(line)?.[1];
+    return !kind || allowed.has(kind);
+  }).join("\n") + `\nOnly these action kinds are available to this caller: ${allowedKinds.join(", ")}.`;
+}

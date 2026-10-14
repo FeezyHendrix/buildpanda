@@ -1,9 +1,10 @@
+import { features } from "@/lib/feature-access";
 import { File } from "expo-file-system";
 import { documentsApi } from "@/api/documents";
 import { uploadProjectFile } from "@/api/files";
 import type { Db } from "./client";
 import { DOCUMENTS_RESOURCE, documentsRepository } from "./documents-repository";
-import { done, PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
+import { PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { type OutboxRow } from "./schema";
 
 export { DOCUMENTS_RESOURCE };
@@ -33,6 +34,7 @@ export async function pushDocumentOutboxItem(db: Db, item: OutboxRow): Promise<O
     row.stagedUri,
     row.fileName,
     row.mimeType ?? "application/octet-stream",
+    features.documents.actions.create,
   );
   const server = await documentsApi.createDocument(item.projectId, {
     ...(row.categoryId ? { categoryId: row.categoryId } : {}),

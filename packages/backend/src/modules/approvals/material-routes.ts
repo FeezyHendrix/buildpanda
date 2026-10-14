@@ -167,6 +167,7 @@ const materialApprovalRoutes: FastifyPluginAsync = async (fastify) => {
             projectRoles: request.projectRoles,
             orgPermissions: request.orgPermissions,
             projectSectionPermissions: request.projectSectionPermissions,
+            projectGrants: request.projectGrants,
           },
           "materials",
           "approve",

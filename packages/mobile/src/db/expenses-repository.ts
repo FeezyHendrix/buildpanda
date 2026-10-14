@@ -1,9 +1,13 @@
+import { repositoryAccess } from "./permissions";
+import { features } from "@/lib/feature-access";
 import { randomUUID } from "expo-crypto";
 import { and, desc, eq, notInArray } from "drizzle-orm";
 import type { Expense } from "@/api/expenses";
 import { stageMedia } from "@/lib/stage-media";
 import type { Db } from "./client";
 import { expenses, outbox, type ExpenseRow } from "./schema";
+
+const access = repositoryAccess(features.expenses);
 
 export interface LocalExpenseInput {
   title: string;
@@ -39,18 +43,19 @@ function serverValues(projectId: string, row: Expense) {
 
 export const expensesRepository = {
   listQuery: (db: Db, projectId: string) =>
-    db.select().from(expenses).where(eq(expenses.projectId, projectId)).orderBy(desc(expenses.transactedAt), desc(expenses.updatedAt)),
+    db.select().from(expenses).where(access.where(db, expenses.projectId, eq(expenses.projectId, projectId))).orderBy(desc(expenses.transactedAt), desc(expenses.updatedAt)),
 
   findById: async (db: Db, id: string): Promise<ExpenseRow | undefined> => {
-    const [row] = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
+    const [row] = await db.select().from(expenses).where(access.where(db, expenses.projectId, eq(expenses.id, id))).limit(1);
     return row;
   },
 
   /** The expense and its push in one transaction; the receipt is copied somewhere durable first. */
   async createLocal(db: Db, projectId: string, input: LocalExpenseInput): Promise<string> {
+    access.require(db, projectId, "create");
     const id = `local_${randomUUID()}`;
     const stagedUri = input.receipt ? stageMedia(input.receipt.uri, id, input.receipt.fileName) : null;
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx.insert(expenses).values({
         id,
         projectId,
@@ -76,12 +81,12 @@ export const expensesRepository = {
 
   /** Kept on the row so a retry after a failed create does not upload the receipt twice. */
   async setReceiptFileId(db: Db, id: string, fileId: string) {
-    await db.update(expenses).set({ receiptFileId: fileId }).where(eq(expenses.id, id));
+    await db.update(expenses).set({ receiptFileId: fileId }).where(access.where(db, expenses.projectId, eq(expenses.id, id)));
   },
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: Expense) {
-    await db.transaction((tx) => {
-      tx.delete(expenses).where(eq(expenses.id, localId)).run();
+    await access.transaction(db, projectId, "read", (tx) => {
+      tx.delete(expenses).where(access.where(db, expenses.projectId, eq(expenses.id, localId))).run();
       const values = { ...serverValues(projectId, server), receiptStagedUri: null, isPendingSync: false, updatedAt: Date.now() };
       tx.insert(expenses).values({ id: server.id, ...values }).onConflictDoUpdate({ target: expenses.id, set: values }).run();
     });
@@ -89,13 +94,13 @@ export const expensesRepository = {
 
   async replaceFromServer(db: Db, projectId: string, rows: readonly Expense[]) {
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       const ids = rows.map((row) => row.id);
-      tx.delete(expenses).where(and(
+      tx.delete(expenses).where(access.where(db, expenses.projectId, and(
         eq(expenses.projectId, projectId),
         eq(expenses.isPendingSync, false),
         ...(ids.length ? [notInArray(expenses.id, ids)] : []),
-      )).run();
+      ))).run();
       for (const row of rows) {
         const values = { ...serverValues(projectId, row), updatedAt: now };
         tx.insert(expenses).values({ id: row.id, ...values, isPendingSync: false })

@@ -1,3 +1,4 @@
+import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useState } from "react";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { GanttChart } from "@/components/molecules/schedule/gantt-chart";
@@ -9,7 +10,7 @@ import { useFieldSession } from "@/lib/field-session";
 import { goBack } from "@/lib/navigation";
 import { matchesSearch } from "@/lib/search";
 
-export default function ProjectChart() {
+function ProjectChart() {
   const { projectId } = useFieldSession();
   const activities = useActivities(projectId);
   const [query, setQuery] = useState("");
@@ -36,3 +37,5 @@ export default function ProjectChart() {
     </Page>
   );
 }
+
+export default withProjectPermission(ProjectChart, "/tools/schedule/chart");

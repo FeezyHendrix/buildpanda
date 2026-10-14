@@ -1,3 +1,5 @@
+import { requireAccess } from "@/lib/project-access-store";
+import { features } from "@/lib/feature-access";
 import { useState } from "react";
 import { randomUUID } from "expo-crypto";
 import type { DrawingMarkup } from "@/api/drawing-markup";
@@ -92,6 +94,9 @@ export function useMarkupActions(ctx: MarkupActionsContext) {
     async submitComment(draft: PinCommentDraft, at: MarkupPoint, onPlaced: (markupId: string) => void) {
       if (!ctx.sheetId || !ctx.versionId) return;
       await run(async () => {
+        requireAccess(ctx.projectId, features.documents.actions.markup);
+        if (draft.followUp !== FOLLOW_UP.NONE) requireAccess(ctx.projectId,
+          draft.followUp === FOLLOW_UP.RFI ? features.rfis.actions.create : features.materialApprovals.actions.create);
         const markupId = await drawingMarkupsRepository.createLocal(ctx.db, {
           projectId: ctx.projectId,
           documentId: ctx.sheetId!,

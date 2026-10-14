@@ -1,3 +1,4 @@
+import { projectAccess } from "@/lib/project-access-store";
 import { useSyncState } from "@/lib/sync-provider";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
@@ -26,7 +27,7 @@ export function useChangeRequestComments(db: Db, projectId: string, changeReques
   const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!isOnline || !projectAccess.can(projectId, "change-requests", "view")) return;
     // A queued request has no server id yet, so there is nothing to fetch.
     if (changeRequestId.startsWith("local_")) return;
     let cancelled = false;

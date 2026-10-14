@@ -190,6 +190,8 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
+      await request.requireProjectPermission(project.id, "tasks", "view");
+      assertCompanyTaskAccess(request, project);
       const user = request.requireAuth();
       const task = await service.createTask(project.id, request.body, user.id);
       return reply.status(201).send(task);
@@ -201,6 +203,9 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams, body: updateBody } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
+      await request.requireProjectPermission(project.id, "tasks", "view");
+      assertCompanyTaskAccess(request, project);
+      await assertTaskVisibleToRequester(request, project, request.params.taskId);
       const user = request.requireAuth();
       return service.updateTask(project.id, request.params.taskId, request.body, user.id);
     },
@@ -222,6 +227,9 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "remove");
+      await request.requireProjectPermission(project.id, "tasks", "view");
+      assertCompanyTaskAccess(request, project);
+      await assertTaskVisibleToRequester(request, project, request.params.taskId);
       await service.removeTask(project.id, request.params.taskId);
       return reply.status(204).send();
     },
@@ -337,6 +345,9 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams, body: commentBody } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "comments", "post");
+      await request.requireProjectPermission(project.id, "tasks", "view");
+      assertCompanyTaskAccess(request, project);
+      await assertTaskVisibleToRequester(request, project, request.params.taskId);
       const user = request.requireAuth();
       const comment = await service.addComment(project.id, request.params.taskId, request.body.body, {
         id: user.id,

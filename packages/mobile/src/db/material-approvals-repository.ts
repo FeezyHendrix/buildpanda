@@ -1,3 +1,7 @@
+import { requireDrawingReference } from "./record-permissions";
+import { repositoryAccess, requireDbPermission, requireLocalRecord } from "./permissions";
+import { features } from "@/lib/feature-access";
+import { projectAccess } from "@/lib/project-access-store";
 import { remapQueuedRecord } from "./sync-write-state";
 import { randomUUID } from "expo-crypto";
 import { and, desc, eq } from "drizzle-orm";
@@ -15,6 +19,8 @@ import {
   type ApprovalDecisionInput,
   type MaterialApprovalDraft,
 } from "./material-approval-mappers";
+
+const access = repositoryAccess(features.materialApprovals);
 
 export { toMaterialApproval } from "./material-approval-mappers";
 export type { ApprovalDecisionInput, LocalMaterialApproval, MaterialApprovalDraft } from "./material-approval-mappers";
@@ -39,14 +45,14 @@ export const materialApprovalsRepository = {
     db
       .select()
       .from(materialApprovals)
-      .where(eq(materialApprovals.projectId, projectId))
+      .where(access.where(db, materialApprovals.projectId, eq(materialApprovals.projectId, projectId)))
       .orderBy(desc(materialApprovals.updatedAt)),
 
   findById: async (db: Db, id: string) => {
     const [row] = await db
       .select()
       .from(materialApprovals)
-      .where(eq(materialApprovals.id, id))
+      .where(access.where(db, materialApprovals.projectId, eq(materialApprovals.id, id)))
       .limit(1);
     return row;
   },
@@ -56,12 +62,14 @@ export const materialApprovalsRepository = {
     db
       .select()
       .from(materialApprovals)
-      .where(eq(materialApprovals.sourceMarkupId, markupId))
+      .where(access.where(db, materialApprovals.projectId, eq(materialApprovals.sourceMarkupId, markupId)))
       .limit(1),
 
   async createLocal(db: Db, projectId: string, input: LocalMaterialApprovalDraft): Promise<string> {
+    access.require(db, projectId, "edit");
+    requireDrawingReference(db, projectId, input);
     const id = localId();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "create", (tx) => {
       tx.insert(materialApprovals).values({
         id,
         projectId,
@@ -101,7 +109,10 @@ export const materialApprovalsRepository = {
     id: string,
     patch: Partial<MaterialApprovalCreateInput>,
   ): Promise<void> {
-    await db.transaction((tx) => {
+    access.require(db, projectId, "edit");
+    const approval = access.record(db, materialApprovals, id, projectId);
+    if (!["Pending", "Resubmit"].includes(String(approval.status))) throw new Error("This decided request is immutable. Resubmit it as a new request.");
+    await access.transaction(db, projectId, "edit", (tx) => {
       tx
         .update(materialApprovals)
         .set({
@@ -116,7 +127,7 @@ export const materialApprovalsRepository = {
           isPendingSync: true,
           updatedAt: Date.now(),
         })
-        .where(eq(materialApprovals.id, id)).run();
+        .where(access.where(db, materialApprovals.projectId, eq(materialApprovals.id, id))).run();
 
       enqueueUpdate(tx, MATERIAL_APPROVALS_RESOURCE, id, projectId, randomUUID());
     });
@@ -136,8 +147,14 @@ export const materialApprovalsRepository = {
     id: string,
     decision: ApprovalDecisionInput,
   ): Promise<void> {
+    access.require(db, projectId);
+    access.record(db, materialApprovals, id, projectId);
+    requireDbPermission(db, projectId, "materials", decision.status === "Pending" ? "request" : "approve");
+    const approval = access.record(db, materialApprovals, id, projectId);
+    if (!["Pending", "Resubmit"].includes(String(approval.status))) throw new Error("This request has already been decided.");
+    if (decision.status !== "Pending" && approval.requestedReviewerId && approval.requestedReviewerId !== projectAccess.getState().scope?.userId) throw new Error("Only the requested reviewer may decide this request.");
     const isRevert = decision.status === "Pending";
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, decision.status === "Pending" ? "reopen" : "decide", (tx) => {
       tx
         .update(materialApprovals)
         .set({
@@ -148,7 +165,7 @@ export const materialApprovalsRepository = {
           isPendingSync: true,
           updatedAt: Date.now(),
         })
-        .where(eq(materialApprovals.id, id)).run();
+        .where(access.where(db, materialApprovals.projectId, eq(materialApprovals.id, id))).run();
 
       tx
         .delete(outbox)
@@ -176,11 +193,14 @@ export const materialApprovalsRepository = {
    * request the server is about to lose would only ever 404.
    */
   async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
-    await db.transaction((tx) => {
+    access.require(db, projectId, "decide");
+    access.record(db, materialApprovals, id, projectId);
+    if (requireLocalRecord(db, materialApprovals, id, projectId, "materials", "approve").status !== "Pending") throw new Error("Only pending requests may be deleted.");
+    await access.transaction(db, projectId, "decide", (tx) => {
       const orphaned = tx
         .select({ id: materialApprovalComments.id })
         .from(materialApprovalComments)
-        .where(eq(materialApprovalComments.approvalId, id)).all();
+        .where(access.where(db, materialApprovalComments.projectId, eq(materialApprovalComments.approvalId, id))).all();
       for (const comment of orphaned) {
         tx
           .delete(outbox)
@@ -191,8 +211,8 @@ export const materialApprovalsRepository = {
             ),
           ).run();
       }
-      tx.delete(materialApprovalComments).where(eq(materialApprovalComments.approvalId, id)).run();
-      tx.delete(materialApprovals).where(eq(materialApprovals.id, id)).run();
+      tx.delete(materialApprovalComments).where(access.where(db, materialApprovalComments.projectId, eq(materialApprovalComments.approvalId, id))).run();
+      tx.delete(materialApprovals).where(access.where(db, materialApprovals.projectId, eq(materialApprovals.id, id))).run();
       enqueueDelete(tx, MATERIAL_APPROVALS_RESOURCE, id, projectId, randomUUID());
     });
   },
@@ -201,11 +221,12 @@ export const materialApprovalsRepository = {
     await db
       .update(materialApprovals)
       .set({ isPendingSync: false, serverLastSyncedAt: Date.now() })
-      .where(eq(materialApprovals.id, id));
+      .where(access.where(db, materialApprovals.projectId, eq(materialApprovals.id, id)));
   },
 
   /** Server rows never overwrite one still waiting to be pushed, here as in the pull. */
   async replaceFromServer(db: Db, projectId: string, server: MaterialApproval): Promise<void> {
+    access.require(db, projectId);
     await db
       .insert(materialApprovals)
       .values(materialApprovalServerValues(projectId, server, Date.now()))
@@ -228,18 +249,19 @@ export const materialApprovalsRepository = {
     localRowId: string,
     server: MaterialApproval,
   ): Promise<void> {
+    access.require(db, projectId);
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       // The DTO does not echo the sheet or pin back; keep what was sent so the
       // plan still shows the link after the id changes.
       const [local] = tx
         .select()
         .from(materialApprovals)
-        .where(eq(materialApprovals.id, localRowId))
+        .where(access.where(db, materialApprovals.projectId, eq(materialApprovals.id, localRowId)))
         .limit(1).all();
       const hasEdits = remapQueuedRecord(tx, "material-approvals", localRowId, server.id);
       if (!local) return;
-      tx.delete(materialApprovals).where(eq(materialApprovals.id, localRowId)).run();
+      tx.delete(materialApprovals).where(access.where(db, materialApprovals.projectId, eq(materialApprovals.id, localRowId))).run();
       const values = {
         ...materialApprovalServerValues(projectId, server, now),
         documentId: local?.documentId ?? null,
@@ -260,7 +282,7 @@ export const materialApprovalsRepository = {
       tx
         .update(materialApprovalComments)
         .set({ approvalId: server.id })
-        .where(eq(materialApprovalComments.approvalId, localRowId)).run();
+        .where(access.where(db, materialApprovalComments.projectId, eq(materialApprovalComments.approvalId, localRowId))).run();
 
     });
   },
@@ -271,9 +293,10 @@ export const materialApprovalsRepository = {
     projectId: string,
     rows: readonly MaterialApproval[],
   ): Promise<void> {
+    access.require(db, projectId);
     if (rows.length === 0) return;
     const now = Date.now();
-    await db.transaction((tx) => {
+    await access.transaction(db, projectId, "read", (tx) => {
       for (const row of rows) {
         const values = materialApprovalServerValues(projectId, row, now);
         const { id: _id, projectId: _projectId, ...mutable } = values;

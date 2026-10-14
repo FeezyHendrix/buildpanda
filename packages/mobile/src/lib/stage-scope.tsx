@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { stagesApi, type Stage } from "@/api/stages";
 import { activitiesApi, type Activity } from "@/api/activities";
-import { ApiError } from "@/api/client";
+import { features } from "./feature-access";
+import { useProjectAccess } from "./project-access-provider";
 import { activityKeys, stageKeys } from "@/hooks/query-keys";
 import { useProjectBuilding } from "@/hooks/use-project-building";
 import { useFieldSession } from "./field-session";
@@ -28,16 +29,17 @@ const EMPTY_ACTIVITIES: Activity[] = [];
 function ProjectStageScope({ storageKey, children }: { storageKey: string; children: ReactNode }) {
   const { projectId, storageOwnerId } = useFieldSession();
   const building = useProjectBuilding();
+  const { allows } = useProjectAccess();
   const [savedId, setSavedId] = useState(() => storage.getItem(storageKey) || undefined);
   const query = usePersistentQuery({
-    queryKey: stageKeys.list(projectId), ownerId: storageOwnerId,
+    queryKey: stageKeys.list(projectId), ownerId: storageOwnerId, projectId, permission: features.stages.read,
     queryFn: () => stagesApi.list(projectId!), enabled: Boolean(projectId),
   });
   const activityQuery = usePersistentQuery({
-    queryKey: activityKeys.list(projectId), ownerId: storageOwnerId,
+    queryKey: activityKeys.list(projectId), ownerId: storageOwnerId, projectId, permission: features.schedule.read,
     queryFn: () => activitiesApi.list(projectId!), enabled: Boolean(projectId && savedId),
   });
-  const canView = !(query.error instanceof ApiError && [401, 403].includes(query.error.status));
+  const canView = allows(features.stages.read);
   const stages = useMemo(() => (canView ? query.data ?? [] : []).filter((stage) =>
     !building.buildingId || stage.buildingId === building.buildingId || (building.buildings.length === 1 && !stage.buildingId),
   ), [canView, query.data, building.buildingId, building.buildings.length]);
@@ -48,8 +50,8 @@ function ProjectStageScope({ storageKey, children }: { storageKey: string; child
     else storage.removeItem(storageKey);
   }, [storageKey]);
   useEffect(() => {
-    if (stageId !== savedId) selectStage(stageId);
-  }, [stageId, savedId, selectStage]);
+    if (canView && stageId !== savedId) selectStage(stageId);
+  }, [canView, stageId, savedId, selectStage]);
   const activities = activityQuery.data ?? EMPTY_ACTIVITIES;
   const activityStages = useMemo(() => new Map(activities.map((activity) => [activity.id, activity.phaseId])), [activities]);
   const value: StageScope = {
