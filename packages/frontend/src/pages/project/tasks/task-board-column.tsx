@@ -4,6 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import type { Task, TaskColumn } from "@/lib/project-types";
 import { TaskCard } from "./task-card";
+import { isDoneColumn } from "./task-completion";
 import { ReactSVG } from "react-svg";
 import { icons2 } from "@/assets/icons2/icon2";
 import { Button } from "@/components";
@@ -36,6 +37,7 @@ export function BoardColumn({
   canAddCard,
   onAddCard,
   onOpenTask,
+  onToggleComplete,
   onRename,
   onDelete,
 }: {
@@ -45,9 +47,11 @@ export function BoardColumn({
   canAddCard?: boolean;
   onAddCard: () => void;
   onOpenTask: (task: Task) => void;
+  onToggleComplete?: (task: Task) => void;
   onRename: (name: string) => void;
   onDelete: () => void;
 }) {
+  const columnIsDone = isDoneColumn(column);
   const showAddCard = canAddCard ?? canManage;
   const {
     setNodeRef,
@@ -233,7 +237,9 @@ export function BoardColumn({
             key={task.id}
             task={task}
             canManage={canManage}
+            isDone={columnIsDone}
             onOpen={() => onOpenTask(task)}
+            onToggleComplete={onToggleComplete ? () => onToggleComplete(task) : undefined}
           />
         ))}
         {tasks.length === 0 && (

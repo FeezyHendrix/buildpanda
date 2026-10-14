@@ -8,22 +8,30 @@ import { formatDayMonth } from "@/lib/formatters";
 import { resolveFileUrl } from "@/hooks/use-files";
 import type { Task } from "@/lib/project-types";
 import { ENTITY_META, LinkGlyph, PriorityBadge, firstImageFileId, htmlToText } from "./task-ui";
+import { TaskCompleteToggle } from "./task-complete-toggle";
+import { isTaskOverdue } from "./task-completion";
+import { Badge } from "@/components/atoms/badge";
 import { MoreVertical } from "lucide-react";
 
 export function TaskCard({
   task,
   canManage,
+  isDone = false,
   onOpen,
+  onToggleComplete,
 }: {
   task: Task;
   canManage: boolean;
+  isDone?: boolean;
   onOpen: () => void;
+  onToggleComplete?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
     disabled: !canManage,
   });
   const due = formatDayMonth(task.dueDate) || null;
+  const overdue = isTaskOverdue(task, isDone);
   const coverFileId = firstImageFileId(task.descriptionHtml);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -79,7 +87,16 @@ export function TaskCard({
       )}
       <div className="p-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <PriorityBadge priority={task.priority} />
+          <div className="flex min-w-0 items-center gap-1.5">
+            {onToggleComplete ? (
+              <TaskCompleteToggle
+                done={isDone}
+                taskTitle={task.title}
+                onToggle={onToggleComplete}
+              />
+            ) : null}
+            <PriorityBadge priority={task.priority} />
+          </div>
           <div className="flex items-center gap-1">
             {task.entityLinkTypes.length > 0 && (
               <div className="flex flex-wrap items-center justify-end gap-1">
@@ -109,7 +126,14 @@ export function TaskCard({
           </div>
         </div>
         <button type="button" onClick={onOpen} className="block w-full text-left outline-none">
-          <p className="text-sm font-medium text-gray-900">{task.title}</p>
+          <p
+            className={cn(
+              "text-sm font-medium",
+              isDone ? "text-gray-400 line-through" : "text-gray-900",
+            )}
+          >
+            {task.title}
+          </p>
           {task.description && htmlToText(task.description) && (
             <p className="mt-1 line-clamp-2 text-xs text-gray-500">{htmlToText(task.description)}</p>
           )}
@@ -163,6 +187,11 @@ export function TaskCard({
                   {task.subtaskDone}/{task.subtaskTotal}
                 </span>
               )}
+              {overdue ? (
+                <Badge tone="danger" size="sm" className="whitespace-nowrap text-[11px]">
+                  Overdue
+                </Badge>
+              ) : null}
               {due && (
                 <span className="whitespace-nowrap rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
                   {due}
