@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { INPUT_CLASS } from "@/components/atoms/input";
@@ -59,7 +60,7 @@ function RevokeLookAheadDialog({ open, onOpenChange, projectId, lookAhead }: Rev
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="revoke-reason">Why is it being revoked?</Label>
-        <textarea
+        <ImageTextarea
           id="revoke-reason"
           rows={3}
           value={reason}

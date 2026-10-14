@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useMemo, useState } from "react";
 import { ProgressBar } from "@/components/atoms/progress-bar";
 import { Button } from "@/components/atoms/button";
@@ -84,12 +85,12 @@ function BillRow({
   if (row.rowType === "heading" || row.rowType === "work_section") {
     return (
       <li className={cn("px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-gray-500", row.rowType === "work_section" && "text-gray-400")}>
-        {row.description}
+        <ContentText value={row.description} />
       </li>
     );
   }
   if (row.rowType === "spec_note") {
-    return <li className="px-3 py-1 text-xs italic text-gray-400">{row.description}</li>;
+    return <li className="px-3 py-1 text-xs italic text-gray-400"><ContentText value={row.description} /></li>;
   }
   const reason = row.status !== "verified" ? confidenceReasonLabel(row.confidenceReason) : null;
   return (
@@ -106,8 +107,8 @@ function BillRow({
       >
         <RowStatusDot status={row.status} />
         <span className="w-14 shrink-0 font-mono text-[10px] text-gray-400">{row.code}</span>
-        <span className={cn("min-w-0 flex-1 truncate text-gray-800", row.status === "rejected" && "line-through")}>{row.description}</span>
-        {reason ? <span className="hidden shrink-0 text-[10px] text-amber-700 xl:inline">{reason}</span> : null}
+        <span className={cn("min-w-0 flex-1 truncate text-gray-800", row.status === "rejected" && "line-through")}><ContentText value={row.description} /></span>
+        {reason ? <span className="hidden shrink-0 text-[10px] text-amber-700 xl:inline"><ContentText value={reason} /></span> : null}
         <OpenCommentBadge count={openComments} />
         <RowFocusAvatars users={focusedBy} />
         <span className="shrink-0 tabular-nums text-gray-600">

@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/atoms/spinner";
 import { FormattedMessage } from "./formatted-message";
@@ -36,7 +37,7 @@ export function MessageBubble({
             <Spinner size="sm" />
           ) : null
         ) : (
-          <div className="whitespace-pre-wrap">{message.content}</div>
+          <div className="whitespace-pre-wrap"><ContentText value={message.content} /></div>
         )}
       </div>
     </div>

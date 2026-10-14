@@ -1,9 +1,10 @@
+import { ImageTextInput } from "@/components/rich-text/image-text-input";
 import { features } from "@/lib/feature-access";
 import { useProjectAccess } from "@/lib/project-access-provider";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Pressable, View } from "react-native";
 import type { CommentAssignee } from "@/api/participants";
 import { Button, OptionRow, Text } from "@/components/atoms";
 import { ICON_DANGER, ICON_INVERSE, ICON_STRONG, ICON_SUBTLE, ICON_SUCCESS } from "@/constants/colors";
@@ -149,7 +150,7 @@ export function CommentComposer({
 
       <SegmentedTabs tabs={MODES} active={mode} onChange={switchMode} />
 
-      <TextInput
+      <ImageTextInput
         value={text}
         onChangeText={setText}
         autoFocus={mode === COMMENT_MODE.TEXT}

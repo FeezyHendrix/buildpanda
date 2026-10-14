@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
@@ -71,7 +72,7 @@ export function SettingsCard({
         <div>
           <h2 className="text-base font-semibold text-gray-900">{title}</h2>
           {description ? (
-            <p className="mt-1 text-pretty text-sm text-gray-500">{description}</p>
+            <p className="mt-1 text-pretty text-sm text-gray-500"><ContentText value={description} /></p>
           ) : null}
         </div>
         {action}

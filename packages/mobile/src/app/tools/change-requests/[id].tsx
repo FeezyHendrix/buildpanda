@@ -1,3 +1,5 @@
+import { ContentText, RichContent } from "@/components/rich-text/rich-content";
+import { ImageTextInput } from "@/components/rich-text/image-text-input";
 import { useProjectAccess } from "@/lib/project-access-provider";
 import { features } from "@/lib/feature-access";
 import { withProjectPermission } from "@/components/molecules/permission-gate";
@@ -5,7 +7,7 @@ import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, TextInput, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import { CHANGE_STATUS_LABELS, type ChangeStatus } from "@/api/change-requests";
 import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_INVERSE, ICON_SUBTLE } from "@/constants/colors";
@@ -62,7 +64,7 @@ function CommentThread({ db, projectId, changeId }: { db: Db; projectId: string;
               </Text>
             )}
           </View>
-          <Text className="pt-1 text-[15px]">{c.body}</Text>
+          <ContentText className="pt-1 text-[15px]" value={c.body} />
         </View>
       ))}
     </Card>
@@ -94,7 +96,7 @@ function CRDetailContent({ db, projectId, changeId }: { db: Db; projectId: strin
       </View>
 
       <Text weight="bold" className="text-lg">{cr.title}</Text>
-      {cr.description ? <Text tone="secondary" className="text-[15px]">{cr.description}</Text> : null}
+      {cr.description || cr.descriptionHtml ? <RichContent html={cr.descriptionHtml} text={cr.description} /> : null}
 
       <View className="flex-row gap-4">
         {cr.costImpact ? (
@@ -189,7 +191,7 @@ function ChangeRequestDetail() {
               </Text>
             ) : null}
             <View className="flex-row items-end gap-2">
-              <TextInput
+              <ImageTextInput
                 value={body}
                 onChangeText={setBody}
                 placeholder="Add a comment"

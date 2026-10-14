@@ -163,7 +163,7 @@ test("realtime reauthorizes conversation membership and workspace grants before 
 test("attaching a protected file cannot create permission to read it", async () => {
   assert.deepEqual(referencedFileIds({ profileId: "unrelated", receiptFileId: "receipt", files: [{ fileId: "photo" }],
     bodyHtml: '<img src="https://api.example/files/photo/view">', fileIds: ["drawing"] }), ["receipt", "photo", "drawing"]);
-  const file = { id: "receipt", owner_id: "someone", project_id: "site" } as UploadedFileRow;
+  const file = { id: "receipt", owner_id: "someone", project_id: "site", mime_type: "image/png", size_bytes: 128 } as UploadedFileRow;
   const files = { findByIds: async () => [file] } as unknown as FilesRepository;
   const access: FileAccessRepository = {
     projectReferences: async () => [{ project_id: "site", resource: "finances", action: "viewCosts" }],

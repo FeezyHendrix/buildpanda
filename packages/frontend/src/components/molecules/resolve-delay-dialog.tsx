@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -120,7 +121,7 @@ function ResolveDelayDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="resolve-prevention">How can we prevent this?</Label>
-        <textarea
+        <ImageTextarea
           id="resolve-prevention"
           value={preventionNotes}
           onChange={(e) => setPreventionNotes(e.target.value)}

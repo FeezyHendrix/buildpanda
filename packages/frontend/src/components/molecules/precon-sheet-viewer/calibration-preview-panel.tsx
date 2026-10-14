@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Button } from "@/components/atoms/button";
 import { scaleRatioOf } from "@/lib/precon-meta";
 import type { CalibrationPreview } from "@/api/precon-editor";
@@ -45,7 +46,7 @@ export function CalibrationPreviewPanel({ preview, applying, onApply, onCancel, 
             {preview.affectedRows.map((row) => (
               <tr key={row.rowId} className="border-t border-line-hair" data-preview-row={row.rowId}>
                 <td className="max-w-40 truncate py-1 pr-2 text-gray-800">
-                  {row.description}
+                  <ContentText value={row.description} />
                   <span className="ml-1 text-[10px] text-gray-400">×{row.contributions}</span>
                 </td>
                 <td className="py-1 text-right tabular-nums text-gray-700">

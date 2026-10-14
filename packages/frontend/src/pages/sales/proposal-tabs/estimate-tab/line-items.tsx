@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Input, INPUT_SM_CLASS } from "@/components/atoms/input";
@@ -168,8 +169,8 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
                 placeholder="Group"
                 disabled={!isDraft}
               />
-              <Input
-                inputSize="sm"
+              <ImageTextarea
+                rows={2}
                 value={item.description}
                 onChange={(e) => updateItem(i, "description", e.target.value)}
                 placeholder="Description"

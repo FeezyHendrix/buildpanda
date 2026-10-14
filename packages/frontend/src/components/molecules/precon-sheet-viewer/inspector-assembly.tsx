@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import type { AssemblySnapshot } from "@/api/precon-row-types";
 
 interface Props {
@@ -29,7 +30,7 @@ export function InspectorAssembly({ assembly, base }: Props) {
     <div className="rounded-md border border-line-hair bg-surface-alt p-2" data-assembly-line data-assembly-id={assembly.assemblyId}>
       <p className="text-xs font-semibold text-gray-900">Independent assembly line</p>
       <p className="mt-0.5 text-xs text-gray-600">
-        Drawn as <span className="font-medium text-gray-800">{assembly.description}</span> from the assembly{" "}
+        Drawn as <span className="font-medium text-gray-800"><ContentText value={assembly.description} /></span> from the assembly{" "}
         <span className="font-medium text-gray-800">{assembly.assemblyName}</span> — {factorSentence(assembly, base)}.
       </p>
       <p className="mt-1 text-xs text-gray-600">

@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { type ReactNode } from "react";
 import { Label } from "@/components/atoms/label";
 import { cn } from "@/lib/utils";
@@ -122,7 +123,7 @@ export function TextareaField({
 }: TextareaFieldProps) {
   return (
     <FieldShell id={id} label={label} hideLabel={hideLabel}>
-      <textarea
+      <ImageTextarea
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}

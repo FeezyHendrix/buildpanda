@@ -36,6 +36,7 @@ function serverValues(projectId: string, buildingId: string, task: Task, selfId:
     columnId: task.columnId,
     title: task.title,
     description: task.description,
+    descriptionHtml: task.descriptionHtml ?? null,
     dueDate: task.dueDate,
     priority: task.priority,
     assignees: JSON.stringify(task.assignees ?? []),

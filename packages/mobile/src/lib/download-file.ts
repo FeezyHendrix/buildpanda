@@ -1,3 +1,4 @@
+import { clearContentImages } from "./content-image-storage";
 import { Directory, File, Paths } from "expo-file-system";
 import { Platform } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
@@ -138,6 +139,7 @@ export async function cacheDocument(db: Db, projectId: string, documentId: strin
 
 /** Unsent originals remain quarantined in their owner's SQLite records. */
 export async function clearDocumentCache(scope?: AccessScope): Promise<void> {
+  await clearContentImages(scope);
   // Web never creates the native file cache; its data lives in SQLite/query storage.
   if (Platform.OS === "web") return;
   const dir = scope ? scopeDirectory(scope) : new Directory(Paths.document, CACHE_DIR_NAME);

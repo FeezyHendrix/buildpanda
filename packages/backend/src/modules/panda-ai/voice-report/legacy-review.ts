@@ -4,6 +4,9 @@ import type { ParsedAction } from "./action-schemas.ts";
 import type { LegacyDraftAction, ProjectSnapshot, MissingField, MissingFieldOption } from "./types.ts";
 const STAGE_STATUSES = ["Pending", "InProgress", "Done"] as const;
 const STAGE_STATUS_LABEL = { Pending: "Not started", InProgress: "Started", Done: "Completed" };
+function clearTarget<T extends ParsedAction>(action: T, target: string): T {
+  return { ...action, payload: { ...action.payload, [target]: "" } };
+}
 // Update/delete/log actions must reference a record from the snapshot; a target
 // the model invented is cleared for review here. Fields the model must not author
 // (activityName, logDate) are injected from the snapshot at the same time.
@@ -12,17 +15,17 @@ export function normalizeAction(action: ParsedAction, snapshot: ProjectSnapshot)
     case "update_rfi":
     case "transition_rfi":
     case "comment_rfi":
-      return snapshot.rfis.some((r) => r.id === action.payload.rfiId) ? action : { ...action, payload: { ...action.payload, rfiId: "" } };
+      return snapshot.rfis.some((r) => r.id === action.payload.rfiId) ? action : clearTarget(action, "rfiId");
     case "update_change_request":
     case "delete_change_request":
     case "comment_change_request":
-      return snapshot.changeRequests.some((c) => c.id === action.payload.changeRequestId) ? action : { ...action, payload: { ...action.payload, changeRequestId: "" } };
+      return snapshot.changeRequests.some((c) => c.id === action.payload.changeRequestId) ? action : clearTarget(action, "changeRequestId");
     case "update_material_order":
     case "delete_material_order":
-      return snapshot.materialOrders.some((m) => m.id === action.payload.orderId) ? action : { ...action, payload: { ...action.payload, orderId: "" } };
+      return snapshot.materialOrders.some((m) => m.id === action.payload.orderId) ? action : clearTarget(action, "orderId");
     case "update_look_ahead":
     case "delete_look_ahead":
-      return snapshot.lookAheads.some((l) => l.id === action.payload.lookAheadId) ? action : { ...action, payload: { ...action.payload, lookAheadId: "" } };
+      return snapshot.lookAheads.some((l) => l.id === action.payload.lookAheadId) ? action : clearTarget(action, "lookAheadId");
     case "void_ledger_entry":
       return snapshot.ledgerEntries.some((e) => e.id === action.payload.entryId) ? action : { ...action, payload: { ...action.payload, entryId: "" } };
     case "void_daily_log_entry": {

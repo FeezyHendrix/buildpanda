@@ -1,3 +1,4 @@
+import { RichContent } from "@/components/rich-text/rich-content";
 import { useProjectAccess } from "@/lib/project-access-provider";
 import { features } from "@/lib/feature-access";
 import { withProjectPermission } from "@/components/molecules/permission-gate";
@@ -247,9 +248,7 @@ function DayEditor({ db, projectId, logDate, buildingId }: { db: Db; projectId: 
                   </Text>
                   {entry.isPendingSync ? <PendingBadge /> : null}
                 </View>
-                <Text className={cn("pt-1 text-[15px]", entry.voided && "line-through opacity-50")}>
-                  {entry.bodyText}
-                </Text>
+                <View className={cn("pt-1", entry.voided && "opacity-50")}><RichContent html={entry.bodyHtml} text={entry.bodyText} /></View>
               </View>
             ))}
           </Card>

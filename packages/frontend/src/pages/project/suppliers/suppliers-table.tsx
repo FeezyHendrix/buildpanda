@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Badge } from "@/components/atoms/badge";
 import { MaterialsIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
@@ -133,7 +134,7 @@ function SupplierRow({ supplier, canManage, onEdit, onDelete }: SupplierRowProps
       <TableCell align="right" className="whitespace-nowrap tabular-nums">
         {formatLeadTime(supplier.leadTimeDays)}
       </TableCell>
-      <TableCell className="text-gray-600">{supplier.paymentTerms ?? "—"}</TableCell>
+      <TableCell className="text-gray-600"><ContentText value={supplier.paymentTerms ?? "—"} /></TableCell>
       <TableCell>
         <Badge dot tone={supplier.approved ? "success" : "neutral"} size="sm">
           {supplier.approved ? "Approved" : "Not approved"}

@@ -43,7 +43,7 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
     if (perms) {
       for (const [resource, actions] of perms) permissions[resource] = [...actions];
     }
-    return { organizationId: orgId, role: request.orgRoles.get(orgId) ?? null, permissions };
+    return { userId: request.requireAuth().id, organizationId: orgId, role: request.orgRoles.get(orgId) ?? null, permissions };
   });
 
   fastify.get("/org-profile", async (request) => {

@@ -1,3 +1,4 @@
+import { RichContent, ContentText } from "@/components/molecules/rich-content";
 import { Dialog } from "@base-ui/react/dialog";
 import { useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
@@ -163,12 +164,12 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                   {rfi.subject}
                 </Dialog.Title>
                 {rfi.questionHtml ? (
-                  <div
+                  <RichContent
                     className="prose prose-sm mt-1.5 max-w-none text-sm text-gray-600 [&_img]:max-h-64 [&_img]:rounded"
-                    dangerouslySetInnerHTML={{ __html: rfi.questionHtml }}
+                    html={rfi.questionHtml}
                   />
                 ) : (
-                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-gray-600">{rfi.question}</p>
+                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-gray-600"><ContentText value={rfi.question} /></p>
                 )}
               </header>
 
@@ -180,9 +181,9 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                     </p>
                     <div className="mt-2 rounded-lg bg-primary-50 p-3">
                       {rfi.officialResponseHtml ? (
-                        <div
+                        <RichContent
                           className="prose prose-sm max-w-none text-sm text-gray-900 [&_img]:max-h-64 [&_img]:rounded"
-                          dangerouslySetInnerHTML={{ __html: rfi.officialResponseHtml }}
+                          html={rfi.officialResponseHtml}
                         />
                       ) : (
                         <p className="whitespace-pre-wrap text-sm text-gray-900">{rfi.officialResponse}</p>
@@ -211,12 +212,12 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                         {c.isProposedResponse && <Badge tone="warning" size="sm">Proposed</Badge>}
                       </div>
                       {c.contentHtml ? (
-                        <div
+                        <RichContent
                           className="prose prose-sm mt-1 max-w-none text-sm text-gray-600 [&_img]:max-h-64 [&_img]:rounded"
-                          dangerouslySetInnerHTML={{ __html: c.contentHtml }}
+                          html={c.contentHtml}
                         />
                       ) : (
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{c.body}</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600"><ContentText value={c.body} /></p>
                       )}
                       {c.references && c.references.length > 0 ? (
                         <div className="mt-2">

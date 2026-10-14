@@ -113,8 +113,10 @@ export interface MaterialApprovalUpdateInput {
   phaseId?: string | null;
   activityId?: string | null;
   description?: string | null;
+  descriptionHtml?: string | null;
   status?: ApprovalStatus;
   response?: string | null;
+  responseHtml?: string | null;
   dueDate?: string | null;
   requestedReviewerId?: string | null;
 }

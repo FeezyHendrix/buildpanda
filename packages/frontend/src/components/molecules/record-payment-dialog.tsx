@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -144,7 +145,7 @@ function RecordPaymentDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="payment-note">Note</Label>
-        <textarea
+        <ImageTextarea
           id="payment-note"
           value={values.note}
           onChange={(e) => update("note", e.target.value)}

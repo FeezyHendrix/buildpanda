@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useEffect, useMemo, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Button } from "@/components/atoms/button";
@@ -75,7 +76,7 @@ function ActivityTemplateDialog({
               Choose a work item
             </Dialog.Title>
             <Dialog.Description className="mt-1.5 text-sm text-ink-muted text-pretty">
-              {library.description}
+              <ContentText value={library.description} />
             </Dialog.Description>
             <div className="mt-3">
               <FilterTabs

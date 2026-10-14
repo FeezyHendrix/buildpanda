@@ -1,3 +1,4 @@
+import { requireToolFileReferences } from "../../files/tool-access.ts";
 import {
   assertProjectPermission,
   canProjectPermission,
@@ -142,6 +143,7 @@ export function toolsForCaller(tools: AgentTool[], ctx: ToolContext): AgentTool[
           permission.resource,
           permission.action,
         );
+        await requireToolFileReferences(runCtx.db, runCtx.projectId, callerAccessContext(runCtx), args);
         return entry.run(runCtx, args);
       },
     });

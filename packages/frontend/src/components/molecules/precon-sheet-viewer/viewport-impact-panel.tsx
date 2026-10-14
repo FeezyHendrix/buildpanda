@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Button } from "@/components/atoms/button";
 import type { ViewportPreview } from "@/api/precon-editor";
 
@@ -28,7 +29,7 @@ export function ViewportImpactPanel({ preview, applying, onApply, onCancel, onOp
           <ul className="mt-1 space-y-0.5 text-xs">
             {preview.rescaled.map((row) => (
               <li key={row.rowId} className="flex justify-between gap-2 border-t border-line-hair py-1" data-rescaled-row={row.rowId}>
-                <span className="min-w-0 truncate text-gray-800">{row.description}</span>
+                <span className="min-w-0 truncate text-gray-800"><ContentText value={row.description} /></span>
                 <span className="shrink-0 tabular-nums text-gray-700">
                   {num(row.currentQty)} → <span className="font-semibold">{num(row.newQty)}</span> {row.unit ?? ""}
                 </span>
@@ -46,7 +47,7 @@ export function ViewportImpactPanel({ preview, applying, onApply, onCancel, onOp
           {region.measurements.length > 0 ? (
             <ul className="mt-1 list-inside list-disc text-xs text-amber-700">
               {region.measurements.map((m) => (
-                <li key={m.geometryId}>{m.description}</li>
+                <li key={m.geometryId}><ContentText value={m.description} /></li>
               ))}
             </ul>
           ) : null}

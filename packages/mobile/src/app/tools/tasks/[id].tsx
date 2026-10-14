@@ -1,3 +1,4 @@
+import { RichContent } from "@/components/rich-text/rich-content";
 import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -71,10 +72,10 @@ function TaskDetail({ db, projectId, taskId }: { db: Db; projectId: string; task
           { label: "Created by", value: task.createdByName },
         ]}
       />
-      {task.description ? (
+      {task.description || task.descriptionHtml ? (
         <View className="gap-2">
           <Text weight="semibold" tone="secondary" className="text-xs uppercase tracking-wide">Description</Text>
-          <Text className="text-[15px]">{task.description}</Text>
+          <RichContent html={task.descriptionHtml} text={task.description} />
         </View>
       ) : null}
     </View>

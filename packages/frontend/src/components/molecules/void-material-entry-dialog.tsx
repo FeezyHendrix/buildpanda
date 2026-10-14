@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { INPUT_CLASS } from "@/components/atoms/input";
@@ -44,7 +45,7 @@ export function VoidMaterialEntryDialog({
         <label htmlFor="void-reason" className="text-sm font-medium text-gray-700">
           Reason for voiding
         </label>
-        <textarea
+        <ImageTextarea
           id="void-reason"
           value={reason}
           onChange={(e) => setReason(e.target.value)}

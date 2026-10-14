@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
@@ -54,7 +55,7 @@ export function ReasonDialog({
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="reason-dialog-text">{label}</Label>
-        <textarea
+        <ImageTextarea
           id="reason-dialog-text"
           value={reason}
           onChange={(event) => setReason(event.target.value)}

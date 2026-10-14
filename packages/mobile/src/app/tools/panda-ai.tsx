@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/rich-text/rich-content";
 import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -27,9 +28,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   return (
     <View className={cn("mb-3 max-w-[85%] rounded-2xl px-4 py-3", isUser ? "self-end bg-primary-500" : "self-start bg-surface-alt")}>
       {message.content ? (
-        <Text tone={isUser ? "inverse" : "default"} className="text-[15px]">
-          {message.content}
-        </Text>
+        <ContentText tone={isUser ? "inverse" : "default"} className="text-[15px]" value={message.content} />
       ) : (
         <View accessibilityLabel="Panda AI is typing" className="min-h-5 justify-center">
           <Spinner size="xs" />

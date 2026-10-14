@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { RISK_LEVELS_3, RISK_STATUSES, type ProposalRisk, type RiskInput } from "@/api/precon-safety";
@@ -79,21 +80,21 @@ export function RiskRow({ risk, onSave, onConfirm, onDelete, saving }: Props) {
       <div className="grid grid-cols-2 gap-2">
         <label className="text-xs font-medium uppercase text-ink-muted">
           Cause and effect
-          <textarea
+          <ImageTextarea
             className={cn(cellTextareaClass, "mt-1 font-normal normal-case tracking-normal")}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            onBlur={() => commitText("description", description, risk.description)}
+            onCommit={() => commitText("description", description, risk.description)}
           />
         </label>
         <label className="text-xs font-medium uppercase text-ink-muted">
           Mitigation
-          <textarea
+          <ImageTextarea
             className={cn(cellTextareaClass, "mt-1 font-normal normal-case tracking-normal")}
             placeholder="What the contractor will do about it"
             value={mitigation}
             onChange={(e) => setMitigation(e.target.value)}
-            onBlur={() => commitText("mitigation", mitigation, risk.mitigation ?? "")}
+            onCommit={() => commitText("mitigation", mitigation, risk.mitigation ?? "")}
           />
         </label>
       </div>

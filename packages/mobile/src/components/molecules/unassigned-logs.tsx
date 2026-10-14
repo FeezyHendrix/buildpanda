@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/rich-text/rich-content";
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { View } from "react-native";
@@ -40,7 +41,7 @@ export function UnassignedLogs({ db, projectId }: { db: Db; projectId: string })
           <View key={date} className="gap-2 border-t border-hairline pt-3">
             <Text weight="semibold">{date}</Text>
             {day ? <Text>{day.totalHours}h · {day.summary || "Daily conditions"}</Text> : null}
-            {entries.filter((row) => row.logDate === date).map((entry) => <Text key={entry.id}>{entry.bodyText}</Text>)}
+            {entries.filter((row) => row.logDate === date).map((entry) => <ContentText key={entry.id} value={entry.bodyText} />)}
             <Button disabled={saving} onPress={() => void assign(date)}>{`Assign to ${building?.name ?? "selected building"}`}</Button>
           </View>
         );

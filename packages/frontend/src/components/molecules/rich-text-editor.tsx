@@ -3,7 +3,11 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
-import { uploadFileRequest, resolveFileUrl } from "@/hooks/use-files";
+import { filesApi } from "@/api/files";
+import { useContentUpload } from "@/hooks/use-content-files";
+import { FILE_ID, MAX_CONTENT_IMAGES, fileIdFromPath, filePath, embeddedImages, plainTextFromHtml } from "@buildpanda/rich-content";
+import { ImagePlus } from "lucide-react";
+import { Spinner } from "@/components/atoms/spinner";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -28,29 +32,29 @@ interface Props {
   ariaLabel?: string;
 }
 
-// Persist only the stable file id on the image node, never the src. The src is
-// a short-lived S3 presigned URL resolved from data-file-id at render time, so
-// serialized HTML must omit it — otherwise saved content would bake an expiring
-// link. renderHTML drops src whenever a data-file-id is present.
+// Store canonical file references; resolve short-lived URLs only for the view.
 const FileImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
       "data-file-id": {
         default: null,
-        parseHTML: (el) => el.getAttribute("data-file-id"),
+        parseHTML: (el) => el.getAttribute("data-file-id") ?? fileIdFromPath(el.getAttribute("src") ?? ""),
         renderHTML: (attrs) =>
           attrs["data-file-id"] ? { "data-file-id": attrs["data-file-id"] } : {},
       },
     };
   },
   parseHTML() {
-    return [{ tag: "img[src]" }, { tag: "img[data-file-id]" }];
+    return [{ tag: "img", getAttrs: (element) => {
+      const id = element.getAttribute('data-file-id') ?? fileIdFromPath(element.getAttribute('src') ?? '');
+      return id && FILE_ID.test(id) ? {} : false;
+    } }];
   },
   renderHTML({ HTMLAttributes }) {
     if (HTMLAttributes["data-file-id"]) {
       const { src: _src, ...rest } = HTMLAttributes;
-      return ["img", rest];
+      return ["img", { ...rest, src: filePath(String(HTMLAttributes["data-file-id"])) }];
     }
     return ["img", HTMLAttributes];
   },
@@ -71,7 +75,9 @@ function ToolbarButton({
   onClick,
   label,
   children,
+  disabled = false,
 }: {
+  disabled?: boolean;
   active?: boolean;
   onClick: () => void;
   label: string;
@@ -80,14 +86,13 @@ function ToolbarButton({
   return (
     <button
       type="button"
+      disabled={disabled}
       aria-label={label}
       title={label}
-      onMouseDown={(e) => {
-        e.preventDefault();
-        onClick();
-      }}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
       className={cn(
-        "flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-sm",
+        "flex h-9 min-w-9 items-center justify-center rounded px-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50",
         active ? "bg-primary-50 text-primary-700" : "text-ink-muted hover:bg-black/5 hover:text-ink",
       )}
     >
@@ -98,6 +103,8 @@ function ToolbarButton({
 
 export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, placeholder, disabled, ariaLabel }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const upload = useContentUpload(projectId);
+  const insertRef = useRef<(file: File) => void>(() => undefined);
 
   const editor = useEditor({
     extensions: [
@@ -111,31 +118,51 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
     // editor has no accessible name for screen readers or getByLabel.
     // never undefined: tiptap reads editorProps.dispatchTransaction without a
     // guard, so passing undefined here throws before the view is created
-    editorProps: ariaLabel ? { attributes: { "aria-label": ariaLabel } } : {},
-    onUpdate: ({ editor: e }) => onChange(e.getHTML(), e.getText()),
+    editorProps: {
+      attributes: { role: "textbox", "aria-multiline": "true", "aria-label": ariaLabel ?? placeholder ?? "Description" },
+      handlePaste: (_view, event) => {
+        const file = Array.from(event.clipboardData?.files ?? []).find((file) => file.type.startsWith('image/'));
+        if (!file || disabled || !upload.canUpload) return false;
+        event.preventDefault(); insertRef.current(file); return true;
+      },
+      handleDrop: (_view, event) => {
+        const file = Array.from(event.dataTransfer?.files ?? []).find((file) => file.type.startsWith('image/'));
+        if (!file || disabled || !upload.canUpload) return false;
+        event.preventDefault(); insertRef.current(file); return true;
+      },
+    },
+    onUpdate: ({ editor: e }) => onChange(e.getHTML(), plainTextFromHtml(e.getHTML())),
   });
 
   const insertImage = useCallback(
     async (file: File) => {
-      if (!editor) return;
+      if (!editor || disabled || !upload.canUpload || upload.pending) return;
       try {
-        const uploaded = await uploadFileRequest(file, undefined, projectId);
-        const url = await resolveFileUrl(uploaded.id);
+        let count = 0;
+        editor.state.doc.descendants((node) => { if (node.type.name === 'image') count += 1; });
+        if (count >= MAX_CONTENT_IMAGES) throw new Error('A field can contain up to 20 images.');
+        const uploaded = await upload.upload(file);
+        if (editor.isDestroyed || !editor.isEditable) return;
+        const url = filePath(uploaded.fileId);
         editor
           .chain()
           .focus()
-          .setImage({ src: url, alt: uploaded.fileName, "data-file-id": uploaded.id } as {
+          .setTextSelection(editor.state.selection.to)
+          .setImage({ src: url, alt: uploaded.name, "data-file-id": uploaded.fileId } as {
             src: string;
             alt: string;
           })
           .run();
-        onAttach?.({ fileId: uploaded.id, url, name: uploaded.fileName });
-      } catch {
-        toast("Could not upload image", "error");
+        onAttach?.({ fileId: uploaded.fileId, url, name: uploaded.name });
+      } catch (error) {
+        toast(error instanceof Error ? error.message : "Could not upload image", "error");
       }
     },
-    [editor, onAttach, projectId],
+    [editor, onAttach, disabled, upload],
   );
+
+  insertRef.current = (file) => { void insertImage(file); };
+  useEffect(() => { editor?.setEditable(!disabled); }, [editor, disabled]);
 
   const onPickFile = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,8 +201,9 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
     );
     for (const img of images) {
       const fileId = img.getAttribute("data-file-id");
-      if (!fileId) continue;
-      void resolveFileUrl(fileId)
+      img.removeAttribute("src");
+      if (!fileId || !upload.ready) continue;
+      void filesApi.resolveUrl(fileId)
         .then((url) => {
           if (!cancelled) img.src = url;
         })
@@ -183,38 +211,53 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
     }
     return () => {
       cancelled = true;
+      for (const img of images) img.removeAttribute("src");
     };
-  }, [editor, value]);
+  }, [editor, value, upload.key, upload.ready]);
 
   if (!editor) return null;
 
   return (
-    <div className="rounded-lg border border-line-hair bg-white">
+    <div className="rounded-lg border border-line-hair bg-white" data-content-upload-pending={upload.pending || undefined}>
       <div className="flex flex-wrap items-center gap-1 border-b border-line-hair px-2 py-1.5">
-        <ToolbarButton label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+        <ToolbarButton disabled={disabled} label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
           <span className="font-bold">B</span>
         </ToolbarButton>
-        <ToolbarButton label="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <ToolbarButton disabled={disabled} label="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
           <span className="italic">I</span>
         </ToolbarButton>
-        <ToolbarButton label="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <ToolbarButton disabled={disabled} label="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
           •
         </ToolbarButton>
-        <ToolbarButton label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <ToolbarButton disabled={disabled} label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
           1.
         </ToolbarButton>
         <span className="mx-1 h-5 w-px bg-gray-100" />
-        <ToolbarButton label="Attach image" onClick={() => fileInputRef.current?.click()}>
-          🖼
-        </ToolbarButton>
+        {upload.canUpload ? <ToolbarButton disabled={disabled || upload.pending} label="Attach image" onClick={() => fileInputRef.current?.click()}>
+          {upload.pending ? <Spinner size="xs" /> : <ImagePlus size={16} />}
+        </ToolbarButton> : null}
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+          disabled={disabled || upload.pending || !upload.canUpload}
           className="hidden"
           onChange={onPickFile}
         />
       </div>
+      {upload.pending ? <p role="status" className="px-3 py-1 text-xs text-ink-muted">Uploading image. Wait before saving.</p> : null}
+      {upload.error ? <p role="alert" className="px-3 py-1 text-xs text-red-600">{upload.error}</p> : null}
+      {!disabled ? <div className="flex flex-wrap gap-2 px-3">
+        {embeddedImages(value).map((image, index) => <button key={`${image.fileId}:${index}`} type="button" className="min-h-9 rounded px-2 text-xs text-ink-muted hover:bg-gray-50" aria-label={`Remove ${image.name}`} onClick={() => {
+          const positions: { from: number; to: number }[] = [];
+          editor.state.doc.descendants((node, position) => {
+            if (node.type.name === 'image' && node.attrs['data-file-id'] === image.fileId) positions.push({ from: position, to: position + node.nodeSize });
+          });
+          const transaction = editor.state.tr;
+          positions.reverse().forEach(({ from, to }) => transaction.delete(from, to));
+          editor.view.dispatch(transaction);
+        }}>Remove {image.name}</button>)}
+      </div> : null}
       <EditorContent
         editor={editor}
         className="prose prose-sm max-w-none px-3 py-2 text-base lg:text-sm [&_.ProseMirror]:min-h-[120px] [&_.ProseMirror]:max-h-[40vh] [&_.ProseMirror]:overflow-y-auto [&_.ProseMirror]:outline-none [&_img]:max-h-64 [&_img]:rounded"

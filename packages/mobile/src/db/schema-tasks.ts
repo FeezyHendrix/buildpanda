@@ -28,6 +28,7 @@ export const tasks = sqliteTable(
     columnId: text("column_id").notNull(),
     title: text("title").notNull(),
     description: text("description"),
+    descriptionHtml: text("description_html"),
     dueDate: text("due_date"),
     priority: text("priority").notNull().default("Medium"),
     assignees: text("assignees").notNull().default("[]"),

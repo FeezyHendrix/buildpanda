@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { INPUT_CLASS } from "@/components/atoms/input";
@@ -79,7 +80,7 @@ export function ExtendHireDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="extend-reason">Reason</Label>
-        <textarea
+        <ImageTextarea
           id="extend-reason"
           value={reason}
           onChange={(event) => setReason(event.target.value)}

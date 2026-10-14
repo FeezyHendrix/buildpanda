@@ -1,3 +1,4 @@
+import { RichContent, ContentText } from "@/components/molecules/rich-content";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -69,13 +70,13 @@ function DailyLogEntryRow({ projectId, logDate, entry, userId, canVoidEntry }: D
 
       {hasBody ? (
         <div className="mt-2">
-          <div
+          <RichContent
             ref={contentRef}
             className={cn(
               "prose prose-sm max-w-none text-sm text-black-400 [&_img]:max-h-56 [&_img]:rounded-lg [&_p]:my-1",
               !expanded && "line-clamp-4",
             )}
-            dangerouslySetInnerHTML={{ __html: entry.bodyHtml! }}
+            html={entry.bodyHtml!}
           />
           {isClamped || expanded ? (
             <button
@@ -94,7 +95,7 @@ function DailyLogEntryRow({ projectId, logDate, entry, userId, canVoidEntry }: D
           <p className="text-xs font-semibold text-error-700">
             Voided by {lastVoid.voidedByName} · {formatTime(lastVoid.voidedAt)}
           </p>
-          <p className="text-xs text-error-900/80">{lastVoid.reason}</p>
+          <p className="text-xs text-error-900/80"><ContentText value={lastVoid.reason} /></p>
           {entry.voids.length > 1 ? (
             <p className="mt-1 text-xs text-error-700/70">
               Voided {entry.voids.length} times — see report for full history.

@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -151,7 +152,7 @@ function RequestCard({
         <Metric label="Created" value={new Date(claim.createdAt).toLocaleDateString()} />
       </div>
 
-      {claim.notes && <p className="text-sm text-gray-600 text-pretty">{claim.notes}</p>}
+      {claim.notes && <p className="text-sm text-gray-600 text-pretty"><ContentText value={claim.notes} /></p>}
 
       <UpsertRequestDialog
         open={editOpen}

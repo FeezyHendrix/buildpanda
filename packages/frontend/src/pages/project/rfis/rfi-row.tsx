@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Badge } from "@/components/atoms/badge";
 import { formatDayMonth } from "@/lib/formatters";
 import { isRfiOverdue, overdueLabel, rfiOverdueDays, RFI_STATUS_META } from "@/lib/rfi-meta";
@@ -48,7 +49,7 @@ function RfiRow({ rfi, onOpen }: RfiRowProps) {
             ) : null}
           </div>
           <p className="mt-1.5 truncate text-sm font-medium text-gray-900">{rfi.subject}</p>
-          <p className="mt-0.5 line-clamp-1 text-sm text-gray-500">{rfi.question}</p>
+          <p className="mt-0.5 line-clamp-1 text-sm text-gray-500"><ContentText value={rfi.question} /></p>
         </div>
         <div className="shrink-0 text-right">
           {rfi.ballInCourtName ? <p className="text-xs text-gray-500">{rfi.ballInCourtName}</p> : null}

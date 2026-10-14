@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useState } from "react";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
@@ -107,7 +108,7 @@ function RiskFactorRow({
       <IconBox tone="red" size="sm" icon={<AlertIcon className="size-4" />} />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-gray-900">{risk.title}</p>
-        <p className="mt-1 text-xs text-gray-500">{risk.description}</p>
+        <p className="mt-1 text-xs text-gray-500"><ContentText value={risk.description} /></p>
         <div className="mt-2 flex items-center gap-3">
           <Badge tone={RISK_SEVERITY_TONE[risk.severity]} size="sm">
             {risk.severity}

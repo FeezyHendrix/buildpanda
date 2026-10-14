@@ -7,5 +7,8 @@
     ".": "./src/index.ts",
     "./access": "./src/access.ts",
     "./features": "./src/features.ts"
+  },
+  "dependencies": {
+    "@buildpanda/rich-content": "file:../rich-content"
   }
 }

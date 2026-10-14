@@ -1,3 +1,4 @@
+import { ImageTextInput } from "@/components/rich-text/image-text-input";
 import { canDecideMaterial } from "@/lib/access-policy";
 import { useProjectAccess } from "@/lib/project-access-provider";
 import { features } from "@/lib/feature-access";
@@ -6,7 +7,7 @@ import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, TextInput, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import type { ApprovalStatus } from "@/api/material-approvals";
 import { Button, Field, Spinner, Text } from "@/components/atoms";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
@@ -172,7 +173,7 @@ function CommentComposer({
         </Text>
       ) : null}
       <View className="flex-row items-end gap-2">
-        <TextInput
+        <ImageTextInput
           value={body}
           onChangeText={setBody}
           placeholder="Add a comment"

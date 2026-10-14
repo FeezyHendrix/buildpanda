@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/rich-text/rich-content";
 import { features } from "@/lib/feature-access";
 import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
@@ -97,7 +98,7 @@ function LookAheadDetail({ db, projectId, lookAheadId }: { db: Db; projectId: st
       <Text weight="bold" className="text-lg">{la.name}</Text>
 
       {la.description ? (
-        <Text tone="secondary" className="text-[14px] leading-5">{la.description}</Text>
+        <ContentText tone="secondary" className="text-[14px] leading-5" value={la.description} />
       ) : null}
 
       <Card>

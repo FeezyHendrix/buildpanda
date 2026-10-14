@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -123,7 +124,7 @@ function MaterialApprovalCard({
               <span className="font-medium text-gray-900">
                 {approval.reviewedByName ?? "Reviewer"}:
               </span>{" "}
-              {approval.response}
+              <ContentText value={approval.response} />
             </p>
           ) : null}
 

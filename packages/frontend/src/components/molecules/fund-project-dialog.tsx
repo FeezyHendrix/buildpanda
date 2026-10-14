@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -71,9 +72,8 @@ function FundProjectDialog({
     
     <div className="flex flex-col gap-1.5">
       <Label htmlFor="fund-description">Description (optional)</Label>
-      <input
+      <ImageTextarea
         id="fund-description"
-        type="text"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="e.g. Top-up funding for MEP phase"

@@ -1,3 +1,5 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
+import { ContentText } from "@/components/molecules/rich-content";
 import { ClipboardList, FilePlus2, ListChecks, type LucideIcon } from "lucide-react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
@@ -35,7 +37,7 @@ export function StepStart({ name, description, onName, onDescription, start }: S
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="wiz-description">When should the team use it? (optional)</Label>
-          <input id="wiz-description" value={description} placeholder="e.g. Fill in before leaving site each day" maxLength={1000} onChange={(e) => onDescription(e.target.value)} className={INPUT_CLASS} />
+          <ImageTextarea id="wiz-description" value={description} placeholder="e.g. Fill in before leaving site each day" maxLength={1000} onChange={(e) => onDescription(e.target.value)} className={INPUT_CLASS} />
         </div>
       </section>
 
@@ -63,7 +65,7 @@ export function StepStart({ name, description, onName, onDescription, start }: S
                 >
                   <Icon className={cn("size-6", chosen ? "text-primary-500" : "text-gray-400")} aria-hidden />
                   <span className="text-sm font-semibold text-gray-900">{point.title}</span>
-                  <span className="text-xs text-gray-500">{point.body}</span>
+                  <span className="text-xs text-gray-500"><ContentText value={point.body} /></span>
                 </button>
               );
             })}

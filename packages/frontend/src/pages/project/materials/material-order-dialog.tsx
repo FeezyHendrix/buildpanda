@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "@/components/molecules/form-drawer";
@@ -254,7 +255,7 @@ export function MaterialOrderDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="mat-notes">Lifecycle notes</Label>
-        <textarea
+        <ImageTextarea
           id="mat-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

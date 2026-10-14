@@ -1,3 +1,5 @@
+import { RichContent, ContentText } from "@/components/molecules/rich-content";
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { Mic, Pencil, UserRound, Video } from "lucide-react";
 import { MEDIA_KIND, type DrawingMarkupComment, type MediaKind } from "@/api/drawing-markup";
@@ -67,7 +69,7 @@ export function MarkupCommentItem({
   if (editing) {
     return (
       <li className="rounded-lg bg-surface-alt px-2.5 py-2" data-comment-editing>
-        <textarea aria-label="Edit comment" rows={2} className="w-full rounded-md border border-line px-2 py-1 text-sm" value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <ImageTextarea aria-label="Edit comment" rows={2} className="w-full rounded-md border border-line px-2 py-1 text-sm" value={draft} onChange={(e) => setDraft(e.target.value)} />
         <div className="mt-1 flex justify-end gap-1.5 text-xs">
           <button type="button" className="underline" onClick={() => setEditing(false)}>
             Cancel
@@ -107,12 +109,12 @@ export function MarkupCommentItem({
         ) : null}
       </p>
       {comment.bodyHtml ? (
-        <div
+        <RichContent
           className="prose prose-sm mt-0.5 max-w-none text-sm text-gray-900 [&_img]:max-h-48 [&_img]:rounded"
-          dangerouslySetInnerHTML={{ __html: comment.bodyHtml }}
+          html={comment.bodyHtml}
         />
       ) : body ? (
-        <p className="mt-0.5 whitespace-pre-wrap text-sm text-gray-900">{body}</p>
+        <p className="mt-0.5 whitespace-pre-wrap text-sm text-gray-900"><ContentText value={body} /></p>
       ) : null}
       {comment.mediaKind ? <MediaNote comment={comment} mediaKind={comment.mediaKind} /> : null}
       {comment.assigneeName ? (

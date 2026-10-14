@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from "react";
+import { contentWork } from "@buildpanda/rich-content/pending";
 import { Pressable, View, type PressableProps } from "react-native";
 import { Spinner, type SpinnerTone } from "./spinner";
 import { Text, type TextTone } from "./text";
@@ -55,8 +57,9 @@ export function Button({
   ...props
 }: ButtonProps) {
   const { allows } = useProjectAccess();
+  const addingImage = useSyncExternalStore(contentWork.subscribe, contentWork.getSnapshot, contentWork.getSnapshot);
   if (permission && !allows(permission)) return null;
-  const isDisabled = disabled === true || loading;
+  const isDisabled = disabled === true || loading || addingImage;
 
   return (
     <Pressable
@@ -71,7 +74,7 @@ export function Button({
         className,
       )}
       {...props}
-      onPress={(event) => { if (!permission || allows(permission)) props.onPress?.(event); }}
+      onPress={(event) => { if (!isDisabled && (!permission || allows(permission))) props.onPress?.(event); }}
     >
       {loading ? (
         <Spinner size="sm" tone={spinnerTone[variant]} />

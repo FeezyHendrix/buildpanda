@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
@@ -111,7 +112,7 @@ function UpsertApprovalDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="ap-desc">Details</Label>
-        <textarea
+        <ImageTextarea
           id="ap-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}

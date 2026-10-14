@@ -211,6 +211,13 @@
       "when": 1792007194832,
       "tag": "0029_rfi_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1792020482377,
+      "tag": "0030_narrative_images",
+      "breakpoints": true
     }
   ]
 }

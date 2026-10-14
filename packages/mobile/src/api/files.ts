@@ -49,6 +49,20 @@ export async function uploadProjectFile(
   const headers: Record<string, string> = {};
   if (Platform.OS !== "web") headers.cookie = authClient.getCookie();
 
+  if (Platform.OS === "web") {
+    if (!/^(blob:|data:)/.test(uri)) throw new Error("Choose a file from this browser first.");
+    const blob = await fetch(uri).then((response) => response.blob());
+    requireCurrentAccess(ticket);
+    const form = new FormData();
+    form.append("projectId", projectId);
+    form.append("file", blob, fileName);
+    const response = await fetch(`${API_BASE_URL}/files`, { method: "POST", credentials: "include", body: form });
+    requireCurrentAccess(ticket);
+    if ([401, 403].includes(response.status)) revokeProjectAccess();
+    if (!response.ok) throw new ApiError(response.status, `Upload failed (${response.status})`);
+    return response.json() as Promise<UploadedFile>;
+  }
+
   const safeName = fileName.replace(/[/\\]/g, "_");
   const dir = uploadDir();
   const named = new File(dir, safeName);
