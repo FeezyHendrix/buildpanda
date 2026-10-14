@@ -1,4 +1,4 @@
-import { useProjectBuilding } from "./use-project-building";
+import { missingBuilding, useProjectBuilding } from "./use-project-building";
 import { filterBuildingRows } from "@/lib/building-scope";
 import { useSyncState } from "@/lib/sync-provider";
 import { useStageScope } from "@/lib/stage-scope";
@@ -84,16 +84,6 @@ export function useDailyLogDay(db: Db, projectId: string, logDate: string, build
   return { day, entries, activities, isPending: (liveDay.updatedAt === undefined || liveEntries.updatedAt === undefined) && !liveDay.error && !liveEntries.error, error: liveDay.error ?? liveEntries.error };
 }
 
-// A project with one building has nothing to pick, so telling its crew to
-// "choose a building" was a dead end: the id is simply not on the device yet.
-function missingBuilding(buildingCount: number): Error {
-  return new Error(
-    buildingCount > 1
-      ? "Choose a building first."
-      : "Buildings have not reached this device yet. Reconnect once, then try again.",
-  );
-}
-
 export function useSaveDailyLog(db: Db | null, projectId: string | undefined) {
   const scope = useProjectBuilding();
   return async (logDate: string, input: UpsertDailyLogInput) => {
@@ -145,7 +135,7 @@ export function useAddTemplateEntry(db: Db | null, projectId: string | undefined
   ) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     const buildingId = input.buildingId ?? scope.buildingId;
-    if (!buildingId) throw new Error("Choose a building before adding a daily log entry.");
+    if (!buildingId) throw missingBuilding(scope.buildings.length);
     const responses = cleanResponses(input.template.fields, input.responses);
     const missing = missingRequired(input.template.fields, responses);
     if (missing.length > 0) throw new Error(`Fill in the required fields: ${missing.join(", ")}`);
