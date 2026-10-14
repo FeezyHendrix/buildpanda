@@ -69,6 +69,10 @@ export const materialLogRepository = {
         notesHtml: input.notesHtml,
         materialOrderId: input.entryType === "IN" ? input.materialOrderId ?? null : null,
         materialOrderTitle: input.entryType === "IN" ? input.materialOrderTitle ?? null : null,
+        // Explicit, not the column default, which still reads "Pending": the
+        // server no longer gates a log on approval, so a crew member must not
+        // watch their own entry sit "Awaiting approval" until it syncs.
+        approvalStatus: "Approved",
         isPendingSync: true,
         updatedAt: Date.now(),
       }).run();
