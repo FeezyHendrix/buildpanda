@@ -1,11 +1,10 @@
-import { eq } from "drizzle-orm";
 import { File } from "expo-file-system";
 import { documentsApi } from "@/api/documents";
 import { uploadProjectFile } from "@/api/files";
 import type { Db } from "./client";
 import { DOCUMENTS_RESOURCE, documentsRepository } from "./documents-repository";
-import { done, PermanentOutboxError, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { outbox, type OutboxRow } from "./schema";
+import { done, PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
+import { type OutboxRow } from "./schema";
 
 export { DOCUMENTS_RESOURCE };
 
@@ -24,10 +23,7 @@ export async function pushDocumentOutboxItem(db: Db, item: OutboxRow): Promise<O
   }
 
   const row = await documentsRepository.findById(db, item.entityId);
-  if (!row) {
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(false);
-  }
+  if (!row) return dropItem(db, item);
   if (!row.stagedUri || !new File(row.stagedUri).exists) {
     throw new PermanentOutboxError("The file picked for upload is no longer on this device.");
   }
@@ -44,6 +40,5 @@ export async function pushDocumentOutboxItem(db: Db, item: OutboxRow): Promise<O
   });
   // swaps the local row for the server's and drops the staged copy
   await documentsRepository.reconcileCreate(db, item.projectId, row.id, server);
-  await db.delete(outbox).where(eq(outbox.id, item.id));
-  return done(true);
+  return finishItem(db, item);
 }

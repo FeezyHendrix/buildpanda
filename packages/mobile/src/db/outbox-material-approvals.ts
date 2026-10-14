@@ -1,5 +1,4 @@
 import { settleOutboxItem } from "./sync-write-state";
-import { eq } from "drizzle-orm";
 import { isApprovalStatus, materialApprovalsApi } from "@/api/material-approvals";
 import type { Db } from "./client";
 import {
@@ -10,13 +9,8 @@ import {
   materialApprovalsRepository,
   MATERIAL_APPROVALS_RESOURCE,
 } from "./material-approvals-repository";
-import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { outbox, type OutboxRow } from "./schema";
-
-function isPermanentRejection(error: unknown): boolean {
-  const status = (error as { status?: number } | null)?.status;
-  return typeof status === "number" && status >= 400 && status < 500 && status !== 401 && status !== 429;
-}
+import { done, dropItem, finishItem, isPermanent, skipped, type OutboxHandlerResult } from "./outbox-handler";
+import { type OutboxRow } from "./schema";
 
 export async function pushMaterialApprovalOutboxItem(
   db: Db,
@@ -28,15 +22,11 @@ export async function pushMaterialApprovalOutboxItem(
     // The local row is already gone; the server copy is all that is left to remove.
     if (item.operation === "delete") {
       await materialApprovalsApi.remove(item.projectId, item.entityId);
-      await db.delete(outbox).where(eq(outbox.id, item.id));
-      return done(true);
+      return finishItem(db, item);
     }
 
     const row = await materialApprovalsRepository.findById(db, item.entityId);
-    if (!row) {
-      await db.delete(outbox).where(eq(outbox.id, item.id));
-      return done(false);
-    }
+    if (!row) return dropItem(db, item);
 
     if (item.operation === "create") {
       // Raised from a pin whose own create has not landed: the markup's push
@@ -65,13 +55,14 @@ export async function pushMaterialApprovalOutboxItem(
           response: row.response,
         });
       } catch (error) {
-        if (isPermanentRejection(error)) {
+        if (isPermanent(error)) {
           const server = await materialApprovalsApi.detail(item.projectId, row.id).catch(() => null);
           if (server) await materialApprovalsRepository.replaceFromServer(db, item.projectId, server);
         }
         throw error;
       }
       settleOutboxItem(db, item);
+      return done(true);
     } else {
       await materialApprovalsApi.update(item.projectId, row.id, {
         title: row.title,
@@ -84,18 +75,15 @@ export async function pushMaterialApprovalOutboxItem(
         description: row.description,
       });
       settleOutboxItem(db, item);
+      return done(true);
     }
 
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(true);
+    return finishItem(db, item);
   }
 
   if (item.resource === MATERIAL_APPROVAL_COMMENTS_RESOURCE) {
     const comment = await materialApprovalCommentsRepository.findById(db, item.entityId);
-    if (!comment) {
-      await db.delete(outbox).where(eq(outbox.id, item.id));
-      return done(false);
-    }
+    if (!comment) return dropItem(db, item);
     if (comment.approvalId.startsWith("local_")) return done(false);
 
     const server = await materialApprovalsApi.addComment(
@@ -104,8 +92,7 @@ export async function pushMaterialApprovalOutboxItem(
       comment.body,
     );
     await materialApprovalCommentsRepository.reconcileCreate(db, comment.id, server);
-    await db.delete(outbox).where(eq(outbox.id, item.id));
-    return done(true);
+    return finishItem(db, item);
   }
 
   return skipped;
