@@ -5,6 +5,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates libstdc++6 zlib1g \
       libfreetype6 fontconfig libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
+# npm 10's Arborist can crash with `edgesOut` while resolving this dependency
+# graph on Railway's isolated builders. npm 11 supports Node 22 and fixes it.
+RUN npm install -g npm@11.19.0
 ENV _JAVA_OPTIONS="-Djava.awt.headless=true"
 COPY tsconfig.shared.json /tsconfig.shared.json
 
