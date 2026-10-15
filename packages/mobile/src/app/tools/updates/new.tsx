@@ -7,6 +7,9 @@ import { useState } from "react";
 import { View } from "react-native";
 import type { UpdateCategory } from "@/api/updates";
 import { Button, Field, OptionRow, Text } from "@/components/atoms";
+import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
+import { FieldLabel } from "@/components/atoms/input";
+import { htmlToText } from "@/lib/html";
 import { Page } from "@/components/molecules/page";
 import {
   UpdateMediaPicker,
@@ -40,7 +43,8 @@ function NewProjectUpdate() {
   const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
   const [category, setCategory] = useState<UpdateCategory | "">("");
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [descriptionHtml, setDescriptionHtml] = useState("");
+  const description = htmlToText(descriptionHtml);
   const [media, setMedia] = useState<PickedUpdateMedia[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +54,7 @@ function NewProjectUpdate() {
     category !== "" &&
     title.trim().length > 0 &&
     description.trim().length > 0 &&
+    description.length <= DESCRIPTION_MAX && descriptionHtml.length <= 200000 &&
     !saving;
 
   async function handleSubmit() {
@@ -63,6 +68,7 @@ function NewProjectUpdate() {
         category,
         title: title.trim(),
         description: description.trim(),
+        descriptionHtml,
         stageId,
         authorName: readCachedUser()?.name ?? null,
         media,
@@ -117,15 +123,11 @@ function NewProjectUpdate() {
           maxLength={TITLE_MAX}
           autoFocus
         />
-        <Field
-          label="Details"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Describe what happened on site."
-          maxLength={DESCRIPTION_MAX}
-          multiline
-          className="min-h-28"
-        />
+        <View className="gap-2"><FieldLabel>Details</FieldLabel>
+          <RichTextEditor label="Details" value={descriptionHtml} onChange={setDescriptionHtml}
+            projectId={projectId} placeholder="Describe what happened on site." />
+          {description.length > DESCRIPTION_MAX ? <Text tone="danger">Keep details within 2,000 characters.</Text> : null}
+        </View>
         <UpdateMediaPicker media={media} onChange={setMedia} onError={setError} />
       </View>
     </Page>

@@ -1,3 +1,4 @@
+import { agentRecordScope } from "./record-scope.ts";
 import type { Knex } from "knex";
 import { config } from "../../../config/index.ts";
 import {
@@ -39,6 +40,7 @@ const SYSTEM_PROMPT = [
   "Inspections are an INDEPENDENT service, not the contractor's own QA: the client requests one, a BuildPanda inspector attends and reports on whoever is building. Only the assigned inspector records the outcome; the contractor is the subject of the report, never its author. Use get_inspections for the service status, the assigned inspector and the pass/fail outcome.",
   "Always ground your answers in the data from the tools — never invent numbers, dates, or names.",
   "For published project updates, including posts assigned to a build stage, use get_project_updates. Pass a stageId from get_schedule when the question names a particular stage.",
+  "Use get_update_comments for discussion on a published update. An untranscribed voice note has no readable content; never guess what it says.",
   "You answer ONLY from the tools you have been given on this turn. The toolbox is built from the asking user's own permissions, so a domain they may not read has no tool here at all, and a tool may refuse a section they may not see. Never speculate about, estimate, or infer data you could not read: if the tool for something is absent or refuses, say plainly that you cannot see it for this user and that their role does not open it — do not answer from the project snapshot, from the conversation, or from general knowledge instead. If a result carries a `notPermitted` list, those parts were withheld by permission; say so rather than reporting the remainder as if it were the whole picture.",
   "You may call SEVERAL tools in one turn, and you should. Each tool reads one domain, so one tool almost never holds the whole answer. Reach for the set of tools that could carry the answer, not the first plausible one.",
   "When the question names a PIECE OF WORK rather than a domain — a structure, an element, a location or a chainage such as 'culvert 1', 'ch 0+420', 'the retaining wall', 'the asphalt' — start with find_work_records. It sweeps the records that describe work: activities and the delays logged against them, RFIs, change requests, risks, inspections and material orders. 'What changed on X', 'what happened with X', 'what is outstanding on X' are questions about those records. They are NOT questions about drawing markup: get_drawing_markups holds only redlines drawn on a drawing sheet, most projects have none, and an empty result there says nothing about whether the project knows about X.",
@@ -109,8 +111,8 @@ export function agentService(db: Knex, queue?: QueueManager) {
     },
 
     async run(input: ChatTurnInput, events: AgentEvents, externalSignal?: AbortSignal): Promise<AgentResult> {
-      const repo = agentRepository(db);
       const toolCtx: ToolContext = { db, projectId: input.projectId, caller: input.caller, queue };
+      const repo = agentRepository(db, agentRecordScope(toolCtx));
       const snapshot = await buildSnapshot(repo, input.projectId, (resource, action) =>
         canRead(toolCtx, resource, action),
       );

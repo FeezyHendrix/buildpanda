@@ -2,6 +2,24 @@ import { request } from "./client";
 
 export type UpdateCategory = "Progress" | "Material Delivery" | "Inspections" | "Issues";
 
+export interface UpdateComment {
+  id: string;
+  updateId: string;
+  author: { id: string; name: string };
+  body: string;
+  bodyHtml?: string | null;
+  audioFileId?: string | null;
+  audioDurationSeconds?: number | null;
+  createdAt: string;
+}
+export interface UpdateCommentInput {
+  body: string;
+  bodyHtml?: string | null;
+  audioFileId?: string | null;
+  audioDurationSeconds?: number | null;
+  clientMutationId?: string;
+}
+
 export interface ProjectUpdate {
   stageId?: string | null;
   activityId?: string | null;
@@ -44,8 +62,9 @@ export const updatesApi = {
   edit: (projectId: string, updateId: string, body: { title?: string; description?: string }) =>
     request<ProjectUpdate>(`/projects/${projectId}/updates/${updateId}`, { method: "PUT", body: JSON.stringify(body) }),
   remove: (projectId: string, updateId: string) => request<void>(`/projects/${projectId}/updates/${updateId}`, { method: "DELETE" }),
-  comment: (projectId: string, updateId: string, body: string) =>
-    request<unknown>(`/projects/${projectId}/updates/${updateId}/comments`, { method: "POST", body: JSON.stringify({ body }) }),
+  comments: (projectId: string, updateId: string) => request<UpdateComment[]>(`/projects/${projectId}/updates/${updateId}/comments`),
+  comment: (projectId: string, updateId: string, body: string | UpdateCommentInput) =>
+    request<UpdateComment>(`/projects/${projectId}/updates/${updateId}/comments`, { method: "POST", body: JSON.stringify(typeof body === "string" ? { body } : body) }),
   list: (projectId: string) => request<ProjectUpdate[]>(`/projects/${projectId}/updates`),
 
   create: (projectId: string, body: CreateUpdateInput) =>

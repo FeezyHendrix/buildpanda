@@ -1,3 +1,4 @@
+import { expenseReaderId } from "../transactions/access.ts";
 import type { FastifyPluginAsync } from "fastify";
 import { activitiesRepository } from "../activities/repository.ts";
 import { buildingsRepository } from "../buildings/repository.ts";
@@ -184,7 +185,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     stages,
     documents: documentsRepository(fastify.db),
   });
-  const service = stagesService(
+  const service = (readerId: string | undefined) => stagesService(
     stages,
     (projectId) => buildings.soleRealBuildingId(projectId),
     async (projectId) => {
@@ -198,7 +199,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       rollup: phaseRollup({
         dailyLogs: dailyLogsRepository(fastify.db),
         purchaseOrders: purchaseOrdersRepository(fastify.db),
-        transactions: transactionsRepository(fastify.db),
+        transactions: transactionsRepository(fastify.db, readerId),
         mainContractId: (projectId) => contracts.mainContractId(projectId),
       }),
       contractBelongsToProject: (projectId, contractId) => contracts.belongsToProject(projectId, contractId),
@@ -211,7 +212,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, querystring: buildingQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "view");
-      return service.list(project.id, request.query.buildingId);
+      return service(expenseReaderId(request, project)).list(project.id, request.query.buildingId);
     },
   );
 
@@ -220,7 +221,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createStageBody } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
-      const stage = await service.create(project.id, request.body);
+      const stage = await service(expenseReaderId(request, project)).create(project.id, request.body);
       return reply.status(201).send(stage);
     },
   );
@@ -231,7 +232,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, response: { 200: valueSummarySchema } } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "view");
-      return service.valueSummary(project.id);
+      return service(expenseReaderId(request, project)).valueSummary(project.id);
     },
   );
 
@@ -240,7 +241,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: reorderBody } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
-      return service.reorder(project.id, request.body.stageIds);
+      return service(expenseReaderId(request, project)).reorder(project.id, request.body.stageIds);
     },
   );
 
@@ -249,7 +250,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: stageParams, body: updateStageBody } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
-      return service.update(project.id, request.params.stageId, request.body);
+      return service(expenseReaderId(request, project)).update(project.id, request.params.stageId, request.body);
     },
   );
 
@@ -258,7 +259,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: stageParams } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
-      await service.remove(project.id, request.params.stageId);
+      await service(expenseReaderId(request, project)).remove(project.id, request.params.stageId);
       return reply.status(204).send();
     },
   );
@@ -268,7 +269,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "view");
-      return withForecastFlags(await service.listScheduleOfValues(project.id));
+      return withForecastFlags(await service(expenseReaderId(request, project)).listScheduleOfValues(project.id));
     },
   );
 
@@ -278,7 +279,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "view");
       return withForecastFlags(
-        await service.listScheduleOfValues(project.id, request.params.stageId),
+        await service(expenseReaderId(request, project)).listScheduleOfValues(project.id, request.params.stageId),
       );
     },
   );
@@ -292,13 +293,13 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
       // Dropping or re-planning a month is fine until it has been certified.
-      const existing = await service.listScheduleOfValues(project.id, request.params.stageId);
+      const existing = await service(expenseReaderId(request, project)).listScheduleOfValues(project.id, request.params.stageId);
       const kept = new Set(request.body.lines.map((line) => line.period));
       for (const line of existing) {
         if (!kept.has(line.period)) await lock.assertRemovable(project.id, line.period);
       }
       return withForecastFlags(
-        await service.replaceScheduleOfValues(project.id, request.params.stageId, request.body.lines),
+        await service(expenseReaderId(request, project)).replaceScheduleOfValues(project.id, request.params.stageId, request.body.lines),
       );
     },
   );
@@ -317,7 +318,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       await lock.assertEditable(project.id, request.params.period);
       lock.assertClaimable(request.params.period, request.body.forecast ?? false);
       return withForecastFlags(
-        await service.updateScheduleProgress(
+        await service(expenseReaderId(request, project)).updateScheduleProgress(
           project.id,
           request.params.stageId,
           request.params.period,

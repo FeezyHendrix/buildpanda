@@ -51,8 +51,8 @@ export function AddDailyLogEntryDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={`Add your log — ${logDate}`}
-      description="Record what you did on site today. Attach photos from your camera or files. Your name and role are saved with the entry."
-      submitLabel="Add entry"
+      description="Record what you did on site today. Attach photos from your camera or files. Your name and role are saved with the note."
+      submitLabel="Add site note"
       submitDisabled={!hasContent}
       submitting={submitting}
       error={error}

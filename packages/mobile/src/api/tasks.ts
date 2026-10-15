@@ -29,6 +29,7 @@ export interface Task {
   position: number;
   subtaskTotal: number;
   subtaskDone: number;
+  createdById: string | null;
   createdByName: string | null;
 }
 
@@ -61,7 +62,7 @@ export const tasksApi = {
   remove: (projectId: string, taskId: string) => request<void>(`/projects/${projectId}/tasks/${taskId}`, { method: "DELETE" }),
   comment: (projectId: string, taskId: string, body: string) =>
     request<unknown>(`/projects/${projectId}/tasks/${taskId}/comments`, { method: "POST", body: JSON.stringify({ body }) }),
-  /** Without `full`, the server returns only tasks assigned to the caller. */
+  /** Without `full`, return tasks created by or assigned to the caller. */
   board: (projectId: string, buildingId: string, full: boolean) => {
     const query = new URLSearchParams({ buildingId, scope: full ? "all" : "assigned" });
     return request<TaskBoard>(`/projects/${projectId}/tasks/board?${query.toString()}`);

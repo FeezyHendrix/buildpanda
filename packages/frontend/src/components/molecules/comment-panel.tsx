@@ -1,4 +1,5 @@
-import { ContentText } from "@/components/molecules/rich-content";
+import { RichContent } from "@/components/molecules/rich-content";
+import { CommentAudio } from "./comment-audio";
 import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState, type FormEvent } from "react";
 import { Avatar } from "@/components/atoms/avatar";
@@ -9,14 +10,18 @@ import { cn } from "@/lib/utils";
 import type { UpdateComment } from "@/lib/project-types";
 
 interface CommentPanelProps {
+  projectId: string;
+  canComment: boolean;
   comments: UpdateComment[];
   isLoading?: boolean;
   isSubmitting?: boolean;
-  onSubmit: (body: string) => void;
+  onSubmit: (body: string) => Promise<void>;
   className?: string;
 }
 
 function CommentPanel({
+  projectId,
+  canComment,
   comments,
   isLoading = false,
   isSubmitting = false,
@@ -24,13 +29,15 @@ function CommentPanel({
   className,
 }: CommentPanelProps) {
   const [body, setBody] = useState("");
+  const [error, setError] = useState("");
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = body.trim();
-    if (!trimmed || isSubmitting) return;
-    onSubmit(trimmed);
-    setBody("");
+    if (!trimmed || isSubmitting || !canComment) return;
+    setError("");
+    try { await onSubmit(trimmed); setBody(""); }
+    catch { setError("Could not post your comment. Your draft is still here."); }
   }
 
   return (
@@ -51,16 +58,15 @@ function CommentPanel({
                   </span>{" "}
                   · {formatTimeAgo(comment.createdAt)}
                 </p>
-                <p className="mt-0.5 text-sm text-ink text-pretty">
-                  <ContentText value={comment.body} />
-                </p>
+                <RichContent className="mt-0.5 text-sm text-ink text-pretty" html={comment.bodyHtml} text={comment.body} projectId={projectId} />
+                {comment.audioFileId ? <CommentAudio projectId={projectId} fileId={comment.audioFileId} /> : null}
               </div>
             </li>
           ))}
         </ul>
       )}
 
-      <form onSubmit={handleSubmit} className="flex items-end gap-2">
+      {canComment ? <form onSubmit={(event) => void handleSubmit(event)} className="flex items-end gap-2">
         <ImageTextarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -68,6 +74,7 @@ function CommentPanel({
           rows={2}
           className={cn(INPUT_BASE_CLASS, "min-h-24 flex-1 resize-none px-3 py-3")}
           maxLength={2000}
+          projectId={projectId}
         />
         <Button
           type="submit"
@@ -78,7 +85,8 @@ function CommentPanel({
         >
           Post
         </Button>
-      </form>
+      </form> : null}
+      {error ? <p className="text-xs text-negative-600">{error}</p> : null}
     </div>
   );
 }

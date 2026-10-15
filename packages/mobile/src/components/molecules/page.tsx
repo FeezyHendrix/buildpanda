@@ -66,7 +66,7 @@ function PageContent({
 
   return (
     <KeyboardRevealContext.Provider value={keyboard.reveal}>
-    <View ref={keyboard.rootRef} onLayout={keyboard.measureOffset} className="flex-1 bg-canvas">
+    <View ref={keyboard.rootRef} onLayout={keyboard.measureOffset} className="min-h-0 flex-1 bg-canvas">
       <View className="border-b border-line bg-surface px-4 pb-3" style={{ paddingTop: insets.top + 8 }}>
         <View className="min-h-11 flex-row items-center gap-2">
           {onBack ? (
@@ -96,13 +96,13 @@ function PageContent({
 
       {/* Padding on Android too: edge-to-edge windows no longer shrink for the
           keyboard, and where one still does the overlap is zero, so nothing doubles. */}
-      <KeyboardAvoidingView className="flex-1" behavior="padding" keyboardVerticalOffset={keyboard.offset}>
+      <KeyboardAvoidingView className="min-h-0 flex-1" behavior="padding" keyboardVerticalOffset={keyboard.offset}>
         {scroll ? (
           <ScrollView
             ref={keyboard.scrollRef}
             onScroll={keyboard.onScroll}
             scrollEventThrottle={32}
-            className={cn("px-4", className)}
+            className={cn("min-h-0 flex-1 px-4", className)}
             contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 24 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
@@ -110,7 +110,7 @@ function PageContent({
             {children}
           </ScrollView>
         ) : (
-          <View className={cn("flex-1 px-4 pt-4", className)}>{children}</View>
+          <View className={cn("min-h-0 flex-1 px-4 pt-4", className)}>{children}</View>
         )}
 
         {footer ? (

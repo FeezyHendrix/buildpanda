@@ -9,6 +9,7 @@ import { flushOutbox } from "@/db/outbox";
 import { useFieldSession } from "@/lib/field-session";
 import { usePersistentQuery } from "@/lib/persistent-query";
 import { useSyncState } from "@/lib/sync-provider";
+import { useProjectAccess } from "./use-project-access";
 
 /** The server's preset categories, for a phone that has never been online on this project. */
 const PRESET_CATEGORIES: ExpenseCategory[] = [
@@ -27,7 +28,8 @@ const PRESET_CATEGORIES: ExpenseCategory[] = [
 
 export function useExpenses(db: Db, projectId: string) {
   const { isOnline } = useSyncState();
-  const query = useMemo(() => expensesRepository.listQuery(db, projectId), [db, projectId]);
+  const { generation } = useProjectAccess();
+  const query = useMemo(() => expensesRepository.listQuery(db, projectId), [db, projectId, generation]);
   const live = useLiveQuery(query, [query]);
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export function useExpenses(db: Db, projectId: string) {
     return () => {
       cancelled = true;
     };
-  }, [db, projectId, isOnline]);
+  }, [db, projectId, isOnline, generation]);
 
   return { data: live.data ?? [], isPending: live.updatedAt === undefined && !live.error };
 }

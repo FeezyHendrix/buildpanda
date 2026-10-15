@@ -1,5 +1,5 @@
 import { features } from "@/lib/feature-access";
-import { File } from "expo-file-system";
+import { loadPendingMedia } from "@/lib/pending-media";
 import { uploadProjectFile } from "@/api/files";
 import { updatesApi, type CreateUpdateMediaInput, type UpdateCategory } from "@/api/updates";
 import { API_BASE_URL } from "@/lib/auth-client";
@@ -35,14 +35,14 @@ export async function pushUpdateOutboxItem(db: Db, item: OutboxRow): Promise<Out
       media.push({ type, url: file.url });
       continue;
     }
-    if (!file.stagedUri || !new File(file.stagedUri).exists) {
+    if (!file.stagedUri) {
       throw new PermanentOutboxError(
         "A photo attached to this update is no longer on this device.",
       );
     }
     const uploaded = await uploadProjectFile(
       item.projectId,
-      file.stagedUri,
+      await loadPendingMedia(file.stagedUri),
       file.fileName,
       file.mimeType ?? "application/octet-stream",
       features.updates.actions.create,

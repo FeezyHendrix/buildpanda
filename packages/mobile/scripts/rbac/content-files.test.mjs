@@ -39,6 +39,8 @@ test('losing a task assignment immediately blocks its downloaded image without c
     raw.exec('UPDATE tasks SET assigned_to_me=0');
     assert.equal(canReadCachedContentFile(db, 'site', 'beam'), false);
     authorize({ tasks: ['view'] }, { capabilities: { canAccessTaskBoard: true, canSeeFullTaskBoard: true } });
+    assert.equal(canReadCachedContentFile(db, 'site', 'beam'), false, 'legacy broad capability is not a view-all grant');
+    authorize({ tasks: ['view', 'viewAll'] }, { capabilities: { canAccessTaskBoard: true } });
     assert.equal(canReadCachedContentFile(db, 'site', 'beam'), true);
     raw.exec('DELETE FROM tasks');
     assert.equal(canReadCachedContentFile(db, 'site', 'beam'), false);

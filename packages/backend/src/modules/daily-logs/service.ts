@@ -223,6 +223,7 @@ export function dailyLogsService(
       const entries = entriesByDay.get(`${projectId}|${buildingId}|${logDate}`) ?? [];
       if (!row) {
         return {
+          recorded: entries.length > 0,
           projectId,
           buildingId,
           logDate,

@@ -14,6 +14,7 @@ import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import type { TaskRow } from "@/db/schema";
 import { parseAssignees } from "@/db/tasks-repository";
+import { isMyTask } from "@/db/record-visibility";
 import { useProjectAccess } from "@/hooks/use-project-access";
 import { useProjectBuilding } from "@/hooks/use-project-building";
 import { useTaskBoard } from "@/hooks/use-tasks";
@@ -39,15 +40,16 @@ function taskMeta(row: TaskRow): string {
 
 function TaskList({ db, projectId, buildingId, full, tab }: { db: Db; projectId: string; buildingId: string; full: boolean; tab: Tab }) {
   const board = useTaskBoard(db, projectId, buildingId, full);
+  const { userId } = useProjectAccess();
   if (board.isPending) return <View className="items-center py-12"><Spinner size="md" /></View>;
 
-  const visible = tab === "all" ? board.tasks : board.tasks.filter((t) => t.assignedToMe || !full);
+  const visible = tab === "all" ? board.tasks : board.tasks.filter((t) => isMyTask(t, userId));
   if (visible.length === 0) {
     return (
       <View className="items-center py-12">
-        <Text weight="semibold" className="text-center text-base">{tab === "all" ? "No tasks on this board" : "Nothing assigned to you"}</Text>
+        <Text weight="semibold" className="text-center text-base">{tab === "all" ? "No tasks on this board" : "No tasks for you yet"}</Text>
         <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-          {tab === "all" ? "Add a task with the + button and it lands in To do." : "Tasks assigned to you show up here, ready to work offline."}
+          {tab === "all" ? "Tasks added to this board appear here." : "Tasks you create or are assigned to appear here, ready to work offline."}
         </Text>
       </View>
     );
@@ -89,9 +91,8 @@ function Tasks() {
   const { projectId } = useFieldSession();
   const { buildingId, isLoading: buildingsLoading, refetch: reloadBuildings } = useProjectBuilding();
   const { db, ready } = useLocalDb();
-  const {  snapshot } = useProjectAccess();
-  // Managers see the whole board; everyone else only their own tasks.
-  const full = snapshot?.capabilities.canSeeFullTaskBoard === true;
+  const { can } = useProjectAccess();
+  const full = can("tasks", "viewAll");
   const [tab, setTab] = useState<Tab>("mine");
 
   return (

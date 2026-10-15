@@ -12,7 +12,8 @@
       },
       "node": "22.23.1",
       "env": {
-        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "EXPO_PUBLIC_API_URL": "https://api.staging.buildpanda.io"
       }
     },
     "preview": {

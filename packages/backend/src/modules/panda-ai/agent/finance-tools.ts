@@ -1,3 +1,4 @@
+import { agentRecordScope, expenseScopeLabel } from "./record-scope.ts";
 import { contractsRepository } from "../../contracts/repository.ts";
 import { contractsService } from "../../contracts/service.ts";
 import { dailyLogsRepository } from "../../daily-logs/repository.ts";
@@ -35,7 +36,7 @@ function phasesFor(ctx: ToolContext, contracts: ReturnType<typeof contractsFor>)
     rollup: phaseRollup({
       dailyLogs: dailyLogsRepository(ctx.db),
       purchaseOrders: purchaseOrdersRepository(ctx.db),
-      transactions: transactionsRepository(ctx.db),
+      transactions: transactionsRepository(ctx.db, agentRecordScope(ctx).expenseReaderId),
       mainContractId: (projectId) => contracts.mainContractId(projectId),
     }),
     contractBelongsToProject: (projectId, contractId) => contracts.belongsToProject(projectId, contractId),
@@ -54,7 +55,7 @@ export function financeTools(): AgentTool[] {
         summary: financeSummaryRepository(ctx.db),
         stageCosts: stageCostsService({
           finances: repository,
-          transactions: transactionsRepository(ctx.db),
+          transactions: transactionsRepository(ctx.db, agentRecordScope(ctx).expenseReaderId),
           purchaseOrders: purchaseOrdersRepository(ctx.db),
         }),
         stages: async (projectId) =>
@@ -70,6 +71,7 @@ export function financeTools(): AgentTool[] {
       const receivable = invoices.filter((i) => i.direction === "receivable" && i.voidedAt === null);
       return {
         output: {
+          expenseVisibility: expenseScopeLabel(ctx),
           contract: {
             currency: position.currency,
             originalSum: position.contractSum,
@@ -131,6 +133,7 @@ export function financeTools(): AgentTool[] {
       const titleById = new Map(contractRows.map((c) => [c.id, c.title]));
       return {
         output: {
+          expenseVisibility: expenseScopeLabel(ctx),
           contracts: contractRows.map((c) => ({
             id: c.id,
             kind: c.kind,

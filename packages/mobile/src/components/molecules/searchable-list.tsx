@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactElement, type ReactNode } from "react";
 import { FlatList, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Spinner, Text } from "@/components/atoms";
 import { matchesSearch } from "@/lib/search";
 import { SearchField } from "./search-field";
@@ -25,15 +26,17 @@ export function SearchableList<T extends { id: string }>({
   header?: ReactNode;
   cards?: boolean;
 }) {
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const rows = useMemo(
     () => data.filter((item) => matchesSearch(query, fields(item))),
     [data, fields, query],
   );
   return (
-    <View className="flex-1">
+    <View className="min-h-0 flex-1">
       <SearchField value={query} onChange={setQuery} placeholder={placeholder} />
       <FlatList
+        style={{ flex: 1, minHeight: 0 }}
         data={rows}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -41,7 +44,7 @@ export function SearchableList<T extends { id: string }>({
         )}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerClassName="pb-6"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         ListHeaderComponent={<>{header}</>}
         ListEmptyComponent={
           loading ? (

@@ -165,6 +165,7 @@ export interface FilledEntryForm {
 }
 
 export interface DailyLogDay {
+  recorded?: boolean;
   summary: string | null;
   buildingId: string;
   projectId: string;

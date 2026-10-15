@@ -1,7 +1,8 @@
 import { registerTaskBoardRoutes } from "./board-routes.ts";
-import { canSeeFullTaskBoard, assertCompanyTaskAccess } from "./access.ts";
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { ForbiddenError } from "../../lib/errors.ts";
+import { canSeeFullTaskBoard, assertTaskBoardAccess } from "./access.ts";
+import { taskVisibilityRepository } from "./visibility-repository.ts";
+import { taskVisibilityService } from "./visibility-service.ts";
+import type { FastifyPluginAsync } from "fastify";
 import { buildingsRepository } from "../buildings/repository.ts";
 import { tasksRepository } from "./repository.ts";
 import {
@@ -12,8 +13,7 @@ import {
 } from "./service.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
-import type { TaskEntityType } from "./types.ts";
-import type { ProjectRow } from "../projects/types.ts";
+import type { TaskEntityType, TaskRecordParams } from "./types.ts";
 
 const STATUS = ["Todo", "Doing", "Done"] as const;
 const PRIORITY = ["Low", "Medium", "High"] as const;
@@ -172,16 +172,14 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (projectId) =>
     (await buildings.soleRealBuildingId(projectId)) ?? (await buildings.firstRealBuildingId(projectId)));
 
-  async function assertTaskVisibleToRequester(
-    request: FastifyRequest,
-    project: ProjectRow,
-    taskId: string,
-  ): Promise<void> {
-    if (canSeeFullTaskBoard(request, project)) return;
-    const user = request.requireAuth();
-    if (await service.isTaskAssignedToUser(project.id, taskId, user.id)) return;
-    throw new ForbiddenError("You can only access tasks assigned to you");
-  }
+  const visibility = taskVisibilityService(taskVisibilityRepository(fastify.db));
+  // Every child route (comments, subtasks and links included) inherits record visibility.
+  fastify.addHook("preHandler", async (request) => {
+    const { id, taskId } = request.params as TaskRecordParams;
+    if (!id || !taskId) return;
+    const project = await request.requireProjectPermission(id, "tasks", "view");
+    await visibility.requireVisible(id, taskId, canSeeFullTaskBoard(request, project) ? undefined : request.requireAuth().id);
+  });
 
   registerTaskBoardRoutes(fastify, service);
 
@@ -191,7 +189,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       await request.requireProjectPermission(project.id, "tasks", "view");
-      assertCompanyTaskAccess(request, project);
+      assertTaskBoardAccess(request, project);
       const user = request.requireAuth();
       const task = await service.createTask(project.id, request.body, user.id);
       return reply.status(201).send(task);
@@ -204,8 +202,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       await request.requireProjectPermission(project.id, "tasks", "view");
-      assertCompanyTaskAccess(request, project);
-      await assertTaskVisibleToRequester(request, project, request.params.taskId);
+      assertTaskBoardAccess(request, project);
       const user = request.requireAuth();
       return service.updateTask(project.id, request.params.taskId, request.body, user.id);
     },
@@ -216,8 +213,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams, body: moveBody } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
-      assertCompanyTaskAccess(request, project);
-      await assertTaskVisibleToRequester(request, project, request.params.taskId);
+      assertTaskBoardAccess(request, project);
       return service.moveTask(project.id, request.params.taskId, request.body);
     },
   );
@@ -228,8 +224,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "remove");
       await request.requireProjectPermission(project.id, "tasks", "view");
-      assertCompanyTaskAccess(request, project);
-      await assertTaskVisibleToRequester(request, project, request.params.taskId);
+      assertTaskBoardAccess(request, project);
       await service.removeTask(project.id, request.params.taskId);
       return reply.status(204).send();
     },
@@ -240,9 +235,9 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
-      assertCompanyTaskAccess(request, project);
-      await assertTaskVisibleToRequester(request, project, request.params.taskId);
-      return service.getTaskDetail(project.id, request.params.taskId);
+      assertTaskBoardAccess(request, project);
+      return visibility.detail(await service.getTaskDetail(project.id, request.params.taskId),
+        canSeeFullTaskBoard(request, project) ? undefined : request.requireAuth().id);
     },
   );
 
@@ -281,6 +276,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       const user = request.requireAuth();
+      await visibility.requireVisible(project.id, request.body.targetTaskId, canSeeFullTaskBoard(request, project) ? undefined : user.id);
       const link = await service.addLink(
         project.id,
         request.params.taskId,
@@ -334,8 +330,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
-      assertCompanyTaskAccess(request, project);
-      await assertTaskVisibleToRequester(request, project, request.params.taskId);
+      assertTaskBoardAccess(request, project);
       return service.listComments(project.id, request.params.taskId);
     },
   );
@@ -346,8 +341,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "comments", "post");
       await request.requireProjectPermission(project.id, "tasks", "view");
-      assertCompanyTaskAccess(request, project);
-      await assertTaskVisibleToRequester(request, project, request.params.taskId);
+      assertTaskBoardAccess(request, project);
       const user = request.requireAuth();
       const comment = await service.addComment(project.id, request.params.taskId, request.body.body, {
         id: user.id,

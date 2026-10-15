@@ -50,7 +50,7 @@ export default function ProjectTasks() {
   const canAddTasks = Boolean(access && canResourceAction(access, "tasks", "add"));
   const canRemoveTasks = Boolean(access && canResourceAction(access, "tasks", "remove"));
   const canManage = canAddTasks;
-  const canSeeAllTasks = canRemoveTasks;
+  const canSeeAllTasks = canResourceAction(access, "tasks", "viewAll");
   const [boardScope, setBoardScope] = useUrlState<TaskBoardScope>("scope", "all", ["all", "assigned"]);
   const requestedScope: TaskBoardScope = canSeeAllTasks ? boardScope : "assigned";
   const { data: board, isLoading, error, refetch } = useTaskBoard(project.id, requestedScope, Boolean(access), selectedBuildingId, selectedStageId);

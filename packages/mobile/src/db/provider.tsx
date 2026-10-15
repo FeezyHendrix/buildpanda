@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
+import { migrate } from "drizzle-orm/expo-sqlite/migrator";
 import { View } from "react-native";
 import migrations from "../../drizzle/migrations";
 import { Button, Spinner, Text } from "@/components/atoms";
@@ -14,6 +14,20 @@ interface LocalDb {
 
 const emptyDb: LocalDb = { db: null, ready: false, error: null };
 const LocalDbContext = createContext<LocalDb>(emptyDb);
+const migrationRuns = new WeakMap<Db, Promise<void>>();
+
+// A scope remount can overlap the previous mount while migration files load.
+// Share one run per database so neither transaction rolls the other one back.
+function migrateDatabase(db: Db): Promise<void> {
+  const running = migrationRuns.get(db);
+  if (running) return running;
+  const promise = migrate(db, migrations).catch((error: unknown) => {
+    migrationRuns.delete(db);
+    throw error;
+  });
+  migrationRuns.set(db, promise);
+  return promise;
+}
 
 function DatabaseError({ error, onRetry }: { error: Error; onRetry: () => void }) {
   return (
@@ -33,7 +47,16 @@ function DatabaseError({ error, onRetry }: { error: Error; onRetry: () => void }
 }
 
 function MigratedDatabase({ db, children, onRetry }: { db: Db; children: ReactNode; onRetry: () => void }) {
-  const { success, error } = useMigrations(db, migrations);
+  const [{ success, error }, setResult] = useState<{ success: boolean; error: Error | null }>({ success: false, error: null });
+  useEffect(() => {
+    let active = true;
+    void migrateDatabase(db).then(() => {
+      if (active) setResult({ success: true, error: null });
+    }).catch((cause: unknown) => {
+      if (active) setResult({ success: false, error: cause instanceof Error ? cause : new Error(String(cause)) });
+    });
+    return () => { active = false; };
+  }, [db]);
   const value = useMemo<LocalDb>(() => ({ db, ready: success, error: error ?? null }), [db, success, error]);
 
   if (error) return <DatabaseError error={error} onRetry={onRetry} />;

@@ -6,8 +6,9 @@ import { AccessDeniedError, canAccess, projectAccess, requireAccess } from "@/li
 import type { Db } from "./client";
 import { getDbOwner } from "./ownership";
 import { OUTBOX_TABLES } from "./outbox-tables";
-import { outbox, rfis, rfiComments, type OutboxRow } from "./schema";
+import { outbox, rfis, rfiComments, tasks, expenses, projectUpdates, type OutboxRow } from "./schema";
 import { rfiReadWhere, rfiCommentReadWhere, requireRfiRead } from "./rfi-access";
+import { expenseReadWhere, taskReadWhere } from "./record-visibility";
 
 const queueFeatures: Readonly<Record<string, FeatureAccess>> = {
   rfis: features.rfis, "rfi-comments": features.rfis,
@@ -16,7 +17,7 @@ const queueFeatures: Readonly<Record<string, FeatureAccess>> = {
   "daily-logs": features.dailyLog, "daily-log-entries": features.dailyLog, "daily-log-activities": features.dailyLog,
   "material-orders": features.materialOrders, "material-ledger": features.materialLog,
   "material-approvals": features.materialApprovals, "material-approval-comments": features.materialApprovals,
-  "look-aheads": features.schedule, tasks: features.tasks, expenses: features.expenses, updates: features.updates,
+  "look-aheads": features.schedule, tasks: features.tasks, expenses: features.expenses, updates: features.updates, "update-comments": features.updates,
 };
 
 /** Resolve queue operations; grants themselves live only in the feature catalog. */
@@ -44,10 +45,14 @@ export function outboxReadWhere(db: Db) {
   const resources = Object.entries(queueFeatures).filter(([, feature]) => canAccess(scope.projectId, feature.read)).map(([name]) => name);
   const visibleRfis = db.select({ id: rfis.id }).from(rfis).where(rfiReadWhere(db));
   const visibleComments = db.select({ id: rfiComments.id }).from(rfiComments).where(rfiCommentReadWhere(db));
+  const visibleTasks = db.select({ id: tasks.id }).from(tasks).where(taskReadWhere());
+  const visibleExpenses = db.select({ id: expenses.id }).from(expenses).where(expenseReadWhere());
   return resources.length ? and(eq(outbox.projectId, scope.projectId), inArray(outbox.resource, resources),
-    or(sql`${outbox.resource} NOT IN ('rfis', 'rfi-comments')`,
+    or(sql`${outbox.resource} NOT IN ('rfis', 'rfi-comments', 'tasks', 'expenses')`,
       and(eq(outbox.resource, "rfis"), inArray(outbox.entityId, visibleRfis)),
-      and(eq(outbox.resource, "rfi-comments"), inArray(outbox.entityId, visibleComments))))! : sql`0 = 1`;
+      and(eq(outbox.resource, "rfi-comments"), inArray(outbox.entityId, visibleComments)),
+      and(eq(outbox.resource, "tasks"), inArray(outbox.entityId, visibleTasks)),
+      and(eq(outbox.resource, "expenses"), inArray(outbox.entityId, visibleExpenses))))! : sql`0 = 1`;
 }
 
 export function requireOutboxAccess(db: Db, item: OutboxRow, write = true) {
@@ -61,8 +66,13 @@ export function requireOutboxAccess(db: Db, item: OutboxRow, write = true) {
     requireRfiRead(db, item.projectId, String(row.rfi_id));
     if (row.is_proposed_response && !ticket.snapshot.capabilities.canViewInternalRfis) throw new AccessDeniedError();
   }
+  if (row && item.resource === "tasks" && !db.select({ id: tasks.id }).from(tasks)
+    .where(and(eq(tasks.id, item.entityId), taskReadWhere())).get()) throw new AccessDeniedError();
+  if (row && item.resource === "expenses" && !db.select({ id: expenses.id }).from(expenses)
+    .where(and(eq(expenses.id, item.entityId), expenseReadWhere())).get()) throw new AccessDeniedError();
+  if (row && item.resource === "update-comments" && !db.select({ id: projectUpdates.id }).from(projectUpdates)
+    .where(and(eq(projectUpdates.id, String(row.update_id)), eq(projectUpdates.projectId, item.projectId))).get()) throw new AccessDeniedError();
   if (!write) return ticket;
-  if (item.resource === "tasks" && item.operation !== "create" && !ticket.snapshot.capabilities.canSeeFullTaskBoard && !row?.assigned_to_me) throw new AccessDeniedError();
   requireAccess(item.projectId, outboxRequirement(item, row));
   if (item.resource === "material-approvals" && item.operation === "decision" && row?.status !== "Pending" &&
     row?.requested_reviewer_id && row.requested_reviewer_id !== ticket.scope?.userId) throw new AccessDeniedError("Only the requested reviewer can decide this request.");
