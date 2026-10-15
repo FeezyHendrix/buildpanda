@@ -47,11 +47,11 @@ function ExpenseRow({
 }: {
   tx: Transaction;
   currency: string;
-  onOpen: (tx: Transaction) => void;
-  onDelete: (tx: Transaction) => void;
+  onOpen?: (tx: Transaction) => void;
+  onDelete?: (tx: Transaction) => void;
 }) {
   return (
-    <TableRow className="group" onClick={() => onOpen(tx)}>
+    <TableRow className="group" onClick={onOpen ? () => onOpen(tx) : undefined}>
       <TableCell>
         <div className="font-medium text-ink">{tx.title}</div>
         {tx.vendor ? <div className="mt-0.5 text-xs text-ink-muted">{tx.vendor}</div> : null}
@@ -72,7 +72,7 @@ function ExpenseRow({
         {tx.createdByName ? <span className="text-ink-muted"> · {tx.createdByName}</span> : null}
       </TableCell>
       <TableCell align="right">
-        <Button
+        {onDelete ? <Button
           variant="danger"
           size="sm"
           className="opacity-0 group-hover:opacity-100"
@@ -82,7 +82,7 @@ function ExpenseRow({
           }}
         >
           Delete
-        </Button>
+        </Button> : null}
       </TableCell>
     </TableRow>
   );
@@ -102,9 +102,9 @@ export function ExpenseTable({
   currency: string;
   isLoading: boolean;
   isFiltered: boolean;
-  onOpen: (tx: Transaction) => void;
-  onDelete: (tx: Transaction) => void;
-  onRecord: () => void;
+  onOpen?: (tx: Transaction) => void;
+  onDelete?: (tx: Transaction) => void;
+  onRecord?: () => void;
   onClearFilters: () => void;
 }) {
   return (
@@ -117,8 +117,8 @@ export function ExpenseTable({
         <EmptyState
           icon={<FinancesIcon />}
           title="No expenses recorded yet"
-          description="Start recording site spend to build your log."
-          action={{ label: "Record expense", onClick: onRecord }}
+          description={onRecord ? "Start recording site spend to build your log." : "No expenses are available to you."}
+          action={onRecord ? { label: "Record expense", onClick: onRecord } : undefined}
         />
       ) : transactions.length === 0 ? (
         <EmptyState

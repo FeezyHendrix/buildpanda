@@ -1,6 +1,6 @@
 import { outboxReadWhere, requireOutboxAccess } from "./outbox-access";
 import { AccessDeniedError, projectAccess, refreshProjectAccess, requireCurrentAccess } from "@/lib/project-access-store";
-import { and, asc, eq, lte, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import { getDbOwner, type Db } from "./client";
 import NetInfo from "@react-native-community/netinfo";
 import { readCachedUser } from "@/lib/session-cache";
@@ -17,9 +17,11 @@ import { pushMaterialOrderOutboxItem } from "./outbox-material-orders";
 import { isPermanent, PermanentOutboxError } from "./outbox-handler";
 import { pushRfiOutboxItem } from "./outbox-rfis";
 import { pushTaskOutboxItem } from "./outbox-tasks";
+import { pushUpdateCommentOutboxItem } from "./outbox-update-comments";
+import { discardPendingMedia } from "@/lib/pending-media";
 import { pushUpdateOutboxItem, UPDATES_RESOURCE } from "./outbox-updates";
 import { OUTBOX_TABLES } from "./outbox-tables";
-import { documents, drawingMarkupComments, expenses, outbox, projectUpdateMedia, type OutboxRow } from "./schema";
+import { documents, drawingMarkupComments, expenses, outbox, projectUpdateMedia, updateComments, type OutboxRow } from "./schema";
 import { discardStagedMedia } from "../lib/stage-media";
 
 import { startSending, finishSending } from "./sync-write-state";
@@ -68,6 +70,7 @@ async function pushOutboxItem(db: Db, item: OutboxRow): Promise<boolean> {
     pushTaskOutboxItem,
     pushExpenseOutboxItem,
     pushUpdateOutboxItem,
+    pushUpdateCommentOutboxItem,
   ]) {
     const result = await handler(db, item);
     if (result.handled) return result.pushed;
@@ -199,13 +202,19 @@ export async function discardOutboxItem(db: Db, id: string): Promise<void> {
       // reach them and they would outlive the update they belong to.
       if (item.resource === UPDATES_RESOURCE) {
         tx.delete(projectUpdateMedia).where(eq(projectUpdateMedia.updateId, item.entityId)).run();
+        tx.delete(outbox).where(and(eq(outbox.resource, "update-comments"), inArray(outbox.entityId,
+          tx.select({ id: updateComments.id }).from(updateComments).where(eq(updateComments.updateId, item.entityId))))).run();
+        tx.delete(updateComments).where(eq(updateComments.updateId, item.entityId)).run();
       }
     } else if (table && item.operation !== "delete") {
       tx.run(sql`UPDATE ${table} SET is_pending_sync = 0 WHERE id = ${item.entityId}`);
     }
     tx.delete(outbox).where(eq(outbox.id, item.id)).run();
   });
-  for (const uri of staged) discardStagedMedia(uri);
+  for (const uri of staged) {
+    if ([UPDATES_RESOURCE, "update-comments"].includes(item.resource)) await discardPendingMedia(uri);
+    else discardStagedMedia(uri);
+  }
 }
 
 /** Every staged path a discarded create leaves orphaned; an update has one per attachment. */
@@ -226,12 +235,17 @@ async function stagedFilesFor(db: Db, item: OutboxRow): Promise<string[]> {
       .limit(1);
     return row?.uri ? [row.uri] : [];
   }
+  if (item.resource === "update-comments") {
+    const row = db.select().from(updateComments).where(eq(updateComments.id, item.entityId)).get();
+    return row?.stagedAudioUri ? [row.stagedAudioUri] : [];
+  }
   if (item.resource === UPDATES_RESOURCE) {
+    const audio = db.select().from(updateComments).where(eq(updateComments.updateId, item.entityId)).all();
     const rows = await db
       .select({ uri: projectUpdateMedia.stagedUri })
       .from(projectUpdateMedia)
       .where(eq(projectUpdateMedia.updateId, item.entityId));
-    return rows.flatMap((row) => (row.uri ? [row.uri] : []));
+    return [...rows.flatMap((row) => (row.uri ? [row.uri] : [])), ...audio.flatMap((row) => row.stagedAudioUri ? [row.stagedAudioUri] : [])];
   }
   return [];
 }

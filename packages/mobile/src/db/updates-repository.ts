@@ -1,13 +1,15 @@
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
 import { randomUUID } from "expo-crypto";
 import type { ProjectUpdate, UpdateCategory } from "@/api/updates";
-import { discardStagedMedia, stageMedia } from "@/lib/stage-media";
+import { discardPendingMedia, stagePendingMedia } from "@/lib/pending-media";
+import { requireCurrentAccess } from "@/lib/project-access-store";
 import type { Db } from "./client";
 import { reviveOrQueue } from "./enqueue-update";
 import {
   projectUpdateMedia,
+  updateComments,
   projectUpdates,
   type ProjectUpdateMediaRow,
   type ProjectUpdateRow,
@@ -32,6 +34,8 @@ export interface LocalUpdateMedia {
    * copy — so a thumbnail renders in a basement, before any upload.
    */
   url: string;
+  fileName: string;
+  staged?: boolean;
 }
 
 /**
@@ -39,9 +43,11 @@ export interface LocalUpdateMedia {
  * id: nothing on the device reads it, and the create endpoint attributes the
  * post from the session rather than the body.
  */
-export type LocalProjectUpdate = Omit<ProjectUpdate, "author"> & {
+export type LocalProjectUpdate = Omit<ProjectUpdate, "author" | "media"> & {
+  localId?: string | null;
   author: { name: string; role: string };
   isPendingSync: boolean;
+  media: LocalUpdateMedia[];
 };
 
 export interface LocalUpdateMediaInput {
@@ -66,7 +72,9 @@ function toUpdateMedia(row: ProjectUpdateMediaRow): LocalUpdateMedia {
   return {
     id: row.id,
     type: row.type === "video" ? "video" : "photo",
-    url: row.url ?? row.stagedUri ?? "",
+    url: row.stagedUri ?? row.url ?? "",
+    fileName: row.fileName,
+    staged: Boolean(row.stagedUri),
   };
 }
 
@@ -76,6 +84,7 @@ export function toProjectUpdate(
 ): LocalProjectUpdate {
   return {
     id: row.id,
+    localId: row.localId,
     stageId: row.stageId,
     activityId: row.activityId,
     category: row.category as UpdateCategory,
@@ -200,9 +209,15 @@ export const updatesRepository = {
     rows: readonly ProjectUpdate[],
   ): Promise<void> {
     access.require(db, projectId);
-    if (rows.length === 0) return;
     const now = Date.now();
     await access.transaction(db, projectId, "read", (tx) => {
+      const stale = tx.select({ id: projectUpdates.id }).from(projectUpdates).where(and(eq(projectUpdates.projectId, projectId),
+        eq(projectUpdates.isPendingSync, false), rows.length ? notInArray(projectUpdates.id, rows.map((row) => row.id)) : undefined)).all().map((row) => row.id);
+      if (stale.length) {
+        tx.delete(projectUpdateMedia).where(inArray(projectUpdateMedia.updateId, stale)).run();
+        tx.delete(updateComments).where(and(inArray(updateComments.updateId, stale), eq(updateComments.isPendingSync, false))).run();
+        tx.delete(projectUpdates).where(inArray(projectUpdates.id, stale)).run();
+      }
       const cached = new Map(
         tx.select().from(projectUpdates)
           .where(access.where(db, projectUpdates.projectId, inArray(projectUpdates.id, rows.map((row) => row.id))))
@@ -232,7 +247,7 @@ export const updatesRepository = {
    * one update cannot overwrite each other.
    */
   async createLocal(db: Db, projectId: string, input: LocalUpdateInput): Promise<string> {
-    access.require(db, projectId, "create");
+    const ticket = access.require(db, projectId, "create");
     const id = localId();
     const staged: {
       id: string;
@@ -244,18 +259,18 @@ export const updatesRepository = {
     }[] = [];
 
     try {
-      input.media.forEach((item, position) => {
+      for (const [position, item] of input.media.entries()) {
         const mediaId = localId();
         staged.push({
           id: mediaId,
           type: item.type,
           fileName: item.fileName,
           mimeType: item.mimeType,
-          stagedUri: stageMedia(item.uri, mediaId, item.fileName),
+          stagedUri: await stagePendingMedia(ticket.scope, item.uri, mediaId, item.fileName),
           position,
         });
-      });
-
+      }
+      requireCurrentAccess(ticket);
       await access.transaction(db, projectId, "create", (tx) => {
         tx.insert(projectUpdates).values({
           id,
@@ -298,7 +313,7 @@ export const updatesRepository = {
         });
       });
     } catch (err) {
-      for (const item of staged) discardStagedMedia(item.stagedUri);
+      for (const item of staged) await discardPendingMedia(item.stagedUri);
       throw err;
     }
 
@@ -325,10 +340,11 @@ export const updatesRepository = {
       tx.delete(projectUpdates).where(access.where(db, projectUpdates.projectId, eq(projectUpdates.id, localRowId))).run();
       tx
         .insert(projectUpdates)
-        .values({ id: server.id, ...values })
-        .onConflictDoUpdate({ target: projectUpdates.id, set: values }).run();
+        .values({ id: server.id, ...values, localId: localRowId })
+        .onConflictDoUpdate({ target: projectUpdates.id, set: { ...values, localId: localRowId } }).run();
       replaceServerMedia(tx, server);
+      tx.update(updateComments).set({ updateId: server.id }).where(and(eq(updateComments.projectId, projectId), eq(updateComments.updateId, localRowId))).run();
     });
-    for (const row of staged) discardStagedMedia(row.stagedUri);
+    for (const row of staged) await discardPendingMedia(row.stagedUri);
   },
 };

@@ -47,7 +47,7 @@ export function useDailyLogDays(db: Db, projectId: string) {
   return { data, isPending: live.updatedAt === undefined && !live.error, error: live.error };
 }
 
-export function useDailyLogDay(db: Db, projectId: string, logDate: string, buildingId: string) {
+export function useDailyLogDay(db: Db, projectId: string, logDate: string, buildingId: string, refresh = true) {
   const { isOnline } = useSyncState();
   const dayQuery = useMemo(
     () => dailyLogsRepository.dayQuery(db, projectId, logDate, buildingId),
@@ -66,7 +66,7 @@ export function useDailyLogDay(db: Db, projectId: string, logDate: string, build
   const liveEntries = useLiveQuery(entriesQuery, [entriesQuery]);
 
   useEffect(() => {
-    if (!isOnline || !projectAccess.can(projectId, "dailyLog", "view")) return;
+    if (!refresh || !isOnline || !projectAccess.can(projectId, "dailyLog", "view")) return;
     let cancelled = false;
     dailyLogsApi
       .day(projectId, logDate, buildingId)
@@ -77,7 +77,7 @@ export function useDailyLogDay(db: Db, projectId: string, logDate: string, build
     return () => {
       cancelled = true;
     };
-  }, [db, projectId, logDate, buildingId, isOnline]);
+  }, [db, projectId, logDate, buildingId, isOnline, refresh]);
 
   const day = useMemo(() => (liveDay.data?.[0]?.buildingId === buildingId && liveDay.data[0].logDate === logDate && liveDay.data[0].projectId === projectId ? toDay(liveDay.data[0]) : null), [liveDay.data, buildingId, logDate, projectId]);
   const entries = useMemo(() => (liveEntries.data ?? []).filter((r) => r.buildingId === buildingId && r.logDate === logDate && r.projectId === projectId).map(toEntry), [liveEntries.data, buildingId, logDate, projectId]);

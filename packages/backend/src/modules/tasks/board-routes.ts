@@ -1,7 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import type { tasksService } from "./service.ts";
 import type { TaskBoardFilters } from "./types.ts";
-import { canSeeFullTaskBoard, assertCompanyTaskAccess } from "./access.ts";
+import { canSeeFullTaskBoard, assertTaskBoardAccess } from "./access.ts";
+import { taskVisibilityRepository } from "./visibility-repository.ts";
+import { taskVisibilityService } from "./visibility-service.ts";
 import { taskStageRepository } from "./stage-repository.ts";
 import { taskStageService } from "./stage-service.ts";
 
@@ -17,7 +19,7 @@ const boardQuery = {
   additionalProperties: false,
   properties: {
     stageId: { type: "string", minLength: 1, maxLength: 200 },
-    scope: { type: "string", enum: ["all", "assigned"] },
+    scope: { type: "string", enum: ["all", "assigned", "mine"] },
     buildingId: { type: "string", minLength: 1, maxLength: 100 },
   },
 } as const;
@@ -62,17 +64,18 @@ const reorderColumnsBody = {
 
 export function registerTaskBoardRoutes(fastify: FastifyInstance, service: ReturnType<typeof tasksService>): void {
   const stageFilter = taskStageService(taskStageRepository(fastify.db));
+  const visibility = taskVisibilityService(taskVisibilityRepository(fastify.db));
   fastify.get<{ Params: { id: string }; Querystring: TaskBoardFilters }>(
     "/projects/:id/tasks/board",
     { schema: { params: projectIdParams, querystring: boardQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
       const user = request.requireAuth();
-      assertCompanyTaskAccess(request, project);
+      assertTaskBoardAccess(request, project);
       const fullBoard = canSeeFullTaskBoard(request, project);
-      const assigneeId = request.query.scope === "assigned" || !fullBoard ? user.id : undefined;
-      const board = await service.getDefaultBoard(project.id, user.id, assigneeId, request.query.buildingId);
-      return stageFilter.filter(board, request.query.stageId);
+      const board = await service.getDefaultBoard(project.id, user.id, undefined, request.query.buildingId);
+      const visible = visibility.board(board, user.id, fullBoard && request.query.scope !== "mine", request.query.scope === "assigned");
+      return stageFilter.filter(visible, request.query.stageId);
     },
   );
 
@@ -82,7 +85,7 @@ export function registerTaskBoardRoutes(fastify: FastifyInstance, service: Retur
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
       const user = request.requireAuth();
-      assertCompanyTaskAccess(request, project);
+      assertTaskBoardAccess(request, project);
       return service.listAssignable(
         project.id,
         project.organization_id,

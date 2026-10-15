@@ -218,6 +218,27 @@
       "when": 1792020482377,
       "tag": "0030_narrative_images",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1792055936679,
+      "tag": "0031_record_visibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1792059616572,
+      "tag": "0032_update_comments",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1792060082183,
+      "tag": "0033_update_local_reference",
+      "breakpoints": true
     }
   ]
 }

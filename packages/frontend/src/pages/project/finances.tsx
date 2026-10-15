@@ -41,7 +41,8 @@ const EMPTY_POINTS: CashFlowPoint[] = [];
 export default function ProjectFinances() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "finances", "manage");
-  const canViewCosts = access?.capabilities?.canViewCosts ?? false;
+  const canViewCosts = canResourceAction(access, "finances", "viewCosts");
+  const canSeeAllExpenses = canResourceAction(access, "finances", "viewAllExpenses");
   const { data: summary, isPending } = useFinancePosition(project.id);
   const snapshot = useReportingSnapshot(canViewCosts ? project.id : undefined);
   const [depositOpen, setDepositOpen] = useState(false);
@@ -82,6 +83,8 @@ export default function ProjectFinances() {
 
         {canViewCosts ? (
           <div className="grid gap-4 lg:grid-cols-3">
+            {!canSeeAllExpenses ? <p className="text-sm text-muted-foreground lg:col-span-3">Expense totals include only expenses you logged.</p> : null}
+            {access?.capabilities.canViewReporting ? (
             <SpendVsBudgetCard
               className="lg:col-span-2"
               projectId={project.id}
@@ -92,6 +95,7 @@ export default function ProjectFinances() {
               spentTotal={snapshot.data?.finance.budget.totalActual ?? 0}
               isLoading={snapshot.isPending}
             />
+            ) : null}
             <PhaseSpendCard projectId={project.id} currency={summary.currency} phases={summary.phases} />
           </div>
         ) : null}

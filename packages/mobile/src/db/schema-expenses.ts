@@ -24,6 +24,7 @@ export const expenses = sqliteTable(
     receiptFileId: text("receipt_file_id"),
     receiptStagedUri: text("receipt_staged_uri"),
     receiptMimeType: text("receipt_mime_type"),
+    createdById: text("created_by_id"),
     createdByName: text("created_by_name"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),

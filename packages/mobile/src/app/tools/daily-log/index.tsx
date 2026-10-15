@@ -14,11 +14,14 @@ import { useLocalDb } from "@/db/provider";
 import { useDailyLogDays } from "@/hooks/use-daily-logs";
 import { formatDayLabel } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
+import { useProjectAccess } from "@/lib/project-access-provider";
+import { features } from "@/lib/feature-access";
 
 function DayList({ db, projectId }: { db: Db; projectId: string }) {
   const { data, isPending } = useDailyLogDays(db, projectId);
   const today = todayIso();
   const hasToday = data.some((d) => d.logDate === today);
+  const { allows } = useProjectAccess();
 
   return (
     <SearchableList
@@ -35,11 +38,10 @@ function DayList({ db, projectId }: { db: Db; projectId: string }) {
       emptyBody="A daily log records weather, crew and what happened on site."
       header={
         <>
-          {" "}
           <UnassignedLogs db={db} projectId={projectId} />
-          {!hasToday ? (
+          {!hasToday && allows(features.dailyLog.actions.create) ? (
             <Pressable
-              onPress={() => router.push(`/tools/daily-log/${today}`)}
+              onPress={() => router.push(`/tools/daily-log/new?date=${today}`)}
               accessibilityRole="button"
               className="mb-3 min-h-16 flex-row items-center gap-3 rounded-2xl border border-primary-200 bg-primary-50 px-4 py-3 active:bg-primary-100"
             >

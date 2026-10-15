@@ -67,10 +67,14 @@ export async function narrativeProjectReferences(db: Knex, fileId: string, userI
     if (source.live) query.whereNull('c.deleted_at').whereNull('p.deleted_at');
     const task = parent === 'tasks';
     return query.select('p.project_id', db.raw('?::text as resource', [source.resource]), db.raw('?::text as action', [source.action ?? 'view']),
+      parent === 'project_updates' ? 'p.is_draft as update_is_draft' : db.raw('false as update_is_draft'),
       parent === 'rfis' ? 'p.visibility' : db.raw('NULL::text as visibility'),
       source.table === 'rfi_comments' ? 'c.is_proposed_response' : db.raw('false as is_proposed_response'),
       task ? db.raw('p.id as task_id') : db.raw('NULL::text as task_id'),
-      task ? db.raw('EXISTS (SELECT 1 FROM task_assignees a WHERE a.task_id = p.id AND a.assignee_id = ?) as task_assigned', [userId]) : db.raw('false as task_assigned'));
+      task ? db.raw('EXISTS (SELECT 1 FROM task_assignees a WHERE a.task_id = p.id AND a.assignee_id = ?) as task_assigned', [userId]) : db.raw('false as task_assigned'),
+      task ? db.raw('p.created_by_id as task_created_by_id') : db.raw('NULL::text as task_created_by_id'),
+      parent === 'project_transactions' ? db.raw('p.id as expense_id') : db.raw('NULL::text as expense_id'),
+      parent === 'project_transactions' ? db.raw('p.created_by_id as expense_created_by_id') : db.raw('NULL::text as expense_created_by_id'));
   });
   return db.unionAll(queries, true);
 }

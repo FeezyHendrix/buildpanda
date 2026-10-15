@@ -14,6 +14,7 @@ export interface Expense {
   stageId: string | null;
   stageName: string | null;
   credit: boolean;
+  createdById: string | null;
   createdByName: string | null;
 }
 

@@ -1,4 +1,5 @@
 /** Portable references, never signed URLs or image bytes in a record's text. */
+export * from './audio';
 export interface ContentImage { fileId: string; name: string }
 export type ContentPart = { type: 'text'; text: string } | { type: 'image'; image: ContentImage };
 

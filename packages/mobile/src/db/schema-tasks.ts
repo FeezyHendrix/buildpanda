@@ -36,6 +36,7 @@ export const tasks = sqliteTable(
     position: real("position").notNull().default(0),
     subtaskTotal: integer("subtask_total").notNull().default(0),
     subtaskDone: integer("subtask_done").notNull().default(0),
+    createdById: text("created_by_id"),
     createdByName: text("created_by_name"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),

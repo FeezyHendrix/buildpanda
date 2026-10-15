@@ -11,6 +11,7 @@ import { documentsRepository } from '@/db/documents-repository';
 import { drawingMarkupsRepository } from '@/db/drawing-markups-repository';
 import { rfisRepository } from '@/db/rfis-repository';
 import { requireCurrentAccess } from '@/lib/project-access-store';
+import { allows } from '@/lib/access-policy';
 import { option, required, type VoiceExecutionContext } from './types';
 
 /** Hydration uses the same scoped APIs/cache guards as the hand-entered forms. */
@@ -27,7 +28,7 @@ export function voiceRecords(context: VoiceExecutionContext) {
   const records = {
     async board(buildingId: string) {
       if (online) {
-        const board = await tasksApi.board(projectId, buildingId, ticket.snapshot?.capabilities.canSeeFullTaskBoard === true);
+        const board = await tasksApi.board(projectId, buildingId, allows(ticket.snapshot?.permissions, 'tasks', 'viewAll'));
         requireCurrentAccess(ticket);
         await tasksRepository.replaceBoard(db, projectId, buildingId, board, context.userId);
       }

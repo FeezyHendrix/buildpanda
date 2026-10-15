@@ -15,6 +15,7 @@ import {
   materialLedgerEntries,
   materialOrders,
   projectUpdates,
+  updateComments,
   rfiComments,
   rfis,
   tasks,
@@ -44,4 +45,5 @@ export const OUTBOX_TABLES: Record<string, SQLiteTable> = {
   "drawing-markups": drawingMarkups,
   "drawing-markup-comments": drawingMarkupComments,
   updates: projectUpdates,
+  "update-comments": updateComments,
 };

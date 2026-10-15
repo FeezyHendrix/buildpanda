@@ -87,6 +87,9 @@ export interface UpdateComment {
   updateId: string;
   author: { id: string; name: string };
   body: string;
+  bodyHtml: string | null;
+  audioFileId: string | null;
+  audioDurationSeconds: number | null;
   createdAt: string;
 }
 
@@ -96,8 +99,23 @@ export interface UpdateCommentRow {
   author_id: string;
   author_name: string;
   body: string;
+  body_html?: string | null;
+  audio_file_id?: string | null;
+  audio_duration_seconds?: number | null;
+  client_mutation_id?: string | null;
   created_at: Date | string;
 }
+
+export interface AddCommentInput {
+  body?: string;
+  bodyHtml?: string | null;
+  audioFileId?: string | null;
+  audioDurationSeconds?: number | null;
+  clientMutationId?: string;
+}
+
+export type NewCommentRecord = Omit<UpdateCommentRow, "created_at">;
+export interface UpdateCommentParams { id: string; updateId: string }
 
 export interface DigestRow {
   label: string | null;

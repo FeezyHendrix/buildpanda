@@ -42,7 +42,7 @@ export function useHomeToolOrder(db: Db) {
   const rows = live.data;
 
   const order = useMemo(() => {
-    if (!rows) return null;
+    if (live.updatedAt === undefined) return null;
     const usage = rows.map((row) => ({ ...row, hidden: Boolean(row.hidden) }));
     const allowedKeys = allowed.map((tool) => tool.key);
     const manual = usage.filter((row) => row.position !== null || row.hidden).map((row) => `${row.key}:${row.position}:${row.hidden}`);
@@ -53,7 +53,7 @@ export function useHomeToolOrder(db: Db) {
     const next = rankTools(allowedKeys, usage, defaultOrder(can("finances", "manage")), Date.now());
     frozen = { day, signature, order: next };
     return next;
-  }, [rows, allowed, can, db]);
+  }, [rows, live.updatedAt, allowed, can, db]);
 
   const byKey = useMemo(() => new Map(allowed.map((tool) => [tool.key, tool])), [allowed]);
   return {

@@ -2,9 +2,10 @@ import { withProjectPermission } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
-import { Button, Card, Spinner, Text } from "@/components/atoms";
+import { Button, Spinner, Text } from "@/components/atoms";
 import { QUICK_TOOL_SLOTS } from "@/components/home/quick-tools-bar";
 import { Page } from "@/components/molecules/page";
+import { SortableList } from "@/components/molecules/sortable-list";
 import { ICON_BRAND, ICON_FAINT, ICON_MUTED } from "@/constants/colors";
 import type { Db } from "@/db/client";
 import { homeToolsRepository } from "@/db/home-tools-repository";
@@ -30,6 +31,7 @@ function Editor({ db }: { db: Db }) {
   const [order, setOrder] = useState<HomeToolKey[] | null>(null);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // start from what Home shows now, with hidden tools at the end
   useEffect(() => {
@@ -41,16 +43,8 @@ function Editor({ db }: { db: Db }) {
 
   if (!order) return <Page title="Customise Home" onBack={() => goBack()}><View className="items-center py-12"><Spinner size="md" /></View></Page>;
   const byKey = new Map(allowed.map((tool) => [tool.key, tool]));
-
-  function move(index: number, by: -1 | 1) {
-    setOrder((prev) => {
-      if (!prev) return prev;
-      const next = [...prev];
-      const [item] = next.splice(index, 1);
-      next.splice(index + by, 0, item!);
-      return next;
-    });
-  }
+  const tools = order.flatMap((key) => byKey.get(key) ?? []);
+  const quickKeys = new Set(tools.filter((tool) => !hidden.has(tool.key)).slice(0, QUICK_TOOL_SLOTS).map((tool) => tool.key));
 
   function toggle(key: string) {
     setHidden((prev) => {
@@ -64,44 +58,44 @@ function Editor({ db }: { db: Db }) {
   async function save(reset: boolean) {
     if (!order) return;
     setSaving(true);
+    setError(null);
     try {
       if (reset) await homeToolsRepository.resetLayout(db);
       else await homeToolsRepository.saveLayout(db, order, hidden);
       goBack();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save your layout. Please try again.");
     } finally {
       setSaving(false);
     }
   }
 
-  let shownIndex = 0;
   return (
-    <Page title="Customise Home" onBack={() => goBack()} footer={<Button onPress={() => void save(false)} loading={saving}>Save layout</Button>}>
-    <View className="gap-4">
-      <Text tone="secondary" className="text-[13px]">
-        The first {QUICK_TOOL_SLOTS} shown tools go in the quick bar; the rest of the order sets which cards come first. Without a saved layout, Home learns from what you open most.
-      </Text>
-      <Card>
-        {order.map((key, index) => {
-          const tool = byKey.get(key);
-          if (!tool) return null;
-          const isHidden = hidden.has(key);
-          const quick = !isHidden && shownIndex++ < QUICK_TOOL_SLOTS;
-          return (
-            <View key={key} className={`min-h-16 flex-row items-center gap-2 px-3 py-2 ${index ? "border-t border-hairline" : ""}`}>
+    <Page scroll={false} title="Customise Home" onBack={() => goBack()} footer={<Button onPress={() => void save(false)} loading={saving}>Save layout</Button>}>
+      <SortableList data={tools} rowHeight={76} keyExtractor={(tool) => tool.key} labelExtractor={(tool) => tool.label}
+        disabled={saving} onReorder={(next) => setOrder(next.map((tool) => tool.key))}
+        header={<View className="gap-3 pb-4">
+          <Text tone="secondary" className="text-[13px]">
+            Drag a handle to rearrange your tools. The first {QUICK_TOOL_SLOTS} visible tools appear in the quick bar. Tap the eye to show or hide a tool.
+          </Text>
+          {error ? <Text tone="danger" className="text-sm">{error}</Text> : null}
+        </View>}
+        footer={<View className="gap-3 pt-4">
+          <Text tone="secondary" className="text-[13px]">Automatic order learns from the tools you open most.</Text>
+          <Button variant="secondary" onPress={() => void save(true)} disabled={saving}>Reset to automatic</Button>
+        </View>}
+        renderItem={({ item: tool, dragHandle }) => {
+          const isHidden = hidden.has(tool.key);
+          return <View className="flex-1 flex-row items-center gap-2 px-2">
+              {dragHandle}
               <Ionicons name={tool.icon} size={20} color={isHidden ? ICON_FAINT : ICON_BRAND} />
               <View className="min-w-0 flex-1">
-                <Text weight="semibold" tone={isHidden ? "muted" : undefined} className="text-[15px]">{tool.label}</Text>
-                <Text tone="secondary" className="text-xs">{isHidden ? "Hidden from Home" : quick ? "Quick bar" : "Card on Home"}</Text>
+                <Text weight="semibold" tone={isHidden ? "muted" : undefined} className="text-[15px]" numberOfLines={1}>{tool.label}</Text>
+                <Text tone="secondary" className="text-xs">{isHidden ? "Hidden from Home" : quickKeys.has(tool.key) ? "Quick bar" : "Card on Home"}</Text>
               </View>
-              <IconButton icon="arrow-up" label={`Move ${tool.label} up`} disabled={index === 0} onPress={() => move(index, -1)} />
-              <IconButton icon="arrow-down" label={`Move ${tool.label} down`} disabled={index === order.length - 1} onPress={() => move(index, 1)} />
-              <IconButton icon={isHidden ? "eye-off-outline" : "eye-outline"} label={isHidden ? `Show ${tool.label}` : `Hide ${tool.label}`} onPress={() => toggle(key)} />
-            </View>
-          );
-        })}
-      </Card>
-      <Button variant="secondary" onPress={() => void save(true)} disabled={saving}>Reset to automatic</Button>
-    </View>
+              <IconButton icon={isHidden ? "eye-off-outline" : "eye-outline"} label={isHidden ? `Show ${tool.label}` : `Hide ${tool.label}`} disabled={saving} onPress={() => toggle(tool.key)} />
+            </View>;
+        }} />
     </Page>
   );
 }

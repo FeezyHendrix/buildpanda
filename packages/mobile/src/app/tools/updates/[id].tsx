@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { UpdateCard } from "@/components/molecules/update-card";
+import { CommentThread } from "@/components/updates/comment-thread";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useProjectUpdate } from "@/hooks/use-updates";
@@ -29,7 +30,9 @@ function UpdateBody({ db, projectId, id }: { db: Db; projectId: string; id: stri
       </View>
     );
   }
-  return <UpdateCard update={update} expanded />;
+  return <View className="gap-5"><UpdateCard update={update} expanded />
+    <CommentThread db={db} projectId={projectId} updateId={update.id} />
+  </View>;
 }
 
 function UpdateDetail() {

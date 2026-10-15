@@ -10,3 +10,11 @@ export interface AuthorizationRequest extends Omit<EnrichedAccessContext, 'userI
   requireProjectAccess(id: string): Promise<AuthorizedProject>;
   requireProjectPermission(id: string, resource: string, action: string): Promise<AuthorizedProject>;
 }
+
+export function requestAccessContext(request: AuthorizationRequest): EnrichedAccessContext {
+  return {
+    userId: request.requireAuth().id, orgRoles: request.orgRoles, orgPermissions: request.orgPermissions,
+    projectRoles: request.projectRoles, projectSectionPermissions: request.projectSectionPermissions,
+    projectGrants: request.projectGrants,
+  };
+}

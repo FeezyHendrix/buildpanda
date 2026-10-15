@@ -36,6 +36,7 @@ export interface DailyLogEntry {
 }
 
 export interface DailyLogDay {
+  recorded?: boolean;
   buildingId?: string | null;
   summary?: string | null;
   activities?: { activityId: string; activityName: string; hoursLogged: number }[];

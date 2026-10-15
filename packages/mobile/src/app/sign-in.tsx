@@ -4,6 +4,7 @@ import { View, type TextInput } from "react-native";
 import { Image } from "expo-image";
 import { Page } from "@/components/molecules/page";
 import { Button, Field, Text } from "@/components/atoms";
+import { PasswordField } from "@/components/atoms/password-field";
 import { authClient } from "@/lib/auth-client";
 import { writeCachedUser } from "@/lib/session-cache";
 import logo from "@/assets/images/buildpanda-logo.png";
@@ -82,13 +83,12 @@ export default function SignIn() {
               onSubmitEditing={() => passwordInput.current?.focus()}
             />
 
-            <Field
+            <PasswordField
               ref={passwordInput}
               label="Password"
               value={password}
               onChangeText={setPassword}
               placeholder="Enter your password"
-              secureTextEntry
               autoCapitalize="none"
               autoComplete="current-password"
               returnKeyType="go"

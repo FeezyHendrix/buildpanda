@@ -46,7 +46,7 @@ function ProjectUpdates() {
       title="Updates"
       onBack={() => goBack()}
       rightButtons={
-        <HeaderIconButton permission={features.updates.actions.create} icon="add" label="New update" onPress={() => router.push("./new")} />
+        <HeaderIconButton permission={features.updates.actions.create} icon="add" label="New update" onPress={() => router.push("/tools/updates/new")} />
       }
     >
       {ready && db && projectId ? (

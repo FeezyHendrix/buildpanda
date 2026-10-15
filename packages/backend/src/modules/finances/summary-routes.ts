@@ -1,3 +1,6 @@
+import { expenseReaderId } from "../transactions/access.ts";
+import { requestAccessContext } from "../../lib/authorization-request.ts";
+import { canProjectPermission } from "../../lib/authorization.ts";
 import type { FastifyPluginAsync } from "fastify";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { purchaseOrdersRepository } from "../purchase-orders/repository.ts";
@@ -72,21 +75,21 @@ const summaryResponse = {
 const financeSummaryRoutes: FastifyPluginAsync = async (fastify) => {
   const repository = financesRepository(fastify.db);
   const stages = stagesRepository(fastify.db);
-  const summary = financeSummaryService({
+  const summary = (readerId: string | undefined, maySeeCosts: boolean) => financeSummaryService({
     finances: repository,
     summary: financeSummaryRepository(fastify.db),
     stageCosts: stageCostsService({
       finances: repository,
-      transactions: transactionsRepository(fastify.db),
+      transactions: transactionsRepository(fastify.db, readerId),
       purchaseOrders: purchaseOrdersRepository(fastify.db),
     }),
-    stages: async (projectId) =>
+    stages: async (projectId) => maySeeCosts ?
       (await stages.listByProject(projectId)).map((row) => ({
         stageId: row.id,
         name: row.name,
         scheduledValue: Number(row.value),
         expectedCost: Number(row.expected_cost ?? 0),
-      })),
+      })) : [],
   });
 
   fastify.get<{ Params: { id: string } }>(
@@ -94,7 +97,8 @@ const financeSummaryRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, response: summaryResponse } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "finances", "view");
-      return summary.get(project.id);
+      const maySeeCosts = canProjectPermission({ id: project.id, ownerId: project.owner_id, organizationId: project.organization_id }, requestAccessContext(request), "finances", "viewCosts");
+      return summary(expenseReaderId(request, project), maySeeCosts).get(project.id);
     },
   );
 };

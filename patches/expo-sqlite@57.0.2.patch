@@ -11,3 +11,34 @@ diff --git a/web/WorkerChannel.ts b/web/WorkerChannel.ts
      resultArray.set(resultBytes, 4);
      Atomics.store(lock, 0, RESOLVED);
    } else {
+@@ -117,23 +118,24 @@
+   });
+ 
+   let i = 0;
++  // Iteration counts vary with the browser and CPU. The Atomics.pause branch
++  // could time out before a legitimate OPFS write finished, leaving the worker
++  // to commit after the caller had already attempted to roll back.
++  const deadline = performance.now() + 15_000;
+   // @ts-expect-error: Remove this when TypeScript supports Atomics.pause
+   const useAtomicsPause = typeof Atomics.pause === 'function';
+   while (Atomics.load(lock, 0) === PENDING) {
+     ++i;
++    if ((i & 0x3ff) === 0 && performance.now() > deadline) {
++      throw new Error('Sync operation timeout');
++    }
+ 
+     if (useAtomicsPause) {
+-      if (i > 1_000_000) {
+-        throw new Error('Sync operation timeout');
+-      }
+       // @ts-expect-error: Remove this when TypeScript supports Atomics.pause
+       Atomics.pause();
+     } else {
+       // NOTE(kudo): Unfortunate for the busy loop,
+       // because we don't have a way for main thread to yield its execution to other callbacks.
+-      if (i > 1000_000_000) {
+-        throw new Error('Sync operation timeout');
+-      }
+     }
+   }
+ 
