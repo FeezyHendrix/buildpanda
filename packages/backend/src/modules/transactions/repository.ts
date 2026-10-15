@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { applyExpenseVisibility } from "./visibility-repository.ts";
 import type {
   CategoryType,
   CustomCategoryRow,
@@ -79,13 +80,15 @@ function applyFilters(
   return builder;
 }
 
-export function transactionsRepository(db: Knex) {
+export function transactionsRepository(db: Knex, readerId?: string | null) {
+  const records = () => db<TransactionRow>("project_transactions")
+    .modify((query) => applyExpenseVisibility(query, readerId));
   return {
     async listByProject(
       projectId: string,
       filters?: TransactionListFilters,
     ): Promise<TransactionRowWithUser[]> {
-      const query = db<TransactionRow>("project_transactions")
+      const query = records()
         .select(
           "project_transactions.*",
           db.raw("\"user\".name as created_by_name"),
@@ -102,7 +105,7 @@ export function transactionsRepository(db: Knex) {
     },
 
     async findById(id: string): Promise<TransactionRowWithUser | undefined> {
-      const row = await db<TransactionRow>("project_transactions")
+      const row = await records()
         .select(
           "project_transactions.*",
           db.raw("\"user\".name as created_by_name"),
@@ -127,7 +130,7 @@ export function transactionsRepository(db: Knex) {
       id: string,
       patch: TransactionUpdatePatch,
     ): Promise<TransactionRow | undefined> {
-      const [row] = await db<TransactionRow>("project_transactions")
+      const [row] = await records()
         .where({ id })
         .update({ ...patch, updated_at: db.fn.now() })
         .returning("*");
@@ -135,14 +138,14 @@ export function transactionsRepository(db: Knex) {
     },
 
     async remove(id: string): Promise<number> {
-      return db("project_transactions").where({ id }).delete();
+      return records().where({ id }).delete();
     },
 
     async aggregateByCategory(
       projectId: string,
       filters?: TransactionListFilters,
     ): Promise<Array<{ category: string; total: string; count: string }>> {
-      const query = db<TransactionRow>("project_transactions")
+      const query = records()
         .select("category")
         .sum({ total: "amount" })
         .count({ count: "id" })
@@ -159,7 +162,7 @@ export function transactionsRepository(db: Knex) {
       projectId: string,
       filters?: TransactionListFilters,
     ): Promise<Array<{ month: string; total: string }>> {
-      const query = db<TransactionRow>("project_transactions")
+      const query = records()
         .select(db.raw("to_char(transacted_at, 'YYYY-MM') as month"))
         .sum({ total: "amount" })
         .where("project_transactions.project_id", projectId)
@@ -178,7 +181,7 @@ export function transactionsRepository(db: Knex) {
      * curve reconciles to the stage figures rather than telling a second story.
      */
     async sumByMonth(projectId: string): Promise<Array<{ month: string; total: string }>> {
-      return db<TransactionRow>("project_transactions")
+      return records()
         .select(db.raw("to_char(transacted_at, 'YYYY-MM') as month"))
         .sum({ total: db.raw("CASE WHEN credit THEN -amount ELSE amount END") })
         .where("project_transactions.project_id", projectId)
@@ -192,7 +195,7 @@ export function transactionsRepository(db: Knex) {
     // wrong entry is deleted, so every row still present counts. A credit is a
     // refund against the stage, so it subtracts rather than adds.
     async sumByStage(projectId: string): Promise<StageExpenseSumRow[]> {
-      return db<TransactionRow>("project_transactions")
+      return records()
         .select("stage_id")
         .sum({ total: db.raw("CASE WHEN credit THEN -amount ELSE amount END") })
         .where("project_transactions.project_id", projectId)
@@ -216,7 +219,7 @@ export function transactionsRepository(db: Knex) {
       projectId: string,
       filters?: TransactionListFilters,
     ): Promise<{ total: string | null; count: string }> {
-      const query = db<TransactionRow>("project_transactions")
+      const query = records()
         .sum({ total: "amount" })
         .count({ count: "id" })
         .where("project_transactions.project_id", projectId)

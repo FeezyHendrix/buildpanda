@@ -9,10 +9,10 @@ import {
 export const statement = {
   ...defaultStatements,
   project: ["create", "update", "delete", "view"],
-  tasks: ["view", "add", "remove"],
+  tasks: ["view", "viewAll", "add", "remove"],
   // Governs the whole finance surface, expenses/receipts included — mirrors the
   // backend statement, where the separate `transactions` resource was folded in.
-  finances: ["view", "manage", "approve", "dispute"],
+  finances: ["view", "viewCosts", "viewAllExpenses", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   stages: ["view", "manage"],
   buildings: ["view", "manage"],
@@ -47,8 +47,8 @@ export const ac = createAccessControl(statement);
 
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
-  tasks: ["view", "add", "remove"],
-  finances: ["view", "manage", "approve", "dispute"],
+  tasks: ["view", "viewAll", "add", "remove"],
+  finances: ["view", "viewCosts", "viewAllExpenses", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   stages: ["view", "manage"],
   buildings: ["view", "manage"],

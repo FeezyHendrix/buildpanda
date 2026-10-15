@@ -15,6 +15,7 @@ export const projectUpdates = sqliteTable(
   "project_updates",
   {
     id: text("id").primaryKey(),
+    localId: text("local_id"),
     projectId: text("project_id").notNull(),
     /** The build stage this update reports on; the feed is scoped by it. */
     stageId: text("stage_id"),
@@ -64,3 +65,20 @@ export const projectUpdateMedia = sqliteTable(
 
 export type ProjectUpdateRow = typeof projectUpdates.$inferSelect;
 export type ProjectUpdateMediaRow = typeof projectUpdateMedia.$inferSelect;
+
+export const updateComments = sqliteTable("update_comments", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  updateId: text("update_id").notNull(),
+  authorId: text("author_id").notNull(),
+  authorName: text("author_name").notNull(),
+  body: text("body").notNull().default(""),
+  bodyHtml: text("body_html"),
+  audioFileId: text("audio_file_id"),
+  audioDurationSeconds: integer("audio_duration_seconds"),
+  stagedAudioUri: text("staged_audio_uri"),
+  audioMimeType: text("audio_mime_type"),
+  createdAt: text("created_at").notNull(),
+  isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
+}, (table) => [index("update_comments_thread_idx").on(table.projectId, table.updateId, table.createdAt)]);
+export type UpdateCommentRow = typeof updateComments.$inferSelect;

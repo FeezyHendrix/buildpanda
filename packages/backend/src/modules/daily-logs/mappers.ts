@@ -66,6 +66,7 @@ export function buildEntry(row: DailyLogEntryRow, voidRows: DailyLogEntryVoidRow
 
 export function toDay(log: DailyLog, entries: DailyLogEntry[]): DailyLogDay {
   return {
+    recorded: true,
     projectId: log.projectId,
     buildingId: log.buildingId,
     summary: log.summary,

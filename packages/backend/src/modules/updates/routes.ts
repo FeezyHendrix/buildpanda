@@ -1,12 +1,15 @@
+import { registerUpdateComments } from "./comment-routes.ts";
+import { filesService } from "../files/service.ts";
+import { filesRepository } from "../files/repository.ts";
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModifyProject } from "../../lib/authorization.ts";
+import { canProjectPermission } from "../../lib/authorization.ts";
+import { requestAccessContext } from "../../lib/authorization-request.ts";
 import { aiDraftService } from "./ai-draft.ts";
 import { dailyDigestService, isoDate } from "./daily-digest.ts";
 import { updatesRepository } from "./repository.ts";
 import type { UpdateListFilters } from "./types.ts";
 import {
   updatesService,
-  type AddCommentInput,
   type CreateUpdateInput,
   type EditUpdateInput,
   type TransitionUpdateInput,
@@ -38,15 +41,6 @@ const transitionBody = {
       type: "string",
       enum: ["Approved", "Inspected", "Resolved", "Escalated"],
     },
-  },
-} as const;
-
-const commentBody = {
-  type: "object",
-  required: ["body"],
-  additionalProperties: false,
-  properties: {
-    body: { type: "string", minLength: 1, maxLength: 2000 },
   },
 } as const;
 
@@ -108,7 +102,7 @@ const dailyDigestQuery = {
 } as const;
 
 const updateRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = updatesService(updatesRepository(fastify.db));
+  const service = updatesService(updatesRepository(fastify.db), filesService(filesRepository(fastify.db)));
   const aiDraft = aiDraftService(fastify.db);
   const dailyDigest = dailyDigestService(fastify.db);
 
@@ -124,19 +118,10 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "updates", "view");
-      const user = request.requireAuth();
-      // Drafts are visible only to callers who could publish them (project
-      // owner / non-viewer org members) — homeowner participants see only
-      // published updates.
-      let includeDrafts = true;
-      try {
-        assertCanModifyProject(
-          { ownerId: project.owner_id, organizationId: project.organization_id },
-          { userId: user.id, orgRoles: request.orgRoles },
-        );
-      } catch {
-        includeDrafts = false;
-      }
+      const includeDrafts = canProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        requestAccessContext(request), "updates", "post",
+      );
       return service.listByProject(project.id, { includeDrafts, stageId: request.query.stageId });
     },
   );
@@ -233,37 +218,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.get<{ Params: { id: string; updateId: string } }>(
-    "/projects/:id/updates/:updateId/comments",
-    { schema: { params: updateIdParams } },
-    async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "updates", "view");
-      return service.listComments(project.id, request.params.updateId);
-    },
-  );
-
-  fastify.post<{
-    Params: { id: string; updateId: string };
-    Body: AddCommentInput;
-  }>(
-    "/projects/:id/updates/:updateId/comments",
-    { schema: { params: updateIdParams, body: commentBody } },
-    async (request, reply) => {
-      // comments:post, as on RFIs, tasks, approvals and change requests.
-      // Gating this on updates:post conflated replying with authoring — a
-      // client could only be given a voice by also being let to publish.
-      const project = await request.requireProjectPermission(request.params.id, "comments", "post");
-      const user = request.requireAuth();
-      await request.requireProjectPermission(project.id, "updates", "view");
-      const comment = await service.addComment(
-        project.id,
-        request.params.updateId,
-        request.body,
-        { id: user.id, name: user.name },
-      );
-      return reply.status(201).send(comment);
-    },
-  );
+  await registerUpdateComments(fastify, service);
 };
 
 export default updateRoutes;

@@ -1,6 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { features } from '@/lib/feature-access';
 import { repositoryAccess } from './permissions';
+import { taskReadWhere } from './record-visibility';
 import type { TaskRow } from './schema';
 import type { Db } from './client';
 import { documents, drawingMarkups, drawingMarkupComments, projectUpdates, projectUpdateMedia, tasks } from './schema';
@@ -10,7 +11,7 @@ export const serverActionCache = {
   async task(db: Db, projectId: string, id: string, patch?: Partial<Pick<TaskRow, 'title' | 'description' | 'dueDate' | 'priority' | 'assignees' | 'assignedToMe'>>) {
     const access = repositoryAccess(features.tasks);
     await access.transaction(db, projectId, 'read', (tx) => {
-      const where = access.where(db, tasks.projectId, eq(tasks.id, id), eq(tasks.isPendingSync, false));
+      const where = access.where(db, tasks.projectId, taskReadWhere(), eq(tasks.id, id), eq(tasks.isPendingSync, false));
       if (patch) tx.update(tasks).set({ ...patch, updatedAt: Date.now() }).where(where).run();
       else tx.delete(tasks).where(where).run();
     });

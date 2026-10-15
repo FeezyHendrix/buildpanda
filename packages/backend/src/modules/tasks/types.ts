@@ -1,5 +1,7 @@
 export type TaskStatus = "Todo" | "Doing" | "Done";
 
+export interface TaskRecordParams { id?: string; taskId?: string }
+
 export const TASK_PRIORITIES = ["Low", "Medium", "High"] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
@@ -117,7 +119,7 @@ export interface TaskBoard {
   projectId: string;
   name: string;
   isDefault: boolean;
-  scope: "all" | "assigned";
+  scope: "all" | "assigned" | "mine";
   columns: TaskColumn[];
   tasks: Task[];
 }
@@ -191,7 +193,7 @@ export interface TaskLinkRow {
   created_at: string;
 }
 export interface TaskBoardFilters {
-  scope?: "all" | "assigned";
+  scope?: "all" | "assigned" | "mine";
   buildingId?: string;
   stageId?: string;
 }

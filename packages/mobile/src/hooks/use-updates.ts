@@ -1,3 +1,4 @@
+import { useProjectAccess } from "@/lib/project-access-provider";
 import { projectAccess } from "@/lib/project-access-store";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
@@ -40,9 +41,10 @@ function groupByUpdate(rows: readonly ProjectUpdateMediaRow[]): Map<string, Proj
  */
 export function useProjectUpdates(db: Db, projectId: string, scoped = true) {
   const { isOnline } = useSyncState();
+  const { generation } = useProjectAccess();
   const { stageId, activityStages } = useStageScope();
-  const query = useMemo(() => updatesRepository.listQuery(db, projectId), [db, projectId]);
-  const mediaQuery = useMemo(() => updatesRepository.mediaQuery(db, projectId), [db, projectId]);
+  const query = useMemo(() => updatesRepository.listQuery(db, projectId), [db, projectId, generation]);
+  const mediaQuery = useMemo(() => updatesRepository.mediaQuery(db, projectId), [db, projectId, generation]);
   const live = useLiveQuery(query, [query]);
   const liveMedia = useLiveQuery(mediaQuery, [mediaQuery]);
 
@@ -66,7 +68,7 @@ export function useProjectUpdates(db: Db, projectId: string, scoped = true) {
     return () => {
       cancelled = true;
     };
-  }, [db, projectId, isOnline]);
+  }, [db, projectId, isOnline, generation]);
 
   const data = useMemo<LocalProjectUpdate[]>(() => {
     const media = groupByUpdate(liveMedia.data ?? []);
@@ -80,7 +82,7 @@ export function useProjectUpdates(db: Db, projectId: string, scoped = true) {
 
 export function useProjectUpdate(db: Db, projectId: string, updateId: string) {
   const { data, isPending } = useProjectUpdates(db, projectId, false);
-  const update = useMemo(() => data.find((row) => row.id === updateId), [data, updateId]);
+  const update = useMemo(() => data.find((row) => row.id === updateId || row.localId === updateId), [data, updateId]);
   return { update, isPending };
 }
 

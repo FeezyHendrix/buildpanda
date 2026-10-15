@@ -50,6 +50,13 @@ feature's definition of done.
   membership is also required. Project conversations use their project grants;
   direct messages use effective workspace `messages:view` and `messages:send`.
   Apply these rules to API reads/writes, attachment reads, and realtime delivery.
+- **Task and expense visibility follows explicit grants.** Without `tasks:viewAll`,
+  callers see only tasks they created or are assigned to. Without
+  `finances:viewAllExpenses`, callers see only expenses they logged; no authored
+  expenses means an empty result. Owner, Admin and Project Manager presets include
+  these grants, and custom roles can configure them. Do not infer broad access
+  from a role name. Apply the same scope to detail, files, reporting, offline
+  caches and Panda AI.
 - **Panda AI obeys the caller's permissions.** Filter available tools and
   authorize each execution with the same resource/action and scope checks as
   the equivalent API. Prompts and tool visibility do not replace execution

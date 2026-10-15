@@ -4,7 +4,7 @@ import { useFieldSession } from '@/lib/field-session';
 import { useProjectAccess } from '@/lib/project-access-provider';
 import { resolveContentImage } from '@/lib/content-images';
 
-export function useContentImageResolver(explicitProjectId?: string) {
+export function useContentImageResolver(explicitProjectId?: string, format: "dataUrl" | "uri" = "dataUrl") {
   const session = useFieldSession();
   const { db } = useLocalDb();
   const access = useProjectAccess();
@@ -12,8 +12,8 @@ export function useContentImageResolver(explicitProjectId?: string) {
   const ready = access.ready && projectId === access.scope?.projectId;
   const resolve = useCallback(async (id: string) => {
     if (!ready || !projectId) throw new Error('Refresh project access to view this image.');
-    return resolveContentImage(projectId, id, db);
-  }, [projectId, ready, access.generation, db]);
+    return resolveContentImage(projectId, id, db, format);
+  }, [projectId, ready, access.generation, db, format]);
   return { resolve, ready, projectId, version: `${access.generation}:${ready}` };
 }
 

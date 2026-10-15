@@ -88,6 +88,9 @@ export interface UpdateComment {
   updateId: string;
   author: { id: string; name: string };
   body: string;
+  bodyHtml?: string | null;
+  audioFileId?: string | null;
+  audioDurationSeconds?: number | null;
   createdAt: string;
 }
 

@@ -1,3 +1,6 @@
+import { updateCommentsService } from "./comments-service.ts";
+import type { FilesService } from "../files/service.ts";
+export type { AddCommentInput } from "./types.ts";
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { UpdateContentPatch, UpdatesRepository } from "./repository.ts";
@@ -8,8 +11,6 @@ import type {
   ProjectUpdate,
   UpdateAction,
   UpdateCategory,
-  UpdateComment,
-  UpdateCommentRow,
   UpdateMediaRow,
   UpdateListOptions,
   UpdateRow,
@@ -32,10 +33,6 @@ export const CTA_DEFAULTS: Record<UpdateCategory, { label: string; tone: CtaTone
 
 export interface TransitionUpdateInput {
   status: UpdateStatus;
-}
-
-export interface AddCommentInput {
-  body: string;
 }
 
 export interface MediaInput {
@@ -122,17 +119,7 @@ export function toUpdate(row: UpdateRow, media: UpdateMediaRow[]): ProjectUpdate
   return result;
 }
 
-function toComment(row: UpdateCommentRow): UpdateComment {
-  return {
-    id: row.id,
-    updateId: row.update_id,
-    author: { id: row.author_id, name: row.author_name },
-    body: row.body,
-    createdAt: new Date(row.created_at).toISOString(),
-  };
-}
-
-export function updatesService(repository: UpdatesRepository) {
+export function updatesService(repository: UpdatesRepository, files?: Pick<FilesService, "findRow">) {
   async function loadUpdate(
     projectId: string,
     updateId: string,
@@ -192,31 +179,7 @@ export function updatesService(repository: UpdatesRepository) {
       return toUpdate(updated, media);
     },
 
-    async listComments(
-      projectId: string,
-      updateId: string,
-    ): Promise<UpdateComment[]> {
-      await loadUpdate(projectId, updateId);
-      const rows = await repository.listComments(updateId);
-      return rows.map(toComment);
-    },
-
-    async addComment(
-      projectId: string,
-      updateId: string,
-      input: AddCommentInput,
-      actor: { id: string; name: string },
-    ): Promise<UpdateComment> {
-      await loadUpdate(projectId, updateId);
-      const row = await repository.addComment({
-        id: generateId("comment"),
-        update_id: updateId,
-        author_id: actor.id,
-        author_name: actor.name,
-        body: input.body,
-      });
-      return toComment(row);
-    },
+    ...updateCommentsService(repository, files),
 
     async create(
       projectId: string,
@@ -235,7 +198,7 @@ export function updatesService(repository: UpdatesRepository) {
           project_id: projectId,
           author_id: actor.id,
           author_name: actor.name,
-          author_role: "Project Manager",
+          author_role: "",
           author_initials_tone: "brand",
           activity_id: input.activityId ?? null,
           stage_id: input.stageId ?? null,

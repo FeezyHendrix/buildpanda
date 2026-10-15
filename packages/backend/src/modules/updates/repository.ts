@@ -3,6 +3,7 @@ import { ConflictError } from "../../lib/errors.ts";
 import type { Tone } from "../projects/types.ts";
 import type {
   CtaTone,
+  NewCommentRecord,
   UpdateCategory,
   UpdateCommentRow,
   UpdateMediaRow,
@@ -10,14 +11,6 @@ import type {
   UpdateRow,
   UpdateStatus,
 } from "./types.ts";
-
-export interface NewCommentRecord {
-  id: string;
-  update_id: string;
-  author_id: string;
-  author_name: string;
-  body: string;
-}
 
 export interface NewUpdateRecord {
   id: string;
@@ -158,9 +151,14 @@ export function updatesRepository(db: Knex) {
     },
 
     async addComment(record: NewCommentRecord): Promise<UpdateCommentRow> {
-      const [row] = await db<UpdateCommentRow>("update_comments").insert(record).returning("*");
-      if (!row) throw new Error("Failed to insert comment");
-      return row;
+      const [row] = await db<UpdateCommentRow>("update_comments").insert(record)
+        .onConflict(["update_id", "author_id", "client_mutation_id"]).ignore().returning("*");
+      if (row) return row;
+      const existing = await db<UpdateCommentRow>("update_comments").where({
+        update_id: record.update_id, author_id: record.author_id, client_mutation_id: record.client_mutation_id,
+      }).first();
+      if (!existing) throw new ConflictError("Could not save this comment");
+      return existing;
     },
 
     async createUpdate(

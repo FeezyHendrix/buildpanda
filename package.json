@@ -13,6 +13,8 @@
     "build:backend": "pnpm --filter @buildpanda/backend build",
     "build:admin": "pnpm --filter @buildpanda/admin build",
     "build:website": "pnpm --filter @buildpanda/website build",
+    "typecheck": "pnpm -r --workspace-concurrency=3 typecheck",
+    "typecheck:all": "pnpm typecheck && pnpm --dir video typecheck && pnpm --filter @buildpanda/backend exec tsc --project ../../data/boq-pipeline/tsconfig.json",
     "db:migrate": "pnpm --filter @buildpanda/backend db:migrate",
     "db:seed": "pnpm --filter @buildpanda/backend db:seed",
     "db:rollback": "pnpm --filter @buildpanda/backend db:rollback",

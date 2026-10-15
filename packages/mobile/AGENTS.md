@@ -53,6 +53,11 @@ presentation. No per-screen role matrices or duplicated permission logic.
 - `apiRequirement` and `outboxRequirement` map transport/queue operations back
   to the catalog. Refresh access before dispatch and independently authorize
   every write on the server. Retrying or discarding queued records is guarded.
+- Feature availability is separate from authorization. The server's explicit
+  `feature_disabled` response fails that operation without revoking the project.
+  Unknown 403 responses and authentication failures still invalidate access.
+  Building discovery remains protected by `buildings:view` when multi-building
+  management is disabled, because field records still require a building scope.
 - Native downloaded files are partitioned by user, workspace, project, and
   resource area. Conversation data and attachment reopening require an online
   membership check; the 24-hour project snapshot does not verify membership.
@@ -147,3 +152,31 @@ reconnect, upload reuse after a failed save, and permission revocation. Backend
 `src/modules/files/content-images.test.ts` uses `IMAGE_TEST_DATABASE_URL` for an
 isolated migrated database and rollback fixtures. Camera permissions, native
 filesystem cleanup, and physical device rendering still need device validation.
+
+## Shared authoring and page composition — 2026-10-15
+
+- All rich text uses the shared `RichTextEditor` / `RichContent` adapters around
+  `react-native-enriched-html`. Store canonical file IDs, never temporary display
+  URLs. Keep HTML/plain-text mirrors and destination field validation together.
+- `Page` owns the header, keyboard avoidance, footer and bounded scroll viewport.
+  A virtualized list uses `scroll={false}` and owns its scrolling through a
+  bounded list component. Do not nest a vertical list inside the page ScrollView.
+  Verify long content and the final control with the keyboard shown on tablets
+  as well as phones.
+- Saved daily logs expose **Site notes** and optional **Programme hours** on their
+  detail page. The creation form records the day's conditions and summary first.
+- Updates show photos in the feed and detail. Comments may contain rich text,
+  images and playable voice notes; conversion produces editable text and never
+  posts automatically. Reading requires `updates:view`; posting/conversion
+  additionally requires `comments:post`. Drafts require `updates:post`.
+- Persist picked/recorded media in the current user's scoped local store before
+  queueing. Retain uploaded IDs across retries and identify comment retries with
+  a stable client mutation ID. A queued comment waits for its local parent update.
+
+The SQLite RBAC and voice suites cover record visibility, comment retries, local
+parent reconciliation and revocation. Backend PostgreSQL tests cover matching
+read/write/file/AI scope and comment idempotency. Browser checks exercise image
+and voice persistence, editable conversion, denied routes and long-page scrolling.
+The native iPad simulator also verifies feed swipes, opening New Update and typing
+in the Enriched editor. Live transcription and physical-device recording/cleanup
+remain integration checks; fixture transcription is not a live speech-model test.

@@ -5,6 +5,8 @@ import { dailyLogsRepository, todayIso } from "@/db/daily-logs-repository";
 import { materialLogRepository } from "@/db/material-log-repository";
 import { outboxQuery } from "@/db/outbox";
 import { tasksRepository } from "@/db/tasks-repository";
+import { isMyTask } from "@/db/record-visibility";
+import { useProjectAccess } from "./use-project-access";
 
 /**
  * The numbers at the top of Home, read straight from SQLite so they show with
@@ -12,7 +14,8 @@ import { tasksRepository } from "@/db/tasks-repository";
  */
 export function useHomeSummary(db: Db, projectId: string, buildingId: string) {
   const today = todayIso();
-  const tasksQuery = useMemo(() => tasksRepository.tasksQuery(db, projectId, buildingId), [db, projectId, buildingId]);
+  const { userId, generation } = useProjectAccess();
+  const tasksQuery = useMemo(() => tasksRepository.tasksQuery(db, projectId, buildingId), [db, projectId, buildingId, generation]);
   const columnsQuery = useMemo(() => tasksRepository.columnsQuery(db, projectId, buildingId), [db, projectId, buildingId]);
   const ledgerQuery = useMemo(() => materialLogRepository.entriesQuery(db, projectId), [db, projectId]);
   const entriesQuery = useMemo(() => dailyLogsRepository.entriesQuery(db, projectId, today, buildingId), [db, projectId, today, buildingId]);
@@ -26,7 +29,7 @@ export function useHomeSummary(db: Db, projectId: string, buildingId: string) {
 
   return useMemo(() => {
     const done = new Set((columns.data ?? []).filter((c) => c.status === "Done").map((c) => c.id));
-    const myOpen = (tasks.data ?? []).filter((t) => t.assignedToMe && !done.has(t.columnId));
+    const myOpen = (tasks.data ?? []).filter((t) => isMyTask(t, userId) && !done.has(t.columnId));
     const overdue = myOpen.filter((t) => t.dueDate && t.dueDate.slice(0, 10) < today).length;
     const awaiting = (ledger.data ?? []).filter((e) => e.entryType === "IN" && e.status !== "Voided" && e.approvalStatus === "Pending").length;
     const todaysEntries = (entries.data ?? []).filter((e) => e.logDate === today && e.buildingId === buildingId && e.projectId === projectId).length;
@@ -40,5 +43,5 @@ export function useHomeSummary(db: Db, projectId: string, buildingId: string) {
       toSync,
       failed,
     };
-  }, [tasks.data, columns.data, ledger.data, entries.data, queue.data, today, buildingId, projectId]);
+  }, [tasks.data, columns.data, ledger.data, entries.data, queue.data, today, buildingId, projectId, userId]);
 }

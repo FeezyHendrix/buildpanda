@@ -10,6 +10,7 @@ import { useFieldSession } from "@/lib/field-session";
 import { usePersistentQuery } from "@/lib/persistent-query";
 import { useSyncState } from "@/lib/sync-provider";
 import { useAuthGate } from "@/lib/use-auth-gate";
+import { useProjectAccess } from "./use-project-access";
 
 /**
  * One building's task board from SQLite, refreshed in the background. With
@@ -19,9 +20,10 @@ import { useAuthGate } from "@/lib/use-auth-gate";
 export function useTaskBoard(db: Db, projectId: string, buildingId: string, full: boolean) {
   const { isOnline } = useSyncState();
   const { user } = useAuthGate();
+  const { generation } = useProjectAccess();
   const selfId = user?.id ?? null;
   const columnsQuery = useMemo(() => tasksRepository.columnsQuery(db, projectId, buildingId), [db, projectId, buildingId]);
-  const tasksQuery = useMemo(() => tasksRepository.tasksQuery(db, projectId, buildingId), [db, projectId, buildingId]);
+  const tasksQuery = useMemo(() => tasksRepository.tasksQuery(db, projectId, buildingId), [db, projectId, buildingId, generation]);
   const columns = useLiveQuery(columnsQuery, [columnsQuery]);
   const rows = useLiveQuery(tasksQuery, [tasksQuery]);
 
@@ -36,7 +38,7 @@ export function useTaskBoard(db: Db, projectId: string, buildingId: string, full
     return () => {
       cancelled = true;
     };
-  }, [db, projectId, buildingId, full, isOnline, selfId]);
+  }, [db, projectId, buildingId, full, isOnline, selfId, generation]);
 
   return {
     columns: columns.data ?? [],
@@ -46,7 +48,8 @@ export function useTaskBoard(db: Db, projectId: string, buildingId: string, full
 }
 
 export function useTask(db: Db, id: string) {
-  const query = useMemo(() => tasksRepository.byIdQuery(db, id), [db, id]);
+  const { generation } = useProjectAccess();
+  const query = useMemo(() => tasksRepository.byIdQuery(db, id), [db, id, generation]);
   const live = useLiveQuery(query, [query]);
   return { data: live.data?.[0] ?? null, isPending: live.updatedAt === undefined && !live.error };
 }

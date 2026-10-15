@@ -20,14 +20,16 @@ import { useStageScope } from "@/lib/stage-scope";
 function ExpenseList({ db, projectId, currency }: { db: Db; projectId: string; currency: string | undefined }) {
   const { data, isPending } = useExpenses(db, projectId);
   const { stageId } = useStageScope();
+  const { can, allows } = useProjectAccess();
+  const viewAll = can("finances", "viewAllExpenses");
   if (isPending) return <View className="items-center py-12"><Spinner size="md" /></View>;
 
   const visible = data.filter((row) => matchesStage(row.stageId, stageId));
   if (visible.length === 0) {
     return (
       <View className="items-center py-12">
-        <Text weight="semibold" className="text-center text-base">No expenses logged</Text>
-        <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">Log a site spend with its receipt as it happens, signal or not.</Text>
+        <Text weight="semibold" className="text-center text-base">{viewAll ? "No expenses logged" : "You haven’t logged any expenses"}</Text>
+        <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">{allows(features.expenses.actions.create) ? "Log a site spend with its receipt as it happens, signal or not." : "No expenses are available to you."}</Text>
       </View>
     );
   }
@@ -37,7 +39,7 @@ function ExpenseList({ db, projectId, currency }: { db: Db; projectId: string; c
   return (
     <View className="gap-4">
       <Card className="p-4">
-        <Text tone="secondary" className="text-xs">Logged {stageId ? "for this stage" : "on this project"}</Text>
+        <Text tone="secondary" className="text-xs">{viewAll ? "Logged" : "You logged"} {stageId ? "for this stage" : "on this project"}</Text>
         <Text weight="bold" className="pt-1 text-2xl">{formatMoney(total, currency)}</Text>
       </Card>
       <Card>

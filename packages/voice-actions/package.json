@@ -17,5 +17,11 @@
   },
   "dependencies": {
     "@buildpanda/rich-content": "file:../rich-content"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.0"
   }
 }

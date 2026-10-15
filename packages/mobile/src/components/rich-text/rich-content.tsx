@@ -1,14 +1,13 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Image } from 'expo-image';
 import { Modal, Pressable, View } from 'react-native';
-import { contentParts, type ContentImage as ImageReference } from '@buildpanda/rich-content';
+import { contentParts, plainTextFromHtml, type ContentImage as ImageReference } from '@buildpanda/rich-content';
 import { Text, type TextProps } from '@/components/atoms/text';
 import { Button } from '@/components/atoms/button';
 import { useContentImage, useContentImageResolver } from '@/hooks/use-content-image';
-import { useContentFileOpener } from '@/hooks/use-content-file-opener';
-import Editor from './editor.dom';
+import { EnrichedContent } from './enriched-content';
+import { enrichedAvailable } from './enriched-runtime';
 
-const IGNORE_CHANGE = () => undefined;
 export function ContentImage({ image, projectId }: { image: ImageReference; projectId?: string }) {
   const { url, error } = useContentImage(image.fileId, projectId);
   const [expanded, setExpanded] = useState(false);
@@ -21,7 +20,7 @@ export function ContentImage({ image, projectId }: { image: ImageReference; proj
   </View>;
 }
 
-function ImageModal({ url, name, visible, onClose }: { url: string; name: string; visible: boolean; onClose: () => void }) {
+export function ImageModal({ url, name, visible, onClose }: { url: string; name: string; visible: boolean; onClose: () => void }) {
   return <Modal visible={visible && !!url} onRequestClose={onClose} animationType="fade">
     <View className="flex-1 bg-surface px-4 pb-8 pt-16">
       <Image source={{ uri: url }} contentFit="contain" style={{ flex: 1 }} accessibilityLabel={name} />
@@ -39,13 +38,11 @@ export function ContentText({ value, projectId, ...props }: Omit<TextProps, 'chi
 
 export function RichContent({ html, text, projectId }: { html?: string | null; text?: string | null; projectId?: string }) {
   const images = useContentImageResolver(projectId);
-  const files = useContentFileOpener(projectId);
   const [selected, setSelected] = useState<ImageReference | null>(null);
   const fullImage = useContentImage(selected?.fileId ?? '', projectId);
-  const open = useCallback(async (fileId: string, name: string) => { setSelected({ fileId, name }); }, []);
   if (!html) return <ContentText value={text} projectId={projectId} />;
   if (!images.ready) return null;
-  return <><Editor value={html} readOnly onChangeHtml={IGNORE_CHANGE} resolveImage={images.resolve} accessVersion={images.version} onOpenImage={open} onOpenFile={files.open} dom={{ matchContents: true }} />
-    {files.error ? <Text tone="danger">{files.error}</Text> : null}
+  if (!enrichedAvailable) return <ContentText value={text ?? plainTextFromHtml(html)} projectId={projectId} />;
+  return <><EnrichedContent key={`${images.projectId}:${images.version}`} html={html} projectId={images.projectId} onImage={setSelected} />
     <ImageModal url={fullImage.url} name={selected?.name ?? "Image"} visible={!!selected} onClose={() => setSelected(null)} /></>;
 }

@@ -5,6 +5,7 @@
   "description": "BuildPanda Pre-Construction suite — product walkthrough video (Remotion).",
   "scripts": {
     "studio": "remotion studio",
+    "typecheck": "tsc --noEmit",
     "render": "remotion render Walkthrough out/buildpanda-walkthrough.mp4 --concurrency=4",
     "render:project1": "remotion render ProjectOne out/project-one.mp4 --concurrency=4",
     "still": "remotion still Walkthrough out/thumbnail.png --frame=120"

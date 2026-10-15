@@ -13,6 +13,7 @@ export interface ProjectSnapshot {
    * nothing had been spent on every real project.
    */
   spendToDate: number;
+  expenseVisibility?: "all" | "own";
   address: string;
   phaseCount: number;
   activityCount: number;
@@ -108,6 +109,7 @@ export async function buildSnapshot(
     progressPercent: num(project.progress_percent),
     budgetTotal: num(project.budget_total),
     spendToDate: num(spendToDate),
+    expenseVisibility: can("finances", "viewAllExpenses") ? "all" : "own",
     address: project.address,
     phaseCount: phases.length,
     activityCount: activities.length,
@@ -146,6 +148,7 @@ export function snapshotToPrompt(s: ProjectSnapshot): string {
     `- Location: ${s.address}`,
   ];
   if (hidden.has("spend")) lines.push(`- Contract budget: ${s.budgetTotal} ${s.currency}`);
+  else if (s.expenseVisibility === "own") lines.push(`- Caller-logged expenses only: ${s.spendToDate} ${s.currency}. Other users' expenses are not visible; do not describe this as total project spending.`);
   else lines.push(`- Budget: ${s.spendToDate} spent of ${s.budgetTotal} ${s.currency}`);
   if (!hidden.has("phases")) lines.push(`- Phases: ${s.phaseCount}`);
   if (!hidden.has("programme")) {

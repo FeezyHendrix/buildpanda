@@ -35,7 +35,7 @@ test('voice target SQL respects project, assigned task, named reviewer and conve
     ]);
     await tx('channel_members').insert(['channel', 'foreign', 'dm'].map((id) => ({ id: `voice-member-${id}`, channel_id: `voice-${id}`, user_id: 'voice-crew' })));
     await tx('messages').insert(['channel', 'secret', 'foreign', 'dm'].map((id) => ({ id: `voice-message-${id}`, channel_id: `voice-${id}`, body: id })));
-    const caller: VoiceCaller = { userId: 'voice-crew', organizationId: 'voice-org', can: () => true, workspaceCan: () => false, capabilities: { canAccessTaskBoard: true, canSeeFullTaskBoard: false } };
+    const caller: VoiceCaller = { userId: 'voice-crew', organizationId: 'voice-org', can: (_resource, action) => action !== 'viewAll', workspaceCan: () => false, capabilities: { canAccessTaskBoard: true, canSeeFullTaskBoard: false } };
     const repository = voiceContextRepository(tx);
     const scoped = await repository.options('voice-site', caller);
     assert.deepEqual(scoped.tasks!.map((row) => row.value), ['voice-task-assigned']);
@@ -46,7 +46,7 @@ test('voice target SQL respects project, assigned task, named reviewer and conve
     assert.ok(!scoped.editableApprovals!.some((row) => row.value === 'voice-approval-decided'));
     assert.deepEqual(scoped.sendableChannels!.map((row) => row.value), ['voice-channel']);
     assert.deepEqual(scoped.replyTargets!.map((row) => row.value), ['voice-message-channel']);
-    const workspace = await repository.options('voice-site', { ...caller, workspaceCan: () => true, capabilities: { ...caller.capabilities, canSeeFullTaskBoard: true } });
+    const workspace = await repository.options('voice-site', { ...caller, can: () => true, workspaceCan: () => true, capabilities: { ...caller.capabilities, canSeeFullTaskBoard: true } });
     assert.equal(workspace.tasks!.length, 2);
     assert.deepEqual(new Set(workspace.sendableChannels!.map((row) => row.value)), new Set(['voice-channel', 'voice-dm']));
     assert.deepEqual(workspace.workspaceMembers!.map((row) => row.value), ['voice-reviewer']);

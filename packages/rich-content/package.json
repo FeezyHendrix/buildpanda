@@ -14,5 +14,11 @@
       "access": ["./src/access.ts"],
       "pending": ["./src/pending.ts"]
     }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.0"
   }
 }

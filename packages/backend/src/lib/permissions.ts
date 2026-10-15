@@ -10,7 +10,7 @@ export const statement = {
   ...defaultStatements,
   // Construction suite
   project: ["create", "update", "delete", "view"],
-  tasks: ["view", "add", "remove"],
+  tasks: ["view", "viewAll", "add", "remove"],
   // Two reads, not one. `view` is the CLIENT-FACING contract position — contract
   // sum, certificates/receivable invoices, retention, the payments on them.
   // `viewCosts` is the CONTRACTOR'S internal position — expenses, purchase
@@ -18,7 +18,7 @@ export const statement = {
   // contract the employer's Resident Engineer must see what was certified to
   // them and must never see the contractor's costs or margin, so a single flat
   // finances:view was a disclosure bug, not a convenience.
-  finances: ["view", "viewCosts", "manage", "approve", "dispute"],
+  finances: ["view", "viewCosts", "viewAllExpenses", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   stages: ["view", "manage"],
   buildings: ["view", "manage"],
@@ -61,8 +61,8 @@ type PresetShape = Partial<Record<keyof typeof statement, readonly string[]>>;
 
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
-  tasks: ["view", "add", "remove"],
-  finances: ["view", "viewCosts", "manage", "approve", "dispute"],
+  tasks: ["view", "viewAll", "add", "remove"],
+  finances: ["view", "viewCosts", "viewAllExpenses", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete", "markup"],
   inspections: ["view", "request", "manage"],

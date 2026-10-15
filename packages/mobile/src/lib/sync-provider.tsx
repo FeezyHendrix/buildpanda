@@ -85,14 +85,11 @@ function QueueWatcher({
   const query = useMemo(() => outboxQuery(db), [db, generation, ready]);
   const live = useLiveQuery(query, [query]);
 
-  const rows = ready ? live.data : [];
+  const pendingCount = ready ? (live.data?.filter((row) => row.status === "pending").length ?? 0) : 0;
+  const failedCount = ready ? (live.data?.filter((row) => row.status === "failed").length ?? 0) : 0;
   useEffect(() => {
-    if (!rows) return;
-    onCounts({
-      pendingCount: rows.filter((r) => r.status === "pending").length,
-      failedCount: rows.filter((r) => r.status === "failed").length,
-    });
-  }, [rows, onCounts]);
+    onCounts({ pendingCount, failedCount });
+  }, [pendingCount, failedCount, onCounts]);
 
   useEffect(() => {
     if (!isOnline || !ready) return;

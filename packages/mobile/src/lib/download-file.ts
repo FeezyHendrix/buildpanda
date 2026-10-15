@@ -13,7 +13,7 @@ import { features, messagingAccess } from "./feature-access";
 import { AccessDeniedError, projectAccess, requireAccess, requireCurrentAccess, revokeProjectAccess, type AccessState } from "./project-access-store";
 
 const CACHE_DIR_NAME = "protected-files-v1";
-const filePolicies = { documents: features.documents.read, messages: messagingAccess } as const;
+const filePolicies = { documents: features.documents.read, messages: messagingAccess, updates: features.updates.read } as const;
 type FileArea = keyof typeof filePolicies;
 const segment = (value: string) => `s-${encodeURIComponent(value)}`;
 
@@ -91,11 +91,12 @@ export function cachePickedVersion(ticket: AccessState, uri: string, versionId: 
   return destination.uri;
 }
 
-export async function cacheFileById(fileId: string, fileName: string, area: FileArea = "documents"): Promise<string> {
+export async function cacheFileById(fileId: string, fileName: string, area: FileArea = "documents", allowDownload = true): Promise<string> {
   const ticket = ticketFor(projectAccess.getState().scope?.projectId ?? "", area);
   if (area === "messages") await verifyOnlineAttachment(fileId);
   requireCurrentAccess(ticket);
   const destination = new File(cacheDir(ticket.scope!, area), `${segment(fileId)}${extensionOf(fileName)}`);
+  if (!allowDownload && (!destination.exists || destination.size === 0)) throw new Error("Connect once to download this voice note.");
   return downloadToCache(`${API_BASE_URL}/files/${encodeURIComponent(fileId)}/download`, destination, ticket);
 }
 

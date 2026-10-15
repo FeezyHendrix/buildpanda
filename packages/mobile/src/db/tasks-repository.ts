@@ -1,4 +1,4 @@
-import { projectAccess, AccessDeniedError } from "@/lib/project-access-store";
+import { AccessDeniedError } from "@/lib/project-access-store";
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { randomUUID } from "expo-crypto";
@@ -8,9 +8,9 @@ import type { Db } from "./client";
 import { enqueueUpdate } from "./enqueue-update";
 import { taskColumns, tasks, outbox, type TaskRow } from "./schema";
 import { remapQueuedRecord } from "./sync-write-state";
+import { taskReadWhere } from "./record-visibility";
 
 const access = repositoryAccess(features.tasks);
-const taskVisibility = () => projectAccess.getState().snapshot?.capabilities.canSeeFullTaskBoard ? undefined : eq(tasks.assignedToMe, true);
 
 export interface LocalTaskInput {
   title: string;
@@ -44,6 +44,7 @@ function serverValues(projectId: string, buildingId: string, task: Task, selfId:
     position: task.position,
     subtaskTotal: task.subtaskTotal ?? 0,
     subtaskDone: task.subtaskDone ?? 0,
+    createdById: task.createdById ?? null,
     createdByName: task.createdByName,
   };
 }
@@ -64,19 +65,19 @@ export const tasksRepository = {
 
   tasksQuery: (db: Db, projectId: string, buildingId: string) =>
     db.select().from(tasks)
-      .where(access.where(db, tasks.projectId, taskVisibility(), and(eq(tasks.projectId, projectId), eq(tasks.buildingId, buildingId))))
+      .where(access.where(db, tasks.projectId, taskReadWhere(), and(eq(tasks.projectId, projectId), eq(tasks.buildingId, buildingId))))
       .orderBy(asc(tasks.position)),
 
-  byIdQuery: (db: Db, id: string) => db.select().from(tasks).where(access.where(db, tasks.projectId, taskVisibility(), eq(tasks.id, id))).limit(1),
+  byIdQuery: (db: Db, id: string) => db.select().from(tasks).where(access.where(db, tasks.projectId, taskReadWhere(), eq(tasks.id, id))).limit(1),
 
   findById: async (db: Db, id: string): Promise<TaskRow | undefined> => {
-    const [row] = await db.select().from(tasks).where(access.where(db, tasks.projectId, taskVisibility(), eq(tasks.id, id))).limit(1);
+    const [row] = await db.select().from(tasks).where(access.where(db, tasks.projectId, taskReadWhere(), eq(tasks.id, id))).limit(1);
     return row;
   },
 
   /** New tasks start in the To do column, or the board's first one. */
   async createLocal(db: Db, projectId: string, buildingId: string, input: LocalTaskInput, selfId: string | null): Promise<string> {
-    access.require(db, projectId, "create");
+    const ticket = access.require(db, projectId, "create");
     const columns = await db.select().from(taskColumns)
       .where(access.where(db, taskColumns.projectId, and(eq(taskColumns.projectId, projectId), eq(taskColumns.buildingId, buildingId))))
       .orderBy(asc(taskColumns.position));
@@ -93,8 +94,9 @@ export const tasksRepository = {
         description: input.description,
         dueDate: input.dueDate,
         priority: input.priority,
+        createdById: ticket.scope!.userId,
         assignees: JSON.stringify(input.assignees),
-        assignedToMe: Boolean(selfId && input.assignees.some((a) => a.kind === "user" && a.id === selfId)),
+        assignedToMe: input.assignees.some((a) => a.kind === "user" && a.id === ticket.scope!.userId),
         position: endOf(tx, column.id),
         isPendingSync: true,
         updatedAt: Date.now(),
@@ -107,12 +109,12 @@ export const tasksRepository = {
   /** A status change is a move to another column; queued as the task's update. */
   async moveLocal(db: Db, projectId: string, id: string, columnId: string): Promise<void> {
     const task = access.record(db, tasks, id, projectId);
-    if (!projectAccess.getState().snapshot?.capabilities.canSeeFullTaskBoard && !task.assignedToMe) throw new AccessDeniedError();
+    if (!await this.findById(db, id)) throw new AccessDeniedError();
     const column = access.record(db, taskColumns, columnId, projectId);
     if (task.buildingId !== column.buildingId) throw new Error("Choose a column in this task's building.");
     await access.transaction(db, projectId, "move", (tx) => {
       tx.update(tasks).set({ columnId, position: endOf(tx, columnId), isPendingSync: true, updatedAt: Date.now() })
-        .where(access.where(db, tasks.projectId, taskVisibility(), eq(tasks.id, id))).run();
+        .where(access.where(db, tasks.projectId, taskReadWhere(), eq(tasks.id, id))).run();
       enqueueUpdate(tx, "tasks", id, projectId, randomUUID());
     });
   },
@@ -130,7 +132,7 @@ export const tasksRepository = {
   async reconcileCreate(db: Db, row: TaskRow, server: Task, selfId: string | null) {
     await access.transaction(db, row.projectId, "read", (tx) => {
       const hasEdits = remapQueuedRecord(tx, "tasks", row.id, server.id);
-      tx.delete(tasks).where(access.where(db, tasks.projectId, taskVisibility(), eq(tasks.id, row.id))).run();
+      tx.delete(tasks).where(access.where(db, tasks.projectId, taskReadWhere(), eq(tasks.id, row.id))).run();
       const values = {
         ...serverValues(row.projectId, row.buildingId, server, selfId),
         // a move made while the create was in flight is still to be sent
@@ -153,7 +155,7 @@ export const tasksRepository = {
           .onConflictDoUpdate({ target: taskColumns.id, set: { projectId, buildingId, name: column.name, status: column.status, position: column.position } }).run();
       }
       const ids = board.tasks.map((t) => t.id);
-      tx.delete(tasks).where(access.where(db, tasks.projectId, taskVisibility(), and(
+      tx.delete(tasks).where(access.where(db, tasks.projectId, and(
         eq(tasks.projectId, projectId),
         eq(tasks.buildingId, buildingId),
         eq(tasks.isPendingSync, false),

@@ -62,7 +62,7 @@ function DailyLogTable({ rows, isPending, hasAnyDays, canCreateEntry, canGenerat
             <TableHeaderCell className="whitespace-nowrap">Hours</TableHeaderCell>
             <TableHeaderCell className="whitespace-nowrap">Weather</TableHeaderCell>
             <TableHeaderCell className="whitespace-nowrap">Activities</TableHeaderCell>
-            <TableHeaderCell className="whitespace-nowrap">Entries</TableHeaderCell>
+            <TableHeaderCell className="whitespace-nowrap">Site notes</TableHeaderCell>
             <TableHeaderCell align="right" className={cn(STICKY, "w-28 bg-surface-alt")}>
               <span className="sr-only">Actions</span>
             </TableHeaderCell>
