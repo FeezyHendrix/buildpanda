@@ -1,6 +1,7 @@
 # Build from the repository root: docker build -f packages/frontend/Dockerfile .
 FROM node:22-alpine AS base
 WORKDIR /app
+COPY tsconfig.shared.json /tsconfig.shared.json
 
 FROM base AS dev
 COPY packages/rich-content /rich-content

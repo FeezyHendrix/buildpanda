@@ -5,6 +5,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { imageError, referencedFileIds } from '@buildpanda/rich-content';
 import { uploadProjectFile } from '@/api/files';
 import { request, ApiError } from '@/api/client';
+import { isAccessRejection } from '@/api/error';
 import { VERIFIED } from './access-requirement';
 import { uploadAccess } from './feature-access';
 import { requireAccess, requireCurrentAccess, revokeProjectAccess } from './project-access-store';
@@ -23,20 +24,20 @@ export async function stageContentImage(projectId: string, picked: PickedContent
 }
 
 /** Original and downloaded bytes are partitioned by user/workspace/project. */
-export async function resolveContentImage(projectId: string, fileId: string, db?: Db | null): Promise<string> {
+export async function resolveContentImage(projectId: string, fileId: string, db?: Db | null, format: "dataUrl" | "uri" = "dataUrl"): Promise<string> {
   const ticket = requireAccess(projectId, VERIFIED);
   const local = await loadContentImage(ticket.scope, fileId);
   requireCurrentAccess(ticket);
   if (fileId.startsWith('local_image_')) {
     if (!local) throw new Error('This image is no longer on this device. Add it again.');
-    return local.dataUrl;
+    return local[format];
   }
   const network = await NetInfo.fetch();
   requireCurrentAccess(ticket);
   const fingerprint = accessFingerprint(ticket.snapshot);
   if (!network.isConnected || network.isInternetReachable === false) {
     if (!db || !canReadCachedContentFile(db, projectId, fileId)) throw new Error('This image is not available in your current offline records.');
-    if (local?.fingerprint === fingerprint && local.verifiedAt && Date.now() - local.verifiedAt < OFFLINE_ACCESS_MS) return local.dataUrl;
+    if (local?.fingerprint === fingerprint && local.verifiedAt && Date.now() - local.verifiedAt < OFFLINE_ACCESS_MS) return local[format];
     throw new Error('Connect once to download this image.');
   }
   try {
@@ -51,7 +52,7 @@ export async function resolveContentImage(projectId: string, fileId: string, db?
       await verifyCachedContentImage(ticket.scope, fileId);
       try { requireCurrentAccess(ticket); }
       catch (error) { await clearContentImages(ticket.scope); throw error; }
-      return local.dataUrl;
+      return local[format];
     }
     await cacheContentImage(ticket.scope, { id: fileId, name: metadata.fileName, mimeType: metadata.mimeType, fingerprint, verifiedAt: Date.now() }, source.url);
     try { requireCurrentAccess(ticket); }
@@ -59,9 +60,9 @@ export async function resolveContentImage(projectId: string, fileId: string, db?
     const stored = await loadContentImage(ticket.scope, fileId);
     requireCurrentAccess(ticket);
     if (!stored) throw new Error('Could not save this image for offline use.');
-    return stored.dataUrl;
+    return stored[format];
   } catch (error) {
-    if (error instanceof ApiError && [401, 403].includes(error.status)) {
+    if (error instanceof ApiError && isAccessRejection(error)) {
       requireCurrentAccess(ticket); revokeProjectAccess(); await clearContentImages(ticket.scope);
     }
     throw error;

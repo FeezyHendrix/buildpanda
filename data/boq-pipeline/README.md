@@ -27,6 +27,10 @@ before committing to a production `boq-agent` module.
 
 ## Run
 
+Typecheck the prototype without executing the pipeline:
+`pnpm --filter @buildpanda/backend exec tsc --project ../../data/boq-pipeline/tsconfig.json`.
+The config resolves its dependencies from the backend installation.
+
 ```bash
 # from data/boq-pipeline, with backend deps reachable:
 ln -sfn ../../packages/backend/node_modules node_modules   # build-only shim

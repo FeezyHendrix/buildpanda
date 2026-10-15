@@ -2,10 +2,6 @@ import * as XLSX from "xlsx";
 import type { PricedLine } from "./classify.ts";
 import type { ProjectMeta } from "./types.ts";
 
-interface Row {
-  [col: string]: string | number | null;
-}
-
 // Writes a priced BoQ in the Moniepoint sample layout:
 // S/N | DESCRIPTION OF ITEM | QTY | UNIT | U/PRICE | AMOUNT, grouped by BESMM
 // work section with per-section "to Summary" subtotals and a grand total.

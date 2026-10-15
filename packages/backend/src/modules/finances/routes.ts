@@ -1,3 +1,4 @@
+import { expenseReaderId } from "../transactions/access.ts";
 import type { FastifyPluginAsync } from "fastify";
 import { assertProjectPermission } from "../../lib/authorization.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
@@ -176,9 +177,9 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
   const service = financesService(repository, {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
-  const stageCosts = stageCostsService({
+  const stageCosts = (readerId: string | undefined) => stageCostsService({
     finances: repository,
-    transactions: transactionsRepository(fastify.db),
+    transactions: transactionsRepository(fastify.db, readerId),
     purchaseOrders: purchaseOrdersRepository(fastify.db),
   });
   await fastify.register(financeSummaryRoutes);
@@ -198,7 +199,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       // What a stage has cost is the contractor's own position, not the
       // client's — it takes viewCosts, not plain view.
       const project = await request.requireProjectPermission(request.params.id, "finances", "viewCosts");
-      return stageCosts.byProject(project.id);
+      return stageCosts(expenseReaderId(request, project)).byProject(project.id);
     },
   );
 

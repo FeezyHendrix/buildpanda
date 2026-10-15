@@ -171,6 +171,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
           projectRoles: this.projectRoles,
           orgPermissions: this.orgPermissions,
           projectSectionPermissions: this.projectSectionPermissions,
+          projectGrants: this.projectGrants,
         },
         resource,
         action,

@@ -1,4 +1,5 @@
-import { assertCompanyTaskAccess, canSeeFullTaskBoard } from "../tasks/access.ts";
+import { assertTaskBoardAccess, canSeeFullTaskBoard } from "../tasks/access.ts";
+import { expenseReaderId } from "../transactions/access.ts";
 import type { AuthorizationRequest } from "../../lib/authorization-request.ts";
 import { assertOrganizationPermission, canProjectPermission } from "../../lib/authorization.ts";
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
@@ -38,10 +39,12 @@ export async function requireFileRead(request: AuthorizationRequest, file: Uploa
     if (file.project_id && reference.project_id !== file.project_id) continue;
     try {
       const project = await request.requireProjectPermission(reference.project_id, reference.resource, reference.action);
+      if (reference.update_is_draft) await request.requireProjectPermission(reference.project_id, "updates", "post");
       if (reference.task_id) {
-        assertCompanyTaskAccess(request, project);
-        if (!canSeeFullTaskBoard(request, project) && !reference.task_assigned) continue;
+        assertTaskBoardAccess(request, project);
+        if (!canSeeFullTaskBoard(request, project) && !reference.task_assigned && reference.task_created_by_id !== userId) continue;
       }
+      if (reference.expense_id && expenseReaderId(request, project) && reference.expense_created_by_id !== userId) continue;
       // Shared RFI readers cannot open internal records or proposed responses.
       if (reference.resource === "rfis" && (reference.visibility !== "shared" || reference.is_proposed_response) && project.owner_id !== userId &&
         (!project.organization_id || !request.orgRoles.has(project.organization_id))) continue;

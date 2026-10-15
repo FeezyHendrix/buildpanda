@@ -193,9 +193,9 @@ function ActivitiesSection({
   // a PM needs to see when they disagree (finding F8).
   const mismatch = dayHours > 0 && total > 0 && Math.abs(dayHours - total) >= 0.5;
   return (
-    <Section title="Activities">
+    <Section title="Programme hours">
       {day.activities.length === 0 ? (
-        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No activities logged against this day.</p>
+        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No programme hours recorded for this day.</p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-line-hair">
           <Table>
@@ -244,9 +244,9 @@ interface EntriesProps {
 
 function EntriesSection({ day, projectId, userId, canCreateEntry, canVoidEntry, focusComposer }: EntriesProps) {
   return (
-    <Section title={`Entries (${day.entries.length})`}>
+    <Section title={`Site notes (${day.entries.length})`}>
       {day.entries.length === 0 ? (
-        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No team logs for this day yet.</p>
+        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No site notes for this day yet.</p>
       ) : (
         <div className="flex flex-col divide-y divide-line-hair">
           {day.entries.map((entry) => (
@@ -261,7 +261,7 @@ function EntriesSection({ day, projectId, userId, canCreateEntry, canVoidEntry, 
           ))}
         </div>
       )}
-      {canCreateEntry ? <EntryComposer projectId={projectId} logDate={day.logDate} autoFocus={focusComposer} /> : null}
+      {canCreateEntry && !day.voidedAt ? <EntryComposer projectId={projectId} logDate={day.logDate} autoFocus={focusComposer} /> : null}
     </Section>
   );
 }

@@ -2,6 +2,7 @@ import type { Knex } from 'knex';
 import type { VoiceOptions, VoiceOption } from '@buildpanda/voice-actions';
 import { PRESET_TRANSACTION_CATEGORIES } from '../../transactions/types.ts';
 import type { VoiceCaller } from './context-types.ts';
+import { applyTaskVisibility } from '../../tasks/visibility-repository.ts';
 
 /** Only authorized target labels enter the model context or the review pickers. */
 export function voiceContextRepository(db: Knex) {
@@ -13,7 +14,7 @@ export function voiceContextRepository(db: Knex) {
         .select<VoiceOption[]>('u.id as value', 'u.name as label');
       const [tasks, taskColumns, assignees, approvals, documents, documentCategories, markups, updates, workspaceMembers, categories] = await Promise.all([
         taskAccess ? db('tasks as t').where('t.project_id', projectId)
-          .modify((query) => { if (!capabilities.canSeeFullTaskBoard) query.whereIn('t.id', db('task_assignees').where('assignee_id', userId).select('task_id')); })
+          .modify((query) => applyTaskVisibility(query, db, can('tasks', 'viewAll') ? undefined : userId))
           .select<VoiceOption[]>('t.id as value', 't.title as label', 't.board_id as parentId', 't.building_id as buildingId') : [],
         taskAccess ? db('task_columns as c').join('task_boards as b', 'b.id', 'c.board_id').where('b.project_id', projectId)
           .select<VoiceOption[]>('c.id as value', 'c.name as label', 'c.board_id as parentId', 'b.building_id as buildingId') : [],

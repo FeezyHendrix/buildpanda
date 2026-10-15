@@ -1,5 +1,5 @@
 import { ForbiddenError } from "./errors.ts";
-import { isEmployeeRole, mapAllows, statement, type PermissionMap } from "./permissions.ts";
+import { mapAllows, statement, type PermissionMap } from "./permissions.ts";
 import { PARTICIPANT_PERMISSIONS, ROLE_PRESET_SIDES } from "./role-presets.ts";
 import {
   composeParticipantPermissions,
@@ -228,6 +228,8 @@ const PRIVILEGED_VERBS: ReadonlySet<string> = new Set([
 const PRIVILEGED_OVERRIDES: ReadonlySet<string> = new Set([
   "project:update",
   "participants:manage",
+  "tasks:viewAll",
+  "finances:viewAllExpenses",
 ]);
 
 export function isPrivilegedGrant(resource: string, action: string): boolean {
@@ -319,7 +321,10 @@ export function assertOrganizationPermission(organizationId: string, ctx: Enrich
 
 /** Record visibility shared by the task board and references to its records. */
 export function canSeeAllTasks(project: ProjectScope & { id: string }, ctx: EnrichedAccessContext): boolean {
-  if (project.ownerId === ctx.userId) return true;
-  const role = project.organizationId ? ctx.orgRoles.get(project.organizationId) : undefined;
-  return Boolean(role && role !== "viewer" && !isEmployeeRole(role)) || canProjectPermission(project, ctx, "tasks", "remove");
+  return canProjectPermission(project, ctx, "tasks", "viewAll");
+}
+
+/** Logging expenses never implies permission to read another person's records. */
+export function canSeeAllExpenses(project: ProjectScope & { id: string }, ctx: EnrichedAccessContext): boolean {
+  return canProjectPermission(project, ctx, "finances", "viewAllExpenses");
 }

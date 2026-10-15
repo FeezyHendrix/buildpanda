@@ -173,7 +173,7 @@ export default function ProjectDailyLog() {
           <SearchInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by author or entry"
+            placeholder="Search by author or site note"
             aria-label="Search daily logs"
           />
         </div>

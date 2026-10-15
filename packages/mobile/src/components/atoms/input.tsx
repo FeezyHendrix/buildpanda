@@ -1,5 +1,5 @@
 import { ImageTextInput } from "@/components/rich-text/image-text-input";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { TextInput, View, type TextInputProps } from "react-native";
 import { ICON_SUBTLE } from "@/constants/colors";
 import { Text } from "./text";
@@ -27,20 +27,23 @@ interface FieldProps extends TextInputProps {
   error?: string;
   helperText?: string;
   images?: boolean;
+  endAdornment?: ReactNode;
   className?: string;
 }
 
-export function Field({ label, error, helperText, className, onFocus, images = true, ...props }: FieldProps) {
+export function Field({ label, error, helperText, className, onFocus, images = true, endAdornment, ...props }: FieldProps) {
   const reveal = useKeyboardReveal();
   const Input = props.multiline && images ? ImageTextInput : TextInput;
   return (
     <View className={cn("gap-2", className)}>
       <FieldLabel>{label}</FieldLabel>
+      <View className="relative">
       <Input
         className={cn(
           "min-h-14 rounded-xl bg-surface-alt px-4 py-3 font-inter text-base text-black-500",
           props.multiline && "min-h-28",
           error && "border border-error-500",
+          endAdornment && "pr-14",
         )}
         accessibilityLabel={label}
         textAlignVertical={props.multiline ? "top" : "center"}
@@ -51,6 +54,8 @@ export function Field({ label, error, helperText, className, onFocus, images = t
           onFocus?.(event);
         }}
       />
+      {endAdornment ? <View className="absolute bottom-0 right-0 top-0 justify-center">{endAdornment}</View> : null}
+      </View>
       {error ? (
         <Text tone="danger" className="text-xs">
           {error}

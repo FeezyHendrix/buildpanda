@@ -1,9 +1,10 @@
 import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import { ForbiddenError } from "../lib/errors.ts";
+import { FeatureDisabledError } from "../lib/errors.ts";
 import { FEATURE_FLAGS } from "../modules/feature-flags/definitions.ts";
 import { featureFlagsRepository } from "../modules/feature-flags/repository.ts";
 import { featureFlagsService } from "../modules/feature-flags/service.ts";
+import type { FeatureFlagDefinition } from "../modules/feature-flags/types.ts";
 
 const CACHE_MS = 15_000;
 
@@ -13,8 +14,8 @@ function toRegex(prefix: string): RegExp {
   return new RegExp(`^${withParams}(?:/|$)`);
 }
 
-const ROUTE_MATCHERS = FEATURE_FLAGS.flatMap((flag) =>
-  flag.routePrefixes.map((prefix) => ({ key: flag.key, label: flag.label, pattern: toRegex(prefix) })),
+const ROUTE_MATCHERS = FEATURE_FLAGS.flatMap((flag: FeatureFlagDefinition) =>
+  flag.routePrefixes.map((prefix) => ({ key: flag.key, label: flag.label, methods: flag.routeMethods, pattern: toRegex(prefix) })),
 );
 
 const featureFlagsPlugin: FastifyPluginAsync = async (fastify) => {
@@ -35,10 +36,10 @@ const featureFlagsPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.addHook("onRequest", async (request) => {
     const path = request.url.split("?")[0] ?? request.url;
     if (path.startsWith("/admin") || path === "/feature-flags" || path.startsWith("/api/auth")) return;
-    const match = ROUTE_MATCHERS.find((item) => item.pattern.test(path));
+    const match = ROUTE_MATCHERS.find((item) => item.pattern.test(path) && (!item.methods || item.methods.includes(request.method)));
     if (!match) return;
     if (!(await enabled(match.key))) {
-      throw new ForbiddenError(`${match.label} is currently disabled`);
+      throw new FeatureDisabledError(match.key, match.label);
     }
   });
 };

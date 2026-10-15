@@ -17,6 +17,7 @@ import {
 import { useProjectContext } from "@/layouts/project-layout";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { canResourceAction } from "@/lib/project-types";
 import type { Transaction, TransactionListFilters } from "@/lib/project-types";
 import {
   UpsertTransactionDialog,
@@ -29,7 +30,10 @@ import { TabActions } from "./finance-tabs";
 
 /** Expenses — site spend logged with its receipt. A record of money spent off-platform. */
 export function ExpensesTab() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canRead = canResourceAction(access, "finances", "viewCosts");
+  const canManage = canRead && canResourceAction(access, "finances", "manage");
+  const viewAll = canRead && canResourceAction(access, "finances", "viewAllExpenses");
   const { selectedStageId, setSelectedStageId } = useStageScope();
   const projectId = project.id;
   const currency = project.currency;
@@ -37,9 +41,9 @@ export function ExpensesTab() {
   const filters = { ...localFilters, stageId: selectedStageId };
   const [draftSearch, setDraftSearch] = useState("");
 
-  const { data: transactions = [], isPending: isLoadingTx } = useTransactions(projectId, filters);
-  const { data: analytics, isPending: isLoadingAnalytics } = useTransactionAnalytics(projectId, filters);
-  const { data: categories = [] } = useTransactionCategories(projectId);
+  const { data: transactions = [], isPending: isLoadingTx } = useTransactions(canRead ? projectId : "", filters);
+  const { data: analytics, isPending: isLoadingAnalytics } = useTransactionAnalytics(canRead ? projectId : "", filters);
+  const { data: categories = [] } = useTransactionCategories(canRead ? projectId : "");
 
   const deleteTx = useDeleteTransaction(projectId);
   const exportCsv = useExportTransactionsCsv();
@@ -61,12 +65,14 @@ export function ExpensesTab() {
     setFilters((prev) => ({ ...prev, search: draftSearch || undefined }));
   }
 
+  if (!canRead) return null;
+
   return (
     <section aria-label="Expenses">
-      <TabActions>
+      {canManage ? <TabActions>
         <Button
           variant="secondary"
-          onClick={() => exportCsv.mutate({ projectId, filters })}
+          onClick={() => { if (canManage) exportCsv.mutate({ projectId, filters }); }}
           loading={exportCsv.isPending}
         >
           Export CSV
@@ -75,12 +81,12 @@ export function ExpensesTab() {
           Manage categories
         </Button>
         <CreateButton onClick={() => setUpsertTarget("new")}>Record expense</CreateButton>
-      </TabActions>
+      </TabActions> : null}
 
       <div className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
-          <KpiCard label="Total spend" value={formatCurrency(analytics?.totalAmount || 0, currency)} />
-          <KpiCard label="Expenses recorded" value={(analytics?.count || 0).toString()} />
+          <KpiCard label={viewAll ? "Total spend" : "Spend you logged"} value={formatCurrency(analytics?.totalAmount || 0, currency)} />
+          <KpiCard label={viewAll ? "Expenses recorded" : "Your expenses"} value={(analytics?.count || 0).toString()} />
         </div>
 
         <ExpenseCharts analytics={analytics} currency={currency} isLoading={isLoadingAnalytics} />
@@ -133,14 +139,14 @@ export function ExpensesTab() {
           currency={currency}
           isLoading={isLoadingTx}
           isFiltered={isFiltered}
-          onOpen={setUpsertTarget}
-          onDelete={setDeleteTarget}
-          onRecord={() => setUpsertTarget("new")}
+          onOpen={canManage ? setUpsertTarget : undefined}
+          onDelete={canManage ? setDeleteTarget : undefined}
+          onRecord={canManage ? () => setUpsertTarget("new") : undefined}
           onClearFilters={handleClearFilters}
         />
       </div>
 
-      {upsertTarget ? (
+      {canManage && upsertTarget ? (
         <UpsertTransactionDialog
           projectId={projectId}
           currency={currency}
@@ -154,7 +160,7 @@ export function ExpensesTab() {
         />
       ) : null}
 
-      {manageCategoriesOpen ? (
+      {canManage && manageCategoriesOpen ? (
         <ManageCategoriesDialog
           projectId={projectId}
           categories={categories}
@@ -163,7 +169,7 @@ export function ExpensesTab() {
       ) : null}
 
       <ConfirmDialog
-        open={Boolean(deleteTarget)}
+        open={canManage && Boolean(deleteTarget)}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="Delete transaction"
         description="Are you sure? This cannot be undone and will update the ledger balances."
@@ -171,7 +177,7 @@ export function ExpensesTab() {
         confirmLabel="Delete"
         loading={deleteTx.isPending}
         onConfirm={() => {
-          if (deleteTarget) {
+          if (canManage && deleteTarget) {
             deleteTx.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
           }
         }}

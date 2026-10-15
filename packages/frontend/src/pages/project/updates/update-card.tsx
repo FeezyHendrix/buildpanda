@@ -1,3 +1,5 @@
+import { useProjectAccess } from "@/hooks/use-participants";
+import { canResourceAction } from "@/lib/project-types";
 import { ContentText } from "@/components/molecules/rich-content";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/atoms/avatar";
@@ -90,6 +92,9 @@ export function UpdateCard({
   autoEdit?: boolean;
   onAutoEditHandled?: () => void;
 }) {
+  const { data: access } = useProjectAccess(projectId);
+  const canReadComments = canResourceAction(access, "updates", "view") && !update.isDraft;
+  const canComment = canReadComments && canResourceAction(access, "comments", "post") && !update.isDraft;
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -106,8 +111,8 @@ export function UpdateCard({
   const deleteUpdate = useDeleteUpdate();
   const publishUpdate = usePublishUpdate();
   const commentsQuery = useUpdateComments(
-    commentsOpen ? projectId : undefined,
-    commentsOpen ? update.id : undefined,
+    commentsOpen && canReadComments ? projectId : undefined,
+    commentsOpen && canReadComments ? update.id : undefined,
   );
 
   const isOpen = update.status === "Open";
@@ -122,8 +127,9 @@ export function UpdateCard({
   //   });
   // }
 
-  function handlePostComment(body: string): void {
-    addComment.mutate({ projectId, updateId: update.id, body });
+  async function handlePostComment(body: string): Promise<void> {
+    if (!canComment) throw new Error("Commenting is not available.");
+    await addComment.mutateAsync({ projectId, updateId: update.id, body });
   }
 
   function handleEdit(values: UpsertUpdateValues): void {
@@ -255,8 +261,8 @@ export function UpdateCard({
         )} */}
       </footer>
 
-      {commentsOpen && (
-        <CommentPanel
+      {commentsOpen && !update.isDraft && (
+        <CommentPanel projectId={projectId} canComment={canComment}
           comments={commentsQuery.data ?? []}
           isLoading={commentsQuery.isLoading}
           isSubmitting={addComment.isPending}

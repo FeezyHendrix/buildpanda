@@ -24,20 +24,20 @@ const qty = (value: number) => (Number.isInteger(value) ? String(value) : value.
 
 export function DailyLogCard({ db, projectId, buildingId }: Scope) {
   const today = todayIso();
-  const { entries } = useDailyLogDay(db, projectId, today, buildingId);
+  const { day, entries } = useDailyLogDay(db, projectId, today, buildingId);
   const templates = useDailyLogTemplates(db, projectId);
   const { allows } = useProjectAccess();
   const form = defaultTemplate(templates.data) ?? templates.data[0];
   const count = entries.length;
 
   return (
-    <HomeCard title="Today's daily log" subtitle={count ? `${count} ${count === 1 ? "entry" : "entries"} so far` : "Nothing logged yet today"} href={`/tools/daily-log/${today}`}>
+    <HomeCard title="Today's daily log" subtitle={count ? `${count} site ${count === 1 ? "note" : "notes"}` : day ? "No site notes yet" : "Nothing logged yet today"} href={day ? `/tools/daily-log/${today}` : `/tools/daily-log/new?date=${today}`}>
       {allows(features.dailyLog.actions.create) ? (
         <Button
           variant={count ? "secondary" : "primary"}
-          onPress={() => router.push((form ? `/tools/daily-log/fill?date=${today}&templateId=${encodeURIComponent(form.id)}` : `/tools/daily-log/${today}`) as never)}
+          onPress={() => router.push((!day ? `/tools/daily-log/new?date=${today}` : form ? `/tools/daily-log/fill?date=${today}&templateId=${encodeURIComponent(form.id)}` : `/tools/daily-log/${today}`) as never)}
         >
-          {form ? `Fill ${form.name}` : "Add to today's log"}
+          {!day ? "Start today's log" : form ? `Fill ${form.name}` : "Add a site note"}
         </Button>
       ) : null}
     </HomeCard>
@@ -51,14 +51,14 @@ function taskMeta(task: TaskRow, today: string): string {
 }
 
 export function TasksCard({ db, projectId, buildingId, myOpen }: Scope & { myOpen: readonly TaskRow[] }) {
-  const {  snapshot } = useProjectAccess();
+  const { can } = useProjectAccess();
   // opening Home keeps the board fresh, so the counts above are current
-  useTaskBoard(db, projectId, buildingId, snapshot?.capabilities.canSeeFullTaskBoard === true);
+  useTaskBoard(db, projectId, buildingId, can("tasks", "viewAll"));
   const today = todayIso();
   return (
     <HomeCard title="My tasks" subtitle={myOpen.length ? `${myOpen.length} open` : undefined} href="/tools/tasks">
       {myOpen.length === 0 ? (
-        <CardEmpty>Nothing assigned to you right now.</CardEmpty>
+        <CardEmpty>No open tasks created by or assigned to you.</CardEmpty>
       ) : (
         myOpen.slice(0, 3).map((task) => (
           <CardRow

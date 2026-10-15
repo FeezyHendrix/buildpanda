@@ -20,8 +20,8 @@ import { goBack } from "@/lib/navigation";
 
 function TaskDetail({ db, projectId, taskId }: { db: Db; projectId: string; taskId: string }) {
   const { data: task, isPending } = useTask(db, taskId);
-  const {  snapshot } = useProjectAccess();
-  const board = useTaskBoard(db, projectId, task?.buildingId ?? "", snapshot?.capabilities.canSeeFullTaskBoard === true);
+  const { can } = useProjectAccess();
+  const board = useTaskBoard(db, projectId, task?.buildingId ?? "", can("tasks", "viewAll"));
   const moveTask = useMoveTask(db, projectId);
   const [error, setError] = useState<string | null>(null);
 

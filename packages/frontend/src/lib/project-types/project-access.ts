@@ -50,6 +50,8 @@ export interface ProjectAccess {
    */
   sections: Record<string, "hidden" | "view" | "edit"> | null;
   capabilities: {
+    canViewReporting?: boolean;
+    canSeeAllExpenses?: boolean;
     canManage: boolean;
     canViewAll: boolean;
     canManageParticipants: boolean;

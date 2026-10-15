@@ -1,7 +1,7 @@
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { randomUUID } from "expo-crypto";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { isWeatherCondition, type DailyLogDay, type UpsertDailyLogInput } from "@/api/daily-logs";
 import type { Db } from "./client";
 import { localIsoDate } from "@/lib/dates";
@@ -74,7 +74,7 @@ export function toLoggedActivity(row: DailyLogActivityRow) {
 
 export const dailyLogsRepository = {
   allActivitiesQuery: (db: Db, projectId: string) =>
-    db.select().from(dailyLogActivities).where(eq(dailyLogActivities.projectId, projectId)),
+    db.select().from(dailyLogActivities).where(access.where(db, dailyLogActivities.projectId, eq(dailyLogActivities.projectId, projectId))),
   activitiesQuery: (db: Db, projectId: string, logDate: string, buildingId?: string) =>
     db
       .select()
@@ -313,6 +313,11 @@ export const dailyLogsRepository = {
     const now = Date.now();
     await access.transaction(db, projectId, "read", (tx) => {
       for (const day of days) {
+        // An empty response for a date is not a saved log. Keep local drafts.
+        if (day.recorded === false) {
+          tx.delete(dailyLogs).where(and(eq(dailyLogs.id, dayKey(projectId, day.logDate, day.buildingId)), eq(dailyLogs.isPendingSync, false))).run();
+          continue;
+        }
         tx
           .insert(dailyLogs)
           .values({

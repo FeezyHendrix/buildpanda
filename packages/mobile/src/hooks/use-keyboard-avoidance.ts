@@ -9,9 +9,11 @@ const MARGIN = 24;
  * on focus, which covers moving between fields while the keyboard stays up —
  * no keyboard event fires for that.
  */
-export const KeyboardRevealContext = createContext<(() => void) | null>(null);
+type FocusedField = Pick<View, "measureInWindow">;
+type RevealField = (input?: FocusedField) => void;
+export const KeyboardRevealContext = createContext<RevealField | null>(null);
 
-export function useKeyboardReveal(): (() => void) | null {
+export function useKeyboardReveal(): RevealField | null {
   return useContext(KeyboardRevealContext);
 }
 
@@ -31,6 +33,7 @@ export function useKeyboardAvoidance() {
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const customInput = useRef<FocusedField | null>(null);
   const [keyboardShown, setKeyboardShown] = useState(false);
   const [offset, setOffset] = useState(0);
 
@@ -40,13 +43,13 @@ export function useKeyboardAvoidance() {
     });
   }, []);
 
-  const reveal = useCallback(() => {
+  const revealFocused = useCallback(() => {
     clearTimeout(timer.current);
     // Browsers reveal their focused input; the native focus API is unavailable on web.
     if (Platform.OS === "web") return;
     // wait for KeyboardAvoidingView to shrink the scroll area first
     timer.current = setTimeout(() => {
-      const input = TextInput.State.currentlyFocusedInput();
+      const input = customInput.current ?? TextInput.State.currentlyFocusedInput();
       const scroll = scrollRef.current;
       if (!input || !scroll) return;
       scroll.getNativeScrollRef()?.measureInWindow((_sx, sy, _sw, sh) => {
@@ -60,6 +63,10 @@ export function useKeyboardAvoidance() {
       });
     }, Platform.OS === "ios" ? 60 : 150);
   }, []);
+  const reveal = useCallback<RevealField>((input) => {
+    customInput.current = input ?? null;
+    revealFocused();
+  }, [revealFocused]);
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -69,14 +76,14 @@ export function useKeyboardAvoidance() {
         setKeyboardShown(true);
         measureOffset();
       }),
-      Keyboard.addListener("keyboardDidShow", reveal),
+      Keyboard.addListener("keyboardDidShow", revealFocused),
       Keyboard.addListener(hideEvent, () => setKeyboardShown(false)),
     ];
     return () => {
       clearTimeout(timer.current);
       subs.forEach((sub) => sub.remove());
     };
-  }, [measureOffset, reveal]);
+  }, [measureOffset, revealFocused]);
 
   return {
     rootRef,

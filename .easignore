@@ -1,8 +1,31 @@
-# Exclude all node_modules — EAS runs its own npm install
-**/node_modules
-.git
-packages/admin
-packages/website
-*.mp4
-ios
-android
+# EAS archives the monorepo. Keep local worktrees, credentials and generated
+# artifacts out of the upload, even when a nested checkout has its own ignores.
+**/node_modules/
+**/.git/
+**/.claude/
+**/.agents/
+**/.worktrees/
+**/.pnpm-store/
+**/.expo/
+**/.next/
+**/dist/
+**/build/
+**/coverage/
+**/.env
+**/.env.*
+**/*.log
+**/*.tsbuildinfo
+**/.DS_Store
+**/*.p8
+**/*.p12
+**/*.pem
+**/*.key
+**/*.mobileprovision
+packages/mobile/ios/
+packages/mobile/android/
+packages/web/
+video/
+.playwright-mcp/
+screenshots/
+docs/
+_qa/

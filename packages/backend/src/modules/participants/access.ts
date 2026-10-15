@@ -3,6 +3,7 @@ import { effectiveParticipantGrants, participantRole } from "../../lib/authoriza
 import { statement } from "../../lib/permissions.ts";
 import type { ParticipantRole } from "./types.ts";
 import { canSeeFullTaskBoard } from "../tasks/access.ts";
+import { canReadReporting } from "../reporting/access.ts";
 
 /**
  * What this caller is to this project and what the UI may therefore show. The
@@ -16,6 +17,7 @@ export function computeAccess(
   const ctx = {
     userId: request.user!.id,
     orgRoles: request.orgRoles,
+    orgPermissions: request.orgPermissions,
     projectRoles: request.projectRoles,
     projectSectionPermissions: request.projectSectionPermissions,
     projectGrants: request.projectGrants,
@@ -75,8 +77,10 @@ export function computeAccess(
     capabilities: {
       canViewInternalRfis: project.owner_id === request.user!.id || !!orgRole,
       createsSharedRfis: request.projectRoles.get(project.id) === "client",
-      canAccessTaskBoard: allows("tasks", "view") && (project.owner_id === request.user!.id || !!orgRole),
+      canAccessTaskBoard: allows("tasks", "view"),
       canSeeFullTaskBoard: canSeeFullTaskBoard(request, project),
+      canSeeAllExpenses: allows("finances", "viewAllExpenses"),
+      canViewReporting: canReadReporting(scope, ctx),
       canManage: isCompanyManager,
       canViewAll: relationship !== "none",
       canManageParticipants: isCompanyManager || allows("participants", "manage"),
@@ -84,7 +88,7 @@ export function computeAccess(
       canDecideSelections: isCompanyManager || isClient || allows("selections", "decide"),
       // The cost position is the contractor's own; a client-side participant
       // sees the contract they are party to and never the costs behind it.
-      canViewCosts: isCompanyManager || allows("finances", "viewCosts"),
+      canViewCosts: allows("finances", "viewCosts"),
       canComment:
         (relationship !== "none" && relationship !== "guest") || allows("comments", "post"),
     },

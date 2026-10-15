@@ -10,6 +10,8 @@ import {
   transactionsRepository,
 } from "./repository.ts";
 import { transactionsService } from "./service.ts";
+import { expenseReaderId } from "./access.ts";
+import type { AuthorizationRequest, AuthorizedProject } from "../../lib/authorization-request.ts";
 import type {
   CreateCustomCategoryInput,
   CreateTransactionInput,
@@ -101,8 +103,8 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
   const files = filesService(filesRepository(fastify.db));
   const fileAccess = fileAccessRepository(fastify.db);
   const stages = stagesRepository(fastify.db);
-  const service = transactionsService(
-    transactionsRepository(fastify.db),
+  const serviceFor = (request: AuthorizationRequest, project: AuthorizedProject) => transactionsService(
+    transactionsRepository(fastify.db, expenseReaderId(request, project)),
     customCategoriesRepository(fastify.db),
     {
       stageBelongsToProject: async (projectId, stageId) =>
@@ -120,7 +122,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
         "viewCosts",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
-      return service.list(project.id, orgId, toFilters(request.query));
+      return serviceFor(request, project).list(project.id, orgId, toFilters(request.query));
     },
   );
 
@@ -134,7 +136,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
         "viewCosts",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
-      return service.analytics(project.id, orgId, toFilters(request.query));
+      return serviceFor(request, project).analytics(project.id, orgId, toFilters(request.query));
     },
   );
 
@@ -148,7 +150,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
         "viewCosts",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
-      return service.listCategories(orgId);
+      return serviceFor(request, project).listCategories(orgId);
     },
   );
 
@@ -163,7 +165,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
       );
       const user = request.requireAuth();
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
-      const created = await service.createCategory(orgId, user.id, request.body);
+      const created = await serviceFor(request, project).createCategory(orgId, user.id, request.body);
       return reply.status(201).send(created);
     },
   );
@@ -178,7 +180,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
         "manage",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
-      await service.removeCategory(orgId, request.params.categoryId);
+      await serviceFor(request, project).removeCategory(orgId, request.params.categoryId);
       return reply.status(204).send();
     },
   );
@@ -193,7 +195,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
         "manage",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
-      const csv = await service.exportCsv(project.id, orgId, toFilters(request.query));
+      const csv = await serviceFor(request, project).exportCsv(project.id, orgId, toFilters(request.query));
       const filename = `transactions-${project.id}-${new Date().toISOString().slice(0, 10)}.csv`;
       return reply
         .header("Content-Type", "text/csv; charset=utf-8")
@@ -212,7 +214,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
         "viewCosts",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
-      return service.get(project.id, orgId, request.params.transactionId);
+      return serviceFor(request, project).get(project.id, orgId, request.params.transactionId);
     },
   );
 
@@ -228,7 +230,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
       await requireFileAttachment(request, project.id, request.body.receiptFileId, files, fileAccess);
-      const created = await service.create(project.id, orgId, user.id, request.body);
+      const created = await serviceFor(request, project).create(project.id, orgId, user.id, request.body);
       return reply.status(201).send(created);
     },
   );
@@ -247,7 +249,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
       await requireFileAttachment(request, project.id, request.body.receiptFileId, files, fileAccess);
-      return service.edit(
+      return serviceFor(request, project).edit(
         project.id,
         orgId,
         request.params.transactionId,
@@ -265,7 +267,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
         "finances",
         "manage",
       );
-      await service.remove(project.id, request.params.transactionId);
+      await serviceFor(request, project).remove(project.id, request.params.transactionId);
       return reply.status(204).send();
     },
   );

@@ -108,7 +108,7 @@ export interface TaskBoard {
   projectId: string;
   name: string;
   isDefault: boolean;
-  scope: "all" | "assigned";
+  scope: "all" | "assigned" | "mine";
   columns: TaskColumn[];
   tasks: Task[];
 }

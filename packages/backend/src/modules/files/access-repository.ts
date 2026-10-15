@@ -16,10 +16,13 @@ export function fileAccessRepository(db: Knex) {
         select(db("project_documents as p").where("p.file_id", fileId), "documents"),
         select(db("document_versions as v").join("project_documents as p", "p.id", "v.document_id").where("v.file_id", fileId), "documents"),
         select(db("drawing_markup_comments as c").join("drawing_markups as p", "p.id", "c.markup_id").where("c.file_id", fileId), "documents"),
-        select(db("project_transactions as p").where("p.receipt_file_id", fileId), "finances", "viewCosts"),
+        select(db("project_transactions as p").where("p.receipt_file_id", fileId), "finances", "viewCosts")
+          .select("p.id as expense_id", "p.created_by_id as expense_created_by_id"),
         select(db("project_invoices as p").where("p.source_file_id", fileId).where("p.direction", "payable"), "finances", "viewCosts"),
         select(db("project_invoices as p").where("p.source_file_id", fileId).where("p.direction", "receivable"), "finances"),
-        select(db("update_media as m").join("project_updates as p", "p.id", "m.update_id").whereLike("m.url", urlPattern), "updates"),
+        select(db("update_media as m").join("project_updates as p", "p.id", "m.update_id").whereLike("m.url", urlPattern), "updates").select("p.is_draft as update_is_draft"),
+        select(db("update_comments as c").join("project_updates as p", "p.id", "c.update_id").where("c.audio_file_id", fileId), "updates")
+          .select("p.is_draft as update_is_draft"),
         select(db("material_ledger_entry_files as f").join("material_ledger_entries as p", "p.id", "f.entry_id").where("f.file_id", fileId), "materials"),
         select(db("rfi_comments as c").join("rfis as p", "p.id", "c.rfi_id")
           .whereRaw("c.attachments::jsonb @> ?::jsonb", [JSON.stringify([{ fileId }])]), "rfis").select("p.visibility", "c.is_proposed_response"),

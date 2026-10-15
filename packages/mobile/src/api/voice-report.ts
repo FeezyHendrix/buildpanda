@@ -5,6 +5,7 @@ import { uploadRecording } from "./voice-upload";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import type { VoiceReport } from "./voice-report-types";
+import { isAccessRejection, responseError } from "./error";
 
 /**
  * Uploads a recording to Panda AI, which transcribes it (Whisper) and returns
@@ -26,16 +27,10 @@ export async function requestVoiceReport(
   const result = await uploadRecording(`${API_BASE_URL}/projects/${projectId}/ai/voice-report`, audioUri, headers, signal);
 
   requireCurrentAccess(ticket);
-  if ([401, 403].includes(result.status)) revokeProjectAccess();
   if (result.status < 200 || result.status >= 300) {
-    let message = `Panda AI could not process that recording (${result.status}).`;
-    try {
-      const parsed = JSON.parse(result.body) as { error?: string };
-      if (parsed.error) message = parsed.error;
-    } catch {
-      // error body was not JSON; keep the generic message
-    }
-    throw new Error(message);
+    const error = responseError(result.status, result.body, `Panda AI could not process that recording (${result.status}).`);
+    if (isAccessRejection(error)) revokeProjectAccess();
+    throw error;
   }
 
   const report = JSON.parse(result.body) as VoiceReport;

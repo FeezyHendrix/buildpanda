@@ -3,6 +3,7 @@ import { features } from "@/lib/feature-access";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import { openStreamEvent, payloadFetch } from "@/lib/payload-fetch";
+import { isAccessRejection, responseError } from "./error";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -61,8 +62,10 @@ export async function streamChat(
 
     requireCurrentAccess(ticket);
     if (!response.ok) {
-      if ([401, 403].includes(response.status)) revokeProjectAccess();
-      onError(`Panda AI returned ${response.status}`);
+      const error = responseError(response.status, await response.text().catch(() => null), `Panda AI returned ${response.status}`);
+      requireCurrentAccess(ticket);
+      if (isAccessRejection(error)) revokeProjectAccess();
+      onError(error.message);
       return;
     }
 

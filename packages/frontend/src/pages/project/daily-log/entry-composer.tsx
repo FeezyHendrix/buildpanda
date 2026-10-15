@@ -90,9 +90,9 @@ export function EntryComposer({ projectId, logDate, autoFocus }: EntryComposerPr
       {
         onSuccess: () => {
           reset();
-          toast("Your log was added", "success");
+          toast("Your site note was added", "success");
         },
-        onError: () => toast("Could not add your log"),
+        onError: () => toast("Could not add your site note"),
       },
     );
   }
@@ -101,7 +101,7 @@ export function EntryComposer({ projectId, logDate, autoFocus }: EntryComposerPr
     <div ref={wrapperRef} className="mt-4 flex flex-col gap-4 border-t border-line-hair pt-4">
       {templates.length > 0 ? (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="entry-template">Add my log using</Label>
+          <Label htmlFor="entry-template">Add a site note using</Label>
           <select
             id="entry-template"
             data-composer-field
@@ -140,7 +140,7 @@ export function EntryComposer({ projectId, logDate, autoFocus }: EntryComposerPr
 
       <RichTextField
         key={`${editorKey}-${template ? "notes" : "free"}`}
-        label={template ? "Notes and photos (optional)" : "Add my log"}
+        label={template ? "Notes and photos (optional)" : "Site note"}
         value={html}
         onChange={setHtml}
         onChangeText={setText}
@@ -159,7 +159,7 @@ export function EntryComposer({ projectId, logDate, autoFocus }: EntryComposerPr
           <p className="mr-auto text-xs text-gray-400">Still required: {missing.join(", ")}</p>
         ) : null}
         <Button type="button" variant="primary" size="sm" disabled={!canSubmit} loading={addEntry.isPending} onClick={submit}>
-          Add entry
+          Add site note
         </Button>
       </div>
     </div>

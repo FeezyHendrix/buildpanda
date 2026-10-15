@@ -6,16 +6,8 @@ import { ENCRYPTED_CONTENT_TYPE, isEnvelope, KEY_HEADER, fitsSealLimit, open, se
 import { isStaleKeyError, payloadSession, randomBytes, resetPayloadSession } from "@/lib/payload-session";
 import { apiRequirement } from "@/lib/api-access";
 import { requireAccess, requireCurrentAccess, revokeProjectAccess } from "@/lib/project-access-store";
-
-export class ApiError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-}
+import { ApiError, isAccessRejection, responseError } from "./error";
+export { ApiError } from "./error";
 
 type RequestOptions = Omit<RequestInit, "headers"> & { headers?: Record<string, string> };
 
@@ -27,29 +19,6 @@ type RequestOptions = Omit<RequestInit, "headers"> & { headers?: Record<string, 
  * web the browser owns cookies and a manual `cookie` header is ignored — it
  * needs `credentials` instead, or every call comes back 401.
  */
-interface ErrorBody {
-  error?: string;
-  code?: string;
-  details?: unknown;
-}
-
-// A schema rejection arrives as `{ error: "Invalid request", details: [...] }`.
-// Showing only the headline hides the one thing the crew needs — which field —
-// so the validation messages are folded into the text the app displays.
-function describeError(body: ErrorBody | null, status: number): string {
-  const headline = body?.error ?? `Request failed (${status})`;
-  if (!Array.isArray(body?.details)) return headline;
-  const reasons = body.details
-    .map((detail) => {
-      const entry = detail as { instancePath?: string; message?: string } | null;
-      if (!entry?.message) return null;
-      const field = entry.instancePath?.replace(/^\//, "").replace(/\//g, ".");
-      return field ? `${field} ${entry.message}` : entry.message;
-    })
-    .filter((reason): reason is string => reason !== null);
-  return reasons.length > 0 ? `${headline}: ${reasons.join("; ")}` : headline;
-}
-
 /** A reply sealed with a key this app session does not hold. */
 class StaleKey extends Error {}
 
@@ -131,13 +100,17 @@ async function attempt<T>(path: string, init?: RequestOptions): Promise<T> {
     });
 
     if (!response.ok) {
-      if (ticket && [401, 403].includes(response.status)) { requireCurrentAccess(ticket); revokeProjectAccess(); }
-      const failure = (await readJson(response, session).catch((error: unknown) => {
-        if (error instanceof StaleKey) throw error;
+      const failure = await readJson(response, session).catch((error: unknown) => {
+        if (error instanceof StaleKey) {
+          if (ticket && isAccessRejection(response)) { requireCurrentAccess(ticket); revokeProjectAccess(); }
+          throw error;
+        }
         return null;
-      })) as ErrorBody | null;
+      });
+      const error = responseError(response.status, failure);
+      if (ticket) { requireCurrentAccess(ticket); if (isAccessRejection(error)) revokeProjectAccess(); }
       if (isStaleKeyError(response.status, failure)) throw new StaleKey();
-      throw new ApiError(response.status, describeError(failure, response.status));
+      throw error;
     }
     if (response.status === 204) { if (ticket) requireCurrentAccess(ticket); return undefined as T; }
     const data = (await readJson(response, session)) as T;

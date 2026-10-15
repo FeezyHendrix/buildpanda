@@ -38,8 +38,8 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
   },
   project_manager: {
     project: ["view"],
-    tasks: ["view", "add", "remove"],
-    finances: ["view", "viewCosts"],
+    tasks: ["view", "viewAll", "add", "remove"],
+    finances: ["view", "viewCosts", "viewAllExpenses"],
     schedule: ["view", "manage"],
     documents: ["view", "upload"],
     inspections: ["view", "request", "manage"],
