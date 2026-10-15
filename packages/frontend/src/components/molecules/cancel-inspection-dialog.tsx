@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { INPUT_CLASS } from "@/components/atoms/input";
@@ -47,7 +48,7 @@ function CancelInspectionDialog({
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cancel-inspection-reason">Reason</Label>
-        <textarea
+        <ImageTextarea
           id="cancel-inspection-reason"
           value={reason}
           onChange={(event) => setReason(event.target.value)}

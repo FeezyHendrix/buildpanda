@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import {
@@ -353,7 +354,7 @@ function CreateActivityDialog({
     
     <div className="flex flex-col gap-1.5">
       <Label htmlFor="activity-notes">Notes</Label>
-      <textarea
+      <ImageTextarea
         id="activity-notes"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}

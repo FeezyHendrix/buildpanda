@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
@@ -114,7 +115,7 @@ export function LeadDetailDrawer({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="lead-notes">Internal notes</Label>
-        <textarea
+        <ImageTextarea
           id="lead-notes"
           rows={4}
           value={notes}

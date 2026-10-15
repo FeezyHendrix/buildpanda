@@ -126,3 +126,24 @@ travel with the server-derived proposal so corrected answers can be queued
 without depending on a previously downloaded template. Regression tests and a
 390px browser review cover formatting, blank rich content, false answers,
 paragraphs, required details, and partial retries.
+
+## Images in narrative fields — 2026-10-15
+
+Description, notes, and comment controls use `@buildpanda/rich-content` for stable
+file references and shared validation. Rich fields keep HTML and their plain-text
+mirror; plain fields retain their string contract with canonical Markdown image
+references. Use `RichTextEditor` or `ImageTextInput` for editing and `RichContent`
+or `ContentText` for reading; do not add screen-specific upload or HTML parsers.
+
+Picked images are persisted in the current user's workspace/project partition
+before a record can be saved. The transport uploads pending originals and persists
+the uploaded file ID so outbox retries reuse it. Downloaded images require current
+access, server verification, and a readable local record when offline. Revocation
+purges downloaded bytes; unsent originals remain quarantined. SQLite migration
+0030 retains rich fields through sync and restarts.
+
+The image browser checks cover formatted and plain notes, offline save/reload,
+reconnect, upload reuse after a failed save, and permission revocation. Backend
+`src/modules/files/content-images.test.ts` uses `IMAGE_TEST_DATABASE_URL` for an
+isolated migrated database and rollback fixtures. Camera permissions, native
+filesystem cleanup, and physical device rendering still need device validation.

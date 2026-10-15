@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 import {
@@ -35,7 +36,7 @@ function DeliveryRow({ delivery, unit }: { delivery: MaterialDelivery; unit: str
         {delivery.receivedByName ? (
           <p className="mt-0.5 text-xs text-ink-muted">Signed by {delivery.receivedByName}</p>
         ) : null}
-        {delivery.notes ? <p className="mt-0.5 text-xs text-ink-muted">{delivery.notes}</p> : null}
+        {delivery.notes ? <p className="mt-0.5 text-xs text-ink-muted"><ContentText value={delivery.notes} /></p> : null}
       </TableCell>
       <TableCell>
         {delivery.rejected ? (
@@ -164,7 +165,7 @@ export function MaterialOrderDrawer({
         {order.notes ? (
           <div>
             <p className="text-xs font-medium uppercase text-ink-muted">Lifecycle notes</p>
-            <p className="mt-1 text-sm text-ink text-pretty">{order.notes}</p>
+            <p className="mt-1 text-sm text-ink text-pretty"><ContentText value={order.notes} /></p>
           </div>
         ) : null}
 

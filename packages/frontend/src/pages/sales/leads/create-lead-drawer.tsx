@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { Input, INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
@@ -84,7 +85,7 @@ export function CreateLeadDrawer({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="lead-message">Notes</Label>
-        <textarea
+        <ImageTextarea
           id="lead-message"
           rows={3}
           value={message}

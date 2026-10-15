@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -142,7 +143,7 @@ function AddCashFlowDialog({
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="cash-flow-description">Description (optional)</Label>
-          <textarea
+          <ImageTextarea
             id="cash-flow-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}

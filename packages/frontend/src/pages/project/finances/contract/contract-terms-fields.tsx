@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import type { ReactNode } from "react";
 import { Card } from "@/components/atoms/card";
 import { INPUT_CLASS } from "@/components/atoms/input";
@@ -19,7 +20,7 @@ export function TermsSection({
     <Card padding="lg" className="mt-6">
       <div className="mb-5">
         <h3 className="text-base font-semibold text-ink">{title}</h3>
-        <p className="mt-1 text-sm text-ink-muted">{description}</p>
+        <p className="mt-1 text-sm text-ink-muted"><ContentText value={description} /></p>
       </div>
       {children}
     </Card>

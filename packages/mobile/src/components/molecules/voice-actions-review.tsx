@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/rich-text/rich-content";
 import { useProjectAccess } from "@/lib/project-access-provider";
 import { voiceRequirement } from "@/lib/voice-access";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -79,9 +80,7 @@ export function VoiceActionsReview({
                 <Text weight="semibold" className="pt-0.5 text-[15px]" numberOfLines={2}>
                   {action.title}
                 </Text>
-                <Text tone="secondary" className="pt-1 text-[13px]" >
-                  {action.summary}
-                </Text>
+                <ContentText tone="secondary" className="pt-1 text-[13px]" value={action.summary} />
                 {/* a filled form is a record: show every answer, not a teaser */}
                 {action.kind === "daily_log" && action.payload.formText ? (
                   <View className="mt-2 rounded-lg bg-surface-alt px-3 py-2">

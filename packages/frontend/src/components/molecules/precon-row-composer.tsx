@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { UnitInput } from "@/components/atoms/unit-input";
@@ -125,7 +126,7 @@ export function PreconRowComposer({ sessionId, billId, onError }: Props) {
 
       <label className="block text-xs text-gray-500">
         Description
-        <input
+        <ImageTextarea
           autoFocus
           className={FIELD_CLASS}
           value={description}

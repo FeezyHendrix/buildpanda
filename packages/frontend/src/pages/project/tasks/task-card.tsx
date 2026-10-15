@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Avatar } from "@/components/atoms/avatar";
 import { FileViewerDialog } from "@/components/molecules/file-viewer-dialog";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
-import { resolveFileUrl } from "@/hooks/use-files";
+import { useContentFileUrl } from "@/hooks/use-content-files";
 import type { Task, TaskColumn } from "@/lib/project-types";
 import {
   ENTITY_META,
@@ -45,23 +45,8 @@ export function TaskCard({
   // (finding #28); overdue now reads as overdue, with a word as well as a colour.
   const overdue = isTaskOverdue(task, isDone);
   const coverFileId = firstImageFileId(task.descriptionHtml);
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const { url: coverUrl } = useContentFileUrl(coverFileId ?? '');
   const [viewerOpen, setViewerOpen] = useState(false);
-  useEffect(() => {
-    if (!coverFileId) {
-      setCoverUrl(null);
-      return;
-    }
-    let cancelled = false;
-    void resolveFileUrl(coverFileId)
-      .then((url) => {
-        if (!cancelled) setCoverUrl(url);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [coverFileId]);
 
   return (
     <div

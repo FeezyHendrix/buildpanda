@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { currencySymbol } from "@/lib/formatters";
@@ -177,7 +178,7 @@ function UpsertSelectionDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="sel-desc">Details</Label>
-        <textarea
+        <ImageTextarea
           id="sel-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -218,7 +219,7 @@ function UpsertSelectionDialog({
                 Remove
               </button>
             </div>
-            <input
+            <ImageTextarea
               value={option.description}
               onChange={(e) => setOption(index, { description: e.target.value })}
               placeholder="Optional description (supplier, model, colour…)"

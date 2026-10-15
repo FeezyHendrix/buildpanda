@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -118,7 +119,7 @@ export function PhasePlanForm({ proposalId }: Props) {
         {TEXT_FIELDS.map((field) => (
           <label key={field.key} className="text-xs font-medium text-gray-600">
             {field.label}
-            <textarea
+            <ImageTextarea
               className={cn(cellTextareaClass, "mt-1 min-h-20")}
               placeholder={field.hint}
               value={form[field.key]}

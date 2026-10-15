@@ -10,10 +10,14 @@ const fileReferenceAccess: FastifyPluginAsync = async (app) => {
   const access = fileAccessRepository(app.db);
   app.addHook("preHandler", async (request) => {
     if (!["POST", "PATCH", "PUT"].includes(request.method)) return;
-    const segments = request.routeOptions.url?.split("/") ?? [];
-    if (segments[1] !== "projects" || !segments[2]?.startsWith(":")) return;
-    const projectId = (request.params as Record<string, string>)[segments[2].slice(1)];
-    if (projectId) await requireProjectFileReferences(request, projectId, files, access);
+    const route = request.routeOptions.url ?? '';
+    // These handlers resolve their own conversation/share-link scope and run
+    // the same reference check after authorizing that destination.
+    if (route.startsWith('/channels/:id') || route.startsWith('/messages/:id') || route === '/proposals/public/:token/respond') return;
+    const segments = route.split('/');
+    const projectId = segments[1] === "projects" && segments[2]?.startsWith(":")
+      ? (request.params as Record<string, string>)[segments[2].slice(1)] : undefined;
+    await requireProjectFileReferences(request, projectId, files, access);
   });
 };
 

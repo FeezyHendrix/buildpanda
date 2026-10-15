@@ -46,7 +46,8 @@
     "tailwind-merge": "^3.5.0",
     "three": "^0.184.0",
     "web-ifc": "^0.0.77",
-    "zustand": "^5.0.2"
+    "zustand": "^5.0.2",
+    "@buildpanda/rich-content": "file:../rich-content"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

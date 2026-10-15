@@ -1,4 +1,5 @@
-import type { FastifyRequest } from "fastify";
+import { assertCompanyTaskAccess, canSeeFullTaskBoard } from "../tasks/access.ts";
+import type { AuthorizationRequest } from "../../lib/authorization-request.ts";
 import { assertOrganizationPermission, canProjectPermission } from "../../lib/authorization.ts";
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { requireConversationPermission } from "../messaging/permission.ts";
@@ -6,13 +7,10 @@ import type { FileAccessRepository } from "./access-repository.ts";
 import type { UploadedFileRow } from "./types.ts";
 import type { FilesService } from "./service.ts";
 
-export const STAGING_PERMISSIONS = [
-  ["documents", "upload"], ["documents", "markup"], ["updates", "post"],
-  ["dailyLog", "create"], ["materials", "request"], ["finances", "manage"],
-  ["rfis", "create"], ["change-requests", "manage"], ["comments", "post"], ["messages", "send"],
-] as const;
+export { FILE_STAGING_PERMISSIONS as STAGING_PERMISSIONS } from "@buildpanda/rich-content/access";
+import { FILE_STAGING_PERMISSIONS as STAGING_PERMISSIONS } from "@buildpanda/rich-content/access";
 
-export async function requireFileStaging(request: FastifyRequest, projectId: string) {
+export async function requireFileStaging(request: AuthorizationRequest, projectId: string) {
   const project = await request.requireProjectAccess(projectId);
   const context = { userId: request.requireAuth().id, orgRoles: request.orgRoles,
     projectRoles: request.projectRoles, orgPermissions: request.orgPermissions,
@@ -22,7 +20,7 @@ export async function requireFileStaging(request: FastifyRequest, projectId: str
   ))) throw new ForbiddenError("Your role does not allow staging files for this project.");
 }
 
-export async function requireFileAttachment(request: FastifyRequest, projectId: string, fileId: string | null | undefined, files: FilesService, access: FileAccessRepository) {
+export async function requireFileAttachment(request: AuthorizationRequest, projectId: string, fileId: string | null | undefined, files: FilesService, access: FileAccessRepository) {
   if (!fileId) return;
   const file = await files.findRow(fileId);
   if (!file) throw new NotFoundError("File");
@@ -30,16 +28,20 @@ export async function requireFileAttachment(request: FastifyRequest, projectId: 
   await requireFileRead(request, file, access);
 }
 
-export async function requireFileRead(request: FastifyRequest, file: UploadedFileRow, repository: FileAccessRepository) {
+export async function requireFileRead(request: AuthorizationRequest, file: UploadedFileRow, repository: FileAccessRepository) {
   const userId = request.requireAuth().id;
   const [references, conversations, organizations] = await Promise.all([
-    repository.projectReferences(file.id), repository.messageReferences(file.id, userId), repository.organizationReferences(file.id),
+    repository.projectReferences(file.id, userId, file.project_id ?? undefined), repository.messageReferences(file.id, userId), repository.organizationReferences(file.id),
   ]);
   for (const reference of references) {
     if (!reference.project_id) continue;
     if (file.project_id && reference.project_id !== file.project_id) continue;
     try {
       const project = await request.requireProjectPermission(reference.project_id, reference.resource, reference.action);
+      if (reference.task_id) {
+        assertCompanyTaskAccess(request, project);
+        if (!canSeeFullTaskBoard(request, project) && !reference.task_assigned) continue;
+      }
       // Shared RFI readers cannot open internal records or proposed responses.
       if (reference.resource === "rfis" && (reference.visibility !== "shared" || reference.is_proposed_response) && project.owner_id !== userId &&
         (!project.organization_id || !request.orgRoles.has(project.organization_id))) continue;

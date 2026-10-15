@@ -72,7 +72,7 @@ export const rfiCommentsRepository = {
       if (official) {
         tx
           .update(rfis)
-          .set({ status: "Answered", officialResponse: body, updatedAt: now })
+          .set({ status: "Answered", officialResponse: body, officialResponseHtml: contentHtml ?? null, updatedAt: now })
           .where(access.where(db, rfis.projectId, eq(rfis.id, rfiId))).run();
       }
 

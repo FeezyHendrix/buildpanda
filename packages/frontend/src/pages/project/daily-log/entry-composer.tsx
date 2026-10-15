@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
@@ -118,7 +119,7 @@ export function EntryComposer({ projectId, logDate, autoFocus }: EntryComposerPr
             ))}
             <option value={FREE_FORM}>Free-form note</option>
           </select>
-          {template?.description ? <p className="text-xs text-gray-400">{template.description}</p> : null}
+          {template?.description ? <p className="text-xs text-gray-400"><ContentText value={template.description} /></p> : null}
         </div>
       ) : (
         <p className="text-xs text-gray-400">

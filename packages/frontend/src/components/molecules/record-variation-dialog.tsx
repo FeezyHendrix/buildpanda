@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -185,7 +186,7 @@ export function RecordVariationDialog({
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="variation-description">Description</Label>
-          <textarea
+          <ImageTextarea
             id="variation-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}

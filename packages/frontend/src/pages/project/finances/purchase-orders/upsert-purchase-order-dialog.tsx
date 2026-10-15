@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { INPUT_CLASS } from "@/components/atoms/input";
@@ -56,7 +57,7 @@ function LineItemRow({
     <div className="grid gap-2 rounded-lg bg-surface-alt p-3 sm:grid-cols-[1fr_88px_132px_112px_auto] sm:items-end">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`po-item-description-${index}`}>Description</Label>
-        <input
+        <ImageTextarea
           id={`po-item-description-${index}`}
           value={item.description}
           onChange={(event) => onChange(index, { description: event.target.value })}
@@ -288,7 +289,7 @@ export function UpsertPurchaseOrderDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="po-notes">Notes</Label>
-        <textarea
+        <ImageTextarea
           id="po-notes"
           value={values.notes}
           onChange={(event) => update("notes", event.target.value)}

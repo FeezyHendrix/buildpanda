@@ -1,3 +1,5 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
+import { ContentText } from "@/components/molecules/rich-content";
 import { useMemo, useRef, useState } from "react";
 import { ComboInput } from "@/components/atoms/combo-input";
 import { UnitInput } from "@/components/atoms/unit-input";
@@ -51,7 +53,7 @@ function AssemblyItemsPreview({ assembly, gross }: { assembly: Assembly; gross: 
       {assembly.items.map((item, index) => (
         <li key={`${item.description}-${index}`} className="flex items-center justify-between gap-2 px-3 py-1.5">
           <span className="min-w-0 truncate text-gray-800">
-            {item.description}
+            <ContentText value={item.description} />
             {item.code ? <span className="ml-1 font-mono text-[10px] text-gray-400">{item.code}</span> : null}
           </span>
           <span className="shrink-0 tabular-nums text-gray-500">
@@ -244,7 +246,7 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
       ) : (
         <label className={LABEL}>
           Description
-          <input autoFocus className={FIELD} value={description} placeholder="225 mm blockwork wall" onChange={(e) => setDescription(e.target.value)} />
+          <ImageTextarea autoFocus className={FIELD} value={description} placeholder="225 mm blockwork wall" onChange={(e) => setDescription(e.target.value)} />
         </label>
       )}
 

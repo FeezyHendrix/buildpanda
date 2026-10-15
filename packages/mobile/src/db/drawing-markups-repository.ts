@@ -83,7 +83,7 @@ export function toComment(row: DrawingMarkupCommentRow): DrawingMarkupComment & 
     id: row.id,
     markupId: row.markupId,
     body: row.body,
-    bodyHtml: null,
+    bodyHtml: row.bodyHtml,
     mediaKind: (row.mediaKind ?? null) as DrawingMarkupComment["mediaKind"],
     // a note that has not been uploaded has no file id yet; the staged copy is what exists
     fileId: null,
@@ -242,6 +242,7 @@ export const drawingMarkupsRepository = {
             markupId: row.id,
             projectId: row.projectId,
             body: comment.body,
+            bodyHtml: comment.bodyHtml,
             mediaKind: comment.mediaKind,
             stagedMediaUri: null,
             mediaDurationSeconds: comment.mediaDurationSeconds,

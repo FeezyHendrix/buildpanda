@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { Button } from "@/components/atoms/button";
@@ -134,9 +135,9 @@ export function MethodStatementEditor({ statement, programmeTasks, saving, onSav
           {steps.map((step, index) => (
             <li key={index} className="grid grid-cols-[28px_minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-line-hair p-2">
               <span className="pt-1.5 text-center text-xs font-medium text-gray-400">{index + 1}</span>
-              <textarea aria-label="Step" className={cellTextareaClass} placeholder="What is done" value={step.text} onChange={(e) => updateStep(index, { text: e.target.value })} />
-              <textarea aria-label="Controls" className={cellTextareaClass} placeholder="Control measures" value={step.controls} onChange={(e) => updateStep(index, { controls: e.target.value })} />
-              <textarea aria-label="PPE" className={cellTextareaClass} placeholder="PPE" value={step.ppe} onChange={(e) => updateStep(index, { ppe: e.target.value })} />
+              <ImageTextarea aria-label="Step" className={cellTextareaClass} placeholder="What is done" value={step.text} onChange={(e) => updateStep(index, { text: e.target.value })} />
+              <ImageTextarea aria-label="Controls" className={cellTextareaClass} placeholder="Control measures" value={step.controls} onChange={(e) => updateStep(index, { controls: e.target.value })} />
+              <ImageTextarea aria-label="PPE" className={cellTextareaClass} placeholder="PPE" value={step.ppe} onChange={(e) => updateStep(index, { ppe: e.target.value })} />
               <div className="flex flex-col gap-1">
                 <button type="button" aria-label="Move up" className="rounded p-1 text-gray-400 hover:bg-gray-100 disabled:opacity-30" disabled={index === 0} onClick={() => moveStep(index, -1)}>
                   <ArrowUp className="size-3.5" />

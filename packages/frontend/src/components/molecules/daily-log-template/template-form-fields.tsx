@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { Switcher } from "@/components/atoms/switcher";
@@ -30,7 +31,7 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
   switch (field.type) {
     case "long_text":
       return (
-        <textarea
+        <ImageTextarea
           id={id}
           rows={3}
           value={text}

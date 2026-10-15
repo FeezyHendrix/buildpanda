@@ -39,6 +39,7 @@ export interface Rfi {
   ballInCourtName: string | null;
   dueDate: string | null;
   officialResponse: string | null;
+  officialResponseHtml?: string | null;
   officialRespondedByName: string | null;
   officialRespondedAt: string | null;
   costImpact: boolean;

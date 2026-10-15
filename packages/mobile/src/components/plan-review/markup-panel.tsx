@@ -1,10 +1,11 @@
+import { ImageTextInput } from "@/components/rich-text/image-text-input";
 import { features } from "@/lib/feature-access";
 import { PermissionGate } from "@/components/molecules/permission-gate";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import type { DrawingMarkup, DrawingMarkupComment } from "@/api/drawing-markup";
 import { PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_BRAND, ICON_DANGER, ICON_INVERSE, ICON_MUTED, ICON_STRONG, ICON_SUBTLE, ICON_SUCCESS } from "@/constants/colors";
@@ -14,7 +15,7 @@ import { useLocalRfiForMarkup } from "@/hooks/use-local-rfis";
 import { useLocalMaterialApprovalForMarkup } from "@/hooks/use-material-approvals";
 import { formatDateTime } from "@/lib/dates";
 import { cacheFileById } from "@/lib/download-file";
-import { htmlToText } from "@/lib/html";
+import { RichContent } from "@/components/rich-text/rich-content";
 import { MEDIA_KIND, type MarkupKind } from "./markup-types";
 
 const KIND_LABELS: Record<MarkupKind, string> = {
@@ -216,7 +217,7 @@ function CommentRow({
         ) : null}
       </View>
       {/* No read-only rich-text renderer exists in the app yet; the HTML is read as text. */}
-      <Text className="pt-0.5 text-sm">{comment.bodyHtml ? htmlToText(comment.bodyHtml) || comment.body : comment.body}</Text>
+      <RichContent html={comment.bodyHtml} text={comment.body} />
       {comment.mediaKind === MEDIA_KIND.AUDIO ? (
         <AudioCommentControl comment={comment} onError={onError} />
       ) : null}
@@ -331,7 +332,7 @@ export function MarkupPanel({
       </ScrollView>
 
       <PermissionGate permission={features.documents.actions.markup}><View className="flex-row items-center gap-2 px-4 pb-3 pt-1">
-        <TextInput
+        <ImageTextInput
           value={draft}
           onChangeText={setDraft}
           placeholder="Reply…"

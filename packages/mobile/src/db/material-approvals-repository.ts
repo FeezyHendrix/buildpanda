@@ -81,6 +81,7 @@ export const materialApprovalsRepository = {
         supplier: input.supplier ?? null,
         neededBy: input.neededBy ?? null,
         description: input.description ?? null,
+        descriptionHtml: input.descriptionHtml ?? null,
         status: "Pending",
         requestedReviewerId: input.requestedReviewerId ?? null,
         requestedReviewerName: input.requestedReviewerName,
@@ -124,6 +125,8 @@ export const materialApprovalsRepository = {
           ...(patch.supplier !== undefined ? { supplier: patch.supplier } : {}),
           ...(patch.neededBy !== undefined ? { neededBy: patch.neededBy } : {}),
           ...(patch.description !== undefined ? { description: patch.description } : {}),
+          ...(patch.descriptionHtml !== undefined || patch.description !== undefined
+            ? { descriptionHtml: patch.descriptionHtml ?? null } : {}),
           isPendingSync: true,
           updatedAt: Date.now(),
         })
@@ -160,6 +163,7 @@ export const materialApprovalsRepository = {
         .set({
           status: decision.status,
           response: decision.response,
+          responseHtml: decision.responseHtml ?? null,
           reviewedByName: isRevert ? null : decision.reviewerName,
           reviewedAt: isRevert ? null : new Date().toISOString(),
           isPendingSync: true,

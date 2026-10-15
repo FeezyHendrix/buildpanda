@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/rich-text/rich-content";
 import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -95,7 +96,7 @@ function FillForm({ db, projectId, logDate, buildingId }: { db: Db; projectId: s
               }}
             />
           ) : null}
-          {template.description ? <Text tone="secondary" className="text-[13px]">{template.description}</Text> : null}
+          {template.description ? <ContentText tone="secondary" className="text-[13px]" value={template.description} /> : null}
           <TemplateFormFields
             fields={template.fields}
             responses={responses}

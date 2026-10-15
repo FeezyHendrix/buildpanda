@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useRef, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Button } from "@/components/atoms/button";
@@ -137,7 +138,7 @@ function InspectionOutcomeDialog({ open, onOpenChange, projectId, inspection }: 
         <Label htmlFor="inspection-findings">
           Findings{failing ? " (required)" : " (optional)"}
         </Label>
-        <textarea
+        <ImageTextarea
           id="inspection-findings"
           rows={4}
           value={findings}

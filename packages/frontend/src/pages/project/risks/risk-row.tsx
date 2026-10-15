@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { formatShortDate } from "@/lib/formatters";
@@ -52,11 +53,11 @@ function RiskRow({ risk, canManage, activityName, busy, onEdit, onDelete, onSetS
             ) : null}
           </div>
           <h3 className="mt-2 text-sm font-semibold text-gray-900">{risk.title}</h3>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{risk.description}</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600"><ContentText value={risk.description} /></p>
           {risk.mitigation ? (
             <p className="mt-2 rounded-lg bg-surface-alt p-3 text-sm text-gray-700">
               <span className="font-medium text-gray-900">Response: </span>
-              {risk.mitigation}
+              <ContentText value={risk.mitigation} />
             </p>
           ) : null}
           <p className="mt-2 text-xs text-gray-400">

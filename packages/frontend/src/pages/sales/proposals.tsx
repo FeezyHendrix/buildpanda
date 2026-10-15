@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
@@ -209,7 +210,7 @@ function CreateProposalDrawer({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="prop-brief">Brief / notes</Label>
-        <textarea
+        <ImageTextarea
           id="prop-brief"
           rows={3}
           value={brief}

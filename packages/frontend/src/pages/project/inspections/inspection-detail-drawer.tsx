@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Dialog } from "@base-ui/react/dialog";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -146,7 +147,7 @@ export function InspectionDetailDrawer({
             <section>
               <p className="text-xs font-medium uppercase text-ink-muted">What was asked for</p>
               <p className="mt-2 text-pretty text-sm leading-6 text-gray-700">
-                {report.description}
+                <ContentText value={report.description} />
               </p>
             </section>
 

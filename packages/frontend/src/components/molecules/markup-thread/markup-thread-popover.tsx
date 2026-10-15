@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, ExternalLink, History, RotateCcw, Trash2 } from "lucide-react";
@@ -151,7 +152,7 @@ export function MarkupThreadPopover({
       </ul>
       {canEdit ? (
         <>
-          <textarea
+          <ImageTextarea
             rows={2}
             value={reply}
             onChange={(e) => setReply(e.target.value)}

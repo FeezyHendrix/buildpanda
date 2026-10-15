@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
@@ -31,7 +32,7 @@ function PreviewRow({ item }: { item: ApplyPreviewItem }) {
   const meta = CHANGE_META[item.change];
   return (
     <li className="flex items-center justify-between gap-3 py-1.5 text-xs">
-      <span className="min-w-0 truncate text-gray-800">{item.description}</span>
+      <span className="min-w-0 truncate text-gray-800"><ContentText value={item.description} /></span>
       <span className="flex shrink-0 items-center gap-2 font-mono text-xs text-gray-600">
         {item.previous && item.change === "changed" ? (
           <span className="text-gray-400 line-through">
@@ -175,7 +176,7 @@ export function PreconApplyDialog({ open, onOpenChange, sessionId, proposalId }:
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium text-gray-500">
-            {estimate.revisionLabel} · {summary}
+            {estimate.revisionLabel} · <ContentText value={summary} />
           </p>
           {review ? (
             <p className="text-xs text-gray-500" data-review-summary>
@@ -187,7 +188,7 @@ export function PreconApplyDialog({ open, onOpenChange, sessionId, proposalId }:
               <p className="text-xs font-semibold text-amber-800">This preview is out of date — nothing was written.</p>
               <ul className="mt-1 list-disc pl-4 text-xs text-amber-800">
                 {staleReasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
+                  <li key={reason}><ContentText value={reason} /></li>
                 ))}
               </ul>
               <Button size="sm" variant="secondary" className="mt-2" loading={apply.isPending} onClick={() => runPreview(estimate.id)}>

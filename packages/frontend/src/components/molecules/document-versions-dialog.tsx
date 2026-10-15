@@ -1,3 +1,5 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
+import { ContentText } from "@/components/molecules/rich-content";
 import { Dialog } from "@base-ui/react/dialog";
 import { useRef, useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
@@ -107,7 +109,7 @@ function DocumentVersionsDialog({
                   placeholder="Revision label (e.g. Rev C)"
                   className={cn(INPUT_SM_CLASS, "flex-1")}
                 />
-                <input
+                <ImageTextarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="What changed? (optional)"
@@ -161,7 +163,7 @@ function DocumentVersionsDialog({
                         <p className="truncate text-xs text-ink-muted">
                           {v.fileName} · {v.size} · {formatWhen(v.createdAt)}
                         </p>
-                        {v.notes && <p className="mt-0.5 truncate text-xs text-ink-muted">{v.notes}</p>}
+                        {v.notes && <p className="mt-0.5 truncate text-xs text-ink-muted"><ContentText value={v.notes} /></p>}
                       </div>
                       <button
                         type="button"

@@ -1,3 +1,4 @@
+import { RichContent } from "@/components/rich-text/rich-content";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { View } from "react-native";
 import { RFI_STATUS_LABELS, type RfiPriority, type RfiStatus } from "@/api/rfis";
@@ -55,6 +56,7 @@ interface RfiDetailHeaderProps {
   number: number;
   subject: string;
   question: string;
+  questionHtml?: string | null;
   status: RfiStatus;
   priority: RfiPriority;
   ballInCourtName: string | null;
@@ -62,6 +64,7 @@ interface RfiDetailHeaderProps {
   costImpact: boolean;
   scheduleImpact: boolean;
   officialResponse: string | null;
+  officialResponseHtml?: string | null;
   officialRespondedByName: string | null;
   officialRespondedAt: number | string | null;
   /** True while the official response is still queued on this device. */
@@ -72,6 +75,7 @@ export function RfiDetailHeader({
   number,
   subject,
   question,
+  questionHtml,
   status,
   priority,
   ballInCourtName,
@@ -79,6 +83,7 @@ export function RfiDetailHeader({
   costImpact,
   scheduleImpact,
   officialResponse,
+  officialResponseHtml,
   officialRespondedByName,
   officialRespondedAt,
   officialResponsePending,
@@ -98,16 +103,14 @@ export function RfiDetailHeader({
       <Text weight="bold" className="text-lg">
         {subject}
       </Text>
-      <Text tone="secondary" className="text-[15px]">
-        {question}
-      </Text>
+      <RichContent html={questionHtml} text={question} />
 
       <MetaLine icon="person-outline">
         {ballInCourtName ? `Ball in court: ${ballInCourtName}` : "Ball in court: unassigned"}
       </MetaLine>
       {dueDate ? <MetaLine icon="calendar-outline">{`Due ${formatDate(dueDate) || dueDate}`}</MetaLine> : null}
 
-      {officialResponse ? (
+      {officialResponse || officialResponseHtml ? (
         <View className="rounded-xl bg-primary-50 p-3">
           <View className="flex-row items-center gap-2">
             <Text weight="semibold" tone="muted" className="flex-1 text-[10px] uppercase tracking-wide">
@@ -115,7 +118,7 @@ export function RfiDetailHeader({
             </Text>
             {officialResponsePending ? <PendingBadge /> : null}
           </View>
-          <Text className="pt-1.5 text-[15px]">{officialResponse}</Text>
+          <RichContent html={officialResponseHtml} text={officialResponse} />
           {officialRespondedByName ? (
             <Text tone="muted" className="pt-1 text-xs">
               {officialRespondedByName}

@@ -21,8 +21,10 @@ export interface LocalMaterialApproval {
   phaseName: string | null;
   activityName: string | null;
   description: string | null;
+  descriptionHtml: string | null;
   status: ApprovalStatus;
   response: string | null;
+  responseHtml?: string | null;
   requestedReviewerId: string | null;
   requestedReviewerName: string | null;
   reviewedByName: string | null;
@@ -38,6 +40,7 @@ export interface MaterialApprovalDraft extends MaterialApprovalCreateInput {
 export interface ApprovalDecisionInput {
   status: ApprovalStatus;
   response: string | null;
+  responseHtml?: string | null;
   reviewerName: string | null;
 }
 
@@ -57,8 +60,10 @@ export function toMaterialApproval(row: MaterialApprovalRow): LocalMaterialAppro
     phaseName: row.phaseName,
     activityName: row.activityName,
     description: row.description,
+    descriptionHtml: row.descriptionHtml ?? null,
     status: isApprovalStatus(row.status) ? row.status : "Pending",
     response: row.response,
+    responseHtml: row.responseHtml ?? null,
     requestedReviewerId: row.requestedReviewerId,
     requestedReviewerName: row.requestedReviewerName,
     reviewedByName: row.reviewedByName,
@@ -88,8 +93,10 @@ export function materialApprovalServerValues(
     activityId: row.activityId,
     activityName: row.activityName,
     description: row.description,
+    descriptionHtml: row.descriptionHtml ?? null,
     status: row.status,
     response: row.response,
+    responseHtml: row.responseHtml ?? null,
     dueDate: row.dueDate,
     requestedReviewerId: row.requestedReviewerId,
     requestedReviewerName: row.requestedReviewerName,

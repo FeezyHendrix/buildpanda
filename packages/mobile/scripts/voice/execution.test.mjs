@@ -140,7 +140,7 @@ test('rich responses preserve formatting and plain text in the real offline reco
     proposal.payload.body = richTextFromHtml('<p>Use <strong>B20</strong>.</p><ul><li>Inspect first</li></ul>');
     await executeVoiceAction(proposal, context(db));
     const saved = db.select().from(rfiComments).get();
-    assert.equal(saved.body, 'Use B20. Inspect first');
+    assert.equal(saved.body, 'Use B20.\nInspect first');
     assert.equal(saved.contentHtml, proposal.payload.body.html);
     assert.ok(db.select().from(outbox).all().some(row => row.resource === 'rfi-comments'));
   } finally { raw.close(); }

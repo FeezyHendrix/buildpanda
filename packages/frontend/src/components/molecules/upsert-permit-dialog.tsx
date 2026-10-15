@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
@@ -233,7 +234,7 @@ function UpsertPermitDialog({
       <div className="flex flex-col gap-4">
         <h4 className="text-sm font-semibold text-gray-900">Conditions</h4>
         <div className="flex flex-col gap-1.5">
-          <textarea
+          <ImageTextarea
             id="pm-conditions"
             value={v.conditions ?? ""}
             onChange={(e) => set("conditions", e.target.value)}
@@ -253,7 +254,7 @@ function UpsertPermitDialog({
       <div className="flex flex-col gap-4">
         <h4 className="text-sm font-semibold text-gray-900">Notes</h4>
         <div className="flex flex-col gap-1.5">
-          <textarea id="pm-notes" value={v.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} placeholder="Add any additional details here..." />
+          <ImageTextarea id="pm-notes" value={v.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} placeholder="Add any additional details here..." />
         </div>
       </div>
     </FormDrawer>

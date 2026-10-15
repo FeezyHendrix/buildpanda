@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useState, useEffect } from "react";
 import { useMessageSearch } from "@/hooks/use-chat";
 import { SearchIcon } from "@/components/atoms/chat-icons";
@@ -93,7 +94,7 @@ export function MessageSearch({ onSelect }: { onSelect: (channelId: string) => v
                     </div>
                     <span className="text-[10px] text-ink-muted">{formatTimeAgo(msg.createdAt)}</span>
                   </div>
-                  <p className="line-clamp-2 w-full text-xs text-ink">{msg.body}</p>
+                  <p className="line-clamp-2 w-full text-xs text-ink"><ContentText value={msg.body} /></p>
                 </button>
               ))}
             </div>

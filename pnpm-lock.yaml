@@ -90,6 +90,9 @@ importers:
       '@better-auth/expo':
         specifier: 1.5.6
         version: 1.5.6(a5d37be2f7624277ea494a54b0519e57)
+      '@buildpanda/rich-content':
+        specifier: file:../rich-content
+        version: link:../rich-content
       '@buildpanda/voice-actions':
         specifier: file:../voice-actions
         version: link:../voice-actions
@@ -247,6 +250,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.6.0
         version: 1.6.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@buildpanda/rich-content':
+        specifier: file:../rich-content
+        version: link:../rich-content
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -389,6 +395,9 @@ importers:
       '@better-auth/expo':
         specifier: 1.5.6
         version: 1.5.6(1b3413ce047363959857bb48bb462d65)
+      '@buildpanda/rich-content':
+        specifier: file:../rich-content
+        version: link:../rich-content
       '@buildpanda/voice-actions':
         specifier: file:../voice-actions
         version: link:../voice-actions
@@ -402,6 +411,9 @@ importers:
         specifier: ^15.1.1
         version: 15.1.1(expo-font@57.0.2)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       '@lexical/html':
+        specifier: ^0.49.0
+        version: 0.49.0(typescript@6.0.3)
+      '@lexical/link':
         specifier: ^0.49.0
         version: 0.49.0(typescript@6.0.3)
       '@lexical/list':
@@ -577,7 +589,13 @@ importers:
         specifier: ~6.0.3
         version: 6.0.3
 
-  packages/voice-actions: {}
+  packages/rich-content: {}
+
+  packages/voice-actions:
+    dependencies:
+      '@buildpanda/rich-content':
+        specifier: file:../rich-content
+        version: link:../rich-content
 
   packages/website:
     dependencies:

@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/atoms/button";
@@ -58,7 +59,7 @@ export function TypicalPopover({ sessionId, row, onClose }: Props) {
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-gray-900">Same on N floors or areas</p>
-          <p className="text-xs text-gray-500">“{row.description}” — net = (gross − deductions) × N, stated in the basis.</p>
+          <p className="text-xs text-gray-500">“<ContentText value={row.description} />” — net = (gross − deductions) × N, stated in the basis.</p>
         </div>
         <button type="button" aria-label="Close" className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={onClose}>
           <X className="size-4" aria-hidden="true" />

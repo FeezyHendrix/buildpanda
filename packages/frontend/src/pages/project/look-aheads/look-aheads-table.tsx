@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -178,7 +179,7 @@ function LookAheadRow({
       <TableCell className="max-w-[260px]">
         <button type="button" onClick={() => onView(lookAhead)} className="text-left">
           <span className="block truncate font-semibold text-gray-900 hover:text-primary-700">{lookAhead.name}</span>
-          {lookAhead.description ? <span className="mt-1 line-clamp-1 text-xs text-gray-500">{lookAhead.description}</span> : null}
+          {lookAhead.description ? <span className="mt-1 line-clamp-1 text-xs text-gray-500"><ContentText value={lookAhead.description} /></span> : null}
         </button>
       </TableCell>
       <TableCell>

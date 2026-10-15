@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -46,7 +47,7 @@ function RaiseDisputeDialog({
     error={error ?? null}
     onSubmit={handleSubmit}><div className="flex flex-col gap-1.5">
       <Label htmlFor="dispute-reason">Reason</Label>
-      <textarea
+      <ImageTextarea
         id="dispute-reason"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
