@@ -5,6 +5,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { imageError, referencedFileIds } from '@buildpanda/rich-content';
 import { uploadProjectFile } from '@/api/files';
 import { request, ApiError } from '@/api/client';
+import { isAccessRejection } from '@/api/error';
 import { VERIFIED } from './access-requirement';
 import { uploadAccess } from './feature-access';
 import { requireAccess, requireCurrentAccess, revokeProjectAccess } from './project-access-store';
@@ -61,7 +62,7 @@ export async function resolveContentImage(projectId: string, fileId: string, db?
     if (!stored) throw new Error('Could not save this image for offline use.');
     return stored.dataUrl;
   } catch (error) {
-    if (error instanceof ApiError && [401, 403].includes(error.status)) {
+    if (error instanceof ApiError && isAccessRejection(error)) {
       requireCurrentAccess(ticket); revokeProjectAccess(); await clearContentImages(ticket.scope);
     }
     throw error;

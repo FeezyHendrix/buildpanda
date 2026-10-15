@@ -53,6 +53,11 @@ presentation. No per-screen role matrices or duplicated permission logic.
 - `apiRequirement` and `outboxRequirement` map transport/queue operations back
   to the catalog. Refresh access before dispatch and independently authorize
   every write on the server. Retrying or discarding queued records is guarded.
+- Feature availability is separate from authorization. The server's explicit
+  `feature_disabled` response fails that operation without revoking the project.
+  Unknown 403 responses and authentication failures still invalidate access.
+  Building discovery remains protected by `buildings:view` when multi-building
+  management is disabled, because field records still require a building scope.
 - Native downloaded files are partitioned by user, workspace, project, and
   resource area. Conversation data and attachment reopening require an online
   membership check; the 24-hour project snapshot does not verify membership.
