@@ -13,6 +13,11 @@ import { toolsForCaller } from '../panda-ai/agent/tool-permissions.ts';
 import { tool, fn } from '../panda-ai/agent/tool-helpers.ts';
 import type { ToolContext } from '../panda-ai/agent/tools.ts';
 import Fastify from 'fastify';
+import fp from 'fastify-plugin';
+import authContextPlugin from '../../plugins/auth-context.ts';
+import accessCachePlugin from '../../plugins/access-cache.ts';
+import errorHandlerPlugin from '../../plugins/error-handler.ts';
+import fileRoutes from './routes.ts';
 import publicProposalRoutes from '../proposals/public-routes.ts';
 
 test('rich and plain narrative images retain stable references and reject executable or remote HTML', () => {
@@ -52,7 +57,7 @@ test('persisted narrative references enforce resource, RFI visibility, assignmen
     await tx('proposal_templates').insert({ id: 'image-template', org_id: 'image-org', name: 'Template', pack_sections: JSON.stringify([{ bodyHtml: picture('template-file') }]) });
     await tx('uploaded_files').insert(['shared-file', 'internal-file'].map((id) => ({ id, owner_id: project.ownerId, project_id: project.id, file_name: 'Evidence.png', mime_type: 'image/png', size_bytes: 100, storage_path: `fixture/${id}` })));
     const repository = fileAccessRepository(tx);
-    let ctx: EnrichedAccessContext = { userId: 'image-crew', orgRoles: new Map(), orgPermissions: new Map(), projectRoles: new Map([[project.id, 'client']]), projectGrants: new Map([[project.id, { rfis: ['view'] }]]), projectSectionPermissions: new Map() };
+    const ctx: Required<EnrichedAccessContext> = { userId: 'image-crew', orgRoles: new Map(), orgPermissions: new Map(), projectRoles: new Map([[project.id, 'client']]), projectGrants: new Map([[project.id, { rfis: ['view'] }]]), projectSectionPermissions: new Map() };
     const request = () => ({ ...ctx, requireAuth: () => ({ id: ctx.userId }), requireProjectAccess: async () => projectRow,
       requireProjectPermission: async (id: string, resource: string, action: string) => { assertProjectPermission({ ...project, id }, ctx, resource, action); return projectRow; },
     }) as unknown as FastifyRequest;
@@ -63,7 +68,7 @@ test('persisted narrative references enforce resource, RFI visibility, assignmen
     await assert.rejects(read('terms-file'), ForbiddenError);
     await assert.rejects(read('shared-file', 'foreign'), ForbiddenError);
     // Exercise the actual AI execution wrapper, before its business handler.
-    ctx.projectGrants.set(project.id, { rfis: ['view', 'create'] });
+    ctx.projectGrants = new Map([[project.id, { rfis: ['view', 'create'] }]]);
     const toolContext: ToolContext = { db: tx, projectId: project.id, caller: { ...ctx, user: { id: ctx.userId, name: 'Crew' }, project } };
     let executions = 0;
     const [guarded] = toolsForCaller([tool(fn('create_rfi', 'Create an RFI'), async () => { executions++; return { output: { ok: true } }; })], toolContext);
@@ -90,12 +95,16 @@ test('persisted narrative references enforce resource, RFI visibility, assignmen
   } finally { await tx.rollback(); await db.destroy(); }
 });
 
-test('public proposal image links are restricted to the visible offer and expire with its token', { skip: !databaseUrl }, async () => {
+test('anonymous proposal images pass the global auth guard only through a valid offer token', { skip: !databaseUrl }, async () => {
   const db = knex({ client: 'pg', connection: databaseUrl });
   const tx = await db.transaction();
   const app = Fastify();
   try {
-    app.decorate('db', tx);
+    await app.register(fp(async (instance) => { instance.decorate('db', tx); }, { name: 'database' }));
+    await app.register(accessCachePlugin);
+    await app.register(authContextPlugin);
+    await app.register(errorHandlerPlugin);
+    await app.register(fileRoutes);
     await app.register(publicProposalRoutes);
     await tx('user').insert({ id: 'public-images-owner', name: 'Owner', email: 'public@images.invalid' });
     await tx('organization').insert({ id: 'public-images-org', name: 'Contractor', slug: 'public-images' });
@@ -113,6 +122,13 @@ test('public proposal image links are restricted to the visible offer and expire
     const allowed = await app.inject('/proposals/public/image-offer-token/files/public-picture');
     assert.equal(allowed.statusCode, 200, allowed.body);
     assert.match(allowed.json().url, /fixture\/scope.png/);
+    const invalidToken = await app.inject('/proposals/public/invalid-token/files/public-picture');
+    assert.equal(invalidToken.statusCode, 404, invalidToken.body);
+    // The public capability must never make the ordinary file API anonymous.
+    for (const suffix of ['', '/url', '/download']) {
+      const protectedFile = await app.inject(`/files/public-picture${suffix}`);
+      assert.equal(protectedFile.statusCode, 401, protectedFile.body);
+    }
     // File absence is still a 404; neither a guessed ID nor an internal section is a capability.
     for (const id of ['private-picture', 'guessed-picture']) {
       const denied = await app.inject(`/proposals/public/image-offer-token/files/${id}`);
