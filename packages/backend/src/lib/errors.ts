@@ -34,6 +34,17 @@ export class ForbiddenError extends AppError {
   }
 }
 
+/** A product switch is not a revocation of the caller's permissions. */
+export class FeatureDisabledError extends AppError {
+  constructor(key: string, label: string) {
+    super(`${label} is currently disabled`, {
+      statusCode: 403,
+      code: "feature_disabled",
+      details: { feature: key },
+    });
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(resource = "Resource") {
     super(`${resource} not found`, { statusCode: 404, code: "not_found" });

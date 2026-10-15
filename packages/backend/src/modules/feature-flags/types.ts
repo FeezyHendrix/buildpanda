@@ -5,6 +5,8 @@ export interface FeatureFlagDefinition {
   description: string;
   enabledByDefault: boolean;
   routePrefixes: string[];
+  /** Omitted means every method. Reads may be required even when management is disabled. */
+  routeMethods?: readonly string[];
 }
 
 export interface FeatureFlag extends FeatureFlagDefinition {

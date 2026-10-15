@@ -91,6 +91,8 @@ export const FEATURE_FLAGS = [
       "Split a project into multiple buildings that share one funding pool but each run their own programme of work.",
     enabledByDefault: false,
     routePrefixes: ["/projects/:id/buildings"],
+    // Field records need the existing building scope, including single-building projects.
+    routeMethods: ["POST", "PUT", "PATCH", "DELETE"],
   },
   {
     key: "projects.bim",
