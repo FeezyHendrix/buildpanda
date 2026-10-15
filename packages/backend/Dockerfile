@@ -50,8 +50,11 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json ./
 COPY --from=build /rich-content /rich-content
 COPY --from=build /voice-actions /voice-actions
-RUN npm install --omit=dev --include=optional --os=linux --cpu=x64 --libc=glibc
-COPY --from=build /app/node_modules/@buildpanda ./node_modules/@buildpanda
+RUN npm install --omit=dev --include=optional --os=linux --cpu=x64 --libc=glibc \
+  && rm -rf node_modules/@buildpanda \
+  && mkdir -p node_modules/@buildpanda
+COPY --from=build /app/node_modules/@buildpanda/rich-content ./node_modules/@buildpanda/rich-content
+COPY --from=build /app/node_modules/@buildpanda/voice-actions ./node_modules/@buildpanda/voice-actions
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/knexfile.ts ./knexfile.ts
 COPY --from=build /app/src ./src
