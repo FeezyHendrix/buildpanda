@@ -151,7 +151,7 @@ export function Conversation({ channelId, threadId }: { channelId: string; threa
             }
           }}
           onScroll={(event) => setAtLatest(event.nativeEvent.contentOffset.y < 60)} scrollEventThrottle={100}
-          ListEmptyComponent={<View style={{ transform: [{ scaleY: -1 }] }} className="items-center gap-3 py-10">{query.isPending || channel.isPending ? <Spinner /> : <><Text variant="heading" weight="semibold" className="text-lg">{threadId ? "No replies yet" : "Start the conversation"}</Text><Text tone="secondary" className="text-center text-sm">{!isOnline ? "Connect to load messages. Your saved draft will stay here." : "Share an update with your team."}</Text></>}</View>}
+          ListEmptyComponent={<View className="items-center gap-3 py-10">{query.isPending || channel.isPending ? <Spinner /> : <><Text variant="heading" weight="semibold" className="text-lg">{threadId ? "No replies yet" : "Start the conversation"}</Text><Text tone="secondary" className="text-center text-sm">{!isOnline ? "Connect to load messages. Your saved draft will stay here." : "Share an update with your team."}</Text></>}</View>}
           ListFooterComponent={<View>
             {threadId && root.data ? <MessageBubble message={root.data} ownerId={storageOwnerId} /> : null}
             {!threadId && !exhausted && newest.length === MESSAGE_PAGE_SIZE ? <View className="pb-4"><Button variant="secondary" loading={loadingOlder} disabled={!isOnline} onPress={() => { void loadOlder(); }}>Load older messages</Button></View> : null}
