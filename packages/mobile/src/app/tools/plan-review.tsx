@@ -88,6 +88,7 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
   const aspect = renderInfo?.aspect ?? DEFAULT_ASPECT;
 
   const { source, retry: retrySource } = useSheetSource(db, projectId, sheetId, fileName, setError, versionId);
+  const viewerReady = Boolean(source && versionId);
   const { markups, readLocal, reset: resetMarkups } = usePageMarkups(db, projectId, sheetId, versionId, pageNo);
   const undo = useMarkupUndo(db, projectId, versionId ? `${versionId}:${pageNo}` : null);
   const sheetScale = useSheetScale(userId, versionId);
@@ -280,7 +281,7 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
 
         <View className={sidePanel ? "flex-1 flex-row" : "flex-1"}>
           <View className="flex-1 bg-grey-50">
-            {source && versionId ? (
+            {viewerReady && source && versionId ? (
               <SheetCanvas
                 dom={{ style: { flex: 1 } }}
                 docKey={`${versionId}`}
@@ -316,6 +317,7 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
                 </Text>
               </View>
             )}
+            {viewerReady ? <>
             <PendingSyncPill count={pendingCount} />
             <SheetControls
               tool={tool}
@@ -343,6 +345,7 @@ function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; us
                 clearTransient();
               }}
             />
+            </> : null}
           </View>
           {sidePanel ? <View className="w-96 border-l border-hairline bg-surface">{sidebar}</View> : null}
         </View>

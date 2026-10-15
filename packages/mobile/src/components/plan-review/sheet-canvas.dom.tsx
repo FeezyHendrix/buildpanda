@@ -78,6 +78,8 @@ export default function SheetCanvas({
   const penRef = useRef<MarkupPoint[] | null>(null);
   const rectRef = useRef<MarkupRect | null>(null);
   const measureStartRef = useRef<MarkupPoint | null>(null);
+  const transformRef = useRef<Transform>(FIT_TRANSFORM);
+  const transformFrame = useRef<number | null>(null);
   const onZoomRef = useRef(onZoom);
   onZoomRef.current = onZoom;
 
@@ -103,8 +105,13 @@ export default function SheetCanvas({
     return () => ro.disconnect();
   }, []);
 
+  useEffect(() => () => {
+    if (transformFrame.current !== null) cancelAnimationFrame(transformFrame.current);
+  }, []);
+
   // A new page, and the Fit button, both start from the page fitted to the viewport.
   useEffect(() => {
+    transformRef.current = FIT_TRANSFORM;
     setTransform(FIT_TRANSFORM);
     clearDrafts();
   }, [docKey, pageNo, fitNonce]);
@@ -138,6 +145,16 @@ export default function SheetCanvas({
     setMeasureStartBoth(null);
   }
 
+  /** Pointer events can arrive faster than the display. Paint only the latest transform per frame. */
+  function setFrameTransform(next: Transform) {
+    transformRef.current = next;
+    if (transformFrame.current !== null) return;
+    transformFrame.current = requestAnimationFrame(() => {
+      transformFrame.current = null;
+      setTransform(transformRef.current);
+    });
+  }
+
   function pctFromClient(clientX: number, clientY: number): MarkupPoint | null {
     const el = contentRef.current;
     if (!el) return null;
@@ -164,7 +181,7 @@ export default function SheetCanvas({
       const [p1, p2] = [...pointers.current.values()];
       clearDrafts();
       setTouch(null);
-      beginPinch(g, p1, p2, transform, viewportOrigin());
+      beginPinch(g, p1, p2, transformRef.current, viewportOrigin());
       return;
     }
     if (pointers.current.size !== 1) return;
@@ -206,7 +223,7 @@ export default function SheetCanvas({
     if (g.mode === GESTURE_MODE.PINCH && pointers.current.size >= 2) {
       const [p1, p2] = [...pointers.current.values()];
       const next = pinchTransform(g, p1, p2, viewportOrigin());
-      if (next) setTransform(clampTransform(next));
+      if (next) setFrameTransform(clampTransform(next));
       return;
     }
 
@@ -215,7 +232,7 @@ export default function SheetCanvas({
       const dy = e.clientY - g.lastY;
       g.lastX = e.clientX;
       g.lastY = e.clientY;
-      setTransform((t) => clampTransform({ s: t.s, tx: t.tx + dx, ty: t.ty + dy }));
+      setFrameTransform(clampTransform({ s: transformRef.current.s, tx: transformRef.current.tx + dx, ty: transformRef.current.ty + dy }));
       return;
     }
 
@@ -302,8 +319,10 @@ export default function SheetCanvas({
     <div
       ref={viewportRef}
       style={{
-        width: "100vw",
-        height: "100vh",
+        // The DOM view is hosted inside the native Page. Viewport units escape
+        // that host on Android and draw beneath the safe-area/header controls.
+        width: "100%",
+        height: "100%",
         overflow: "hidden",
         position: "relative",
         background: palette.grey50,
