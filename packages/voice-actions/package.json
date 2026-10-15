@@ -3,10 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./access": "./src/access.ts",
     "./features": "./src/features.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "access": ["./src/access.ts"],
+      "features": ["./src/features.ts"]
+    }
   },
   "dependencies": {
     "@buildpanda/rich-content": "file:../rich-content"
