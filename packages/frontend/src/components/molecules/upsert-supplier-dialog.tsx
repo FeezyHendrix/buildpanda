@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState, type ReactNode } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -224,7 +225,7 @@ function UpsertSupplierDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="supplier-notes">Notes</Label>
-        <textarea
+        <ImageTextarea
           id="supplier-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

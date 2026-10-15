@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -78,13 +79,13 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
 
       <label className="block text-xs text-gray-500">
         Description
-        <input
+        <ImageTextarea
           className={FIELD}
           value={descriptionDraft ?? row.description}
           onChange={(e) => setDescriptionDraft(e.target.value)}
-          onBlur={commitDescription}
+          onCommit={commitDescription}
           onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Enter") (e.target as HTMLTextAreaElement).blur();
           }}
         />
       </label>

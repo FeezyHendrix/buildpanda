@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { CreateButton } from "@/components/molecules/create-button";
@@ -198,7 +199,7 @@ function LedgerRow({
   return (
     <TableRow>
       <TableCell className="tabular-nums">{entry.date}</TableCell>
-      <TableCell>{entry.description}</TableCell>
+      <TableCell><ContentText value={entry.description} /></TableCell>
       <TableCell className="tabular-nums">{formatCurrency(entry.amount, currency)}</TableCell>
       <TableCell>
         <Badge tone={LEDGER_TYPE_TONE[entry.type]} size="md">

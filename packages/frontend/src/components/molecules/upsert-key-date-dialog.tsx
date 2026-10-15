@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { Switcher } from "@/components/atoms/switcher";
@@ -155,7 +156,7 @@ function UpsertKeyDateDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="kd-notes">Notes</Label>
-        <textarea id="kd-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} />
+        <ImageTextarea id="kd-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} />
       </div>
     </FormDrawer>
   );

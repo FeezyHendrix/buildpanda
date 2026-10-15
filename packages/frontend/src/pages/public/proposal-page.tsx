@@ -1,3 +1,4 @@
+import { ProposalContentFiles } from "@/components/molecules/content-file-context";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Spinner } from "@/components/atoms/spinner";
@@ -127,7 +128,7 @@ export default function PublicProposalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-alt px-4 py-10">
+    <ProposalContentFiles token={token}><div className="min-h-screen bg-surface-alt px-4 py-10">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8 flex justify-center">
           <img src={logo} alt="BuildPanda" className="h-9" />
@@ -166,6 +167,6 @@ export default function PublicProposalPage() {
           Powered by BuildPanda · Figures are recorded amounts; no payment is taken through this page.
         </p>
       </div>
-    </div>
+    </div></ProposalContentFiles>
   );
 }

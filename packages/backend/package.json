@@ -63,7 +63,8 @@
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3",
-    "@buildpanda/voice-actions": "file:../voice-actions"
+    "@buildpanda/voice-actions": "file:../voice-actions",
+    "@buildpanda/rich-content": "file:../rich-content"
   },
   "devDependencies": {
     "@types/geoip-lite": "^1.4.4",

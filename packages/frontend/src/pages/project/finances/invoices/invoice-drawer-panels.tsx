@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -72,7 +73,7 @@ export function InvoiceDetailsPanel({ projectId, invoice, currency, canManage }:
       {invoice.notes ? (
         <section>
           <DrawerSectionTitle>Notes</DrawerSectionTitle>
-          <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm leading-6 text-gray-700">{invoice.notes}</p>
+          <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm leading-6 text-gray-700"><ContentText value={invoice.notes} /></p>
         </section>
       ) : null}
 
@@ -111,7 +112,7 @@ export function InvoiceLineItemsPanel({ invoice, currency }: Pick<PanelProps, "i
           {invoice.lineItems.map((line) => (
             <TableRow key={line.id}>
               <TableCell className="px-4">
-                {line.description}
+                <ContentText value={line.description} />
                 {line.isVariation ? <span className="ml-2 text-xs text-accent-500">Variation</span> : null}
               </TableCell>
               <TableCell align="right" className="px-4 tabular-nums">
@@ -175,7 +176,7 @@ export function InvoicePaymentsPanel({ projectId, invoice, currency, canManage }
           Payments · {formatCurrency(invoice.amountPaid, currency)} of {formatCurrency(invoice.totalInvoiced, currency)}
         </DrawerSectionTitle>
         {payable.reason ? (
-          <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm text-ink-muted">{payable.reason}</p>
+          <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm text-ink-muted"><ContentText value={payable.reason} /></p>
         ) : null}
         {invoice.payments.length === 0 ? (
           <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm text-ink-muted">No payments recorded yet.</p>

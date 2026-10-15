@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -113,7 +114,7 @@ function SendInvoiceDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="send-cover">Cover note</Label>
-        <textarea
+        <ImageTextarea
           id="send-cover"
           value={coverNote}
           onChange={(e) => setCoverNote(e.target.value)}

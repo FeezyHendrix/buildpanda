@@ -1,3 +1,4 @@
+import { htmlFromText } from "@buildpanda/rich-content";
 import { settleOutboxItem } from "./sync-write-state";
 import { isApprovalStatus, materialApprovalsApi } from "@/api/material-approvals";
 import type { Db } from "./client";
@@ -42,6 +43,7 @@ export async function pushMaterialApprovalOutboxItem(
         supplier: row.supplier,
         neededBy: row.neededBy,
         description: row.description,
+        descriptionHtml: row.descriptionHtml ?? htmlFromText(row.description ?? ""),
         requestedReviewerId: row.requestedReviewerId,
         // The material route takes the sheet and revision but not the pin.
         documentId: row.documentId,
@@ -53,6 +55,7 @@ export async function pushMaterialApprovalOutboxItem(
         await materialApprovalsApi.update(item.projectId, row.id, {
           status: isApprovalStatus(row.status) ? row.status : "Pending",
           response: row.response,
+          responseHtml: row.responseHtml ?? htmlFromText(row.response ?? ""),
         });
       } catch (error) {
         if (isPermanent(error)) {
@@ -73,6 +76,7 @@ export async function pushMaterialApprovalOutboxItem(
         supplier: row.supplier,
         neededBy: row.neededBy,
         description: row.description,
+        descriptionHtml: row.descriptionHtml ?? htmlFromText(row.description ?? ""),
       });
       settleOutboxItem(db, item);
       return done(true);

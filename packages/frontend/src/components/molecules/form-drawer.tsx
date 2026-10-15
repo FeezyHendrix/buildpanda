@@ -1,3 +1,4 @@
+import { contentWork } from "@buildpanda/rich-content/pending";
 import { useFormExit } from "@/hooks/use-form-exit";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Dialog } from "@base-ui/react/dialog";
@@ -52,7 +53,7 @@ function OpenFormDrawer({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (submitting || submitDisabled) return;
+    if (contentWork.getSnapshot() || submitting || submitDisabled || event.currentTarget.querySelector('[data-content-upload-pending="true"]')) return;
     void onSubmit();
   }
 
@@ -75,7 +76,7 @@ function OpenFormDrawer({
             className,
           )}
         >
-          <form onChangeCapture={exit.markDirty} onSubmit={handleSubmit} className="flex h-full flex-col">
+          <form onInputCapture={exit.markDirty} onChangeCapture={exit.markDirty} onSubmit={handleSubmit} className="flex h-full flex-col">
             <header className="border-b border-[#F0F0F0] px-6 py-5">
               <Dialog.Title className="text-lg font-semibold text-gray-900">
                 {title}

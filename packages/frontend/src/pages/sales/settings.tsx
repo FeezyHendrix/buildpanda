@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Input, INPUT_CLASS } from "@/components/atoms/input";
@@ -146,7 +147,7 @@ export default function SalesSettings() {
         </div>
 
         <FieldRow label="Office address">
-          <textarea
+          <ImageTextarea
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             rows={3}
@@ -205,7 +206,7 @@ export default function SalesSettings() {
         </p>
 
         <FieldRow label="Payment instructions">
-          <textarea
+          <ImageTextarea
             value={paymentInstructions}
             onChange={(e) => setPaymentInstructions(e.target.value)}
             rows={4}

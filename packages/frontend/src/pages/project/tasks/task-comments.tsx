@@ -1,3 +1,5 @@
+import { ContentText } from "@/components/molecules/rich-content";
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Avatar } from "@/components/atoms/avatar";
@@ -46,7 +48,7 @@ export function TaskComments({ projectId, taskId }: { projectId: string; taskId:
                   <span className="text-sm font-medium text-gray-900">{c.authorName}</span>
                   <span className="text-xs text-gray-400">{formatWhen(c.createdAt)}</span>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{c.body}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600"><ContentText value={c.body} /></p>
               </div>
             </li>
           ))}
@@ -55,7 +57,7 @@ export function TaskComments({ projectId, taskId }: { projectId: string; taskId:
 
       {canComment && (
         <div className="mt-4 flex flex-col gap-2">
-          <textarea
+          <ImageTextarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             onKeyDown={(e) => {

@@ -263,6 +263,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
         (method === "GET" && url === "/ws") ||
         (method === "GET" && /^\/public\/invoices\/[^/?]+(\/pdf)?$/.test(url)) ||
         (method === "GET" && /^\/proposals\/public\/[^/?]+$/.test(url)) ||
+        (method === "GET" && /^\/proposals\/public\/[^/?]+\/files\/[^/?]+$/.test(url)) ||
         (method === "POST" && /^\/proposals\/public\/[^/?]+\/respond/.test(url)) ||
         (method === "GET" && /^\/project-invites\/[^/?]+$/.test(url)) ||
         // An org invitation reaches someone who has no account yet, so there is

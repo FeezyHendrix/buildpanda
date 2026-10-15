@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
@@ -51,7 +52,7 @@ export function ForceOrderDialog({
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="force-order-note">Why is this being ordered now?</Label>
-        <textarea
+        <ImageTextarea
           id="force-order-note"
           value={note}
           onChange={(event) => setNote(event.target.value)}

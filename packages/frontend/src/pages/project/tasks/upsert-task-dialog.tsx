@@ -16,7 +16,6 @@ import {
   PriorityIcon,
 } from "./task-ui";
 import { TaskExtras } from "./task-extras";
-import { TaskImageGallery } from "./task-image-gallery";
 import { Button } from "@/components/atoms/button";
 
 interface UpsertTaskDialogProps {
@@ -197,13 +196,6 @@ function TaskForm({
           placeholder="Add details, checklists, images…"
         />
       </div>
-      <TaskImageGallery
-        descriptionHtml={descriptionHtml}
-        onDescriptionChange={(html, text) => {
-          update({ descriptionHtml: html, description: text });
-        }}
-        projectId={projectId}
-      />
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <Label>Assignees</Label>

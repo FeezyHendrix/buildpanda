@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -36,7 +37,7 @@ export function EstimateRevisionDrawer({ proposalId, open, onOpenChange }: Props
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="change-note">Change note *</Label>
-        <textarea
+        <ImageTextarea
           id="change-note"
           rows={4}
           value={changeNote}

@@ -26,6 +26,7 @@ export interface UpdateOrgProfileInput {
 }
 
 export interface OrgPermissions {
+  userId?: string;
   organizationId: string;
   role: string | null;
   permissions: Record<string, string[]>;

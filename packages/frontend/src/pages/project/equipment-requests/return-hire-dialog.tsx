@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
@@ -78,7 +79,7 @@ export function ReturnHireDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="return-notes">Condition on return</Label>
-        <textarea
+        <ImageTextarea
           id="return-notes"
           value={notes}
           onChange={(event) => setNotes(event.target.value)}

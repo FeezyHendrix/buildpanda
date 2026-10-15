@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { type ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
@@ -79,12 +80,12 @@ function Row({ index, line, canRemove, money, onChange, onRemove }: RowProps) {
       </div>
 
       <div className="grid grid-cols-12 gap-2 md:items-center md:gap-3">
-        <input
+        <ImageTextarea
           value={line.description}
           onChange={(e) => onChange({ description: e.target.value })}
           placeholder="Description"
           aria-label={`Line ${lineNum} description`}
-          className={cn(INPUT_SM_CLASS, "col-span-12 md:col-span-4")}
+          className={INPUT_SM_CLASS} containerClassName="col-span-12 md:col-span-4"
         />
         <Cell span="col-span-4 md:col-span-1" label="Qty">
           <input

@@ -1,4 +1,5 @@
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { contentWork } from "@buildpanda/rich-content/pending";
+import { forwardRef, useSyncExternalStore, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { Spinner, type SpinnerTone } from "@/components/atoms/spinner";
 
@@ -48,32 +49,35 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ...props
     },
     ref,
-  ) => (
-    <button
-      ref={ref}
-      type={type}
-      disabled={disabled ?? loading}
-      aria-busy={loading || undefined}
-      className={cn(
-        "relative inline-flex items-center justify-center gap-2.5 rounded-lg font-semibold",
-        "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        variantStyles[variant],
-        sizeStyles[size],
-        className,
-      )}
-      {...props}
-    >
-      {loading && (
-        <span className="absolute inset-0 inline-flex items-center justify-center">
-          <Spinner size="xs" tone={spinnerTone[variant]} />
+  ) => {
+    const addingImage = useSyncExternalStore(contentWork.subscribe, contentWork.getSnapshot, contentWork.getSnapshot);
+    return (
+      <button
+        ref={ref}
+        type={type}
+        disabled={disabled || loading || addingImage}
+        aria-busy={loading || undefined}
+        className={cn(
+          "relative inline-flex items-center justify-center gap-2.5 rounded-lg font-semibold",
+          "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          variantStyles[variant],
+          sizeStyles[size],
+          className,
+        )}
+        {...props}
+      >
+        {loading && (
+          <span className="absolute inset-0 inline-flex items-center justify-center">
+            <Spinner size="xs" tone={spinnerTone[variant]} />
+          </span>
+        )}
+        <span className={cn("inline-flex items-center gap-2.5", loading && "invisible")}>
+          {children}
         </span>
-      )}
-      <span className={cn("inline-flex items-center gap-2.5", loading && "invisible")}>
-        {children}
-      </span>
-    </button>
-  ),
+      </button>
+    );
+  },
 );
 
 Button.displayName = "Button";

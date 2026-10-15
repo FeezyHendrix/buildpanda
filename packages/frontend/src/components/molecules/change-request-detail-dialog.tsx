@@ -1,3 +1,5 @@
+import { ContentText, RichContent } from "@/components/molecules/rich-content";
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
@@ -218,17 +220,17 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
                   )}
                 </div>
                 <Dialog.Title className="mt-2 text-lg font-semibold text-ink">{cr.title}</Dialog.Title>
-                {cr.description && <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-muted">{cr.description}</p>}
+                {cr.description && <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-muted"><ContentText value={cr.description} /></p>}
                 {cr.reasonHtml ? (
                   <div className="mt-1 text-xs text-ink-muted">
                     Reason:{" "}
-                    <span
+                    <RichContent
                       className="prose prose-sm inline max-w-none [&>p]:inline [&_img]:max-h-64 [&_img]:rounded"
-                      dangerouslySetInnerHTML={{ __html: cr.reasonHtml }}
+                      html={cr.reasonHtml}
                     />
                   </div>
                 ) : cr.reason ? (
-                  <p className="mt-1 text-xs text-ink-muted">Reason: {cr.reason}</p>
+                  <p className="mt-1 text-xs text-ink-muted">Reason: <ContentText value={cr.reason} /></p>
                 ) : null}
                 {cr.decidedByName && (
                   <p className="mt-1 text-xs text-ink-muted">
@@ -263,7 +265,7 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
                           <span className="text-sm font-medium text-ink">{c.authorName}</span>
                           <span className="text-xs text-ink-muted">{formatWhen(c.createdAt)}</span>
                         </div>
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">{c.body}</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted"><ContentText value={c.body} /></p>
                       </li>
                     ))}
                   </ul>
@@ -271,7 +273,7 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
               </div>
 
               <footer className="flex items-center gap-2 border-t border-line-hair px-6 py-4">
-                <textarea
+                <ImageTextarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   rows={1}

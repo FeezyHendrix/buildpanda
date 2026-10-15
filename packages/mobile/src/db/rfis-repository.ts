@@ -42,6 +42,7 @@ export function toRfi(row: RfiRow): LocalRfi {
     ballInCourtName: row.ballInCourtName,
     dueDate: row.dueDate,
     officialResponse: row.officialResponse,
+    officialResponseHtml: row.officialResponseHtml ?? null,
     costImpact: row.costImpact,
     scheduleImpact: row.scheduleImpact,
     isPendingSync: row.isPendingSync,
@@ -63,6 +64,7 @@ function serverColumns(row: Rfi) {
     ballInCourtName: row.ballInCourtName,
     dueDate: row.dueDate,
     officialResponse: row.officialResponse,
+    officialResponseHtml: row.officialResponseHtml ?? null,
     costImpact: row.costImpact,
     scheduleImpact: row.scheduleImpact,
   };

@@ -35,7 +35,7 @@ function TypedField({ field, value, onChange }: { field: MissingField; value: st
     label={label(field)} value={value}
     onChangeText={field.type === "date" ? (next) => onChange(maskIsoDate(next)) : onChange}
     keyboardType={field.type === "date" ? "number-pad" : field.type === "number" ? "numeric" : "default"}
-    multiline={field.type === "long_text"}
+    multiline={field.type === "long_text"} images={field.images}
     placeholder={field.type === "date" ? "YYYY-MM-DD" : field.type === "number" ? "0" : `Add the ${field.label.toLowerCase()}`}
     helperText={field.helpText ?? (field.type === "date" ? "Year, month, day" : undefined)} error={error}
   />;

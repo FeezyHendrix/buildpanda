@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/rich-text/rich-content";
 import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -71,7 +72,7 @@ function VersionRow({
           {version.fileName} · {version.size} · {formatDate(version.createdAt)}
         </Text>
         {version.notes ? (
-          <Text tone="secondary" className="pt-1 text-xs">{version.notes}</Text>
+          <ContentText tone="secondary" className="pt-1 text-xs" value={version.notes} />
         ) : null}
       </View>
       {busy ? <Spinner size="xs" /> : <Ionicons name="open-outline" size={18} color={ICON_BRAND} />}

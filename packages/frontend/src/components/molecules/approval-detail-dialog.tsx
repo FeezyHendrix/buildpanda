@@ -1,3 +1,5 @@
+import { ContentText, RichContent } from "@/components/molecules/rich-content";
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { QueryError } from "./query-error";
 import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useState } from "react";
@@ -120,7 +122,7 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                   {approval.title}
                 </Dialog.Title>
                 {approval.description && (
-                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-muted">{approval.description}</p>
+                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-muted"><ContentText value={approval.description} /></p>
                 )}
               </header>
 
@@ -131,12 +133,12 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                 {decided && approval.response ? (
                   <div className="mt-2 rounded-lg bg-surface-alt p-3">
                     {approval.responseHtml ? (
-                      <div
+                      <RichContent
                         className="prose prose-sm max-w-none text-sm text-ink [&_img]:max-h-64 [&_img]:rounded"
-                        dangerouslySetInnerHTML={{ __html: approval.responseHtml }}
+                        html={approval.responseHtml}
                       />
                     ) : (
-                      <p className="whitespace-pre-wrap text-sm text-ink">{approval.response}</p>
+                      <p className="whitespace-pre-wrap text-sm text-ink"><ContentText value={approval.response} /></p>
                     )}
                     {approval.reviewedByName && (
                       <p className="mt-1 text-xs text-ink-muted">
@@ -194,7 +196,7 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                           <span className="text-sm font-medium text-ink">{c.authorName}</span>
                           <span className="text-xs text-ink-muted">{formatWhen(c.createdAt)}</span>
                         </div>
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">{c.body}</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted"><ContentText value={c.body} /></p>
                       </li>
                     ))}
                   </ul>
@@ -202,7 +204,7 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
               </div>
 
               <footer className="flex items-center gap-2 border-t border-line-hair px-6 py-4">
-                <textarea
+                <ImageTextarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   rows={1}

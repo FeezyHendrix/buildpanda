@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { Switcher } from "@/components/atoms/switcher";
@@ -150,7 +151,7 @@ export function RecordDeliveryDialog({
       {rejected ? (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="delivery-rejected-reason">Why was it rejected?</Label>
-          <textarea
+          <ImageTextarea
             id="delivery-rejected-reason"
             value={rejectedReason}
             onChange={(e) => setRejectedReason(e.target.value)}
@@ -162,7 +163,7 @@ export function RecordDeliveryDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="delivery-notes">Notes</Label>
-        <textarea
+        <ImageTextarea
           id="delivery-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

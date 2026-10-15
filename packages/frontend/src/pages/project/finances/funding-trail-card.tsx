@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Card } from "@/components/atoms/card";
 import { useFinanceEvents } from "@/hooks/use-finances";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
@@ -68,7 +69,7 @@ export function FundingTrailCard({
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div>
                         <p className="text-sm font-medium text-ink">
-                          {event.summary}
+                          <ContentText value={event.summary} />
                         </p>
                         <p className="mt-0.5 text-xs text-ink-muted">
                           by {event.actor.name}

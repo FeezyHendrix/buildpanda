@@ -1,3 +1,4 @@
+import { ContentText, RichContent } from "@/components/molecules/rich-content";
 import type { BuyingListLine, Estimate, PackSection, PublicCompany } from "@/api/proposals";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { formatWholeCurrency as fmt } from "@/lib/formatters";
@@ -45,9 +46,9 @@ export function ScopeSection({ sections, brief }: { sections: PackSection[]; bri
     <div>
       <SectionHeading>Scope of works</SectionHeading>
       {scope ? (
-        <div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: scope.bodyHtml }} />
+        <RichContent html={scope.bodyHtml} />
       ) : (
-        <p className="whitespace-pre-line text-sm text-gray-700">{brief}</p>
+        <p className="whitespace-pre-line text-sm text-gray-700"><ContentText value={brief} /></p>
       )}
     </div>
   );
@@ -62,7 +63,7 @@ export function ProseSections({ sections, kinds }: { sections: PackSection[]; ki
       {present.map((section) => (
         <div key={section.id}>
           <SectionHeading>{SECTION_TITLE[section.kind] ?? section.kind}</SectionHeading>
-          <div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: section.bodyHtml }} />
+          <RichContent html={section.bodyHtml} />
         </div>
       ))}
     </>
@@ -100,7 +101,7 @@ export function PriceSection({ estimate, currency }: { estimate: Estimate; curre
               {estimate.items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <p className="font-medium text-gray-800">{item.description}</p>
+                    <p className="font-medium text-gray-800"><ContentText value={item.description} /></p>
                     {!grouped && item.groupLabel ? <p className="text-xs text-gray-400">{item.groupLabel}</p> : null}
                   </TableCell>
                   {grouped ? null : <TableCell align="right" className="text-gray-600">{item.qty} {item.unit}</TableCell>}
@@ -145,7 +146,7 @@ export function StagesSection({ estimate, currency }: { estimate: Estimate; curr
                 {s.label}
                 {s.kind === "advance" ? <Badge tone="info" className="ml-2">On signing</Badge> : null}
               </p>
-              {s.description ? <p className="text-xs text-gray-400">{s.description}</p> : null}
+              {s.description ? <p className="text-xs text-gray-400"><ContentText value={s.description} /></p> : null}
             </div>
             <div className="text-right">
               <p className="font-semibold text-gray-900">{fmt((estimate.total * s.percent) / 100, currency)}</p>
@@ -178,7 +179,7 @@ export function BuyingListSection({ lines }: { lines: BuyingListLine[] }) {
             {lines.map((line, i) => (
               <TableRow key={`${line.description}-${i}`}>
                 <TableCell>
-                  <p className="text-gray-800">{line.description}</p>
+                  <p className="text-gray-800"><ContentText value={line.description} /></p>
                   {line.section ? <p className="text-xs text-gray-400">{line.section}</p> : null}
                 </TableCell>
                 <TableCell align="right" className="tabular-nums text-gray-700">

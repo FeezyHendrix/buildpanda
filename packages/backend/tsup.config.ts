@@ -30,7 +30,7 @@ export default defineConfig({
     "workbook-engine": "src/modules/panda-ai/pdf-takeoff/workbook/index.ts",
   },
   format: ["esm"],
-  noExternal: ["@buildpanda/voice-actions"],
+  noExternal: ["@buildpanda/voice-actions", "@buildpanda/rich-content"],
   // Unchanged from the previous `--dts`: declarations for the two server
   // entries. The worker is an entry point, not a module anyone imports.
   dts: { entry: { cluster: "src/cluster.ts", server: "src/server.ts" } },

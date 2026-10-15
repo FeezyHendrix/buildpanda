@@ -95,6 +95,12 @@ async function attempt<T>(path: string, init?: RequestOptions): Promise<T> {
   // Encrypted payloads where the server has them on; JSON bodies only.
   const session = await payloadSession();
   let body = init?.body;
+  if (typeof body === "string" && body.includes("local_image_")) {
+    if (!projectId || !ticket) throw new ApiError(403, "Select an authorized project before adding images.");
+    const { prepareContentImages } = await import("@/lib/content-images");
+    body = JSON.stringify(await prepareContentImages(projectId, JSON.parse(body)));
+    requireCurrentAccess(ticket);
+  }
   if (session) {
     headers[KEY_HEADER] = session.publicKey;
     if (typeof body === "string" && fitsSealLimit(body)) {

@@ -36,6 +36,9 @@ export interface ProjectParticipant {
 }
 
 export interface ProjectAccess {
+  userId?: string;
+  projectId?: string;
+  organizationId?: string | null;
   relationship: "company" | ParticipantRole | "none";
   orgRole: string | null;
   /** Effective resource permissions (org role ∪ participant overlay), e.g. { finances: ["view"] }. */

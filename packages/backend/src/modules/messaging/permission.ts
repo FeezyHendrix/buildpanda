@@ -1,9 +1,10 @@
+import type { AuthorizationRequest } from "../../lib/authorization-request.ts";
 import type { FastifyRequest } from "fastify";
 import { assertOrganizationPermission } from "../../lib/authorization.ts";
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import type { Channel } from "./types.ts";
 
-export async function requireConversationPermission(request: FastifyRequest, channel: Pick<Channel, "projectId" | "organizationId">, action: "view" | "send") {
+export async function requireConversationPermission(request: AuthorizationRequest, channel: Pick<Channel, "projectId" | "organizationId">, action: "view" | "send") {
   if (channel.projectId) {
     await request.requireProjectPermission(channel.projectId, "messages", "view");
     if (action === "send") await request.requireProjectPermission(channel.projectId, "messages", "send");

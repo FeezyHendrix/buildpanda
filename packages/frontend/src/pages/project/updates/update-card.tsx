@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/atoms/avatar";
 import { Badge, type BadgeTone } from "@/components/atoms/badge";
@@ -174,7 +175,7 @@ export function UpdateCard({
             {update.title}
           </h3>
           <p className="text-sm text-black-300">
-            {update.description}
+            <ContentText value={update.description} />
           </p>
           {!isOpen && update.action.takenBy && update.action.takenAt && (
             <p className="mt-1.5 text-xs text-gray-500">

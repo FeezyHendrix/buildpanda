@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -160,7 +161,7 @@ function UpsertTeamMemberDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="team-responsibilities">Responsibilities</Label>
-        <textarea
+        <ImageTextarea
           id="team-responsibilities"
           value={values.responsibilities}
           onChange={(e) => update("responsibilities", e.target.value)}

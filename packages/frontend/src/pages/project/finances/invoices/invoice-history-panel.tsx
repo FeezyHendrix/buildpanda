@@ -1,3 +1,4 @@
+import { ContentText } from "@/components/molecules/rich-content";
 import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 import { useInvoiceHistory, type InvoiceEventType } from "@/hooks/use-invoices";
@@ -82,7 +83,7 @@ export function InvoiceHistoryPanel({ projectId, invoiceId, currency }: InvoiceH
             </div>
             <p className="mt-1.5 text-sm text-ink">{event.actor.name}</p>
             {event.reason ? (
-              <p className="mt-1 text-sm leading-6 text-gray-700">{event.reason}</p>
+              <p className="mt-1 text-sm leading-6 text-gray-700"><ContentText value={event.reason} /></p>
             ) : null}
           </li>
         );

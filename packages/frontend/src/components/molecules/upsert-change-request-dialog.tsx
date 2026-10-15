@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
@@ -155,7 +156,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-desc">Details</Label>
-        <textarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} />
+        <ImageTextarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} />
       </div>
       <RichTextField
         label="Reason"

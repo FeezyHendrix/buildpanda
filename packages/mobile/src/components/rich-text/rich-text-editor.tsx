@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { embeddedImages } from "@buildpanda/rich-content";
 import { View } from "react-native";
 import { Text } from "@/components/atoms";
-import { appendHtmlAttachment } from "@/lib/html";
+import { useContentImageResolver } from "@/hooks/use-content-image";
+import { useContentFileOpener } from "@/hooks/use-content-file-opener";
+import type { EditorAttachment } from "./html-sync-plugin";
 import { AttachmentButtons } from "./attachment-buttons";
 import Editor from "./editor.dom";
 
@@ -29,21 +32,26 @@ export function RichTextEditor({
   compact?: boolean;
 }) {
   const [error, setError] = useState("");
+  const [attachment, setAttachment] = useState<EditorAttachment>();
+  const images = useContentImageResolver(projectId);
+  const files = useContentFileOpener(projectId);
 
   return (
     <View className="overflow-hidden rounded-xl border border-hairline bg-surface">
-      <Editor label={label} value={value} onChangeHtml={onChange} placeholder={placeholder} compact={compact} dom={{ matchContents: true }} />
-      {projectId ? (
+      <Editor label={label} value={value} onChangeHtml={onChange} placeholder={placeholder} compact={compact}
+        attachment={attachment} resolveImage={images.resolve} accessVersion={images.version} onOpenFile={files.open} dom={{ matchContents: true }} />
+      {images.projectId ? (
         <AttachmentButtons
-          projectId={projectId}
+          projectId={images.projectId}
+          imageCount={embeddedImages(value).length}
           onError={setError}
-          onUploaded={(file) => onChange(appendHtmlAttachment(value, { fileId: file.id, fileName: file.fileName, mimeType: file.mimeType }))}
+          onUploaded={(file) => setAttachment({ key: `${file.id}:${Date.now()}`, fileId: file.id, fileName: file.fileName, mimeType: file.mimeType })}
         />
       ) : null}
-      {error ? (
+      {error || files.error ? (
         <View className="border-t border-hairline bg-error-50 px-3 py-2">
           <Text tone="danger" className="text-xs">
-            {error}
+            {error || files.error}
           </Text>
         </View>
       ) : null}

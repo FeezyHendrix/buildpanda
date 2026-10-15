@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDialog } from "./form-dialog";
@@ -78,7 +79,7 @@ function MaterialApprovalDecisionDialog({
       </p>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="ma-decision-response">Response</Label>
-        <textarea
+        <ImageTextarea
           id="ma-decision-response"
           value={response}
           onChange={(e) => setResponse(e.target.value)}

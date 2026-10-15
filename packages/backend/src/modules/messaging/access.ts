@@ -5,7 +5,7 @@ import { messagingAccessRepository } from "./access-repository.ts";
 import { requireConversationPermission } from "./permission.ts";
 import { fileAccessRepository } from "../files/access-repository.ts";
 import { filesRepository } from "../files/repository.ts";
-import { requireFileRead } from "../files/access.ts";
+import { requireProjectFileReferences } from "../files/attachment-access.ts";
 export { filterConversations, requireConversationPermission } from "./permission.ts";
 
 export function registerMessagingAccess(fastify: FastifyInstance) {
@@ -43,13 +43,9 @@ export function registerMessagingAccess(fastify: FastifyInstance) {
         const referenced = await repository.findMessageById(referencedId);
         if (!referenced || referenced.channel_id !== channelId) throw new ForbiddenError("The message belongs to another conversation.");
       }
-      const attachments = body?.attachments ?? [];
-      const rows = await files.findByIds(attachments.map((file) => file.fileId));
-      if (new Set(attachments.map((file) => file.fileId)).size !== rows.length) throw new NotFoundError("Attachment");
-      for (const file of rows) {
-        if (file.project_id && file.project_id !== channel.project_id) throw new ForbiddenError("The attachment belongs to another project.");
-        await requireFileRead(request, file, fileAccess);
-      }
+    }
+    if (["POST", "PATCH", "PUT"].includes(request.method)) {
+      await requireProjectFileReferences(request, channel.project_id ?? undefined, files, fileAccess);
     }
     if (route.endsWith("/forward-to-task")) {
       if (!channel.project_id) throw new ForbiddenError();

@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useCallback, useEffect, useState } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
@@ -244,7 +245,7 @@ export function EquipmentRequestDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="eq-notes">Lifecycle notes</Label>
-        <textarea
+        <ImageTextarea
           id="eq-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

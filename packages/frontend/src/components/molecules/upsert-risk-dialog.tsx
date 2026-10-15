@@ -1,3 +1,4 @@
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useEffect, useMemo, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
@@ -201,7 +202,7 @@ function UpsertRiskDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="risk-mitigation">Mitigation / response</Label>
-        <textarea
+        <ImageTextarea
           id="risk-mitigation"
           rows={3}
           value={values.mitigation ?? ""}

@@ -1,3 +1,5 @@
+import { ContentText } from "@/components/molecules/rich-content";
+import { ImageTextarea } from "@/components/molecules/image-textarea";
 import { useState, type FormEvent } from "react";
 import { Avatar } from "@/components/atoms/avatar";
 import { Button } from "@/components/atoms/button";
@@ -50,7 +52,7 @@ function CommentPanel({
                   · {formatTimeAgo(comment.createdAt)}
                 </p>
                 <p className="mt-0.5 text-sm text-ink text-pretty">
-                  {comment.body}
+                  <ContentText value={comment.body} />
                 </p>
               </div>
             </li>
@@ -59,7 +61,7 @@ function CommentPanel({
       )}
 
       <form onSubmit={handleSubmit} className="flex items-end gap-2">
-        <textarea
+        <ImageTextarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write a comment…"
