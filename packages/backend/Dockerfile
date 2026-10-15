@@ -11,6 +11,8 @@ FROM base AS dev
 COPY packages/rich-content /rich-content
 COPY packages/voice-actions /voice-actions
 COPY packages/backend/package.json ./
+# npm links local packages without installing dependencies inside their targets.
+RUN npm install --prefix /voice-actions --omit=dev --ignore-scripts
 # RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
 RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps
 COPY packages/backend ./
@@ -21,6 +23,7 @@ FROM base AS build
 COPY packages/rich-content /rich-content
 COPY packages/voice-actions /voice-actions
 COPY packages/backend/package.json ./
+RUN npm install --prefix /voice-actions --omit=dev --ignore-scripts
 # RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
 RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps
 COPY packages/backend ./
