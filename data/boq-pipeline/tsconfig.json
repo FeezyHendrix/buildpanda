@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.shared.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "typeRoots": ["../../packages/backend/node_modules/@types"],
+    "paths": {
+      "mupdf": ["../../packages/backend/node_modules/mupdf"],
+      "xlsx": ["../../packages/backend/node_modules/xlsx"]
+    }
+  },
+  "include": ["*.ts"]
+}

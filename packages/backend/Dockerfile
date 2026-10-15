@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libfreetype6 fontconfig libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 ENV _JAVA_OPTIONS="-Djava.awt.headless=true"
+COPY tsconfig.shared.json /tsconfig.shared.json
 
 FROM base AS dev
 COPY packages/rich-content /rich-content

@@ -74,6 +74,8 @@ file; that is how a page reaches four times the limit one commit at a time.
 
 - `pnpm dev` — backend + frontend together (`dev:backend`, `dev:frontend` to split).
 - `pnpm build` / `build:backend` / `build:frontend`.
+- `pnpm typecheck` checks every workspace package, including shared libraries and build scripts.
+- `pnpm typecheck:all` also checks the BoQ prototype and video tooling. Install the independent video dependencies with `npm ci --prefix video` first.
 - `pnpm db:migrate` / `db:seed` / `db:rollback` (backend Knex).
 
 ## Cross-cutting rules
