@@ -12,10 +12,14 @@ FROM base AS dev
 COPY packages/rich-content /rich-content
 COPY packages/voice-actions /voice-actions
 COPY packages/backend/package.json ./
-# npm links local packages without installing dependencies inside their targets.
-RUN npm install --prefix /voice-actions --omit=dev --ignore-scripts
-# RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
-RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps
+# Railway builds each service in isolation. npm 10 can crash while resolving
+# `file:` workspace packages there, so install registry dependencies first and
+# then place the copied shared source at the package's normal resolution path.
+RUN node -e "const fs=require('fs');const p=require('./package.json');delete p.dependencies['@buildpanda/rich-content'];delete p.dependencies['@buildpanda/voice-actions'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
+  && npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps \
+  && mkdir -p node_modules/@buildpanda \
+  && cp -R /rich-content node_modules/@buildpanda/rich-content \
+  && cp -R /voice-actions node_modules/@buildpanda/voice-actions
 COPY packages/backend ./
 EXPOSE 3000
 CMD ["npx", "tsx", "watch", "src/server.ts"]
@@ -24,9 +28,11 @@ FROM base AS build
 COPY packages/rich-content /rich-content
 COPY packages/voice-actions /voice-actions
 COPY packages/backend/package.json ./
-RUN npm install --prefix /voice-actions --omit=dev --ignore-scripts
-# RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
-RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps
+RUN node -e "const fs=require('fs');const p=require('./package.json');delete p.dependencies['@buildpanda/rich-content'];delete p.dependencies['@buildpanda/voice-actions'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
+  && npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps \
+  && mkdir -p node_modules/@buildpanda \
+  && cp -R /rich-content node_modules/@buildpanda/rich-content \
+  && cp -R /voice-actions node_modules/@buildpanda/voice-actions
 COPY packages/backend ./
 # No entry list here: a positional argument replaces the `entry` map in
 # tsup.config.ts, which is what silently dropped the calculation worker from a
@@ -42,6 +48,7 @@ COPY --from=build /app/package.json ./
 COPY --from=build /rich-content /rich-content
 COPY --from=build /voice-actions /voice-actions
 RUN npm install --omit=dev --include=optional --os=linux --cpu=x64 --libc=glibc
+COPY --from=build /app/node_modules/@buildpanda ./node_modules/@buildpanda
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/knexfile.ts ./knexfile.ts
 COPY --from=build /app/src ./src
