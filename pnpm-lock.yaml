@@ -589,13 +589,21 @@ importers:
         specifier: ~6.0.3
         version: 6.0.3
 
-  packages/rich-content: {}
+  packages/rich-content:
+    devDependencies:
+      typescript:
+        specifier: ~5.7.0
+        version: 5.7.3
 
   packages/voice-actions:
     dependencies:
       '@buildpanda/rich-content':
         specifier: file:../rich-content
         version: link:../rich-content
+    devDependencies:
+      typescript:
+        specifier: ~5.7.0
+        version: 5.7.3
 
   packages/website:
     dependencies:
