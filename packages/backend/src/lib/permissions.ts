@@ -207,6 +207,10 @@ export const viewer = ac.newRole({
 const constructionEmployeeBase = {
   project: ["view"],
   tasks: ["view"],
+  // Tasks and daily logs are scoped to a real building. This grants the
+  // read-only scope needed to load those records on field devices; it does not
+  // expose building management.
+  buildings: ["view"],
   schedule: ["view"],
   documents: ["view"],
   updates: ["view", "post"],

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import Fastify, { type FastifyRequest } from "fastify";
 import { assertProjectPermission, canProjectPermission, type EnrichedAccessContext } from "./authorization.ts";
-import { statement } from "./permissions.ts";
+import { resolvePermissionMap, statement } from "./permissions.ts";
 import { computeAccess } from "../modules/participants/access.ts";
 import { requireConversationPermission } from "../modules/messaging/permission.ts";
 import { requireFileRead } from "../modules/files/access.ts";
@@ -48,6 +48,22 @@ test("access response agrees with API authorization for owner, viewer, employee 
   }
   assert.equal(canProjectPermission({ ...project, id: "foreign", organizationId: "elsewhere" }, participant, "materials", "approve"), false);
   assert.equal(canProjectPermission(project, context({ documents: ["manage"] }), "documents", "upload"), false);
+});
+
+test("employees can read the building scope required by their permitted field records", () => {
+  const orgPermissions = resolvePermissionMap("employee", []);
+  const employee = {
+    ...context(),
+    projectRoles: new Map(),
+    orgRoles: new Map([["workspace", "employee"]]),
+    orgPermissions: new Map([["workspace", orgPermissions]]),
+  };
+  const access = computeAccess(projectRow, requestFor(employee));
+
+  assert.equal(access.permissions.buildings?.includes("view"), true);
+  assert.equal(canProjectPermission(project, employee, "buildings", "view"), true);
+  assert.equal(canProjectPermission(project, employee, "buildings", "manage"), false);
+  assert.equal(canProjectPermission(project, employee, "tasks", "viewAll"), false);
 });
 
 test("direct message reads require workspace view; sends also require send, independent of project grants", async () => {

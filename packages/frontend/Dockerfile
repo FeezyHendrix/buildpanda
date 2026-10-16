@@ -1,12 +1,21 @@
 # Build from the repository root: docker build -f packages/frontend/Dockerfile .
 FROM node:22-alpine AS base
 WORKDIR /app
+# npm 10's Arborist can crash with `edgesOut` while resolving this dependency
+# graph on Railway's isolated builders. npm 11 supports Node 22 and fixes it.
+RUN npm install -g npm@11.19.0
 COPY tsconfig.shared.json /tsconfig.shared.json
 
 FROM base AS dev
 COPY packages/rich-content /rich-content
 COPY packages/frontend/package.json ./
-RUN npm install
+# Railway builds each service in isolation. npm 10 can crash while resolving
+# `file:` workspace packages there, so install registry dependencies first and
+# then place the copied shared source at the package's normal resolution path.
+RUN node -e "const fs=require('fs');const p=require('./package.json');delete p.dependencies['@buildpanda/rich-content'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
+  && npm install \
+  && mkdir -p node_modules/@buildpanda \
+  && cp -R /rich-content node_modules/@buildpanda/rich-content
 COPY packages/frontend ./
 EXPOSE 5173
 CMD ["npx", "vite", "--host", "0.0.0.0"]
@@ -17,7 +26,10 @@ ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY packages/rich-content /rich-content
 COPY packages/frontend/package.json ./
-RUN npm install
+RUN node -e "const fs=require('fs');const p=require('./package.json');delete p.dependencies['@buildpanda/rich-content'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
+  && npm install \
+  && mkdir -p node_modules/@buildpanda \
+  && cp -R /rich-content node_modules/@buildpanda/rich-content
 COPY packages/frontend ./
 RUN npm run build
 
