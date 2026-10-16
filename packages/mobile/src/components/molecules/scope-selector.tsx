@@ -14,7 +14,6 @@ interface ScopeSelectorProps {
 
 /** The project switcher uses the same neutral surface as the v2 workspace. */
 export const ScopeSelector = memo(function ScopeSelector({
-  workspaceName,
   projectName,
   projectPending = false,
   onPressProject,
@@ -37,15 +36,7 @@ export const ScopeSelector = memo(function ScopeSelector({
       >
         <Ionicons name="business-outline" size={16} color={ICON_BRAND} />
         <View className={compact ? "min-w-0 shrink" : "min-w-0 flex-1"}>
-          {workspaceName && !compact ? (
-            <Text
-              tone="default"
-              className="text-xs "
-              numberOfLines={1}
-            >
-              {workspaceName}
-            </Text>
-          ) : null}
+          {!compact ? <Text tone="secondary" className="text-xs">Current project</Text> : null}
           {projectPending && !projectName ? (
             <View className="items-start py-0.5">
               <Spinner size="xs" tone="brand" />
@@ -56,7 +47,12 @@ export const ScopeSelector = memo(function ScopeSelector({
             </Text>
           )}
         </View>
-        {onPressProject ? <Ionicons name="chevron-down" size={16} color={ICON_BRAND} /> : null}
+        {onPressProject ? (
+          <View className="flex-row items-center gap-0.5">
+            {!compact ? <Text weight="semibold" tone="brand" className="text-xs">Switch</Text> : null}
+            <Ionicons name="chevron-down" size={16} color={ICON_BRAND} />
+          </View>
+        ) : null}
       </Pressable>
 
     </View>

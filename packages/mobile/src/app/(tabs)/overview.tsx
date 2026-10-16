@@ -1,7 +1,7 @@
 import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { View, useWindowDimensions } from "react-native";
 import { Spinner } from "@/components/atoms";
 import { DailyLogCard, MaterialLogCard, SyncNote, TasksCard } from "@/components/home/field-cards";
 import { ExpensesCard, ScheduleCard, UpdatesCard } from "@/components/home/project-cards";
@@ -17,12 +17,15 @@ import { useProjectBuilding } from "@/hooks/use-project-building";
 import { useProject } from "@/hooks/use-projects";
 import { useFieldSession } from "@/lib/field-session";
 import type { HomeToolKey } from "@/lib/home-tools";
+import { TabletMinWidth } from "@/constants/theme";
 
 // Home is the app's first screen: the tools this person uses most, what needs
 // them today, then a card per tool in the order they use them. Everything is
 // read from the phone, so it opens fully with no signal.
 
 function Dashboard({ db, projectId, buildingId }: { db: Db; projectId: string; buildingId: string | undefined }) {
+  const { width } = useWindowDimensions();
+  const twoColumns = width >= TabletMinWidth;
   const { tools, isPending } = useHomeToolOrder(db);
   // tasks and the daily log belong to a building; until one is chosen they sit out
   const summary = useHomeSummary(db, projectId, buildingId ?? "");
@@ -50,11 +53,18 @@ function Dashboard({ db, projectId, buildingId }: { db: Db; projectId: string; b
   };
 
   return (
-    <View className="gap-4">
+    <View className="w-full self-center gap-6 pb-2" style={{ maxWidth: 1100 }}>
       <SyncNote failed={summary.failed} />
-      <QuickToolsBar tools={tools} />
-      <StatCards stats={visibleStats} />
-      {keys.flatMap((key) => cards[key] ?? [])}
+      <View className="gap-4">
+        <QuickToolsBar tools={tools} />
+        <StatCards stats={visibleStats} />
+      </View>
+      <View className={twoColumns ? "flex-row flex-wrap gap-4" : "gap-4"}>
+        {keys.map((key) => {
+          const card = cards[key];
+          return card ? <View key={key} style={twoColumns ? { flexBasis: "48%" } : undefined}>{card}</View> : null;
+        })}
+      </View>
     </View>
   );
 }
