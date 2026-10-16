@@ -65,9 +65,10 @@ function MediaPreview({
 }
 
 export function MediaGallery({ media }: { media: readonly GalleryMedia[] }) {
+  const { allows } = useProjectAccess();
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
-  if (!media.length) return null;
+  if (!allows(features.updates.read) || !media.length) return null;
   const position = Math.min(index, media.length - 1);
   if (media.length === 1) return <MediaPreview media={media[0]!} position={0} total={1} />;
 
