@@ -57,7 +57,7 @@ function MediaPreview({
     <Pressable className="flex-1" accessibilityRole="button" accessibilityLabel={`Open ${name}`} onPress={() => setExpanded(true)}>
       <Image source={{ uri }} contentFit="cover" accessibilityLabel={name} style={{ height: "100%", width: "100%" }} />
     </Pressable>
-    {total > 1 ? <View pointerEvents="none" className="absolute right-3 top-3 rounded-full bg-black/70 px-2.5 py-1">
+    {total > 1 ? <View pointerEvents="none" className="absolute right-3 top-3 rounded-full bg-black-500/70 px-2.5 py-1">
       <Text tone="inverse" weight="semibold" className="text-xs">{position + 1} / {total}</Text>
     </View> : null}
     <ImageModal url={uri} name={name} visible={expanded} onClose={() => setExpanded(false)} />
