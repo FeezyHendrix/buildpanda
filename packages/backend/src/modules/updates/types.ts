@@ -129,11 +129,6 @@ export interface DigestProjectRow {
   organization_id: string | null;
 }
 
-export interface DigestOrgAdminRow {
-  organizationId: string;
-  userId: string;
-}
-
 export interface DigestSection {
   heading: string;
   items: string[];
