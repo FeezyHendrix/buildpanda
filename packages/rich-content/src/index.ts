@@ -51,7 +51,10 @@ export function removeImage(value: string, fileId: string): string {
   return value.replace(imagePattern(), (match, _name: string, id: string) => id === fileId ? '' : match).trimEnd();
 }
 export function textWithoutImages(value: string): string {
-  return value.replace(imagePattern(), '').trimEnd();
+  // Strips each reference with the blank-line separator appendImage put before
+  // it — never the user's own trailing whitespace. This feeds controlled
+  // inputs on every keystroke, so a trimEnd here eats the space being typed.
+  return value.replace(/\n{0,2}!\[(?:[^\]\r\n]*)\]\(\/files\/[a-zA-Z0-9_-]{1,160}\/download\)/g, '');
 }
 export function textWithImages(text: string, previous: string): string {
   return contentParts(previous).reduce((result, part) => part.type === 'image' ? appendImage(result, part.image) : result, text);
