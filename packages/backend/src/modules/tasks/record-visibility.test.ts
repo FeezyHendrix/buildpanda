@@ -18,9 +18,12 @@ test("HTTP tasks and expenses use explicit full-visibility grants, including ove
   try {
     for (const requested of ["all", "assigned", "mine"]) {
       const board = await get(`${taskPath}/board?scope=${requested}&buildingId=scope-building-site`);
-      assert.deepEqual(new Set(board.tasks.map((row: { id: string }) => row.id)), new Set(["scope-task-created", "scope-task-assigned"]));
+      assert.deepEqual(new Set(board.tasks.map((row: { id: string }) => row.id)), new Set(["scope-task-created", "scope-task-assigned", "scope-task-roster"]));
       assert.equal(board.scope, "mine");
+      assert.ok(board.tasks.every((row: { mine?: boolean }) => row.mine === true), "scoped boards mark every task mine");
     }
+    assert.equal((await get(`${taskPath}/scope-task-roster`)).title, "roster", "a roster assignment matched by verified email is the caller's task");
+    assert.equal((await f.app.inject(`${taskPath}/scope-task-roster-other`)).statusCode, 403, "someone else's roster assignment stays hidden");
     assert.equal(f.access().capabilities.canSeeFullTaskBoard, false, "remove does not grant full visibility");
     assert.equal(f.access().capabilities.canSeeAllExpenses, false, "manage does not grant full visibility");
     assert.equal((await get(`${taskPath}/scope-task-created`)).title, "created");
@@ -50,24 +53,24 @@ test("HTTP tasks and expenses use explicit full-visibility grants, including ove
     }
     assert.equal((await get(`${expensePath}/analytics`)).totalAmount, 0);
     f.asParticipant(ownGrants, "project_manager");
-    assert.equal((await get(`${taskPath}/board`)).tasks.length, 2, "a role label does not override saved grants");
+    assert.equal((await get(`${taskPath}/board`)).tasks.length, 3, "a role label does not override saved grants");
     f.asParticipant({}, "project_manager");
     assert.equal((await f.app.inject(`${taskPath}/board`)).statusCode, 403);
     assert.equal((await f.app.inject(expensePath)).statusCode, 403);
     for (const role of ["owner", "admin"]) {
       f.asOrganization(role);
-      assert.equal((await get(`${taskPath}/board`)).tasks.length, 3, role);
+      assert.equal((await get(`${taskPath}/board`)).tasks.length, 5, role);
       assert.equal((await get(expensePath)).length, 2, role);
     }
     f.asParticipant(PARTICIPANT_PERMISSIONS.project_manager!, "project_manager");
-    assert.equal((await get(`${taskPath}/board`)).tasks.length, 3);
+    assert.equal((await get(`${taskPath}/board`)).tasks.length, 5);
     assert.equal((await get(expensePath)).length, 2);
     f.asParticipant({ ...ownGrants, tasks: ["view", "viewAll"], finances: ["viewCosts", "viewAllExpenses"] }, "guest");
-    assert.equal((await get(`${taskPath}/board`)).tasks.length, 3);
+    assert.equal((await get(`${taskPath}/board`)).tasks.length, 5);
     assert.equal((await get(expensePath)).length, 2);
     assert.equal((await f.app.inject("/projects/scope-foreign/tasks/board")).statusCode, 403);
     f.asParticipant({}, "guest", "scope-owner");
-    assert.equal((await get(`${taskPath}/board`)).tasks.length, 3, "personal project owner");
+    assert.equal((await get(`${taskPath}/board`)).tasks.length, 5, "personal project owner");
     assert.equal((await get(expensePath)).length, 2);
     f.asParticipant();
     assert.equal((await get(expensePath)).length, 1, "revoking view-all immediately narrows reads");
@@ -83,7 +86,7 @@ test("files, voice targets and Panda AI reads share task and expense row visibil
     for (const id of ["scope-task-file-hidden", "scope-expense-file-hidden", "scope-expense-file-receipt"]) await assert.rejects(f.readFile(id), /permission|access|read|allowed/i);
     const context = f.toolContext();
     const voice = await voiceContextRepository(f.db).options(f.project.id, { userId: context.caller.user.id, organizationId: "scope-org", can: (resource, action) => canRead(context, resource, action), workspaceCan: () => false, capabilities: f.access().capabilities });
-    assert.deepEqual(new Set(voice.tasks!.map((row) => row.value)), new Set(["scope-task-created", "scope-task-assigned"]));
+    assert.deepEqual(new Set(voice.tasks!.map((row) => row.value)), new Set(["scope-task-created", "scope-task-assigned", "scope-task-roster"]));
     const tools = toolsForCaller(buildTools(), context);
     const call = async (name: string) => {
       const entry = tools.find((t) => t.spec.function.name === name); assert(entry, name); return (await entry.run(context, {})).output;
@@ -103,7 +106,7 @@ test("files, voice targets and Panda AI reads share task and expense row visibil
     f.asParticipant({ ...ownGrants, tasks: ["view", "viewAll"], finances: ["viewCosts", "viewAllExpenses"] });
     for (const id of ["scope-task-file-hidden", "scope-expense-file-hidden", "scope-expense-file-receipt"]) await f.readFile(id);
     const full = agentRepository(f.db, agentRecordScope(f.toolContext()));
-    assert.equal((await full.tasks(f.project.id)).length, 3);
+    assert.equal((await full.tasks(f.project.id)).length, 5);
     assert.equal(await full.transactionTotal(f.project.id), 300);
     f.asParticipant({});
     for (const id of ["scope-task-file-created", "scope-expense-file-created"]) await assert.rejects(f.readFile(id));

@@ -36,6 +36,8 @@ export interface Task {
   subtaskTotal: number;
   subtaskDone: number;
   entityLinkTypes: TaskEntityType[];
+  /** Server-computed "created by or assigned to the caller" — clients must not re-derive it. */
+  mine?: boolean;
   createdAt: string;
   updatedAt: string;
 }
