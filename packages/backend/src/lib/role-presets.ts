@@ -276,6 +276,8 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     tasks: ["view", "add", "remove"],
     schedule: ["view"],
     stages: ["view"],
+    // Field records are keyed by building; without discovery the task board
+    // and daily log cannot even open on a device.
     buildings: ["view"],
     dailyLog: ["view", "create", "report"],
     materials: ["view", "report", "request"],
