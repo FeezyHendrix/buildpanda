@@ -31,6 +31,8 @@ export interface Task {
   subtaskDone: number;
   createdById: string | null;
   createdByName: string | null;
+  /** Server-computed "created by or assigned to the caller", roster entries included. */
+  mine?: boolean;
 }
 
 export interface TaskBoard {
