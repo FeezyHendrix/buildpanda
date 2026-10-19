@@ -184,7 +184,7 @@ export function DailyLogPage({ creating = false }: { creating?: boolean }) {
   const params = useLocalSearchParams<{ date?: string }>();
   const date = params.date ?? localIsoDate();
   const { projectId } = useFieldSession();
-  const { buildingId, isLoading: buildingsLoading, refetch: reloadBuildings } = useProjectBuilding();
+  const { buildingId, isLoading: buildingsLoading, accessDenied: buildingsDenied, refetch: reloadBuildings } = useProjectBuilding();
   const { db, ready } = useLocalDb();
 
   const validDate = isIsoDate(date) && date <= localIsoDate();
@@ -199,7 +199,7 @@ export function DailyLogPage({ creating = false }: { creating?: boolean }) {
           <Spinner size="md" />
         </View>
       ) : (
-        <BuildingUnavailable onReload={() => void reloadBuildings()} />
+        <BuildingUnavailable denied={buildingsDenied} onReload={() => void reloadBuildings()} />
       )}
     </Page>
   );

@@ -89,7 +89,7 @@ function TaskList({ db, projectId, buildingId, full, tab }: { db: Db; projectId:
 
 function Tasks() {
   const { projectId } = useFieldSession();
-  const { buildingId, isLoading: buildingsLoading, refetch: reloadBuildings } = useProjectBuilding();
+  const { buildingId, isLoading: buildingsLoading, accessDenied: buildingsDenied, refetch: reloadBuildings } = useProjectBuilding();
   const { db, ready } = useLocalDb();
   const { can } = useProjectAccess();
   const full = can("tasks", "viewAll");
@@ -109,7 +109,7 @@ function Tasks() {
         ) : !ready || buildingsLoading ? (
           <View className="items-center py-12"><Spinner size="md" /></View>
         ) : (
-          <BuildingUnavailable onReload={() => void reloadBuildings()} />
+          <BuildingUnavailable denied={buildingsDenied} onReload={() => void reloadBuildings()} />
         )}
       </View>
     </Page>
