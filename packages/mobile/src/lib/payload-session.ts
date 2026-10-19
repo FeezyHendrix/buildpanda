@@ -13,17 +13,25 @@ let pending: Promise<PayloadSession | null> | null = null;
  * next request instead of leaving the session in plain text.
  */
 export function payloadSession(): Promise<PayloadSession | null> {
-  pending ??= fetch(`${API_BASE_URL}/crypto/payload-key`)
-    .then(async (response) => {
-      if (response.status === 404) return null;
-      if (!response.ok) throw new Error(`payload key ${response.status}`);
-      const { publicKey } = (await response.json()) as { publicKey: string };
-      return createSession(publicKey, randomBytes);
-    })
-    .catch(() => {
-      pending = null;
-      return null;
-    });
+  if (!pending) {
+    // Bounded lookup: request() awaits this BEFORE arming its own timeout, so
+    // a stalled connection here used to hang every API call — and every
+    // loading spinner — in the app at once.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    pending = fetch(`${API_BASE_URL}/crypto/payload-key`, { signal: controller.signal })
+      .finally(() => clearTimeout(timeout))
+      .then(async (response) => {
+        if (response.status === 404) return null;
+        if (!response.ok) throw new Error(`payload key ${response.status}`);
+        const { publicKey } = (await response.json()) as { publicKey: string };
+        return createSession(publicKey, randomBytes);
+      })
+      .catch(() => {
+        pending = null;
+        return null;
+      });
+  }
   return pending;
 }
 
