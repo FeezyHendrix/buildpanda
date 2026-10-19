@@ -40,7 +40,11 @@ function serverValues(projectId: string, buildingId: string, task: Task, selfId:
     dueDate: task.dueDate,
     priority: task.priority,
     assignees: JSON.stringify(task.assignees ?? []),
-    assignedToMe: Boolean(selfId && task.assignees?.some((a) => a.kind === "user" && a.id === selfId)),
+    // The server's verdict covers roster-entry assignments the client cannot
+    // match by id; the local comparison remains only for older servers.
+    assignedToMe: typeof task.mine === "boolean"
+      ? task.mine
+      : Boolean(selfId && task.assignees?.some((a) => a.kind === "user" && a.id === selfId)),
     position: task.position,
     subtaskTotal: task.subtaskTotal ?? 0,
     subtaskDone: task.subtaskDone ?? 0,
