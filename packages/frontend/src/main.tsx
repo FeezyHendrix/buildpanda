@@ -1,3 +1,5 @@
+// Must stay first: Sentry has to initialize before any app code can throw.
+import { sentryRootOptions } from "@/instrument";
 import { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -24,7 +26,7 @@ if (import.meta.env.PROD && "serviceWorker" in navigator && !didRegisterSw) {
 // Keep forms visible above the on-screen keyboard on phones.
 installKeyboardInset();
 
-createRoot(document.getElementById("root")!).render(
+createRoot(document.getElementById("root")!, sentryRootOptions).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RealtimeProvider>
