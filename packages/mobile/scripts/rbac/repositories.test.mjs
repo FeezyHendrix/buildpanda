@@ -129,3 +129,28 @@ test('internal RFIs and proposed responses stay quarantined after company access
     assert.equal(db.select().from(outbox).all().length, 1, 'Authored work is retained');
   } finally { raw.close(); }
 });
+
+// The daily-logs repository cannot be imported here: it pulls a runtime helper
+// from @/api/daily-logs, which reaches react-native and expo-modules-core, and
+// Node refuses to strip types under node_modules. So the void policy its guard
+// resolves is asserted directly, on the same real database and grants.
+test('the daily log void policy needs the void grant, keeps project scope, and stops on revocation', async () => {
+  const { db, raw } = database();
+  try {
+    const { repositoryAccess } = await import('../../src/db/permissions.ts');
+    const access = repositoryAccess(features.dailyLog);
+
+    authorize({ dailyLog: ['view', 'create'] });
+    assert.ok(access.require(db, 'site', 'create'), 'creating a note is granted');
+    assert.throws(() => access.require(db, 'site', 'void'), /permission/i, 'create alone cannot void');
+    assert.throws(() => access.transaction(db, 'site', 'void', () => 'written'), /permission/i);
+
+    authorize({ dailyLog: ['view', 'void'] });
+    assert.ok(access.require(db, 'site', 'void'));
+    assert.equal(access.transaction(db, 'site', 'void', () => 'written'), 'written');
+    assert.throws(() => access.require(db, 'other', 'void'), /permission/i, 'another project stays out of scope');
+
+    projectAccess.invalidate('denied');
+    assert.throws(() => access.require(db, 'site', 'void'), /permission/i);
+  } finally { raw.close(); }
+});

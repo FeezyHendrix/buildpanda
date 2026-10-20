@@ -192,6 +192,24 @@ export const dailyLogsRepository = {
   },
 
   /**
+   * Records that the server accepted a void for a note it already holds.
+   *
+   * Voiding, not deleting, is how an uploaded note is corrected: the day keeps
+   * the record with its reason and history. Transport belongs to the caller, so
+   * this writes only the outcome and never decides it.
+   */
+  async markEntryVoidedLocal(db: Db, projectId: string, entryId: string): Promise<void> {
+    access.require(db, projectId, "void");
+    await access.transaction(db, projectId, "void", (tx) => {
+      tx
+        .update(dailyLogEntries)
+        .set({ voided: true })
+        .where(access.where(db, dailyLogEntries.projectId, eq(dailyLogEntries.id, entryId)))
+        .run();
+    });
+  },
+
+  /**
    * Upserts the day locally and queues one push per day.
    *
    * The outbox is keyed on the day, so editing the same log five times offline
