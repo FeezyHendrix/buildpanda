@@ -18,11 +18,21 @@ function extensionOf(fileName: string): string {
 }
 
 /** Copies a recording somewhere durable and returns the path to push from later. */
-export function stageMedia(sourceUri: string, id: string, fileName: string): string {
+export async function stageMedia(sourceUri: string, id: string, fileName: string): Promise<string> {
   const destination = new File(stageDir(), `${id}${extensionOf(fileName)}`);
   if (destination.exists) destination.delete();
   new File(sourceUri).copy(destination);
   return destination.uri;
+}
+
+/** Whether a staged copy is still present to push from. */
+export async function stagedMediaExists(uri: string): Promise<boolean> {
+  return new File(uri).exists;
+}
+
+/** The uri the uploader should read — on native, the staged file itself. */
+export async function loadStagedUploadUri(uri: string): Promise<string> {
+  return uri;
 }
 
 /** Drops a staged file once its upload has landed, or when its record is dropped. */
