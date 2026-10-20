@@ -63,9 +63,25 @@ async function handleNavigation(request) {
     return response;
   } catch {
     const cached = await cache.match("/");
-    if (cached) return cached;
+    if (cached) return isolated(cached);
     throw new Error("offline and no cached shell");
   }
+}
+
+/**
+ * A replayed shell must assert isolation on its own merits.
+ *
+ * The local database needs SharedArrayBuffer, which only exists on a
+ * cross-origin-isolated page. Relying on the cached response having captured
+ * the server's headers makes isolation a matter of luck on the first
+ * uncontrolled load — and a page that loses it fails later with the opaque
+ * "Invalid VFS state" rather than anything a crew could act on.
+ */
+function isolated(response) {
+  const headers = new Headers(response.headers);
+  headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
 async function cacheFirst(request) {
