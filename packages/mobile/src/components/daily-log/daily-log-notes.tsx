@@ -42,6 +42,11 @@ export function DailyLogNotes({ db, projectId, buildingId, logDate, editable, en
   const [voidReason, setVoidReason] = useState("");
   const [voidBusy, setVoidBusy] = useState(false);
 
+  // An author may void their own note without the project-wide grant, matching
+  // the server, so their controls carry no requirement for the adapter to hide.
+  const voidPermission = (entry: { authorId: string | null }) =>
+    entry.authorId && entry.authorId === session?.user?.id ? undefined : features.dailyLog.actions.void;
+
   async function confirmVoid(entryId: string) {
     setVoidBusy(true);
     setError("");
@@ -100,7 +105,7 @@ export function DailyLogNotes({ db, projectId, buildingId, logDate, editable, en
             {editable && !entry.isPendingSync && !entry.voided ? (
               <Button
                 variant="secondary"
-                permission={features.dailyLog.actions.void}
+                permission={voidPermission(entry)}
                 onPress={() => {
                   setVoidingId(entry.id);
                   setVoidReason("");
@@ -126,7 +131,7 @@ export function DailyLogNotes({ db, projectId, buildingId, logDate, editable, en
               />
               <View className="flex-row gap-2">
                 <Button
-                  permission={features.dailyLog.actions.void}
+                  permission={voidPermission(entry)}
                   loading={voidBusy}
                   disabled={!voidReason.trim()}
                   onPress={() => void confirmVoid(entry.id)}
