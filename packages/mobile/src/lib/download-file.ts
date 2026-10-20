@@ -125,6 +125,14 @@ export async function cacheDocument(db: Db, projectId: string, documentId: strin
   if (!row || row.projectId !== projectId) return null;
   if (!row.currentVersionId) throw new Error("No file is attached to this record yet.");
   if (expectedVersionId && expectedVersionId !== row.currentVersionId) throw new Error("This plan revision has changed. Reopen its current revision.");
+  if (Platform.OS === "web") {
+    // The browser tab is the viewer on web: there is no native file cache, and
+    // the session cookie authorizes the download request itself. The access
+    // ticket above still gates the attempt client-side.
+    requireCurrentAccess(ticket);
+    window.open(documentsApi.versionDownloadUrl(projectId, documentId, row.currentVersionId), "_blank", "noopener");
+    return null;
+  }
   if (row.localUri) {
     try {
       requireCachedFile(row.localUri);
