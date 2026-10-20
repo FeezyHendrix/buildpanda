@@ -2,13 +2,13 @@ import { hasRichContent } from "@buildpanda/rich-content";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
-import { Button, Card, PendingBadge, Text } from "@/components/atoms";
+import { Button, Card, Field, PendingBadge, Text } from "@/components/atoms";
 import { RichContent } from "@/components/rich-text/rich-content";
 import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import type { Db } from "@/db/client";
 import { defaultTemplate } from "@/db/daily-log-templates-repository";
 import { useDailyLogTemplates } from "@/hooks/use-daily-log-templates";
-import { useAddDailyLogEntry, useRemoveDailyLogEntry, type useDailyLogDay } from "@/hooks/use-daily-logs";
+import { useAddDailyLogEntry, useRemoveDailyLogEntry, useVoidDailyLogEntry, type useDailyLogDay } from "@/hooks/use-daily-logs";
 import { useSession } from "@/lib/auth-client";
 import { formatDateTime } from "@/lib/dates";
 import { features } from "@/lib/feature-access";
@@ -36,6 +36,23 @@ export function DailyLogNotes({ db, projectId, buildingId, logDate, editable, en
   const [error, setError] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [showHours, setShowHours] = useState(false);
+
+  const voidEntry = useVoidDailyLogEntry(db, projectId);
+  const [voidingId, setVoidingId] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voidBusy, setVoidBusy] = useState(false);
+
+  async function confirmVoid(entryId: string) {
+    setVoidBusy(true);
+    setError("");
+    try {
+      await voidEntry(logDate, entryId, voidReason);
+      setVoidingId(null);
+      setVoidReason("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not void this note.");
+    } finally { setVoidBusy(false); }
+  }
 
   async function removeNote(entryId: string) {
     setRemovingId(entryId);
@@ -80,9 +97,46 @@ export function DailyLogNotes({ db, projectId, buildingId, logDate, editable, en
                 </Text>
               </Pressable>
             ) : null}
+            {editable && !entry.isPendingSync && !entry.voided ? (
+              <Button
+                variant="secondary"
+                permission={features.dailyLog.actions.void}
+                onPress={() => {
+                  setVoidingId(entry.id);
+                  setVoidReason("");
+                }}
+              >
+                Void
+              </Button>
+            ) : null}
           </View>
           <Text tone="secondary" className="text-xs">{formatDateTime(new Date(entry.createdAt).toISOString())}{entry.voided ? " · Voided" : ""}</Text>
           <View style={{ opacity: entry.voided ? 0.5 : 1 }}><RichContent html={entry.bodyHtml} text={entry.bodyText} /></View>
+          {voidingId === entry.id ? (
+            <View className="gap-2 rounded-xl bg-canvas-alt px-3 py-3">
+              <Text tone="secondary" className="text-xs">
+                Voiding keeps this note on the day and marks it invalid. A reason is required.
+              </Text>
+              <Field
+                label="Reason for voiding"
+                value={voidReason}
+                onChangeText={setVoidReason}
+                placeholder="Why is this note being voided?"
+                multiline
+              />
+              <View className="flex-row gap-2">
+                <Button
+                  permission={features.dailyLog.actions.void}
+                  loading={voidBusy}
+                  disabled={!voidReason.trim()}
+                  onPress={() => void confirmVoid(entry.id)}
+                >
+                  Void note
+                </Button>
+                <Button variant="secondary" onPress={() => setVoidingId(null)}>Cancel</Button>
+              </View>
+            </View>
+          ) : null}
         </View>)}</Card>
       )}
       {editable && form ? <Button variant="secondary" permission={features.dailyLog.actions.create}
