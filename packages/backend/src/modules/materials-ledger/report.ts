@@ -5,6 +5,7 @@ import { makeReportImageResolver } from "../../lib/report-image-resolver.ts";
 import { renderEmail, metaTable, infoRow } from "../../lib/email-templates.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { config } from "../../config/index.ts";
+import { formatReportTimestamp } from "../../lib/report-dates.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import type { FilesService } from "../files/service.ts";
 import type { MaterialsLedgerService } from "./service.ts";
@@ -24,19 +25,6 @@ function formatLongDate(iso: string): string {
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function formatTimestamp(iso: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
     timeZone: "UTC",
   });
 }
@@ -77,7 +65,7 @@ export function materialReportService(db: Knex, deps: MaterialReportDeps) {
       projectName: project.name,
       projectAddress: project.address,
       reportDateLabel: formatLongDate(now),
-      generatedAtLabel: formatTimestamp(now),
+      generatedAtLabel: formatReportTimestamp(now),
       stock: stock.map((s) => ({
         material: s.materialName,
         unit: s.unit,
@@ -89,7 +77,7 @@ export function materialReportService(db: Knex, deps: MaterialReportDeps) {
         material: e.materialName,
         quantity: String(e.quantity),
         unit: e.unit,
-        occurredAt: formatTimestamp(e.occurredAt),
+        occurredAt: formatReportTimestamp(e.occurredAt),
         loggedBy: e.loggedByName,
         reason: e.reason,
         notesHtml: e.notesHtml,
