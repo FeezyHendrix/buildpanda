@@ -12,6 +12,7 @@ export {
 export interface DailyLogEntry {
   buildingId?: string | null;
   id: string;
+  authorId: string | null;
   authorName: string;
   bodyHtml: string | null;
   bodyText: string | null;

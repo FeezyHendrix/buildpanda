@@ -117,6 +117,7 @@ async function pushDailyLogEntry(db: Db, item: OutboxRow): Promise<OutboxHandler
       id: server.id,
       projectId: item.projectId,
       logDate: entry.logDate,
+      authorId: server.authorId ?? null,
       authorName: server.authorName,
       bodyText: server.bodyText ?? entry.bodyText,
       bodyHtml: server.bodyHtml ?? entry.bodyHtml,

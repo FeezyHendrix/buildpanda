@@ -63,6 +63,9 @@ export const dailyLogEntries = sqliteTable(
     // refuses a daily-log write without one on a multi-building project.
     buildingId: text("building_id"),
     logDate: text("log_date").notNull(),
+    // Who wrote it, so the author can void their own note without holding the
+    // project-wide void grant, as the server already allows.
+    authorId: text("author_id"),
     authorName: text("author_name").notNull().default(""),
     bodyText: text("body_text").notNull().default(""),
     bodyHtml: text("body_html"),
