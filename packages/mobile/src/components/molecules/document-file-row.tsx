@@ -50,9 +50,12 @@ export function DocumentFileRow({
     } finally {
       setBusy(false);
     }
-    // On web the file just opened in its own browser tab; there is no native
-    // viewer to push.
-    if (Platform.OS === "web") return;
+    if (Platform.OS === "web") {
+      // Reviewable files were cached for the annotation canvas; anything else
+      // already opened in its own browser tab inside onOpen.
+      if (isReviewableFile(doc.fileName)) router.push(`/tools/plan-review?documentId=${doc.id}` as never);
+      return;
+    }
     router.push(
       (isReviewableFile(doc.fileName)
         ? `/tools/plan-review?documentId=${doc.id}`

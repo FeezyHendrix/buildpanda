@@ -14,6 +14,6 @@ registerHooks({ resolve(specifier, context, next) {
   if (specifier === 'react-native') return code('export const Platform={OS:"ios"};');
   if (specifier === '@react-native-community/netinfo') return code('export default {fetch:async()=>({isConnected:true,isInternetReachable:true})};');
   if (specifier === 'expo-file-system') return { url: new URL('./filesystem.mjs', import.meta.url).href, shortCircuit: true };
-  if (specifier === 'expo-file-system/legacy') return code('export const FileSystemUploadType={MULTIPART:1}; export const uploadAsync=async()=>({status:201,body:JSON.stringify({id:"file-uploaded"})});');
+  if (specifier === 'expo-file-system/legacy') return code('export const FileSystemUploadType={MULTIPART:1}; export const uploadAsync=async()=>({status:201,body:JSON.stringify({id:"file-uploaded"})}); export const EncodingType={Base64:"base64",UTF8:"utf8"}; export const readAsStringAsync=async()=>{throw new Error("file reads are not part of voice fixtures")};');
   return next(specifier, context);
 } });
