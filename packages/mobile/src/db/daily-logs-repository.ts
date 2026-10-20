@@ -6,6 +6,7 @@ import { isWeatherCondition, type DailyLogDay, type UpsertDailyLogInput } from "
 import type { Db } from "./client";
 import { localIsoDate } from "@/lib/dates";
 import { reviveOrQueue } from "./enqueue-update";
+import { isOutboxItemSending } from "./sync-write-state";
 import {
   dailyLogActivities,
   dailyLogEntries,
@@ -159,6 +160,36 @@ export const dailyLogsRepository = {
       .from(dailyLogEntries)
       .where(access.where(db, dailyLogEntries.projectId, eq(dailyLogEntries.projectId, projectId), eq(dailyLogEntries.logDate, logDate), eq(dailyLogEntries.buildingId, buildingId)))
       .orderBy(asc(dailyLogEntries.createdAt)),
+
+  /**
+   * Drops a note the author has not uploaded yet, with its queued push.
+   *
+   * Only an unsent note can go: once the server holds it, removing the local
+   * row would hide a record the project still has. A note whose push is
+   * already in flight is refused rather than half-deleted — the upload would
+   * land with nothing left on the device to reconcile against.
+   */
+  async removeEntryLocal(db: Db, projectId: string, entryId: string): Promise<void> {
+    access.require(db, projectId, "create");
+    const [row] = await db
+      .select()
+      .from(dailyLogEntries)
+      .where(access.where(db, dailyLogEntries.projectId, eq(dailyLogEntries.id, entryId)))
+      .limit(1);
+    if (!row) return;
+    if (!row.isPendingSync) throw new Error("This note is already uploaded, so it can't be removed here.");
+    const queued = await db
+      .select()
+      .from(outbox)
+      .where(and(eq(outbox.resource, "daily-log-entries"), eq(outbox.entityId, entryId)));
+    if (queued.some((item) => isOutboxItemSending(item.id))) {
+      throw new Error("This note is uploading right now. Try removing it once the sync finishes.");
+    }
+    await access.transaction(db, projectId, "create", (tx) => {
+      tx.delete(dailyLogEntries).where(access.where(db, dailyLogEntries.projectId, eq(dailyLogEntries.id, entryId))).run();
+      tx.delete(outbox).where(and(eq(outbox.resource, "daily-log-entries"), eq(outbox.entityId, entryId))).run();
+    });
+  },
 
   /**
    * Upserts the day locally and queues one push per day.

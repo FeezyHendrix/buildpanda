@@ -121,6 +121,14 @@ export function useAddDailyLogEntry(db: Db | null, projectId: string | undefined
   };
 }
 
+/** Drops an unsent note, so a day can be edited until its author uploads it. */
+export function useRemoveDailyLogEntry(db: Db | null, projectId: string | undefined) {
+  return async (entryId: string) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await dailyLogsRepository.removeEntryLocal(db, projectId, entryId);
+  };
+}
+
 /** Queues a filled daily log form; it renders now and syncs when there is signal. */
 export function useAddTemplateEntry(db: Db | null, projectId: string | undefined) {
   const scope = useProjectBuilding();
