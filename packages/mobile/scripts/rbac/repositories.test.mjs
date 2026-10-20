@@ -130,27 +130,29 @@ test('internal RFIs and proposed responses stay quarantined after company access
   } finally { raw.close(); }
 });
 
-// The daily-logs repository cannot be imported here: it pulls a runtime helper
-// from @/api/daily-logs, which reaches react-native and expo-modules-core, and
-// Node refuses to strip types under node_modules. So the void policy its guard
-// resolves is asserted directly, on the same real database and grants.
-test('the daily log void policy needs the void grant, keeps project scope, and stops on revocation', async () => {
+test('voiding a daily log note needs the void grant, keeps project scope, and stops on revocation', async () => {
   const { db, raw } = database();
   try {
-    const { repositoryAccess } = await import('../../src/db/permissions.ts');
-    const access = repositoryAccess(features.dailyLog);
+    const { dailyLogEntries } = await import('../../src/db/schema.ts');
+    const { dailyLogsRepository } = await import('../../src/db/daily-logs-repository.ts');
+    const voided = (id) => db.select().from(dailyLogEntries).where(eq(dailyLogEntries.id, id)).get().voided;
+    db.insert(dailyLogEntries).values([
+      { id: 'mine', projectId: 'site', logDate: '2026-10-20', bodyText: 'Slab poured' },
+      { id: 'foreign', projectId: 'other', logDate: '2026-10-20', bodyText: 'Another site' },
+    ]).run();
 
     authorize({ dailyLog: ['view', 'create'] });
-    assert.ok(access.require(db, 'site', 'create'), 'creating a note is granted');
-    assert.throws(() => access.require(db, 'site', 'void'), /permission/i, 'create alone cannot void');
-    assert.throws(() => access.transaction(db, 'site', 'void', () => 'written'), /permission/i);
+    await assert.rejects(dailyLogsRepository.markEntryVoidedLocal(db, 'site', 'mine'), /permission/i, 'create alone cannot void');
+    assert.equal(voided('mine'), false);
 
     authorize({ dailyLog: ['view', 'void'] });
-    assert.ok(access.require(db, 'site', 'void'));
-    assert.equal(access.transaction(db, 'site', 'void', () => 'written'), 'written');
-    assert.throws(() => access.require(db, 'other', 'void'), /permission/i, 'another project stays out of scope');
+    await dailyLogsRepository.markEntryVoidedLocal(db, 'site', 'mine');
+    assert.equal(voided('mine'), true);
+
+    await dailyLogsRepository.markEntryVoidedLocal(db, 'other', 'foreign').catch(() => undefined);
+    assert.equal(voided('foreign'), false, 'a note in another project is out of scope and never voided');
 
     projectAccess.invalidate('denied');
-    assert.throws(() => access.require(db, 'site', 'void'), /permission/i);
+    await assert.rejects(dailyLogsRepository.markEntryVoidedLocal(db, 'site', 'mine'), /permission/i);
   } finally { raw.close(); }
 });
