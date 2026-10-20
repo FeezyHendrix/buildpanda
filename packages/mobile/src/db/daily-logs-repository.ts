@@ -51,6 +51,7 @@ export function toEntry(row: DailyLogEntryRow) {
     id: row.id,
     projectId: row.projectId,
     buildingId: row.buildingId,
+    authorId: row.authorId,
     authorName: row.authorName,
     bodyText: row.bodyText,
     bodyHtml: row.bodyHtml,
@@ -200,8 +201,19 @@ export const dailyLogsRepository = {
    * this writes only the outcome and never decides it.
    */
   async markEntryVoidedLocal(db: Db, projectId: string, entryId: string): Promise<void> {
-    access.require(db, projectId, "void");
-    await access.transaction(db, projectId, "void", (tx) => {
+    const ticket = access.require(db, projectId);
+    const [row] = await db
+      .select()
+      .from(dailyLogEntries)
+      .where(access.where(db, dailyLogEntries.projectId, eq(dailyLogEntries.id, entryId)))
+      .limit(1);
+    if (!row) return;
+    // The server lets a note's author void their own without the project-wide
+    // grant, so the same record rule holds here: a crew member can correct what
+    // they wrote, and voiding anyone else's note still needs the grant.
+    const isAuthor = Boolean(row.authorId) && row.authorId === ticket.scope?.userId;
+    if (!isAuthor) access.require(db, projectId, "void");
+    await access.transaction(db, projectId, isAuthor ? "read" : "void", (tx) => {
       tx
         .update(dailyLogEntries)
         .set({ voided: true })
@@ -424,6 +436,7 @@ export const dailyLogsRepository = {
               buildingId: entry.buildingId ?? day.buildingId ?? null,
               projectId,
               logDate: day.logDate,
+              authorId: entry.authorId ?? null,
               authorName: entry.authorName,
               bodyText: entry.bodyText ?? "",
               bodyHtml: entry.bodyHtml,
@@ -433,7 +446,7 @@ export const dailyLogsRepository = {
             })
             .onConflictDoUpdate({
               target: dailyLogEntries.id,
-              set: { buildingId: entry.buildingId ?? day.buildingId ?? null, bodyText: entry.bodyText ?? "", bodyHtml: entry.bodyHtml, voided: entry.voided },
+              set: { buildingId: entry.buildingId ?? day.buildingId ?? null, authorId: entry.authorId ?? null, bodyText: entry.bodyText ?? "", bodyHtml: entry.bodyHtml, voided: entry.voided },
               where: eq(dailyLogEntries.isPendingSync, false),
             }).run();
         }
