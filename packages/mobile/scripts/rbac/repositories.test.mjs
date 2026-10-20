@@ -156,3 +156,26 @@ test('voiding a daily log note needs the void grant, keeps project scope, and st
     await assert.rejects(dailyLogsRepository.markEntryVoidedLocal(db, 'site', 'mine'), /permission/i);
   } finally { raw.close(); }
 });
+
+test('a note author voids their own without the void grant, but never anyone elses', async () => {
+  const { db, raw } = database();
+  try {
+    const { dailyLogEntries } = await import('../../src/db/schema.ts');
+    const { dailyLogsRepository } = await import('../../src/db/daily-logs-repository.ts');
+    const voided = (id) => db.select().from(dailyLogEntries).where(eq(dailyLogEntries.id, id)).get().voided;
+    db.insert(dailyLogEntries).values([
+      { id: 'own', projectId: 'site', logDate: '2026-10-20', authorId: scope.userId, bodyText: 'My own note' },
+      { id: 'theirs', projectId: 'site', logDate: '2026-10-20', authorId: 'another-user', bodyText: 'Someone elses note' },
+    ]).run();
+
+    authorize({ dailyLog: ['view', 'create'] });
+    await dailyLogsRepository.markEntryVoidedLocal(db, 'site', 'own');
+    assert.equal(voided('own'), true, 'the author corrects what they wrote');
+    await assert.rejects(dailyLogsRepository.markEntryVoidedLocal(db, 'site', 'theirs'), /permission/i);
+    assert.equal(voided('theirs'), false, 'authoring one note is not authority over another');
+
+    authorize({ dailyLog: ['view', 'void'] });
+    await dailyLogsRepository.markEntryVoidedLocal(db, 'site', 'theirs');
+    assert.equal(voided('theirs'), true, 'the grant covers any note on the day');
+  } finally { raw.close(); }
+});
