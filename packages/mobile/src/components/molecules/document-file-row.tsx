@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import { PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_BRAND, ICON_FAINT, ICON_SUCCESS } from "@/constants/colors";
 import type { LocalDocument } from "@/db/documents-repository";
@@ -48,6 +48,9 @@ export function DocumentFileRow({
     } finally {
       setBusy(false);
     }
+    // On web the file just opened in its own browser tab; there is no native
+    // viewer to push.
+    if (Platform.OS === "web") return;
     router.push(
       (isReviewableFile(doc.fileName)
         ? `/tools/plan-review?documentId=${doc.id}`
