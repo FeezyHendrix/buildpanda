@@ -49,22 +49,63 @@ function storeDiagnostic(): { isolationBroken: boolean; detail: string } | null 
   };
 }
 
+/**
+ * Whether the OPFS root can be acquired, not merely named.
+ *
+ * WebKit exposes `navigator.storage.getDirectory` and then throws when a
+ * context keeps no persistent storage, which is what private browsing does. So
+ * presence reported the one browser where the store is impossible as healthy,
+ * and the reported "Invalid VFS state" and "Failed to run the query begin"
+ * both look like this. Only an attempted acquisition tells the two apart, and
+ * it cannot be synchronous.
+ */
+async function probeOpfs(): Promise<string> {
+  if (Platform.OS !== "web") return "n/a";
+  if (typeof navigator === "undefined" || !navigator.storage?.getDirectory) return "absent";
+  try {
+    await navigator.storage.getDirectory();
+    return "usable";
+  } catch (cause) {
+    return `unusable(${cause instanceof Error ? cause.name : "unknown"})`;
+  }
+}
+
 function DatabaseError({ error, onRetry }: { error: Error; onRetry: () => void }) {
   const diagnostic = storeDiagnostic();
   const isolationFailure = diagnostic?.isolationBroken === true;
+  const [opfs, setOpfs] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void probeOpfs().then((state) => {
+      if (active) setOpfs(state);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Refused storage is not a glitch, so a retry is not the move to offer.
+  const storageRefused = opfs?.startsWith("unusable") === true;
+
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-canvas px-8">
       <Text weight="semibold" className="text-center text-base">
         Field Tools cannot open its offline store
       </Text>
       <Text tone="secondary" className="text-center text-sm">
-        {isolationFailure
-          ? "This browser could not start the offline store. Reload once; if it keeps happening, open Field Tools in the mobile app and send support the line below."
-          : "Try opening the store again. Your saved records have not been deleted. If this keeps happening, share the message below with support."}
+        {storageRefused
+          ? "This browser is not keeping any storage for Field Tools, which is what private browsing does. Leave private browsing, or install Field Tools from your browser's share menu, and your records will save again."
+          : isolationFailure
+            ? "This browser could not start the offline store. Reload once; if it keeps happening, open Field Tools in the mobile app and send support the line below."
+            : "Try opening the store again. Your saved records have not been deleted. If this keeps happening, share the message below with support."}
       </Text>
       <Text selectable tone="muted" className="text-center text-xs">{error.message}</Text>
       {diagnostic ? (
-        <Text selectable tone="muted" className="text-center text-xs">{diagnostic.detail}</Text>
+        <Text selectable tone="muted" className="text-center text-xs">
+          {diagnostic.detail}
+          {opfs ? ` · OPFSRoot=${opfs}` : ""}
+        </Text>
       ) : null}
       <Button onPress={onRetry}>Try again</Button>
     </View>
