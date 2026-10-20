@@ -34,7 +34,9 @@ export function DocumentFileRow({
 
   async function handlePress() {
     if (doc.isPendingSync) {
-      if (!doc.stagedUri) return;
+      // On web a staged uri is an IndexedDB key the native viewer cannot read;
+      // the file opens from its own tab once the upload lands.
+      if (!doc.stagedUri || Platform.OS === "web") return;
       router.push(
         `/tools/documents/view?uri=${encodeURIComponent(doc.stagedUri)}&name=${encodeURIComponent(doc.fileName)}` as never,
       );
