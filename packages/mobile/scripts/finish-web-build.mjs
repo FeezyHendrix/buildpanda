@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { cpSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 
 // Turns `expo export --platform web` output into an installable, offline-
 // launchable PWA: copies the manifest and icons in, renders sw.js with the
@@ -65,6 +66,34 @@ if (!html.includes(MARKER)) {
   writeFileSync(indexPath, html);
 }
 
+// The host serves these bytes as-is, so an uncompressed multi-megabyte entry
+// bundle crosses the wire on every cold load. Both encodings are written once
+// here, beside the file they encode, rather than recomputed per request. This
+// runs last so the shell is encoded after its PWA tags are injected, and the
+// siblings stay out of `precache` because the browser decodes them in place.
+const COMPRESSIBLE = new Set([".js", ".mjs", ".css", ".html", ".json", ".webmanifest", ".svg"]);
+let plainBytes = 0;
+let brotliBytes = 0;
+for (const rel of [...files, "index.html"]) {
+  if (!COMPRESSIBLE.has(extname(rel))) continue;
+  const full = join(dist, rel);
+  const raw = readFileSync(full);
+  // Below a packet or so, an encoding header costs more than it saves.
+  if (raw.byteLength < 1024) continue;
+  const brotli = brotliCompressSync(raw, {
+    params: {
+      [constants.BROTLI_PARAM_QUALITY]: 9,
+      [constants.BROTLI_PARAM_SIZE_HINT]: raw.byteLength,
+    },
+  });
+  writeFileSync(`${full}.br`, brotli);
+  writeFileSync(`${full}.gz`, gzipSync(raw, { level: 9 }));
+  plainBytes += raw.byteLength;
+  brotliBytes += brotli.byteLength;
+}
+
+const saved = plainBytes > 0 ? Math.round((1 - brotliBytes / plainBytes) * 100) : 0;
 console.log(
-  `field pwa build ${buildId}: ${precache.length} precached paths, ${(totalBytes / 1024 / 1024).toFixed(1)} MB`,
+  `field pwa build ${buildId}: ${precache.length} precached paths, ${(totalBytes / 1024 / 1024).toFixed(1)} MB` +
+    ` · brotli ${(plainBytes / 1024 / 1024).toFixed(1)}→${(brotliBytes / 1024 / 1024).toFixed(2)} MB (${saved}% smaller)`,
 );

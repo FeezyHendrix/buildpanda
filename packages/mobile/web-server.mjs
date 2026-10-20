@@ -33,6 +33,35 @@ function cacheControl(rel) {
     : "no-cache";
 }
 
+// Both encodings are written beside each asset at build time, so a request only
+// picks one. Vary keeps a shared cache from handing a brotli body to a client
+// that cannot decode it; the Content-Type stays that of the decoded file.
+const ENCODINGS = [
+  ["br", ".br"],
+  ["gzip", ".gz"],
+];
+
+async function send(res, rel, accept, cache) {
+  const absolute = join(root, rel);
+  res.setHeader("Content-Type", TYPES[extname(rel)] ?? "application/octet-stream");
+  res.setHeader("Cache-Control", cache ?? cacheControl(rel));
+  res.setHeader("Vary", "Accept-Encoding");
+
+  for (const [token, suffix] of ENCODINGS) {
+    if (!accept.includes(token)) continue;
+    try {
+      const encoded = await readFile(absolute + suffix);
+      res.setHeader("Content-Encoding", token);
+      res.end(encoded);
+      return;
+    } catch {
+      // No sibling for this encoding: try the next, then the plain file.
+    }
+  }
+
+  res.end(await readFile(absolute));
+}
+
 createServer(async (req, res) => {
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
   res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
@@ -43,18 +72,14 @@ createServer(async (req, res) => {
   let rel = normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
   if (rel === "/" || rel === "\\") rel = "/index.html";
 
+  const accept = String(req.headers["accept-encoding"] ?? "");
+
   try {
-    const body = await readFile(join(root, rel));
-    res.setHeader("Content-Type", TYPES[extname(rel)] ?? "application/octet-stream");
-    res.setHeader("Cache-Control", cacheControl(rel));
-    res.end(body);
+    await send(res, rel, accept);
   } catch {
     try {
       // Single-page fallback: expo-router owns every other path.
-      const body = await readFile(join(root, "index.html"));
-      res.setHeader("Content-Type", TYPES[".html"]);
-      res.setHeader("Cache-Control", "no-cache");
-      res.end(body);
+      await send(res, "/index.html", accept, "no-cache");
     } catch {
       res.statusCode = 404;
       res.end("not found");
