@@ -8,7 +8,7 @@ import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import type { Db } from "@/db/client";
 import { defaultTemplate } from "@/db/daily-log-templates-repository";
 import { useDailyLogTemplates } from "@/hooks/use-daily-log-templates";
-import { useAddDailyLogEntry, type useDailyLogDay } from "@/hooks/use-daily-logs";
+import { useAddDailyLogEntry, useRemoveDailyLogEntry, type useDailyLogDay } from "@/hooks/use-daily-logs";
 import { useSession } from "@/lib/auth-client";
 import { formatDateTime } from "@/lib/dates";
 import { features } from "@/lib/feature-access";
@@ -29,11 +29,23 @@ export function DailyLogNotes({ db, projectId, buildingId, logDate, editable, en
   const templates = useDailyLogTemplates(db, projectId);
   const form = defaultTemplate(templates.data) ?? templates.data[0];
   const addEntry = useAddDailyLogEntry(db, projectId);
+  const removeEntry = useRemoveDailyLogEntry(db, projectId);
   const { data: session } = useSession();
   const [html, setHtml] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [showHours, setShowHours] = useState(false);
+
+  async function removeNote(entryId: string) {
+    setRemovingId(entryId);
+    setError("");
+    try {
+      await removeEntry(entryId);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not remove this site note.");
+    } finally { setRemovingId(null); }
+  }
 
   async function addNote() {
     if (!editable || saving || !hasRichContent(html)) return;
@@ -55,6 +67,19 @@ export function DailyLogNotes({ db, projectId, buildingId, logDate, editable, en
           <View className="flex-row items-center gap-2">
             <Text weight="semibold" className="flex-1 text-[13px]">{entry.authorName || "You"}</Text>
             {entry.isPendingSync ? <PendingBadge /> : null}
+            {editable && entry.isPendingSync ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Remove note by ${entry.authorName || "you"}`}
+                disabled={removingId === entry.id}
+                onPress={() => void removeNote(entry.id)}
+                className="min-h-11 justify-center px-2"
+              >
+                <Text tone="brand" weight="semibold" className="text-[13px]">
+                  {removingId === entry.id ? "Removing…" : "Remove"}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
           <Text tone="secondary" className="text-xs">{formatDateTime(new Date(entry.createdAt).toISOString())}{entry.voided ? " · Voided" : ""}</Text>
           <View style={{ opacity: entry.voided ? 0.5 : 1 }}><RichContent html={entry.bodyHtml} text={entry.bodyText} /></View>
