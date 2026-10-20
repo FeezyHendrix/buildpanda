@@ -1,6 +1,6 @@
-import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
 import { useEffect, useState } from "react";
 import type { Db } from "@/db/client";
+import { readCachedDocumentBase64 } from "@/lib/document-bytes";
 import { cacheDocument } from "@/lib/download-file";
 
 // A sheet reaches the canvas as bytes, never a URL: the field app reads plans
@@ -47,7 +47,7 @@ export function useSheetSource(
     (async () => {
       const uri = await cacheDocument(db, projectId, sheetId, versionId);
       if (!uri || cancelled) return;
-      const base64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
+      const base64 = await readCachedDocumentBase64(uri);
       if (cancelled) return;
       const mime = IMAGE_MIME[extensionOf(fileName)];
       setLoaded({
