@@ -4,7 +4,7 @@ import { Platform, View } from "react-native";
 import migrations from "../../drizzle/migrations";
 import { Button, Spinner, Text } from "@/components/atoms";
 import { useFieldSession } from "@/lib/field-session";
-import { openDb, type Db } from "./client";
+import { openDb, resetDb, type Db } from "./client";
 
 interface LocalDb {
   db: Db | null;
@@ -70,10 +70,24 @@ async function probeOpfs(): Promise<string> {
   }
 }
 
-function DatabaseError({ error, onRetry }: { error: Error; onRetry: () => void }) {
+function DatabaseError({ error, ownerId, onRetry }: { error: Error; ownerId: string; onRetry: () => void }) {
   const diagnostic = storeDiagnostic();
   const isolationFailure = diagnostic?.isolationBroken === true;
   const [opfs, setOpfs] = useState<string | null>(null);
+  const [rebuilding, setRebuilding] = useState(false);
+  const [rebuildError, setRebuildError] = useState<string | null>(null);
+
+  async function rebuild() {
+    setRebuilding(true);
+    setRebuildError(null);
+    try {
+      await resetDb(ownerId);
+      onRetry();
+    } catch (cause) {
+      setRebuildError(cause instanceof Error ? cause.message : "Could not rebuild the offline store.");
+      setRebuilding(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -108,11 +122,21 @@ function DatabaseError({ error, onRetry }: { error: Error; onRetry: () => void }
         </Text>
       ) : null}
       <Button onPress={onRetry}>Try again</Button>
+      <Text tone="muted" className="text-center text-xs">
+        If trying again keeps failing, the store itself is broken and can be rebuilt. Anything on
+        this device that has not uploaded yet is lost with it.
+      </Text>
+      <Button variant="secondary" loading={rebuilding} onPress={() => void rebuild()}>
+        Rebuild offline store
+      </Button>
+      {rebuildError ? (
+        <Text selectable tone="danger" className="text-center text-xs">{rebuildError}</Text>
+      ) : null}
     </View>
   );
 }
 
-function MigratedDatabase({ db, children, onRetry }: { db: Db; children: ReactNode; onRetry: () => void }) {
+function MigratedDatabase({ db, ownerId, children, onRetry }: { db: Db; ownerId: string; children: ReactNode; onRetry: () => void }) {
   const [{ success, error }, setResult] = useState<{ success: boolean; error: Error | null }>({ success: false, error: null });
   useEffect(() => {
     let active = true;
@@ -125,7 +149,7 @@ function MigratedDatabase({ db, children, onRetry }: { db: Db; children: ReactNo
   }, [db]);
   const value = useMemo<LocalDb>(() => ({ db, ready: success, error: error ?? null }), [db, success, error]);
 
-  if (error) return <DatabaseError error={error} onRetry={onRetry} />;
+  if (error) return <DatabaseError error={error} ownerId={ownerId} onRetry={onRetry} />;
   if (!success) {
     return <View className="flex-1 items-center justify-center bg-canvas"><Spinner /></View>;
   }
@@ -146,9 +170,9 @@ function UserDatabase({ ownerId, children }: { ownerId: string; children: ReactN
     return () => { cancelled = true; };
   }, [ownerId, attempt]);
   const retry = () => setAttempt((value) => value + 1);
-  if (opened.error) return <DatabaseError error={opened.error} onRetry={retry} />;
+  if (opened.error) return <DatabaseError error={opened.error} ownerId={ownerId} onRetry={retry} />;
   if (!opened.db) return <View className="flex-1 items-center justify-center bg-canvas"><Spinner /></View>;
-  return <MigratedDatabase key={attempt} db={opened.db} onRetry={retry}>{children}</MigratedDatabase>;
+  return <MigratedDatabase key={attempt} db={opened.db} ownerId={ownerId} onRetry={retry}>{children}</MigratedDatabase>;
 }
 
 /** Migration hooks run once per mount, so mount them only for a real owner/database. */
