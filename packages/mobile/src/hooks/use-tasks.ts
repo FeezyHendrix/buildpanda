@@ -10,6 +10,7 @@ import { useFieldSession } from "@/lib/field-session";
 import { usePersistentQuery } from "@/lib/persistent-query";
 import { useSyncState } from "@/lib/sync-provider";
 import { useAuthGate } from "@/lib/use-auth-gate";
+import { missingBuilding } from "./use-project-building";
 import { useProjectAccess } from "./use-project-access";
 
 /**
@@ -70,7 +71,9 @@ export function useAssignable(projectId: string | undefined) {
 export function useCreateTask(db: Db | null, projectId: string | undefined, buildingId: string | undefined) {
   const { user } = useAuthGate();
   return async (input: LocalTaskInput) => {
-    if (!db || !projectId || !buildingId) throw new Error("Local database is not ready yet.");
+    if (!db) throw new Error("Local database is not ready yet.");
+    if (!projectId) throw new Error("Choose a project first.");
+    if (!buildingId) throw missingBuilding(0);
     await tasksRepository.createLocal(db, projectId, buildingId, input, user?.id ?? null);
     void flushOutbox(db).catch(() => undefined);
   };
@@ -78,7 +81,8 @@ export function useCreateTask(db: Db | null, projectId: string | undefined, buil
 
 export function useMoveTask(db: Db | null, projectId: string | undefined) {
   return async (id: string, columnId: string) => {
-    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    if (!db) throw new Error("Local database is not ready yet.");
+    if (!projectId) throw new Error("Choose a project first.");
     await tasksRepository.moveLocal(db, projectId, id, columnId);
     void flushOutbox(db).catch(() => undefined);
   };

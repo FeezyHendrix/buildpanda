@@ -1,7 +1,6 @@
 import type { Knex } from "knex";
 import type {
   DigestLoggedActivity,
-  DigestOrgAdminRow,
   DigestProjectRow,
   DigestRow,
   DigestSiteNote,
@@ -170,14 +169,6 @@ export function dailyDigestRepository(db: Knex) {
       return db<DigestProjectRow>("projects")
         .whereIn("ai_update_cadence", cadences)
         .select("id", "name", "owner_id", "organization_id");
-    },
-
-    orgAdmins(organizationIds: string[]): Promise<DigestOrgAdminRow[]> {
-      if (organizationIds.length === 0) return Promise.resolve([]);
-      return db<DigestOrgAdminRow>("member")
-        .whereIn("organizationId", organizationIds)
-        .whereIn("role", ["owner", "admin"])
-        .select("organizationId", "userId");
     },
 
     async movements(projectId: string, from: Date, to: Date): Promise<Movements> {

@@ -33,7 +33,10 @@ export function createAccessSession({ scope, store, saved, fetch, save, purge }:
   };
   const refresh = (): Promise<boolean> => {
     if (inFlight) return inFlight;
-    if (!current() || mode !== "online") return Promise.resolve(false);
+    // "unknown" connectivity must still try: the fetch itself is the real
+    // probe, and refusing until NetInfo says online left the Refresh button a
+    // silent no-op on networks whose reachability ping never resolves.
+    if (!current() || mode === "offline") return Promise.resolve(false);
     let generation = store.getState().generation;
     inFlight = (async () => {
       try {
@@ -56,10 +59,14 @@ export function createAccessSession({ scope, store, saved, fetch, save, purge }:
       } catch (error) {
         if (!current() || store.getState().generation !== generation) return false;
         const status = (error as { status?: number })?.status;
-        if (isOffline() && status !== 401 && status !== 403 && eligibleSnapshot(lastSnapshot, scope)) {
+        // Only the server saying "no" revokes. A timeout or 5xx on site signal
+        // must not purge a still-eligible 24h-verified snapshot — "unknown"
+        // grants nothing but leaves the next attempt something to restore.
+        if (status === 401 || status === 403) revoke();
+        else if (eligibleSnapshot(lastSnapshot, scope)) {
           store.invalidate("unknown");
           restore();
-        } else revoke();
+        } else store.invalidate("unknown");
         return false;
       } finally { inFlight = null; }
     })();
@@ -70,8 +77,12 @@ export function createAccessSession({ scope, store, saved, fetch, save, purge }:
     revoke,
     connectivity(connected: boolean | null, reachable: boolean | null) {
       if (!current()) return;
+      // reachable === null means NetInfo's probe hasn't answered (it may
+      // never: its ping URL is blocked on some site networks). Treat a
+      // connected device as online and let the access fetch decide — waiting
+      // for true deadlocked the whole session in "unknown".
       if (connected === false || reachable === false) { mode = "offline"; restore(); }
-      else if (connected === true && reachable === true) {
+      else if (connected === true) {
         const reconnecting = mode !== "online";
         mode = "online";
         if (reconnecting) {
@@ -84,7 +95,7 @@ export function createAccessSession({ scope, store, saved, fetch, save, purge }:
     },
     foreground() {
       if (!current()) return;
-      if (mode === "online") {
+      if (mode !== "offline") {
         store.invalidate("loading");
         if (inFlight) void inFlight.then(() => refresh()); else void refresh();
       } else if (!eligibleSnapshot(store.getState().snapshot, scope)) revoke();

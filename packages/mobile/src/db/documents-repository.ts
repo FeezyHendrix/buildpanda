@@ -209,7 +209,7 @@ export const documentsRepository = {
   async createLocal(db: Db, projectId: string, input: LocalDocumentInput): Promise<string> {
     access.require(db, projectId, "create");
     const id = `local_${randomUUID()}`;
-    const stagedUri = stageMedia(input.uri, id, input.fileName);
+    const stagedUri = await stageMedia(input.uri, id, input.fileName);
     try {
       await access.transaction(db, projectId, "create", (tx) => {
         tx.insert(documents).values({

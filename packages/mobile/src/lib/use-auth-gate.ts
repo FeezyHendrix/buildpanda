@@ -20,8 +20,20 @@ interface AuthGate {
 export function useAuthGate(): AuthGate {
   const { data: session, isPending } = useSession();
   const [cached, setCached] = useState<CachedUser | null>(readCachedUser);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => subscribeCachedUser(setCached), []);
+
+  // The session check has no fetch timeout, so a cold start on a dead
+  // connection could keep `isPending` true forever — stranding the entry gate
+  // on its spinner instead of reaching sign-in. Resolving as signed-out grants
+  // nothing: sign-in needs the network anyway, and a late session answer
+  // still signs the user in.
+  useEffect(() => {
+    if (!isPending || cached !== null) return;
+    const timer = setTimeout(() => setTimedOut(true), 8_000);
+    return () => clearTimeout(timer);
+  }, [isPending, cached]);
 
   useEffect(() => {
     const live = session?.user;
@@ -38,7 +50,7 @@ export function useAuthGate(): AuthGate {
 
   return {
     user: liveUser ?? cached,
-    isResolving: isPending && cached === null,
+    isResolving: isPending && cached === null && !timedOut,
     isOffline: liveUser === null && cached !== null,
   };
 }

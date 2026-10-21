@@ -121,6 +121,27 @@ export function useAddDailyLogEntry(db: Db | null, projectId: string | undefined
   };
 }
 
+/** Drops an unsent note, so a day can be edited until its author uploads it. */
+export function useRemoveDailyLogEntry(db: Db | null, projectId: string | undefined) {
+  return async (entryId: string) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await dailyLogsRepository.removeEntryLocal(db, projectId, entryId);
+  };
+}
+
+/** Voids an uploaded note. Needs a connection; an unsent note is removed instead. */
+export function useVoidDailyLogEntry(db: Db | null, projectId: string | undefined) {
+  const { isOnline } = useSyncState();
+  return async (logDate: string, entryId: string, reason: string) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    const trimmed = reason.trim();
+    if (!trimmed) throw new Error("Give a reason for voiding this note.");
+    if (!isOnline) throw new Error("Voiding needs a connection, because the project already has this note.");
+    await dailyLogsApi.voidEntry(projectId, logDate, entryId, trimmed);
+    await dailyLogsRepository.markEntryVoidedLocal(db, projectId, entryId);
+  };
+}
+
 /** Queues a filled daily log form; it renders now and syncs when there is signal. */
 export function useAddTemplateEntry(db: Db | null, projectId: string | undefined) {
   const scope = useProjectBuilding();

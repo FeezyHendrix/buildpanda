@@ -74,7 +74,7 @@ export function registerTaskBoardRoutes(fastify: FastifyInstance, service: Retur
       assertTaskBoardAccess(request, project);
       const fullBoard = canSeeFullTaskBoard(request, project);
       const board = await service.getDefaultBoard(project.id, user.id, undefined, request.query.buildingId);
-      const visible = visibility.board(board, user.id, fullBoard && request.query.scope !== "mine", request.query.scope === "assigned");
+      const visible = await visibility.board(board, user.id, fullBoard && request.query.scope !== "mine", request.query.scope === "assigned");
       return stageFilter.filter(visible, request.query.stageId);
     },
   );

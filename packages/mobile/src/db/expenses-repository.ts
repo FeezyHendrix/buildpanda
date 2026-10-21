@@ -56,7 +56,7 @@ export const expensesRepository = {
   async createLocal(db: Db, projectId: string, input: LocalExpenseInput): Promise<string> {
     const ticket = access.require(db, projectId, "create");
     const id = `local_${randomUUID()}`;
-    const stagedUri = input.receipt ? stageMedia(input.receipt.uri, id, input.receipt.fileName) : null;
+    const stagedUri = input.receipt ? await stageMedia(input.receipt.uri, id, input.receipt.fileName) : null;
     await access.transaction(db, projectId, "create", (tx) => {
       tx.insert(expenses).values({
         id,

@@ -109,7 +109,7 @@ export function useMarkupActions(ctx: MarkupActionsContext) {
         // the recording is copied somewhere durable now; it uploads when there is signal
         const staged =
           draft.mediaUri && draft.mediaKind
-            ? stageMedia(draft.mediaUri, randomUUID(), draft.mediaKind === MEDIA_KIND.AUDIO ? "voice-note.m4a" : "site-video.mov")
+            ? await stageMedia(draft.mediaUri, randomUUID(), draft.mediaKind === MEDIA_KIND.AUDIO ? "voice-note.m4a" : "site-video.mov")
             : null;
         await drawingMarkupsRepository.addCommentLocal(ctx.db, markupId, ctx.projectId, {
           body: draft.text,

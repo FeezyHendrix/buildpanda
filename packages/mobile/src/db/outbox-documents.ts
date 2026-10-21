@@ -1,5 +1,5 @@
 import { features } from "@/lib/feature-access";
-import { File } from "expo-file-system";
+import { loadStagedUploadUri, stagedMediaExists } from "@/lib/stage-media";
 import { documentsApi } from "@/api/documents";
 import { uploadProjectFile } from "@/api/files";
 import type { Db } from "./client";
@@ -25,13 +25,13 @@ export async function pushDocumentOutboxItem(db: Db, item: OutboxRow): Promise<O
 
   const row = await documentsRepository.findById(db, item.entityId);
   if (!row) return dropItem(db, item);
-  if (!row.stagedUri || !new File(row.stagedUri).exists) {
+  if (!row.stagedUri || !(await stagedMediaExists(row.stagedUri))) {
     throw new PermanentOutboxError("The file picked for upload is no longer on this device.");
   }
 
   const uploaded = await uploadProjectFile(
     item.projectId,
-    row.stagedUri,
+    await loadStagedUploadUri(row.stagedUri),
     row.fileName,
     row.mimeType ?? "application/octet-stream",
     features.documents.actions.create,

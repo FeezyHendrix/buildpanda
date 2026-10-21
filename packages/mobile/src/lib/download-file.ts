@@ -1,4 +1,6 @@
 import { clearContentImages } from "./content-image-storage";
+import { cacheVersionBytes, cachedVersionUri, clearCachedDocuments } from "./document-bytes";
+import { isReviewableFile } from "./reviewable-file";
 import { Directory, File, Paths } from "expo-file-system";
 import { Platform } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
@@ -125,6 +127,36 @@ export async function cacheDocument(db: Db, projectId: string, documentId: strin
   if (!row || row.projectId !== projectId) return null;
   if (!row.currentVersionId) throw new Error("No file is attached to this record yet.");
   if (expectedVersionId && expectedVersionId !== row.currentVersionId) throw new Error("This plan revision has changed. Reopen its current revision.");
+  if (Platform.OS === "web") {
+    requireCurrentAccess(ticket);
+    if (!isReviewableFile(row.fileName)) {
+      // No in-browser renderer for these: the session cookie authorizes the
+      // download in its own tab instead.
+      window.open(documentsApi.versionDownloadUrl(projectId, documentId, row.currentVersionId), "_blank", "noopener");
+      return null;
+    }
+    const scope = ticket.scope!;
+    const existing = await cachedVersionUri(scope, row.currentVersionId);
+    if (existing) return existing;
+    const response = await fetch(documentsApi.versionDownloadUrl(projectId, documentId, row.currentVersionId), { credentials: "include" }).catch(() => {
+      throw new Error("This plan isn't downloaded in this browser yet. Connect once to open it.");
+    });
+    requireCurrentAccess(ticket);
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        revokeProjectAccess();
+        throw new AccessDeniedError();
+      }
+      if (response.status === 404) throw new Error("This file is missing from storage. Ask the uploader to upload it again.");
+      throw new Error("Couldn't download this plan. Check your connection and try again.");
+    }
+    const bytes = await response.blob();
+    if (!bytes.size) throw new Error("The downloaded file is empty. Try downloading it again.");
+    const uri = await cacheVersionBytes(scope, row.currentVersionId, bytes);
+    requireCurrentAccess(ticket);
+    await documentsRepository.setLocalUri(db, documentId, uri, row.currentVersionId);
+    return uri;
+  }
   if (row.localUri) {
     try {
       requireCachedFile(row.localUri);
@@ -141,6 +173,7 @@ export async function cacheDocument(db: Db, projectId: string, documentId: strin
 /** Unsent originals remain quarantined in their owner's SQLite records. */
 export async function clearDocumentCache(scope?: AccessScope): Promise<void> {
   await clearContentImages(scope);
+  await clearCachedDocuments(scope);
   // Web never creates the native file cache; its data lives in SQLite/query storage.
   if (Platform.OS === "web") return;
   const dir = scope ? scopeDirectory(scope) : new Directory(Paths.document, CACHE_DIR_NAME);

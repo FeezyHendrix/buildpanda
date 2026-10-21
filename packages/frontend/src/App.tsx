@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, RouterProvider, useLocation, useParams, useRouteError } from "react-router-dom";
+import * as Sentry from "@sentry/react";
 import { lazy as reactLazy, type ComponentType, type ReactElement } from "react";
 import type { FeatureFlagKey } from "@/lib/feature-flags";
 import { LEGACY_FINANCE_PATHS, resolveLegacyFinancePath } from "@/lib/finance-routes";
@@ -173,7 +174,12 @@ function sf(flag: FeatureFlagKey, el: ReactElement) {
 
 const Messages = lazy(() => import("@/pages/messages"));
 
-export const router = createBrowserRouter([
+// Names Sentry transactions by route pattern ("/project/:projectId/overview")
+// instead of by raw URL, which would otherwise be one transaction per project.
+// A no-op passthrough when Sentry is disabled.
+const sentryCreateBrowserRouter = Sentry.wrapCreateBrowserRouterV7(createBrowserRouter);
+
+export const router = sentryCreateBrowserRouter([
   {
     errorElement: <RouterErrorPage />,
     children: [

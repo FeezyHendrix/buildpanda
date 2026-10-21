@@ -29,7 +29,21 @@ export async function recordFixture() {
     const site = id === "foreign" ? "foreign" : "site";
     return { id: `scope-task-${id}`, title: id, project_id: `scope-${site}`, building_id: `scope-building-${site}`, board_id: `scope-board-${site}`, column_id: `scope-column-${site}`, created_by_id: id === "created" ? "scope-crew" : "scope-other", description: `![Evidence](/files/scope-task-file-${id}/download)` };
   }));
-  await db("task_assignees").insert({ task_id: "scope-task-assigned", assignee_id: "scope-crew" });
+  // Roster entries are matched to signed-in users by verified email only; the
+  // differing case here is deliberate.
+  await db("team_members").insert([
+    { id: "scope-roster-crew", project_id: "scope-site", name: "Crew On Roster", role: "Foreman", email: "Crew@Scope.invalid", status: "Active" },
+    { id: "scope-roster-other", project_id: "scope-site", name: "Other On Roster", role: "Foreman", email: "other@scope.invalid", status: "Active" },
+  ]);
+  await db("tasks").insert(["roster", "roster-other"].map((id) => ({
+    id: `scope-task-${id}`, title: id, project_id: "scope-site", building_id: "scope-building-site",
+    board_id: "scope-board-site", column_id: "scope-column-site", created_by_id: "scope-other",
+  })));
+  await db("task_assignees").insert([
+    { task_id: "scope-task-assigned", assignee_id: "scope-crew" },
+    { task_id: "scope-task-roster", assignee_team_member_id: "scope-roster-crew" },
+    { task_id: "scope-task-roster-other", assignee_team_member_id: "scope-roster-other" },
+  ]);
   await db("uploaded_files").insert(["created", "hidden", "receipt"].map((id) => ({ id: `scope-expense-file-${id}`, project_id: "scope-site", owner_id: "scope-crew", file_name: "Receipt.png", mime_type: "image/png", size_bytes: 100, storage_path: `fixture/${id}` })));
   await db("project_transactions").insert(["created", "hidden", "foreign"].map((id, i) => ({ id: `scope-expense-${id}`, project_id: id === "foreign" ? "scope-foreign" : "scope-site", title: `${id} expense`, category: "materials", amount: (i + 1) * 100, transacted_at: "2026-10-15", created_by_id: id === "created" ? "scope-crew" : "scope-other", description: `![Evidence](/files/scope-expense-file-${id}/download)`, receipt_file_id: id === "hidden" ? "scope-expense-file-receipt" : null })));
   const project = { id: "scope-site", ownerId: "scope-owner", organizationId: "scope-org" };
