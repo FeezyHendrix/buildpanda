@@ -1,33 +1,18 @@
 import { request } from "./client";
 import type { TemplateResponses } from "./daily-log-templates";
+import type { WeatherCondition } from "@/lib/daily-log-weather";
 
-export const WEATHER_CONDITIONS = [
-  "Sunny",
-  "Cloudy",
-  "Rain",
-  "Storm",
-  "Fog",
-  "ExtremeHeat",
-] as const;
-export type WeatherCondition = (typeof WEATHER_CONDITIONS)[number];
-
-/** Same wording as the web's day form. */
-export const WEATHER_CONDITION_LABELS: Record<WeatherCondition, string> = {
-  Sunny: "Sunny",
-  Cloudy: "Cloudy",
-  Rain: "Rain",
-  Storm: "Storm",
-  Fog: "Fog",
-  ExtremeHeat: "Extreme heat",
-};
-
-export function isWeatherCondition(value: string | null | undefined): value is WeatherCondition {
-  return typeof value === "string" && (WEATHER_CONDITIONS as readonly string[]).includes(value);
-}
+export {
+  WEATHER_CONDITIONS,
+  WEATHER_CONDITION_LABELS,
+  isWeatherCondition,
+  type WeatherCondition,
+} from "@/lib/daily-log-weather";
 
 export interface DailyLogEntry {
   buildingId?: string | null;
   id: string;
+  authorId: string | null;
   authorName: string;
   bodyHtml: string | null;
   bodyText: string | null;

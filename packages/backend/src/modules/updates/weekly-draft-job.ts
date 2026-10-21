@@ -4,6 +4,7 @@ import type { QueueManager } from "../../lib/queue/index.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { aiDraftService } from "./ai-draft.ts";
+import { notifyDraftReviewer } from "./draft-reviewer.ts";
 
 export const WEEKLY_UPDATE_DRAFT_QUEUE = "weekly-update-draft-sweep";
 
@@ -19,11 +20,6 @@ interface CandidateProjectRow {
   name: string;
   owner_id: string | null;
   organization_id: string | null;
-}
-
-interface OrgAdminRow {
-  organizationId: string;
-  userId: string;
 }
 
 export interface WeeklyUpdateDraftSweepResult {
@@ -69,20 +65,6 @@ export async function runWeeklyUpdateDraftSweep(
     )
     .select("p.id", "p.name", "p.owner_id", "p.organization_id");
 
-  const orgIds = [...new Set(projects.flatMap((p) => (p.organization_id ? [p.organization_id] : [])))];
-  const adminRows = orgIds.length
-    ? await db<OrgAdminRow>("member")
-        .whereIn("organizationId", orgIds)
-        .whereIn("role", ["owner", "admin"])
-        .select("organizationId", "userId")
-    : [];
-  const adminsByOrg = new Map<string, string[]>();
-  for (const row of adminRows) {
-    const list = adminsByOrg.get(row.organizationId) ?? [];
-    list.push(row.userId);
-    adminsByOrg.set(row.organizationId, list);
-  }
-
   const result: WeeklyUpdateDraftSweepResult = {
     candidates: projects.length,
     drafted: 0,
@@ -102,18 +84,11 @@ export async function runWeeklyUpdateDraftSweep(
       }
       result.drafted += 1;
 
-      const recipients = new Set<string>();
-      if (project.owner_id) recipients.add(project.owner_id);
-      for (const userId of adminsByOrg.get(project.organization_id ?? "") ?? []) {
-        recipients.add(userId);
-      }
-      for (const userId of recipients) {
-        await notifications.notify(userId, "update_draft_ready", {
-          title: "Your weekly client update draft is ready to review",
-          body: `Panda AI drafted a weekly homeowner update for ${project.name}. Review and publish it from the Updates page.`,
-          projectId: project.id,
-        });
-      }
+      await notifyDraftReviewer(notifications, project, {
+        title: "Your weekly client update draft is ready to review",
+        body: `Panda AI drafted a weekly homeowner update for ${project.name}. Review and publish it from the Updates page.`,
+        projectId: project.id,
+      });
     } catch (error) {
       result.errored += 1;
       logger.error(

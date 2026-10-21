@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import { PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_BRAND, ICON_FAINT, ICON_SUCCESS } from "@/constants/colors";
 import type { LocalDocument } from "@/db/documents-repository";
@@ -34,7 +34,9 @@ export function DocumentFileRow({
 
   async function handlePress() {
     if (doc.isPendingSync) {
-      if (!doc.stagedUri) return;
+      // On web a staged uri is an IndexedDB key the native viewer cannot read;
+      // the file opens from its own tab once the upload lands.
+      if (!doc.stagedUri || Platform.OS === "web") return;
       router.push(
         `/tools/documents/view?uri=${encodeURIComponent(doc.stagedUri)}&name=${encodeURIComponent(doc.fileName)}` as never,
       );
@@ -47,6 +49,12 @@ export function DocumentFileRow({
       return; // The browser shows the download error beside the file list.
     } finally {
       setBusy(false);
+    }
+    if (Platform.OS === "web") {
+      // Reviewable files were cached for the annotation canvas; anything else
+      // already opened in its own browser tab inside onOpen.
+      if (isReviewableFile(doc.fileName)) router.push(`/tools/plan-review?documentId=${doc.id}` as never);
+      return;
     }
     router.push(
       (isReviewableFile(doc.fileName)

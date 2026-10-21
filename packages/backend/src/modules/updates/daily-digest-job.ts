@@ -5,6 +5,7 @@ import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { dailyDigestRepository } from "./daily-digest-repository.ts";
 import { dailyDigestService, isoDate } from "./daily-digest.ts";
+import { notifyDraftReviewer } from "./draft-reviewer.ts";
 
 export const DAILY_DIGEST_QUEUE = "daily-update-digest-sweep";
 
@@ -53,18 +54,6 @@ export async function runDailyDigestSweep(
   const digestDate = isoDate(now);
 
   const projects = await repository.candidateProjects(DAILY_CADENCES);
-  const organizationIds = [
-    ...new Set(projects.flatMap((p) => (p.organization_id ? [p.organization_id] : []))),
-  ];
-  const adminRows = await repository.orgAdmins(organizationIds);
-
-  const adminsByOrg = new Map<string, string[]>();
-  for (const row of adminRows) {
-    const list = adminsByOrg.get(row.organizationId) ?? [];
-    list.push(row.userId);
-    adminsByOrg.set(row.organizationId, list);
-  }
-
   const result: DailyDigestSweepResult = { ...IDLE, candidates: projects.length };
 
   for (const project of projects) {
@@ -84,18 +73,11 @@ export async function runDailyDigestSweep(
       }
       result.drafted += 1;
 
-      const recipients = new Set<string>();
-      if (project.owner_id) recipients.add(project.owner_id);
-      for (const userId of adminsByOrg.get(project.organization_id ?? "") ?? []) {
-        recipients.add(userId);
-      }
-      for (const userId of recipients) {
-        await notifications.notify(userId, "update_draft_ready", {
-          title: "Today's site digest is ready to review",
-          body: `Panda AI summarised everything logged on ${project.name} today. Review it from the Updates page.`,
-          projectId: project.id,
-        });
-      }
+      await notifyDraftReviewer(notifications, project, {
+        title: "Today's site digest is ready to review",
+        body: `Panda AI summarised everything logged on ${project.name} today. Review it from the Updates page.`,
+        projectId: project.id,
+      });
     } catch (error) {
       result.errored += 1;
       logger.error(

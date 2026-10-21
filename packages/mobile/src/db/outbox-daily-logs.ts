@@ -1,7 +1,8 @@
 import { settleOutboxItem } from "./sync-write-state";
 import { eq } from "drizzle-orm";
 import { activitiesApi } from "@/api/activities";
-import { dailyLogsApi, isWeatherCondition } from "@/api/daily-logs";
+import { dailyLogsApi } from "@/api/daily-logs";
+import { isWeatherCondition } from "@/lib/daily-log-weather";
 import { ApiError } from "@/api/client";
 import type { TemplateResponses } from "@/api/daily-log-templates";
 import { htmlToText, textToParagraphHtml } from "@/lib/html";
@@ -116,6 +117,7 @@ async function pushDailyLogEntry(db: Db, item: OutboxRow): Promise<OutboxHandler
       id: server.id,
       projectId: item.projectId,
       logDate: entry.logDate,
+      authorId: server.authorId ?? null,
       authorName: server.authorName,
       bodyText: server.bodyText ?? entry.bodyText,
       bodyHtml: server.bodyHtml ?? entry.bodyHtml,

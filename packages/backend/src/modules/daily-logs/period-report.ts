@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import { NotFoundError } from "../../lib/errors.ts";
+import { formatReportTimestamp } from "../../lib/report-dates.ts";
 import {
   computePeriodRange,
   REPORT_PERIOD_LABEL,
@@ -77,19 +78,6 @@ function formatWeekday(iso: string): string {
 function clampPercent(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, value));
-}
-
-function formatTimestamp(iso: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  });
 }
 
 export interface PeriodReportResult {
@@ -231,7 +219,7 @@ export function periodReportService(db: Knex, deps: PeriodReportDeps) {
       projectAddress: project.address,
       periodTypeLabel: REPORT_PERIOD_LABEL[period],
       rangeLabel: range.rangeLabel,
-      generatedAtLabel: formatTimestamp(generatedAt),
+      generatedAtLabel: formatReportTimestamp(generatedAt),
       overallProgressPercent: clampPercent(Number(project.progress_percent)),
       kpis: [
         { label: "Days logged", value: `${daysLogged} / ${totalDaysInPeriod}` },

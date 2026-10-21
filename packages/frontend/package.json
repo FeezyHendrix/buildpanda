@@ -12,12 +12,14 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@buildpanda/rich-content": "file:../rich-content",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@noble/ciphers": "1.3.0",
     "@noble/curves": "1.9.1",
     "@noble/hashes": "1.8.0",
+    "@sentry/react": "^11.8.0",
     "@svar-ui/react-gantt": "^2.6.1",
     "@tanstack/react-query": "^5.62.0",
     "@tanstack/react-query-devtools": "^5.62.0",
@@ -47,8 +49,7 @@
     "tailwind-merge": "^3.5.0",
     "three": "^0.184.0",
     "web-ifc": "^0.0.77",
-    "zustand": "^5.0.2",
-    "@buildpanda/rich-content": "file:../rich-content"
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

@@ -5,6 +5,7 @@ import { makeReportImageResolver } from "../../lib/report-image-resolver.ts";
 import { renderEmail, calloutBox, metaTable, infoRow } from "../../lib/email-templates.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { config } from "../../config/index.ts";
+import { formatReportTimestamp } from "../../lib/report-dates.ts";
 import { activitiesRepository } from "../activities/repository.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { stagesRepository } from "../stages/repository.ts";
@@ -44,19 +45,6 @@ function formatLongDate(isoDate: string): string {
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function formatTimestamp(iso: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
     timeZone: "UTC",
   });
 }
@@ -153,7 +141,7 @@ export function dailyReportService(db: Knex, deps: DailyReportDeps) {
       projectName: project.name,
       projectAddress: project.address,
       reportDateLabel: formatLongDate(day.logDate),
-      generatedAtLabel: formatTimestamp(new Date().toISOString()),
+      generatedAtLabel: formatReportTimestamp(new Date().toISOString()),
       voided: null,
       overallProgressPercent: clampPercent(Number(project.progress_percent)),
       dailyProgressPercent: clampPercent(dailyProgressPercent),
@@ -184,12 +172,12 @@ export function dailyReportService(db: Knex, deps: DailyReportDeps) {
         return {
           authorName: e.authorName,
           authorRole: e.authorRole,
-          addedAt: formatTimestamp(e.createdAt),
+          addedAt: formatReportTimestamp(e.createdAt),
           bodyHtml: e.bodyHtml,
           voided: e.voided,
           voidReason: lastVoid?.reason ?? null,
           voidedBy: lastVoid?.voidedByName ?? null,
-          voidedAt: lastVoid ? formatTimestamp(lastVoid.voidedAt) : null,
+          voidedAt: lastVoid ? formatReportTimestamp(lastVoid.voidedAt) : null,
         };
       }),
     };
