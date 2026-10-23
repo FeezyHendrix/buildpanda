@@ -7,7 +7,7 @@ import { Analytics, ConsentBanner } from "@/components/consent";
 import { JsonLd } from "@/components/json-ld";
 import { site } from "@/content/site";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/json-ld";
-import { canonicalUrl } from "@/lib/seo";
+import { canonicalUrl, ogImage } from "@/lib/seo";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -55,8 +55,9 @@ export const metadata: Metadata = {
     siteName: site.name,
     title: defaultTitle,
     description: site.description,
+    images: [ogImage],
   },
-  twitter: { card: "summary_large_image", title: defaultTitle, description: site.description },
+  twitter: { card: "summary_large_image", title: defaultTitle, description: site.description, images: [ogImage.url] },
   robots: {
     index: true,
     follow: true,

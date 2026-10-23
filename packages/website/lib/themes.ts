@@ -15,6 +15,7 @@ export type NavRouteConfig = {
 /** Pages whose navbar differs from the default (start on blue, follow the sections). */
 const NAV_BY_ROUTE: Record<string, NavRouteConfig> = {
   "/for-owners": { theme: "light", locked: true, surface: "page" },
+  "/for-contractors": { theme: "light", locked: true, surface: "page" },
 };
 
 const DEFAULT_NAV: NavRouteConfig = { theme: "brand" };

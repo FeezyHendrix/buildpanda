@@ -14,16 +14,16 @@ export function canonicalUrl(path: string): string {
 }
 
 /**
- * app/opengraph-image.tsx renders the card, but trailingSlash: true makes
- * Next's own generated URL ("/opengraph-image?<hash>") 308-redirect and mangles
- * the hash into "?<hash>=", so the slashed path is declared explicitly instead
- * and every page then carries an image rather than only the homepage.
+ * The social card every page shares: a static file, so its URL is plain and
+ * never redirects. 1200x630 JPEG (105 KB, small enough for WhatsApp's preview);
+ * the 3600x1890 original is in assets-src/og.
  */
-const ogImage = {
-  url: "/opengraph-image/",
+export const ogImage = {
+  url: "/og-image.jpg",
   width: 1200,
   height: 630,
-  alt: "BuildPanda: the construction operating system for Africa",
+  type: "image/jpeg",
+  alt: "BuildPanda: your entire build, one powerful platform. The materials and equipment screen in a browser window.",
 };
 
 interface PageSeo {

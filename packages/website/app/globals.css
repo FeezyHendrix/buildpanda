@@ -966,6 +966,30 @@ body {
       opacity: 1;
     }
   }
+
+  /* Contractors "Our Solutions": the selected area's timer. The blue fills down
+     its card's track at a constant rate (it measures time, so linear), and when
+     it is full the next area is selected (solutions-tabs.tsx). It holds while
+     the list is hovered or keyboard-focused, and while the section is off screen. */
+  .solution-progress {
+    transform-origin: top;
+    animation: solution-progress var(--solution-duration, 6s) linear forwards;
+  }
+
+  .solutions-tabs[data-paused] .solution-progress,
+  .solutions-tabs [role="tablist"]:hover .solution-progress,
+  .solutions-tabs:has(:focus-visible) .solution-progress {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* No timer: the selection changes only when asked; the marker is a short segment. */
+    .solution-progress {
+      animation: none;
+      bottom: auto;
+      height: 1.5rem;
+    }
+  }
 }
 
 /* Each lifecycle word is lit for a tenth of the cycle, one after another. */
@@ -1203,5 +1227,14 @@ body {
   }
   52% {
     opacity: 0.95;
+  }
+}
+
+@keyframes solution-progress {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
   }
 }
