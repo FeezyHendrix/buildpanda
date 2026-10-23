@@ -92,7 +92,7 @@ export function articleJsonLd(article: { title: string; description: string; pat
     dateModified: article.updated ?? article.published,
     author: { "@id": `${site.url}/#organization` },
     publisher: { "@id": `${site.url}/#organization` },
-    image: `${site.url}/opengraph-image/`,
+    image: `${site.url}/og-image.jpg`,
     inLanguage: "en",
   };
 }
