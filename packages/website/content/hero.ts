@@ -19,13 +19,14 @@ export const hero = {
     },
   },
   frame: {
-    width: 1211,
+    // Supplied at 3x the 1211px design width, so the frame stays sharp on retina screens.
+    width: 3633,
     top: {
       src: "/hero/frame-1.png",
-      height: 275,
+      height: 825,
       alt: "BuildPanda showing a project's “Needs your attention” list: approvals, inspections and payments waiting on a decision.",
     },
-    bottom: { src: "/hero/frame-2.png", height: 526 },
+    bottom: { src: "/hero/frame-2.png", height: 1578 },
     /** Small screens: one cropped image that runs off the right edge. */
     mobile: { src: "/hero/hero-mobile.png", width: 386, height: 372 },
   },

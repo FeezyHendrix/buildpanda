@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbJsonLd } from "@/lib/json-ld";
 import { pageMetadata } from "@/lib/seo";
-import { OwnersConsultation } from "@/components/sections/owners/owners-consultation";
+import { ConsultationSection } from "@/components/sections/consultation/consultation-section";
 import { OwnersEyes } from "@/components/sections/owners/owners-eyes";
 import { OwnersHero } from "@/components/sections/owners/owners-hero";
 import { OwnersProcess } from "@/components/sections/owners/owners-process";
@@ -30,7 +30,7 @@ export default function OwnersPage() {
       <OwnersEyes />
       <OwnersProcess />
       <OwnersTypes />
-      <OwnersConsultation />
+      <ConsultationSection copy={owners.consultation} />
     </main>
   );
 }

@@ -14,7 +14,6 @@ const nextConfig = {
   async redirects() {
     return [
       { source: "/construction", destination: "/for-owners/", permanent: true },
-      { source: "/for-contractors", destination: "/", permanent: true },
       { source: "/terms", destination: "/terms-of-service/", permanent: true },
       { source: "/policies", destination: "/terms-of-service/", permanent: true },
     ];

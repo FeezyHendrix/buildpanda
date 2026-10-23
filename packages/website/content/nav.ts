@@ -12,9 +12,8 @@ export const navEntries: ReadonlyArray<NavEntry> = [
   {
     id: "construction",
     label: "Construction",
-    // The home page is the contractors' page; /for-contractors redirects there.
     items: [
-      { id: "for-contractors", label: "For Contractors", href: "/" },
+      { id: "for-contractors", label: "For Contractors", href: "/for-contractors/" },
       { id: "for-owners", label: "For Owners", href: "/for-owners/" },
     ],
   },
