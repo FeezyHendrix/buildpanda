@@ -12,7 +12,7 @@ const icons: Record<ValueId, LucideIcon> = {
   people: Users,
 };
 
-/** Our values: four cards whose content sits at the foot of each card. */
+/** Our values: four cards with their content centred vertically. */
 export function AboutValues() {
   return (
     <Section theme="light">
@@ -27,7 +27,7 @@ export function AboutValues() {
             const Icon = icons[value.id];
 
             return (
-              <li key={value.id} className="flex flex-col bg-card p-6 sm:min-h-60 sm:justify-end lg:min-h-[20.625rem]">
+              <li key={value.id} className="flex flex-col bg-card p-6 sm:min-h-52 sm:justify-center lg:min-h-56">
                 <span className="flex size-9 items-center justify-center bg-brand text-white">
                   <Icon aria-hidden="true" strokeWidth={1.75} className="size-5" />
                 </span>
