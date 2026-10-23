@@ -17,6 +17,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     // so this must change whenever native code does — bumping `version` in
     // app.json is what marks a build as incompatible with older JS.
     runtimeVersion: { policy: "appVersion" },
+    plugins: [
+      ...(config.plugins ?? []),
+      // Writes the native sentry.properties that lets a release build upload
+      // its source maps and dSYMs. The project slug and auth token come from
+      // SENTRY_PROJECT / SENTRY_AUTH_TOKEN in the build environment, so no
+      // credential is committed here.
+      [
+        "@sentry/react-native",
+        {
+          organization: process.env.SENTRY_ORG ?? "buildpanda",
+          project: process.env.SENTRY_PROJECT,
+        },
+      ],
+    ],
     updates: {
       url: `${apiUrl}/ota/manifest`,
       enabled: true,

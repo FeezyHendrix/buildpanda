@@ -1,8 +1,10 @@
 // Expo 57 resolves pnpm workspaces and native dependencies automatically.
 // Disabling hierarchical lookup breaks transitive packages on a clean install.
-const { getDefaultConfig } = require("expo/metro-config");
+// getSentryExpoConfig is a drop-in for expo's getDefaultConfig that also emits
+// the debug IDs Sentry needs to match a stack trace to its source map.
+const { getSentryExpoConfig } = require("@sentry/react-native/metro");
 const { withNativeWind } = require("nativewind/metro");
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 config.resolver.sourceExts.push("sql");
 // expo-sqlite's web build is wa-sqlite, which ships as a .wasm asset; without

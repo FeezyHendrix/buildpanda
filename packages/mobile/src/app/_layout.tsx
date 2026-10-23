@@ -2,7 +2,9 @@ import "@/global.css";
 
 import { useFonts } from "expo-font";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import * as Sentry from "@sentry/react-native";
+import { isRunningInExpoGo } from "expo";
+import { ErrorBoundary as ExpoErrorBoundary, type ErrorBoundaryProps, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -15,6 +17,27 @@ import { OfflinePlansProvider } from "@/lib/offline-plans-provider";
 import { StageScopeProvider } from "@/lib/stage-scope";
 import { useTrackToolOpens } from "@/hooks/use-home-tools";
 import { ProjectAccessProvider } from "@/lib/project-access-provider";
+
+// Sentry reports from release builds only, and only when a DSN is set. Set
+// EXPO_PUBLIC_SENTRY_DSN on production builds alone: leaving it unset keeps
+// Expo Go, dev clients and staging builds silent without a code change.
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN ?? "";
+const sentryEnabled = !__DEV__ && Boolean(sentryDsn);
+
+if (sentryEnabled) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT || "production",
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+    // Site screens show RBAC-scoped project and financial records, so replay
+    // content is masked at capture time and never reaches Sentry readable.
+    integrations: [Sentry.mobileReplayIntegration({ maskAllText: true, maskAllImages: true })],
+    // Native frame timings don't exist in Expo Go and warn if asked for.
+    enableNativeFramesTracking: !isRunningInExpoGo(),
+  });
+}
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -41,7 +64,7 @@ function ToolOpenTracker() {
   return null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Archivo_700Bold: require("../../assets/fonts/Archivo_700Bold.ttf"),
     Archivo_600SemiBold: require("../../assets/fonts/Archivo_600SemiBold.ttf"),
@@ -90,4 +113,15 @@ export default function RootLayout() {
   );
 }
 
-export { ErrorBoundary } from "expo-router";
+// Expo Router renders this instead of a crashed route, which also stops the
+// error from ever reaching Sentry. SDK 7 has no wrapExpoRouterErrorBoundary,
+// so the route's error is reported explicitly before the fallback renders.
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  useEffect(() => {
+    Sentry.captureException(props.error);
+  }, [props.error]);
+
+  return <ExpoErrorBoundary {...props} />;
+}
+
+export default Sentry.wrap(RootLayout);
