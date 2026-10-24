@@ -5,13 +5,13 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { Image } from "expo-image";
 import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
-import { WebView } from "react-native-webview";
 import { Button, Spinner, Text } from "@/components/atoms";
+import { DocumentPreview } from "@/components/molecules/document-preview";
 import { Page } from "@/components/molecules/page";
 import SheetCanvas from "@/components/plan-review/sheet-canvas.dom";
 import { SHEET_TOOL } from "@/components/plan-review/markup-types";
 import { SheetPager } from "@/components/plan-review/sheet-controls";
-import { documentCacheDirUri, requireCachedFile, verifyCachedFile } from "@/lib/download-file";
+import { requireCachedFile, verifyCachedFile } from "@/lib/download-file";
 import { useSyncState } from "@/lib/sync-provider";
 import { palette } from "@/constants/colors";
 import { goBack } from "@/lib/navigation";
@@ -85,13 +85,7 @@ function DocumentViewer() {
       ) : isImage ? (
         <Image key={`${uri}:${attempt}`} source={{ uri }} contentFit="contain" style={{ flex: 1 }} onError={() => setWebError(true)} />
       ) : (
-        <WebView
-          key={`${uri}:${attempt}`} source={{ uri }} style={{ flex: 1 }}
-          originWhitelist={["file://*"]} javaScriptEnabled={false} allowFileAccess allowingReadAccessToURL={documentCacheDirUri(uri)}
-          onShouldStartLoadWithRequest={(request) => request.url === uri || request.url === "about:blank"}
-          startInLoadingState renderLoading={() => <Spinner />}
-          onError={() => setWebError(true)} onHttpError={() => setWebError(true)}
-        />
+        <DocumentPreview uri={uri} attempt={attempt} onError={() => setWebError(true)} />
       )}
     </Page>
   );

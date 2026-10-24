@@ -8,6 +8,8 @@ const SIZES =
   "(min-width: 1384px) 1320px, (min-width: 768px) calc(100vw - 4rem), calc(100vw - 2.5rem)";
 // From this width up the frame is the two-part desktop artwork; below it, one cropped image.
 const DESKTOP_QUERY = "(min-width: 640px)";
+// Small UI text in the screenshot softens at the default 75.
+const SCREENSHOT_QUALITY = 90;
 
 /**
  * Top of the product browser frame, flush on the hero's bottom edge. On small
@@ -20,6 +22,7 @@ export function HeroFrameTop() {
     width: frame.width,
     height: frame.top.height,
     sizes: SIZES,
+    quality: SCREENSHOT_QUALITY,
   }).props;
   const mobile = getImageProps({
     src: frame.mobile.src,
@@ -60,6 +63,7 @@ export function HeroFrameContinuation() {
           width={frame.width}
           height={frame.bottom.height}
           sizes={SIZES}
+          quality={SCREENSHOT_QUALITY}
           className="block h-auto w-full"
         />
       </div>

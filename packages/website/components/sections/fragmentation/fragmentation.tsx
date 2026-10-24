@@ -39,7 +39,7 @@ export function Fragmentation() {
 
         <div className="mt-12 grid gap-y-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,11fr)] lg:gap-x-14 lg:gap-y-0">
           <div className={COLUMN}>
-            <div className={`${PANEL} relative h-[22.75rem] flex-1 overflow-hidden`}>
+            <div className={`${PANEL} relative h-[22.75rem] shrink-0 overflow-hidden`}>
               <ToolChips />
             </div>
             <PanelCaption {...broken} className="max-w-[22rem]" />

@@ -8,6 +8,7 @@ export const dynamic = "force-static";
 // exists (the guides); a build timestamp is not a page edit.
 const pages = [
   { path: "", priority: 1, changeFrequency: "weekly" as const },
+  { path: "for-contractors", priority: 0.9, changeFrequency: "monthly" as const },
   { path: "for-owners", priority: 0.9, changeFrequency: "monthly" as const },
   { path: "talk-to-us", priority: 0.8, changeFrequency: "monthly" as const },
   { path: "blog", priority: 0.8, changeFrequency: "weekly" as const },
