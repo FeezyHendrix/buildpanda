@@ -39,6 +39,8 @@ function optionalBool(name: string, fallback: boolean): boolean {
 
 const env = optional("NODE_ENV", "development");
 
+const storageEndpoint = optional("AWS_ENDPOINT_URL", optional("S3_ENDPOINT", ""));
+
 export const config = {
   env,
   isProduction: env === "production",
@@ -209,10 +211,13 @@ export const config = {
     maxOutputTokens: optionalNumber("DEEPSEEK_MAX_OUTPUT_TOKENS", 32_000),
   },
 
+  // Railway wires these from the bucket service as AWS_S3_BUCKET_NAME,
+  // AWS_DEFAULT_REGION and AWS_ENDPOINT_URL; the S3_* names are the older
+  // local-dev spelling and still work.
   storage: {
-    bucket: optional("S3_BUCKET", "buildpanda"),
-    region: optional("AWS_REGION", "us-east-1"),
-    endpoint: optional("S3_ENDPOINT", ""),
+    bucket: optional("AWS_S3_BUCKET_NAME", optional("S3_BUCKET", "buildpanda")),
+    region: optional("AWS_DEFAULT_REGION", optional("AWS_REGION", "us-east-1")),
+    endpoint: storageEndpoint,
     accessKeyId: optional("AWS_ACCESS_KEY_ID", ""),
     secretAccessKey: optional("AWS_SECRET_ACCESS_KEY", ""),
     forcePathStyle: optional("S3_FORCE_PATH_STYLE", "auto"),
@@ -220,7 +225,7 @@ export const config = {
     // SSE-S3 (AES256) on server-initiated writes. Real S3 supports it natively;
     // a plain MinIO (custom endpoint, no KES/KMS) returns NotImplemented, so it
     // defaults off whenever a custom endpoint is configured.
-    serverSideEncryption: optionalBool("S3_SERVER_SIDE_ENCRYPTION", optional("S3_ENDPOINT", "") === ""),
+    serverSideEncryption: optionalBool("S3_SERVER_SIDE_ENCRYPTION", storageEndpoint === ""),
   },
 
   // Sentry error monitoring. Only runs in production (i.e. on Railway, which
