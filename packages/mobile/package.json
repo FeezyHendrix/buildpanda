@@ -3,7 +3,7 @@
   "main": "expo-router/entry",
   "version": "0.1.0",
   "dependencies": {
-    "@better-auth/expo": "1.5.6",
+    "@better-auth/expo": "1.6.22",
     "@buildpanda/rich-content": "file:../rich-content",
     "@buildpanda/voice-actions": "file:../voice-actions",
     "@expo/metro-runtime": "~57.0.14",
@@ -15,7 +15,7 @@
     "@react-native-community/netinfo": "12.0.1",
     "@sentry/react-native": "~7.11.0",
     "@tanstack/react-query": "^5.95.2",
-    "better-auth": "1.5.6",
+    "better-auth": "1.6.22",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
     "expo": "~57.0.18",
