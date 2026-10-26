@@ -3,3 +3,49 @@ packages:
 
 patchedDependencies:
   expo-sqlite@57.0.2: patches/expo-sqlite@57.0.2.patch
+
+# Security patches for transitive dependencies (pnpm audit, 2026-10-26). Each
+# stays on the major the dependant already resolves, so nothing changes API.
+# Left alone because the fix is a breaking major or none exists: uuid, esbuild
+# (drizzle-kit's esbuild-kit), postcss-selector-parser (tailwind 3),
+# decode-uri-component, image-size, tough-cookie and request (xeokit-convert),
+# node-forge, xlsx.
+overrides:
+  "@babel/core@7": ^7.29.6
+  "@fastify/busboy@3": ^3.2.2
+  "@tiptap/core@3": ^3.30.5
+  "@xmldom/xmldom@0.8": ^0.8.15
+  "axios@1": ^1.20.0
+  "baseline-browser-mapping@2": ^2.11.0
+  "brace-expansion@1": ^1.1.21
+  "brace-expansion@2": ^2.1.7
+  "brace-expansion@5": ^5.0.12
+  "browserslist@4": ^4.28.7
+  "compression@1": ^1.8.2
+  "defu@6": ^6.1.5
+  "dompurify@3": ^3.4.17
+  "fast-uri@3": ^3.1.9
+  "fastify@5": ^5.12.5
+  "find-my-way@9": ^9.7.0
+  "follow-redirects@1": ^1.16.0
+  "form-data@2": ^2.5.6
+  "form-data@4": ^4.0.6
+  "ip-address@10": ^10.7.4
+  "kysely@0.28": ^0.28.17
+  "lodash@4": ^4.18.0
+  "nanoid@3": ^3.3.18
+  "next@15": ^15.5.28
+  "pdfjs-dist@6": ^6.2.108
+  "postcss@8": ^8.5.23
+  "prosemirror-view@1": ^1.42.3
+  "qs@6": ^6.16.0
+  "react-router@7": ^7.18.2
+  "sanitize-html@2": ^2.18.0
+  "sharp@0.34": ^0.35.5
+  "sharp@0.35": ^0.35.5
+  "shell-quote@1": ^1.9.0
+  "source-map-js@1": ^1.2.2
+  "undici@7": ^7.30.1
+  "undici@8": ^8.12.2
+  "vite@6": ^6.4.4
+  "zod@4": ^4.6.6
