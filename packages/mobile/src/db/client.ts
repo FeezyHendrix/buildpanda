@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/expo-sqlite";
 import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
+import { Platform } from "react-native";
 import * as schema from "./schema";
 import { setDbOwner } from "./ownership";
 export { getDbOwner } from "./ownership";
@@ -32,6 +33,7 @@ export function openDb(ownerId: string): Promise<Db> {
       const db = createDatabase(raw);
       databases.set(ownerId, db);
       handles.set(ownerId, raw);
+      if (Platform.OS === "web") reloadIfWorkerStalls(raw);
       setDbOwner(db, ownerId);
       return db;
     } catch (error) {
@@ -41,6 +43,27 @@ export function openDb(ownerId: string): Promise<Db> {
   })().finally(() => opening.delete(ownerId));
   opening.set(ownerId, request);
   return request;
+}
+
+const PING_TIMEOUT_MS = 10_000;
+
+/**
+ * On web the database lives in a worker and every query spins the main thread
+ * until the worker answers. After the tab has been in the background that
+ * answer sometimes never comes, so each query hangs for its 15 second limit and
+ * the page looks frozen with nothing tappable. A reload rebuilds the worker;
+ * the store itself is on disk, so nothing queued is lost.
+ * shortcut: a reload mid-form drops what was typed, replace when web queries move off the main thread
+ */
+function reloadIfWorkerStalls(raw: SQLiteDatabase): void {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    const timeout = new Promise<"stalled">((resolve) => setTimeout(() => resolve("stalled"), PING_TIMEOUT_MS));
+    // a rejected ping (closed handle after a reset) is still an answer
+    void Promise.race([raw.getFirstAsync("SELECT 1"), timeout])
+      .then((result) => { if (result === "stalled") window.location.reload(); })
+      .catch(() => undefined);
+  });
 }
 
 /**
