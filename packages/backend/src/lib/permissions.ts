@@ -271,7 +271,7 @@ export function resolvePermissionMap(
   for (const name of roleField.split(",").map((s) => s.trim()).filter(Boolean)) {
     // 1) Static statements for built-in roles (includes all construction + sales + org-mgmt perms)
     const statics =
-      (roles as Record<string, { statements: Record<string, string[]> }>)[name]
+      (roles as unknown as Record<string, { statements: Record<string, string[]> }>)[name]
         ?.statements ?? {};
     for (const [res, actions] of Object.entries(statics)) {
       const set = merged.get(res) ?? new Set<string>();
