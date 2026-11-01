@@ -2,14 +2,9 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { CreateButton } from "@/components/molecules/create-button";
 import { Spinner } from "@/components/atoms/spinner";
-import { Card } from "@/components/atoms/card";
-import { SearchInput } from "@/components/atoms/search-input";
 import { VoidMaterialEntryDialog } from "@/components/molecules/void-material-entry-dialog";
 import { ReorderPolicyDialog } from "@/components/molecules/reorder-policy-dialog";
-import { EmptyState } from "@/components/molecules/empty-state";
-import { FilterTabs } from "@/components/molecules/filter-tabs";
-import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
-import { PageHeader } from "@/components/molecules/page-header";
+import { NumberedPagination } from "@/components/molecules/numbered-pagination";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useApproveMaterialEntry,
@@ -27,24 +22,27 @@ import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { toast } from "@/lib/toast";
 import type { LedgerEntry } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
-import { KpiCard } from "@/components/molecules/kpi-card";
+import { MetricCard, MetricFigure } from "@/components/molecules/metric-card";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import { errorMessage } from "@/lib/api-error";
-import { StackIcon } from "./material-log/icons";
+import { Download } from "lucide-react";
+import { ActivityToolbar } from "./material-log/activity-toolbar";
+import { StockByMaterial } from "./material-log/stock-by-material";
 import { LedgerTable } from "./material-log/ledger-table";
 import { LogMaterialDrawer } from "./material-log/log-material-drawer";
-import { StockCard } from "./material-log/stock-card";
 import {
-  LEDGER_APPROVAL_OPTIONS,
-  LEDGER_FILTERS,
-  matchesApprovalFilter,
+  formatQty,
+  matchesLedgerDate,
   matchesLedgerFilter,
   matchesLedgerSearch,
   sortStockByUrgency,
-  type LedgerApprovalFilter,
   type LedgerFilter,
 } from "./material-log/shared";
 
+const PAGE_SIZE = 10;
+
 export default function ProjectMaterialLog() {
+  useSetPageTitle("Material Log", "Stock received, used and on hand, with every movement logged.");
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "materials", "manage");
   const { data: stock = [], isLoading: stockLoading } = useMaterialStock(project.id);
@@ -63,7 +61,9 @@ export default function ProjectMaterialLog() {
   const [voiding, setVoiding] = useState<LedgerEntry | null>(null);
   const [search, setSearch] = useState("");
   const [ledgerFilter, setLedgerFilter] = useState<LedgerFilter>("all");
-  const [approvalFilter, setApprovalFilter] = useState<LedgerApprovalFilter>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
   const [policyMaterialId, setPolicyMaterialId] = useState<string | null>(null);
   const policyMaterial = catalog.find((c) => c.id === policyMaterialId) ?? null;
 
@@ -79,24 +79,34 @@ export default function ProjectMaterialLog() {
   }, [catalog, orders]);
 
   const sortedStock = useMemo(() => sortStockByUrgency(stock), [stock]);
-  const negativeCount = stock.filter((s) => s.onHandQty < 0).length;
-  const lowCount = stock.filter((s) => s.lowStock && s.onHandQty >= 0).length;
-  const voidedCount = entries.filter((e) => e.status === "Voided").length;
-  const pendingCount = entries.filter(
-    (e) => e.approvalStatus === "Pending" && e.status !== "Voided",
-  ).length;
+  // Plain sums across every material: they read as volumes, not as one unit.
+  const totalReceived = stock.reduce((sum, s) => sum + s.totalReceived, 0);
+  const totalUsed = stock.reduce((sum, s) => sum + s.totalUsed, 0);
+  const totalOnHand = stock.reduce((sum, s) => sum + s.onHandQty, 0);
 
   const visibleEntries = entries
     .filter((entry) => matchesLedgerFilter(entry, ledgerFilter))
-    .filter((entry) => matchesApprovalFilter(entry, approvalFilter))
+    .filter((entry) => matchesLedgerDate(entry, dateFrom, dateTo))
     .filter((entry) => matchesLedgerSearch(entry, search));
-  const ledgerFiltered =
-    ledgerFilter !== "all" || approvalFilter !== "all" || search.trim() !== "";
+  const ledgerFiltered = ledgerFilter !== "all" || (dateFrom !== "" || dateTo !== "") || search.trim() !== "";
+  const pageCount = Math.max(1, Math.ceil(visibleEntries.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageEntries = visibleEntries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  /** A narrower or wider result set starts again from its first page. */
+  function filtered<T>(setter: (value: T) => void): (value: T) => void {
+    return (value) => {
+      setter(value);
+      setPage(1);
+    };
+  }
 
   function clearLedgerFilters(): void {
     setLedgerFilter("all");
-    setApprovalFilter("all");
+    setDateFrom("");
+    setDateTo("");
     setSearch("");
+    setPage(1);
   }
 
   if (stockLoading || ledgerLoading) {
@@ -108,145 +118,73 @@ export default function ProjectMaterialLog() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
-      <PageHeader
-        title="Material log"
-        actions={
-          <div className="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              loading={downloadReport.isPending}
-              onClick={() =>
-                downloadReport.mutate(undefined, {
-                  onError: () => toast("Could not download report"),
-                })
-              }
-            >
-              Download report
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              loading={emailReport.isPending}
-              onClick={() =>
-                emailReport.mutate(undefined, {
-                  onSuccess: (res) => toast(`Report sent to ${res.sentTo}`, "success"),
-                  onError: () => toast("Could not email report"),
-                })
-              }
-            >
-              Email me
-            </Button>
-            {canManage && (
-              <CreateButton onClick={() => setLogOpen(true)}>
-                Log material
-       </CreateButton>
-            )}
-          </div>
-        }
+    <div className="w-full px-4 pb-8 pt-6 lg:px-8">
+      <div className="flex flex-wrap items-center justify-end gap-2 [&>button]:whitespace-nowrap">
+        <Button
+          type="button"
+          variant="outline"
+          size="md"
+          loading={emailReport.isPending}
+          onClick={() =>
+            emailReport.mutate(undefined, {
+              onSuccess: (res) => toast(`Report sent to ${res.sentTo}`, "success"),
+              onError: () => toast("Could not email report"),
+            })
+          }
+        >
+          Email me
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="md"
+          loading={downloadReport.isPending}
+          onClick={() =>
+            downloadReport.mutate(undefined, {
+              onError: () => toast("Could not download report"),
+            })
+          }
+        >
+          <Download className="size-4" />
+          Download Report
+        </Button>
+        {canManage ? <CreateButton onClick={() => setLogOpen(true)}>Log material</CreateButton> : null}
+      </div>
+
+      <section aria-label="Material totals" className="mt-6 grid gap-6 sm:grid-cols-3">
+        <MetricCard label="Total stocked received" value={<MetricFigure className="font-semibold">{formatQty(totalReceived)}</MetricFigure>} />
+        <MetricCard label="Total used" value={<MetricFigure className="font-semibold">{formatQty(totalUsed)}</MetricFigure>} />
+        <MetricCard label="Stock in hand" value={<MetricFigure className="font-semibold">{formatQty(totalOnHand)}</MetricFigure>} />
+      </section>
+
+      <StockByMaterial
+        stock={sortedStock}
+        canManage={canManage}
+        onLogMaterial={() => setLogOpen(true)}
+        onEditPolicy={setPolicyMaterialId}
       />
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard
-          label="Materials tracked"
-          value={stock.length.toString()}
-          helper="Carrying a stock balance"
-        />
-        <KpiCard
-          label="Needs attention"
-            value={(negativeCount + lowCount + pendingCount).toString()}
-            helper={
-              pendingCount > 0
-                ? `${pendingCount} awaiting approval`
-                : negativeCount > 0
-                  ? `${negativeCount} at negative stock`
-                  : lowCount > 0
-                    ? `${lowCount} below reorder level`
-                    : "All levels healthy"
-            }
-        />
-        <KpiCard
-          label="Ledger entries"
-          value={entries.length.toString()}
-          helper={voidedCount > 0 ? `${voidedCount} voided` : "None voided"}
-        />
-      </section>
+      <section aria-labelledby="activity-heading" className="mt-10">
+        <h2 id="activity-heading" className="text-xl font-semibold text-black-500">
+          Activity
+        </h2>
 
-      <section className="mt-8">
-        <div className="mb-3">
-          <h2 className="text-base font-semibold text-black-500">
-            Stock by material
-          </h2>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Received minus used. Anything negative or below its reorder level is
-            flagged and listed first.
-          </p>
-        </div>
-        {sortedStock.length === 0 ? (
-          <Card padding="none">
-            <EmptyState
-              variant="inline"
-              icon={<StackIcon />}
-              title="No stock yet"
-              description="Log the first delivery and this project's running stock levels will build up here."
-              action={canManage ? { label: "Log material", onClick: () => setLogOpen(true) } : undefined}
-              className="px-6"
-            />
-          </Card>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {sortedStock.map((s) => (
-              <StockCard
-                key={`${s.materialId}-${s.locationKey}`}
-                stock={s}
-                canManage={canManage}
-                onEditPolicy={() => setPolicyMaterialId(s.materialId)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <div className="mb-3">
-          <h2 className="text-base font-semibold text-black-500">Ledger</h2>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Append-only record of every movement — nothing is ever removed, only reversed.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="w-full max-w-xs rounded-lg border border-line-hair bg-white">
-            <SearchInput
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by material, supplier or delivery note"
-              aria-label="Search ledger entries"
-            />
-          </div>
-          <FilterTabs
-            items={LEDGER_FILTERS}
-            value={ledgerFilter}
-            onChange={setLedgerFilter}
-            ariaLabel="Filter ledger entries"
-          />
-          <SimpleDropdown
-            options={LEDGER_APPROVAL_OPTIONS}
-            value={approvalFilter}
-            onChange={setApprovalFilter}
-            ariaLabel="Filter by approval state"
-          />
-          <span className="ml-auto text-sm text-ink-muted">
-            {visibleEntries.length} of {entries.length} entr
-            {entries.length === 1 ? "y" : "ies"}
-          </span>
-        </div>
+        <ActivityToolbar
+          search={search}
+          onSearchChange={filtered(setSearch)}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateChange={(from, to) => {
+            setDateFrom(from);
+            setDateTo(to);
+            setPage(1);
+          }}
+          status={ledgerFilter}
+          onStatusChange={filtered(setLedgerFilter)}
+        />
 
         <LedgerTable
-          entries={visibleEntries}
+          entries={pageEntries}
           isFiltered={ledgerFiltered}
           isLoading={ledgerLoading}
           canManage={canManage}
@@ -260,6 +198,16 @@ export default function ProjectMaterialLog() {
           }
           onClearFilters={clearLedgerFilters}
         />
+
+        {visibleEntries.length > 0 ? (
+          <NumberedPagination
+            page={currentPage}
+            pageSize={PAGE_SIZE}
+            total={visibleEntries.length}
+            noun="Activities"
+            onPageChange={setPage}
+          />
+        ) : null}
       </section>
 
       <LogMaterialDrawer

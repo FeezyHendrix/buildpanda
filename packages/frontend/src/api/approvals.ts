@@ -6,6 +6,13 @@ import type {
   ApprovalStatus,
 } from "@/lib/project-types";
 
+/**
+ * Files on a new request. The server does not accept `attachments` yet (its
+ * create schema rejects unknown fields), so uploads stay off until
+ * docs/approvals-page-backend.md §2 ships; flip this then.
+ */
+export const APPROVAL_ATTACHMENTS_ENABLED = false;
+
 export interface ApprovalCreateInput {
   title: string;
   category?: string | null;
@@ -15,6 +22,8 @@ export interface ApprovalCreateInput {
   documentId?: string | null;
   documentVersionId?: string | null;
   sourceMarkupId?: string | null;
+  /** Uploaded file ids (see APPROVAL_ATTACHMENTS_ENABLED). */
+  attachments?: { fileId: string }[];
 }
 export interface ApprovalUpdateInput {
   title?: string;

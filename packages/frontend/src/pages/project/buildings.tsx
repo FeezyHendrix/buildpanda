@@ -1,10 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
 import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PageHeader } from "@/components/molecules/page-header";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useBuildings,
@@ -14,41 +11,28 @@ import {
   useCloneProgramme,
 } from "@/hooks/use-buildings";
 import { canResourceAction } from "@/lib/project-types";
-import { ProgressBar } from "@/components";
 import type { Building, BuildingStatus } from "@/api/buildings";
 import {
   UpsertBuildingDialog,
   type UpsertBuildingValues,
 } from "@/components/molecules/upsert-building-dialog";
 import { CloneProgrammeDialog } from "@/components/molecules/clone-programme-dialog";
+import { cn } from "@/lib/utils";
+import { BuildingRow } from "./buildings/building-row";
+import { BUILDING_STATUS_LABEL } from "./buildings/building-status-badge";
 
-function StatusCell({ status }: { status: BuildingStatus }) {
-  if (status === "active")
-    return (
-      <Badge tone="info" size="sm">
-        Active
-      </Badge>
-    );
-  if (status === "completed")
-    return (
-      <Badge tone="success" size="sm">
-        Completed
-      </Badge>
-    );
-  if (status === "on_hold")
-    return (
-      <Badge tone="warning" size="sm">
-        On Hold
-      </Badge>
-    );
-  return <span className="text-sm text-ink-muted">Planned</span>;
-}
+const FILTER_ORDER: BuildingStatus[] = ["planned", "completed", "active", "on_hold"];
 
 export default function ProjectBuildings() {
+  useSetPageTitle("Manage Buildings", "Add, edit and track the buildings that make up this project.");
   const { project, access } = useProjectContext();
   const canManage = Boolean(access && canResourceAction(access, "buildings", "manage"));
   const { data: buildings = [], isLoading } = useBuildings(project.id);
   const realBuildings = buildings.filter((b) => b.kind === "real");
+  // No pill is on until one is picked, so every building shows by default;
+  // picking the active pill again clears it.
+  const [statusFilter, setStatusFilter] = useState<BuildingStatus | null>(null);
+  const visibleBuildings = statusFilter ? realBuildings.filter((b) => b.status === statusFilter) : realBuildings;
 
   const createBuilding = useCreateBuilding();
   const updateBuilding = useUpdateBuilding();
@@ -84,90 +68,66 @@ export default function ProjectBuildings() {
   }
 
   return (
-    <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
-      <PageHeader
-        title="Buildings"
-        actions={
-          canManage && (
-            <CreateButton onClick={() => setCreateOpen(true)}>
-              Add building
-      </CreateButton>
-          )
-        }
-      />
+    <div className="w-full px-4 pb-8 pt-6 lg:px-8">
+      <div className="mx-auto max-w-[925px]">
+        {canManage ? (
+          <div className="flex justify-end">
+            <CreateButton onClick={() => setCreateOpen(true)}>Add Buildings</CreateButton>
+          </div>
+        ) : null}
 
-      <div className="mt-6 flex flex-col gap-3">
-        {realBuildings.map((b) => (
-          <div
-            key={b.id}
-            className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-lg border border-line-hair bg-white p-4 shadow-card"
-          >
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <Link
-                  to={`/project/${project.id}/buildings/${b.id}/stages`}
-                  className="text-base font-semibold text-ink hover:text-primary-500 transition-colors"
-                >
-                  {b.name}
-                </Link>
-                {b.code && (
-                  <Badge tone="neutral" size="sm">
-                    {b.code}
-                  </Badge>
+        <div role="group" aria-label="Filter buildings by status" className="mt-6 flex flex-wrap gap-2">
+          {FILTER_ORDER.map((status) => {
+            const on = statusFilter === status;
+            return (
+              <button
+                key={status}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setStatusFilter(on ? null : status)}
+                className={cn(
+                  "h-9 rounded-full border px-4 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                  on
+                    ? "border-[#1E1E1E] bg-[#1E1E1E] text-white"
+                    : "border-[#EBEBEB] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
                 )}
-                <StatusCell status={b.status} />
-              </div>
-            </div>
-
-            <div className="flex w-full sm:w-48 flex-col gap-1.5 shrink-0">
-              <div className="flex items-center justify-between text-xs text-ink-muted">
-                <span>Progress</span>
-                <span className="font-medium text-ink">{b.progressPercent}%</span>
-              </div>
-              <ProgressBar value={b.progressPercent} className="h-2" />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                onClick={() => setCloneTarget(b)}
-                disabled={!canManage}
               >
-                Clone Programme
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setEditTarget(b)}
-                disabled={!canManage}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => setDeleteTarget(b)}
-                disabled={!canManage}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        ))}
+                {BUILDING_STATUS_LABEL[status]}
+              </button>
+            );
+          })}
+        </div>
 
-        {realBuildings.length === 0 && !isLoading && (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-line py-12 text-center">
-            <h3 className="mt-2 text-sm font-semibold text-ink">No buildings</h3>
-            <p className="mt-1 text-sm text-ink-muted">
-              Get started by adding a building to this project.
-            </p>
-            {canManage && (
-              <div className="mt-6">
-                <CreateButton onClick={() => setCreateOpen(true)}>
-                  Add building
-        </CreateButton>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="mt-6">
+          {visibleBuildings.length > 0 ? (
+            <div className="divide-y divide-[#EBEBEB] border border-[#EBEBEB] bg-white">
+              {visibleBuildings.map((b) => (
+                <BuildingRow
+                  key={b.id}
+                  building={b}
+                  stagesHref={`/project/${project.id}/buildings/${b.id}/stages`}
+                  canManage={canManage}
+                  onClone={() => setCloneTarget(b)}
+                  onEdit={() => setEditTarget(b)}
+                  onDelete={() => setDeleteTarget(b)}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {visibleBuildings.length === 0 && !isLoading ? (
+            <div className="flex flex-col items-center justify-center border border-dashed border-[#EBEBEB] py-12 text-center">
+              <h3 className="mt-2 text-sm font-semibold text-ink">
+                {realBuildings.length === 0 ? "No buildings" : `No ${BUILDING_STATUS_LABEL[statusFilter!].toLowerCase()} buildings`}
+              </h3>
+              <p className="mt-1 text-sm text-ink-muted">
+                {realBuildings.length === 0
+                  ? "Get started by adding a building to this project."
+                  : "Pick another status, or select this one again to see every building."}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <UpsertBuildingDialog

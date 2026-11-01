@@ -49,6 +49,7 @@ import CalendarIcon from "@/assets/icons2/calendar.icon.svg";
 import ReorderIcon from "@/assets/icons2/reorder.icon.svg";
 import PDFIcon from "@/assets/icons2/pdf.icon.svg";
 import PNGIcon from "@/assets/icons2/png.icon.svg";
+import JPGIcon from "@/assets/icons2/jpg.svg";
 import MOVIcon from "@/assets/icons2/mov.icon.svg";
 import XLSXIcon from "@/assets/icons2/xls.icon.svg";
 import TXTIcon from "@/assets/icons2/txt.icon.svg";
@@ -120,6 +121,7 @@ export const icons2 = {
   reorder: ReorderIcon,
   pdf: PDFIcon,
   png: PNGIcon,
+  jpg: JPGIcon,
   mov: MOVIcon,
   xls: XLSXIcon,
   txt: TXTIcon,

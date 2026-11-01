@@ -45,7 +45,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   orgProfile: "Organization profile",
   rfis: "RFIs",
   bim: "BIM models",
-  approvals: "Client approvals",
+  approvals: "Approvals",
   selections: "Selections",
   queries: "Queries",
   "change-requests": "Change requests",

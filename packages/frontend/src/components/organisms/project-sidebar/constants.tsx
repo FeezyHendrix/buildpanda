@@ -197,7 +197,7 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = 
     flag: "projects.documents",
   },
   {
-    label: "Client Approvals",
+    label: "Approvals",
     slug: "approvals",
     resource: "approvals",
     Icon: InspectionsIcon,

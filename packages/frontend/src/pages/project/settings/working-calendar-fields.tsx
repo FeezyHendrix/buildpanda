@@ -1,20 +1,22 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { INPUT_CLASS } from "@/components/atoms/input";
-import { Label } from "@/components/atoms/label";
 import { formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { DateInputField } from "@/components/molecules/date-input-field";
 
 const DAYS = [
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-  { value: 0, label: "Sun" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+  { value: 0, label: "Sunday" },
 ] as const;
+
+const SECTION_HEADING_CLASS = "text-base font-semibold text-[#1E1E1E]";
 
 interface WorkingCalendarFieldsProps {
   workingDays: number[];
@@ -55,51 +57,61 @@ function WorkingCalendarFields({
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-4 border-t border-line-hair pt-5">
-      <div className="flex flex-col gap-1.5">
-        <Label>Working days</Label>
-        <div className="flex flex-wrap gap-2">
+    <>
+      <section aria-labelledby="working-days-heading" className="mt-6">
+        <h3 id="working-days-heading" className={SECTION_HEADING_CLASS}>Working Days</h3>
+        <div className="mt-2.5 flex flex-wrap gap-2">
           {DAYS.map((day) => {
             const on = workingDays.includes(day.value);
             return (
               <Button
                 key={day.value}
                 type="button"
-                size="sm"
+                variant="outline"
                 disabled={disabled}
                 aria-pressed={on}
-                variant={on ? "primary" : "secondary"}
                 onClick={() => toggleDay(day.value)}
+                className={cn(
+                  "h-6 rounded-full px-2.5 !text-xs font-medium transition-colors",
+                  on ? "border-none bg-primary-50 !text-primary" : "text-gray-600 hover:bg-gray-200",
+                )}
               >
-                {on ? "✓ " : ""}
                 {day.label}
               </Button>
             );
           })}
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="mt-2 text-xs text-gray-500">
           Days the site works. Missed daily logs, durations and extensions of time are all
           counted in these days.
         </p>
-      </div>
+      </section>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="holiday-date">Holidays &amp; site closures</Label>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            id="holiday-date"
-            type="date"
-            value={holidayDraft}
+      <section aria-labelledby="holidays-heading" className="mt-7">
+        <h3 id="holidays-heading" className={SECTION_HEADING_CLASS}>Holidays &amp; site closures</h3>
+        <div className="mt-3 flex items-center gap-2">
+          <div className="min-w-0 flex-1 sm:flex-none sm:basis-[calc(50%-12px)]">
+            <DateInputField
+              id="holiday-date"
+              aria-label="Closure date"
+              value={holidayDraft}
+              disabled={disabled}
+              onChange={setHolidayDraft}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            aria-label="Add closure"
             disabled={disabled}
-            onChange={(event) => setHolidayDraft(event.target.value)}
-            className={cn(INPUT_CLASS, "w-48")}
-          />
-          <Button type="button" variant="secondary" size="md" disabled={disabled || !holidayDraft} onClick={addHoliday}>
-            Add closure
+            onClick={addHoliday}
+            className="size-[46px] shrink-0 p-0"
+          >
+            <Plus className="size-5" />
           </Button>
         </div>
         {holidays.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {holidays.map((date) => (
               <Badge key={date} tone="neutral" size="sm">
                 {formatShortDate(date) || date}
@@ -116,11 +128,9 @@ function WorkingCalendarFields({
               </Badge>
             ))}
           </div>
-        ) : (
-          <p className="text-xs text-gray-500">No closures recorded.</p>
-        )}
-      </div>
-    </div>
+        ) : null}
+      </section>
+    </>
   );
 }
 

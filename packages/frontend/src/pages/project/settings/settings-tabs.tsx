@@ -1,8 +1,8 @@
 import { type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
-import { Tabs } from "@/components/molecules/tabs";
 import { errorMessage } from "@/lib/api-error";
+import { cn } from "@/lib/utils";
 
 export const SETTINGS_TABS = [
   { id: "general", label: "General" },
@@ -39,19 +39,46 @@ export function useSettingsTab(): { tab: SettingsTab; setTab: (next: SettingsTab
   return { tab, setTab };
 }
 
+/** Label above every settings field: small, semibold, tight to its input. */
+export const FIELD_LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
+
 export function SettingsTabBar({ value, onChange }: { value: SettingsTab; onChange: (id: SettingsTab) => void }) {
   return (
-    <Tabs
-      items={SETTINGS_TABS}
-      value={value}
-      onChange={onChange}
-      ariaLabel="Project settings sections"
-      className="mt-6"
-    />
+    <div role="tablist" aria-label="Project settings sections" className="flex flex-wrap gap-2">
+      {SETTINGS_TABS.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          aria-selected={value === item.id}
+          onClick={() => onChange(item.id)}
+          className={cn(
+            "h-9 rounded-full border px-4 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+            value === item.id
+              ? "border-[#1E1E1E] bg-[#1E1E1E] text-white"
+              : "border-[#EBEBEB] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
+          )}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
 SettingsTabBar.displayName = "SettingsTabBar";
+
+/** Title + one-line description that opens a card or a section within one. */
+export function SettingsHeading({ title, description }: { title: string; description?: string }) {
+  return (
+    <div>
+      <h2 className="text-h6 font-semibold text-[#1E1E1E]">{title}</h2>
+      {description ? <p className="mt-1 text-pretty text-sm text-gray-500">{description}</p> : null}
+    </div>
+  );
+}
+
+SettingsHeading.displayName = "SettingsHeading";
 
 export function SettingsCard({
   title,
@@ -65,14 +92,9 @@ export function SettingsCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-line-hair bg-white p-6">
+    <section className="border border-[#EBEBEB] bg-white p-6">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-          {description ? (
-            <p className="mt-1 text-pretty text-sm text-gray-500">{description}</p>
-          ) : null}
-        </div>
+        <SettingsHeading title={title} description={description} />
         {action}
       </div>
       {children}
@@ -105,17 +127,18 @@ export function SaveRow({
           {errorMessage(error)}
         </p>
       ) : null}
-      <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
         {dirty && draftNotice ? <p role="status" className="mr-auto text-xs text-ink-muted">Your edits are kept in this browser tab. Save to update the project.</p> : null}
         <Button
           type="button"
           variant="primary"
           size="md"
+          className="h-[46px]"
           disabled={!dirty || disabled || loading}
           loading={loading}
           onClick={onSave}
         >
-          Save changes
+          Save Changes
         </Button>
       </div>
     </>

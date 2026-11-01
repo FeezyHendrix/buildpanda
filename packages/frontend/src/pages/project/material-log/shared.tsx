@@ -66,14 +66,17 @@ export const ENTRY_TYPE_META: Record<
   },
 };
 
-export type LedgerFilter = "all" | "IN" | "USED" | "voided" | "flagged";
+export type LedgerFilter = "all" | "IN" | "USED" | "voided" | "flagged" | "pending" | "approved";
 
+/** The one Status filter: what kind of movement it was, or where it stands in approval. */
 export const LEDGER_FILTERS: { value: LedgerFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "IN", label: "Received" },
   { value: "USED", label: "Used" },
   { value: "voided", label: "Voided" },
   { value: "flagged", label: "Flagged" },
+  { value: "pending", label: "Awaiting approval" },
+  { value: "approved", label: "Approved" },
 ];
 
 export function isFlagged(entry: LedgerEntry): boolean {
@@ -99,32 +102,18 @@ export function matchesLedgerFilter(
       return entry.status === "Voided" || entry.entryType === "VOID";
     case "flagged":
       return isFlagged(entry);
-  }
-}
-
-export type LedgerApprovalFilter = "all" | "pending" | "approved";
-
-export const LEDGER_APPROVAL_OPTIONS: readonly {
-  value: LedgerApprovalFilter;
-  label: string;
-}[] = [
-  { value: "all", label: "All entries" },
-  { value: "pending", label: "Awaiting approval" },
-  { value: "approved", label: "Approved" },
-] as const;
-
-export function matchesApprovalFilter(
-  entry: LedgerEntry,
-  filter: LedgerApprovalFilter,
-): boolean {
-  switch (filter) {
-    case "all":
-      return true;
     case "pending":
-      return entry.approvalStatus === "Pending";
+      return entry.approvalStatus === "Pending" && entry.status !== "Voided";
     case "approved":
       return entry.approvalStatus !== "Pending";
   }
+}
+
+/** `from` / `to` are `yyyy-mm-dd` days in the viewer's own timezone ("" = open-ended), inclusive. */
+export function matchesLedgerDate(entry: LedgerEntry, from: string, to: string): boolean {
+  if (!from && !to) return true;
+  const day = new Date(entry.occurredAt).toLocaleDateString("en-CA");
+  return (!from || day >= from) && (!to || day <= to);
 }
 
 export function matchesLedgerSearch(entry: LedgerEntry, query: string): boolean {
