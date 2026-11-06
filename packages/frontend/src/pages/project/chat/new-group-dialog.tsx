@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { Dialog } from "@base-ui/react/dialog";
 import { Button } from "@/components/atoms/button";
-import { INPUT_CLASS } from "@/components/atoms/input";
-import { Label } from "@/components/atoms/label";
-import { Switcher, type SwitcherValue } from "@/components/atoms";
-import { cn } from "@/lib/utils";
+import { TextInput } from "@/components/atoms/text-input";
+import { ToggleSwitch } from "@/components/atoms/toggle-switch";
+import { ModalShell } from "@/components/molecules/modal-shell";
 
 interface Props {
   open: boolean;
@@ -15,80 +13,69 @@ interface Props {
 
 export function NewGroupDialog({ open, onClose, onSubmit, loading = false }: Props) {
   const [name, setName] = useState("");
-  const [isPrivate, setIsPrivate] = useState<SwitcherValue>("no");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const canCreate = Boolean(name.trim()) && !loading;
 
-  function handleSubmit(): void {
+  function handleSubmit(event: { preventDefault(): void }): void {
+    event.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed) return;
-    onSubmit(trimmed, isPrivate === "yes");
+    if (!trimmed || loading) return;
+    onSubmit(trimmed, isPrivate);
     setName("");
-    setIsPrivate("no");
+    setIsPrivate(false);
   }
 
   return (
-    <Dialog.Root
+    <ModalShell
       open={open}
       onOpenChange={(o) => {
         if (!o) onClose();
       }}
+      title="New Group"
     >
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />
-        <Dialog.Popup
-          className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2",
-            "flex flex-col gap-5 rounded-lg border border-line-hair bg-white p-6 shadow-lg outline-none",
-          )}
+      <form onSubmit={handleSubmit} className="flex flex-col">
+        <label htmlFor="group-name" className="text-[12px] font-semibold leading-[16px] text-[#1E1E1E]">
+          Group Name
+        </label>
+        <TextInput
+          id="group-name"
+          autoFocus
+          value={name}
+          onChange={setName}
+          placeholder="e.g. MEP coordination"
+          className="mt-[4px] h-[45px] border border-[#EEEEEE] px-4 text-[14px] placeholder:text-[#A5A5A5]"
+        />
+
+        <div className="mt-[24px] flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[14px] font-semibold leading-[20px] text-[#1E1E1E]">Operator Required</p>
+            <p className="mt-[4px] text-[12px] leading-[16px] text-[#737373]">
+              Only invited members can see and post in a private group.
+            </p>
+          </div>
+          <ToggleSwitch size="sm" checked={isPrivate} onChange={setIsPrivate} ariaLabel="Operator Required" />
+        </div>
+
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={!canCreate}
+          loading={loading}
+          className="mt-[40px] h-[46px] w-full text-[14px] disabled:bg-[#F5F5F5] disabled:text-[#1E1E1E] disabled:opacity-100"
         >
-          <Dialog.Title className="text-lg font-semibold text-ink">
-            New group
-          </Dialog.Title>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="group-name">Group name</Label>
-            <input
-              id="group-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              placeholder="e.g. MEP coordination"
-              autoFocus
-              className={INPUT_CLASS}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-ink">Make private</p>
-              <p className="text-xs text-ink-muted">
-                Only invited members can see and post in a private group.
-              </p>
-            </div>
-            <Switcher value={isPrivate} onChange={setIsPrivate} />
-          </div>
-
-          <div className="flex items-center justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSubmit}
-              disabled={!name.trim() || loading}
-              loading={loading}
-            >
-              Create group
-            </Button>
-          </div>
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+          Create Group
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onClose}
+          disabled={loading}
+          className="h-[46px] w-full text-[14px] text-[#1E1E1E]"
+        >
+          Cancel
+        </Button>
+      </form>
+    </ModalShell>
   );
 }
 

@@ -40,7 +40,7 @@ export function useSettingsTab(): { tab: SettingsTab; setTab: (next: SettingsTab
 }
 
 /** Label above every settings field: small, semibold, tight to its input. */
-export const FIELD_LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
+export const FIELD_LABEL_CLASS = "text-caption-m! font-semibold text-[#1E1E1E]";
 
 export function SettingsTabBar({ value, onChange }: { value: SettingsTab; onChange: (id: SettingsTab) => void }) {
   return (
@@ -53,7 +53,7 @@ export function SettingsTabBar({ value, onChange }: { value: SettingsTab; onChan
           aria-selected={value === item.id}
           onClick={() => onChange(item.id)}
           className={cn(
-            "h-9 rounded-full border px-4 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+            "h-9 rounded-full border px-4 text-caption-l! font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
             value === item.id
               ? "border-[#1E1E1E] bg-[#1E1E1E] text-white"
               : "border-[#EBEBEB] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
@@ -73,7 +73,7 @@ export function SettingsHeading({ title, description }: { title: string; descrip
   return (
     <div>
       <h2 className="text-h6 font-semibold text-[#1E1E1E]">{title}</h2>
-      {description ? <p className="mt-1 text-pretty text-sm text-gray-500">{description}</p> : null}
+      {description ? <p className="mt-1 text-pretty text-caption-l! text-gray-500">{description}</p> : null}
     </div>
   );
 }

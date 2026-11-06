@@ -31,7 +31,7 @@ export function BuildingRow({ building, stagesHref, canManage, onClone, onEdit, 
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <Link
           to={stagesHref}
-          className="truncate text-sm font-semibold text-[#1E1E1E] transition-colors hover:text-primary-500"
+          className="truncate text-caption-l! font-semibold text-[#1E1E1E] transition-colors hover:text-primary-500"
         >
           {building.name}
         </Link>
@@ -52,7 +52,7 @@ export function BuildingRow({ building, stagesHref, canManage, onClone, onEdit, 
           fillClassName="rounded-none"
           aria-label={`${building.name} progress`}
         />
-        <span className="w-10 shrink-0 text-sm font-medium text-[#1E1E1E]">{building.progressPercent}%</span>
+        <span className="w-10 shrink-0 text-caption-l! font-medium text-[#1E1E1E]">{building.progressPercent}%</span>
       </div>
 
       <div className="flex w-8 shrink-0 justify-end">

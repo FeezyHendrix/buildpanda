@@ -13,7 +13,7 @@ interface ApprovalsFilterPanelProps {
   onReset: () => void;
 }
 
-const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
+const LABEL_CLASS = "text-caption-m! font-semibold text-[#1E1E1E]";
 
 /**
  * Status pills apply as you pick them; the date range applies together on
@@ -44,7 +44,7 @@ export function ApprovalsFilterPanel({ status, onStatusChange, dateFrom, dateTo,
               aria-pressed={on}
               onClick={() => onStatusChange(option.value)}
               className={cn(
-                "rounded-full border px-2.5 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                "rounded-full border px-2.5 text-caption-m! font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
                 on ? "border-primary bg-primary text-white" : "border-[#EBEBEB] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
               )}
             >
@@ -66,16 +66,16 @@ export function ApprovalsFilterPanel({ status, onStatusChange, dateFrom, dateTo,
       <Button
         type="button"
         variant="secondary"
-        size="md"
+        size="lg"
         disabled={!draftFrom || !draftTo}
         onClick={() => onApplyDates(draftFrom, draftTo)}
         className="mt-6 w-full"
       >
         Apply Filter
       </Button>
-      <button type="button" onClick={onReset} className="mt-1 w-full py-2 text-center text-sm font-medium text-[#1E1E1E] outline-none hover:underline">
+      <Button type="button" variant="ghost" size="lg" onClick={onReset} className="mt-1 w-full">
         Reset
-      </button>
+      </Button>
     </aside>
   );
 }

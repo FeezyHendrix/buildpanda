@@ -58,7 +58,7 @@ function MoneyTab({ project, canManage, onEditBudget }: MoneyTabProps) {
         <MetricCard label="Total budget" value={<BudgetFigure>{compact(project.budgetTotal)}</BudgetFigure>} />
       </div>
 
-      <p className="mt-6 text-xs text-gray-600">
+      <p className="mt-6 text-caption-m! text-gray-600">
         Retention, advance recovery, liquidated damages, VAT and payment terms belong to the
         contract itself -{" "}
         <Link
@@ -85,7 +85,7 @@ function MoneyTab({ project, canManage, onEditBudget }: MoneyTabProps) {
                 id="project-currency"
                 options={CURRENCY_OPTIONS}
                 value={currency}
-                className="h-[45px] px-4 text-sm"
+                className="h-[45px] px-4 text-caption-l!"
                 onChange={(next) => next && setCurrency(next)}
               />
             </div>
@@ -106,7 +106,7 @@ function MoneyTab({ project, canManage, onEditBudget }: MoneyTabProps) {
             </Button>
           </div>
         ) : (
-          <p className="mt-6 text-sm text-gray-500">{currencyLabel(project.currency)}</p>
+          <p className="mt-6 text-caption-l! text-gray-500">{currencyLabel(project.currency)}</p>
         )}
       </div>
     </SettingsCard>

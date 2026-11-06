@@ -63,7 +63,7 @@ function GeneralTab({ canManage, profile }: GeneralTabProps) {
             value={draft.projectType ?? ""}
             disabled={!canManage}
             placeholder="Not set"
-            className="h-[45px] px-4 text-sm"
+            className="h-[45px] px-4 text-caption-l!"
             onChange={(next) => update("projectType", (next || null) as ProjectTypeCode | null)}
           />
         </div>

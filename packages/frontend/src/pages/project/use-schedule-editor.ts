@@ -1,3 +1,4 @@
+import { toast } from "@/lib/toast";
 import { useCallback, useRef, useState } from "react";
 import { api } from "@/api/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -98,6 +99,13 @@ export function useScheduleEditor(projectId: string, activities: Activity[]) {
       };
       ganttApi.on("update-task", handler);
       ganttApi.on("drag-task", handler);
+
+      // A row added from the chart would exist only in the browser: work items are
+      // created from Site activity, so say so rather than draw one that is never saved.
+      ganttApi.intercept?.("add-task", () => {
+        toast("Add work items from Site activity. They appear here once they are scheduled.", "info");
+        return false;
+      });
 
       ganttApi.intercept?.("add-link", (raw) => {
         const link = raw as { link?: { source?: string | number; target?: string | number } };

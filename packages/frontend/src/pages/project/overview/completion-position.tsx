@@ -1,10 +1,12 @@
 import { Badge } from "@/components/atoms/badge";
+import { cn } from "@/lib/utils";
 import { formatShortDate, formatWholeCurrency } from "@/lib/formatters";
 import type { ProjectReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 
 interface CompletionPositionProps {
   schedule: ProjectReportingSnapshot["schedule"] | undefined;
   currency: string;
+  className?: string;
 }
 
 function daysLabel(days: number): string {
@@ -17,7 +19,7 @@ function daysLabel(days: number): string {
  * never stated (findings F55, #48). Each line renders only once the programme
  * snapshot carries the figure, so the card is honest before the fields land.
  */
-function CompletionPosition({ schedule, currency }: CompletionPositionProps) {
+function CompletionPosition({ schedule, currency, className }: CompletionPositionProps) {
   if (!schedule) return null;
 
   const completion = schedule.completionDate ?? null;
@@ -39,7 +41,7 @@ function CompletionPosition({ schedule, currency }: CompletionPositionProps) {
   if (!hasAnything) return null;
 
   return (
-    <section className="flex flex-col gap-2 rounded-lg border border-line-hair p-3">
+    <section className={cn("flex flex-col gap-2 border border-[#EEEEEE] p-3", className)}>
       <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-black-300">
         Completion position
       </p>

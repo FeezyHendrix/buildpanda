@@ -43,7 +43,7 @@ function NumberedPagination({ page, pageSize, total, noun, onPageChange }: Numbe
         </button>
         {pageItems(page, pageCount).map((item, index) =>
           item === "gap" ? (
-            <span key={`gap-${index}`} className="w-6 text-center text-xs text-[#1E1E1E]">
+            <span key={`gap-${index}`} className="w-6 text-center text-caption-m! text-[#1E1E1E]">
               …
             </span>
           ) : (
@@ -54,7 +54,7 @@ function NumberedPagination({ page, pageSize, total, noun, onPageChange }: Numbe
               aria-current={item === page ? "page" : undefined}
               onClick={() => onPageChange(item)}
               className={cn(
-                "flex size-6 items-center justify-center rounded-full text-xs font-medium",
+                "flex size-6 items-center justify-center rounded-full text-caption-m! font-medium",
                 item === page ? "bg-[#1E1E1E] text-white" : "text-[#1E1E1E] hover:bg-[#F5F5F5]",
               )}
             >

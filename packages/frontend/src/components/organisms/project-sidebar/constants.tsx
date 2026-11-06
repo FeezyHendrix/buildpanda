@@ -205,6 +205,14 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = 
     flag: "workflow.approvals",
   },
   {
+    label: "Change Requests",
+    slug: "change-requests",
+    resource: "change-requests",
+    Icon: FinancesIcon,
+    helper: "Scope changes",
+    flag: "workflow.changeRequests",
+  },
+  {
     label: "Selections",
     slug: "selections",
     resource: "selections",
@@ -260,14 +268,6 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     Icon: FinancesIcon,
     helper: "Site spend & purchase orders",
     flag: "commercial.finances",
-  },
-  {
-    label: "Change Orders",
-    slug: "change-requests",
-    resource: "change-requests",
-    Icon: FinancesIcon,
-    helper: "Scope changes",
-    flag: "workflow.changeRequests",
   },
   {
     label: "Budget & Invoices",

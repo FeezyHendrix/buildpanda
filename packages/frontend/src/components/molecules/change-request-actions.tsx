@@ -5,7 +5,8 @@ import { ReasonDialog } from "@/components/molecules/reason-dialog";
 import { useChangeRequestAction } from "@/hooks/use-change-requests";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
-import type { ChangeAction, ChangeRequestDetail, ChangeStatus } from "@/lib/project-types";
+import type { ChangeAction, ChangeRequest, ChangeStatus } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
 
 /**
  * The change-order ladder, as the actions that walk it.
@@ -62,10 +63,24 @@ const ACTION_META: Record<
 
 interface ChangeRequestActionsProps {
   projectId: string;
-  cr: ChangeRequestDetail;
+  /** Only what the next step depends on, so a register row can offer the same actions as the detail. */
+  cr: Pick<ChangeRequest, "id" | "status" | "type" | "timeImpactDays">;
+  /**
+   * `row`: register-row buttons — green Approve, red Reject, outlined for the rest, silent once
+   * executed. `modal`: the detail footer — equal-width, blue Approve, soft-red Reject.
+   */
+  appearance?: "default" | "row" | "modal";
 }
 
-export function ChangeRequestActions({ projectId, cr }: ChangeRequestActionsProps) {
+const COMPACT_STYLE: Partial<Record<ChangeAction, string>> = {
+  approve: "bg-[#00A63E] hover:bg-[#008A34] active:bg-[#007A2E]",
+};
+const COMPACT_OUTLINE = "border border-[#DDDDDD] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]";
+const MODAL_REJECT = "flex-1 bg-[#FEF2F2] text-[#E7000B] hover:bg-[#FEE2E2]";
+
+export function ChangeRequestActions({ projectId, cr, appearance = "default" }: ChangeRequestActionsProps) {
+  const compact = appearance === "row";
+  const modal = appearance === "modal";
   const run = useChangeRequestAction();
   const [reasonFor, setReasonFor] = useState<ChangeAction | null>(null);
   const [awarding, setAwarding] = useState(false);
@@ -91,6 +106,7 @@ export function ChangeRequestActions({ projectId, cr }: ChangeRequestActionsProp
   }
 
   if (available.length === 0) {
+    if (compact) return null;
     return (
       <p className="text-xs text-ink-muted">
         This change is executed — the contract and the stage dates have already moved with it.
@@ -108,16 +124,32 @@ export function ChangeRequestActions({ projectId, cr }: ChangeRequestActionsProp
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className={cn("flex", !modal && "flex-wrap", compact || modal ? "gap-[8px]" : "gap-2")}>
         {available.map((action) => {
           const meta = ACTION_META[action];
           return (
             <Button
               key={action}
               type="button"
-              variant={meta.variant}
-              size="md"
-              className={meta.danger ? "text-negative-500" : undefined}
+              variant={
+                compact || modal
+                  ? action === "reject"
+                    ? modal ? "light-danger" : "danger"
+                    : action === "approve"
+                      ? "primary"
+                      : "outline"
+                  : meta.variant
+              }
+              size={compact || modal ? "lg" : "md"}
+              className={
+                modal
+                  ? cn("min-w-0 flex-1", action === "reject" && MODAL_REJECT, action !== "approve" && action !== "reject" && COMPACT_OUTLINE)
+                  : compact
+                    ? cn(COMPACT_STYLE[action], action !== "approve" && action !== "reject" && COMPACT_OUTLINE)
+                    : meta.danger
+                      ? "text-negative-500"
+                      : undefined
+              }
               loading={run.isPending && reasonFor === null && !awarding}
               onClick={() => {
                 if (meta.reason) setReasonFor(action);

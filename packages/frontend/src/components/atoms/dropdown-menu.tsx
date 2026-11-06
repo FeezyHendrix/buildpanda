@@ -17,7 +17,7 @@ function DropdownMenuItem({ children, onSelect, tone = "default", className, dis
     <Menu.Item
       disabled={disabled}
       className={cn(
-        "flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-[14px] outline-none bg-white",
+        "flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-caption-m outline-none bg-white",
         "transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40",
         tone === "danger"
           ? "text-[#C10007] hover:bg-[#FEF2F2] data-[highlighted]:bg-[#FEF2F2]"

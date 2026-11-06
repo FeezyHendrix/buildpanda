@@ -28,12 +28,12 @@ interface PermissionGroupCardProps {
  */
 export function PermissionGroupCard({ title, rows, onToggle }: PermissionGroupCardProps) {
   return (
-    <section aria-label={title} className="border border-[#EBEBEB] bg-white">
-      <h3 className="bg-[#F5F5F5] px-6 py-2 text-base font-semibold text-[#1E1E1E]">{title}</h3>
-      <ul className="divide-y divide-[#EBEBEB]">
+    <section aria-label={title} className="border border-[#EFEFEF] bg-white">
+      <h3 className="bg-[#F5F5F5] px-[24px] py-[6px] text-[16px] font-medium leading-[24px] text-[#1E1E1E]">{title}</h3>
+      <ul className="divide-y divide-[#F6F6F6]">
         {rows.map((row) => (
-          <li key={row.key} className="flex flex-col gap-2 px-6 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <span className="text-sm text-[#1E1E1E]">{row.label}</span>
+          <li key={row.key} className="flex flex-col justify-center gap-2 px-[24px] py-[8px] sm:h-[40px] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-0">
+            <span className="text-caption-l! text-[#1E1E1E]">{row.label}</span>
             <div role="group" aria-label={`${row.label} permissions`} className="flex flex-wrap gap-2">
               {row.actions.map((action) => (
                 <Button
@@ -46,10 +46,10 @@ export function PermissionGroupCard({ title, rows, onToggle }: PermissionGroupCa
                   title={action.disabled ? action.disabledHint : undefined}
                   onClick={() => onToggle(row.key, action.key, !action.selected)}
                   className={cn(
-                    "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50",
+                    "h-[24px] rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50",
                     action.selected
-                      ? "border-transparent bg-[#E4ECFF] text-primary"
-                      : "border-[#EBEBEB] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
+                      ? "border-transparent bg-[#E6EDFD] text-primary"
+                      : "border-[#EEEEEE] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
                   )}
                 >
                   {action.label}

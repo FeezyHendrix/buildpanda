@@ -10,7 +10,7 @@ import { ToolbarSearch } from "@/components/molecules/toolbar-search";
 import { LEDGER_FILTERS, type LedgerFilter } from "./shared";
 
 const FILTER_BUTTON_CLASS =
-  "inline-flex h-10 items-center gap-2 border border-[#EBEBEB] bg-white px-3 text-sm font-medium text-[#1E1E1E] outline-none hover:bg-[#F5F5F5] focus-visible:ring-2 focus-visible:ring-gray-900/10";
+  "inline-flex h-10 items-center gap-2 border border-[#EBEBEB] bg-white px-3 text-caption-l! font-medium text-[#1E1E1E] outline-none hover:bg-[#F5F5F5] focus-visible:ring-2 focus-visible:ring-gray-900/10";
 
 interface ActivityToolbarProps {
   search: string;

@@ -7,11 +7,14 @@ import {
 import { getApiErrorMessage } from "@/lib/api-error";
 import { AI_UPDATE_CADENCES, type AiUpdateCadence } from "@/lib/project-types";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 interface CadenceMeta {
   title: string;
   audience: string;
   audienceTone: BadgeTone;
+  /** Fine-tunes the pill where the design's colours differ from the tone's. */
+  audienceClass?: string;
   description: string;
   toast: string;
 }
@@ -21,6 +24,7 @@ const CADENCE_META: Record<AiUpdateCadence, CadenceMeta> = {
     title: "Off",
     audience: "Nothing is drafted",
     audienceTone: "neutral",
+    audienceClass: "border border-[#EEEEEE] bg-white",
     description:
       "Panda AI writes nothing for this project. Only updates your team writes by hand are posted.",
     toast: "Panda AI drafts are off for this project.",
@@ -29,6 +33,7 @@ const CADENCE_META: Record<AiUpdateCadence, CadenceMeta> = {
     title: "Daily internal digest",
     audience: "Your team only — never the homeowner",
     audienceTone: "accent",
+    audienceClass: "bg-[#F6EEFD] text-[#5D5FEF]",
     description:
       "An end-of-day site record for the build team, in trade language: RFIs, approvals, change requests, materials, drawing markups and money recorded that day. It is not written for the client — read it before publishing anything from it.",
     toast: "Panda AI will draft a daily internal digest for your team.",
@@ -45,6 +50,7 @@ const CADENCE_META: Record<AiUpdateCadence, CadenceMeta> = {
     title: "Both",
     audience: "One for the homeowner, one for your team",
     audienceTone: "success",
+    audienceClass: "text-[#00A63E]",
     description:
       "The weekly client update and the daily internal digest. Each lands in Drafts separately and each needs its own review before it goes anywhere.",
     toast: "Panda AI will draft the weekly client update and the daily internal digest.",
@@ -77,25 +83,19 @@ export function AiUpdateCadenceSection({
   }
 
   return (
-    <section className="mt-6 rounded-lg border border-line-hair bg-white p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-ink">
-            Panda AI update drafts
-          </h2>
-          <p className="mt-1 text-sm text-ink-muted text-pretty">
-            Choose what Panda AI drafts from this project's field data. Every draft
-            waits in Drafts for your team to review — nothing reaches the homeowner
-            until someone here publishes it.
-          </p>
-        </div>
-      </div>
+    <section className="border border-[#F6F6F6] bg-white px-[22px] py-[24px]">
+      <h2 className="text-[18px] leading-[28px] font-semibold text-[#1E1E1E]">Panda AI update drafts</h2>
+      <p className="mt-[2px] text-[14px] leading-[20px] text-[#737373] text-pretty">
+        Choose what Panda AI drafts from this project's field data. Every draft
+        waits in Drafts for your team to review — nothing reaches the homeowner
+        until someone here publishes it.
+      </p>
 
       {canManage ? (
         <div
           role="group"
           aria-label="Panda AI draft cadence"
-          className="mt-5 flex flex-col gap-3"
+          className="mt-[24px] flex flex-col gap-[24px]"
         >
           {AI_UPDATE_CADENCES.map((value) => (
             <CadenceOption
@@ -132,11 +132,11 @@ function CadenceOption({
       selected={selected}
       disabled={disabled}
       onClick={() => onSelect(value)}
-      className="p-4"
+      variant="square"
       title={
         <span className="flex flex-wrap items-center gap-2">
           {meta.title}
-          <Badge tone={meta.audienceTone} size="sm" dot>
+          <Badge tone={meta.audienceTone} size="sm" className={cn("h-[24px]", meta.audienceClass)}>
             {meta.audience}
           </Badge>
         </span>

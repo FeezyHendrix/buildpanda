@@ -39,7 +39,7 @@ export function ApprovalAttachmentsField({ files, onChange, disabled = false }: 
 
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="text-xs font-semibold text-[#1E1E1E]">
+      <p className="text-caption-m! font-semibold text-[#1E1E1E]">
         Attachments{" "}
         <span className="font-normal text-gray-500">(Click to upload, Max {MAX_APPROVAL_ATTACHMENTS} uploads)</span>
       </p>
@@ -51,14 +51,14 @@ export function ApprovalAttachmentsField({ files, onChange, disabled = false }: 
         onFiles={addFiles}
         prompt={null}
         hint="PNG, JPG or PDF only"
-        hintClassName="text-xs text-gray-500"
+        hintClassName="text-caption-m! text-gray-500"
         iconClassName="bg-[#E4ECFF] text-primary"
         className="border-[#767676] hover:border-[#767676]"
       >
         {files.length > 0 ? (
           <ul className="flex flex-wrap gap-2">
             {files.map((file, index) => (
-              <li key={`${file.name}-${index}`} className="flex h-9 items-center gap-2 bg-white px-3 text-sm font-medium text-[#1E1E1E]">
+              <li key={`${file.name}-${index}`} className="flex h-9 items-center gap-2 bg-white px-3 text-caption-l! font-medium text-[#1E1E1E]">
                 <ReactSVG src={getFileTypeIcon(file.name)} className="shrink-0 [&_svg]:size-5" />
                 <span className="max-w-[200px] truncate" title={file.name}>
                   {file.name}
@@ -82,7 +82,7 @@ export function ApprovalAttachmentsField({ files, onChange, disabled = false }: 
         ) : undefined}
       </MediaDropzone>
       {problem ? (
-        <p role="alert" className="text-xs text-error-600">
+        <p role="alert" className="text-caption-m! text-error-600">
           {problem}
         </p>
       ) : null}

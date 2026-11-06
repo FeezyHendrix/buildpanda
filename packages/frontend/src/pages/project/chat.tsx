@@ -1,8 +1,10 @@
+import { Fragment } from "react";
 import { useUrlState } from "@/hooks/use-url-state";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import { useCachedMessages } from "./chat/use-cached-messages";
 import { useMessageDestination } from "./chat/use-message-destination";
 import { MessageEditDialog } from "./chat/message-edit-dialog";
-import { groupMessages } from "./chat/group-messages";
+import { dayKey, groupMessages } from "./chat/group-messages";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/atoms/button";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -28,24 +30,24 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { useChannelRealtime } from "@/lib/realtime";
 import { cn } from "@/lib/utils";
 import type { Channel, ChatMessage } from "@/lib/project-types";
-import { BellIcon, BellOffIcon, PlusIcon, StarIcon } from "@/components/atoms/chat-icons";
 
-import { ChannelRow } from "./chat/channel-row";
+import { ChannelList } from "./chat/channel-list";
+import { ChannelHeader } from "./chat/channel-header";
+import { DayDivider } from "./chat/day-divider";
 import { MessageGroup } from "./chat/message-group";
 import { Composer } from "./chat/composer";
 import { ThreadPanel } from "./chat/thread-panel";
 import { NewDmModal } from "./chat/new-dm-modal";
 import { NewGroupDialog } from "./chat/new-group-dialog";
-import { MessageSearch } from "./chat/message-search";
-import { DmChannelRow } from "./chat/dm-channel-row";
-import { DmHeaderTitle } from "./chat/dm-header-title";
 
 export default function ProjectChat() {
+  useSetPageTitle("Messages", "Talk with your project team in groups and direct messages.");
   const { project } = useProjectContext();
-  return <ChatWorkspace projectId={project.id} />;
+  return <ChatWorkspace projectId={project.id} framed />;
 }
 
-export function ChatWorkspace({ projectId = "" }: { projectId?: string }) {
+/** `framed` sits the chat in a bordered card inside the page, as the project's Messages page does. */
+export function ChatWorkspace({ projectId = "", framed = false }: { projectId?: string; framed?: boolean }) {
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
 
@@ -105,7 +107,6 @@ export function ChatWorkspace({ projectId = "" }: { projectId?: string }) {
   const [deletingMsg, setDeletingMsg] = useState<ChatMessage | null>(null);
   const [threadRootMsg, setThreadRootMsg] = useState<ChatMessage | null>(null);
   const [quotedMsg, setQuotedMsg] = useState<ChatMessage | null>(null);
-  const [showPins, setShowPins] = useState(false);
 
   useEffect(() => {
     setQuotedMsg(null);
@@ -147,122 +148,44 @@ export function ChatWorkspace({ projectId = "" }: { projectId?: string }) {
     );
   }
 
+  function selectChannel(channelId: string): void {
+    setActiveChannelId(channelId);
+    setThreadRootMsg(null);
+    setMobileShowChat(true);
+  }
+
   return (
-    <div className="absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white">
-      <div className={cn(
-        "flex flex-col border-r border-line-hair bg-surface-alt",
-        "w-full lg:w-64",
-        mobileShowChat ? "hidden lg:flex" : "flex",
-      )}>
-        <div className="flex h-14 items-center border-b border-line-hair px-4">
-          <h2 className="font-semibold text-ink">Channels</h2>
-        </div>
-        <div className="mt-4 flex-1 overflow-y-auto px-3">
-          <div>
-            <div className="mb-1 flex items-center justify-between px-3">
-              <span className="text-xs font-medium uppercase text-ink-muted">Groups</span>
-              <button hidden={!projectId} type="button" onClick={() => setShowNewGroup(true)} className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink" aria-label="New group">
-                <PlusIcon className="size-4" />
-              </button>
-            </div>
-            <div className="space-y-1">
-              {projectChannels.map((c) => (
-                <ChannelRow
-                  key={c.id}
-                  channel={{...c, name: c.name || "general"}}
-                  isActive={c.id === activeChannelId}
-                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); setMobileShowChat(true); }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-1 mt-5 flex items-center justify-between px-3 text-xs font-medium uppercase text-ink-muted">
-              <span>Direct Messages</span>
-              <button type="button" onClick={() => setShowNewDm(true)} className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink" aria-label="Add direct message">
-                <PlusIcon className="size-4" />
-              </button>
-            </div>
-            <div className="space-y-1">
-              {dmChannels.map((c: Channel) => (
-                <DmChannelRow
-                  key={c.id}
-                  channel={c}
-                  currentUserId={currentUserId}
-                  isActive={c.id === activeChannelId}
-                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); setMobileShowChat(true); }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-      </div>
+    <div className={cn("absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white", framed && "px-4 pt-6 lg:pl-8 lg:pr-[42px]")}>
+      <div className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-white", framed && "border border-b-0 border-[#EEEEEE]")}>
+      <ChannelList
+        groups={projectChannels}
+        directMessages={dmChannels}
+        currentUserId={currentUserId}
+        activeChannelId={activeChannelId}
+        canCreateGroup={Boolean(projectId)}
+        onSelect={selectChannel}
+        onNewGroup={() => setShowNewGroup(true)}
+        onNewDm={() => setShowNewDm(true)}
+        className={cn("w-full", mobileShowChat ? "hidden lg:flex" : "flex")}
+      />
 
       {activeChannelId && activeChannel ? (
         <div className={cn("flex min-w-0 flex-1 flex-col overflow-hidden", !mobileShowChat && "hidden lg:flex")}>
-          <div className="relative overflow-visible flex items-start gap-4 border-b border-line-hair px-4 lg:px-6 py-3.5">
-            <div className="min-w-0 max-w-[260px]">
-              <div className="flex items-center gap-2 lg:gap-1.5">
-              <button
-                type="button"
-                onClick={() => setMobileShowChat(false)}
-                className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink lg:hidden"
-                aria-label="Back to channels"
-              >
-                <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-                <h3 className="text-base font-semibold text-ink">
-                  {activeChannel.type === "dm" ? (
-                    <DmHeaderTitle channel={activeChannel} currentUserId={currentUserId} />
-                  ) : (
-                    <><span className="text-ink-muted">#</span> {activeChannel.name || "general"}</>
-                  )}
-                </h3>
-                {activeChannel.type !== "dm" && <StarIcon className="size-4 text-ink-disabled" />}
-              </div>
-              {activeChannel.topic && (
-                <p className="hidden mt-0.5 text-xs leading-snug text-ink-muted sm:inline">{activeChannel.topic}</p>
-              )}
-            </div>
-            <div className="flex flex-1 items-center justify-end gap-4">
-              <MessageSearch onSelect={(cid) => { setActiveChannelId(cid); setThreadRootMsg(null); }} />
-              {pins.length > 0 && (
-                <div className="relative">
-                  <button type="button" onClick={() => setShowPins(!showPins)} className="flex items-center gap-1 text-sm font-medium text-ink hover:text-primary-500">
-                    <span className="text-base">📌</span> {pins.length} Pinned
-                  </button>
-                  {showPins && (
-                    <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto rounded-lg border border-line bg-white p-2 shadow-card z-20">
-                      {pins.map((p: ChatMessage) => (
-                        <div key={p.id} className="mb-2 p-2 hover:bg-surface-alt rounded group border-b border-line-hair last:border-0">
-                          <div className="text-xs font-medium text-ink">{p.authorName}</div>
-                          <div className="text-xs text-ink truncate">{p.body}</div>
-                          <div className="mt-2 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => unpinMsg.mutate(p.id)} className="text-[10px] font-medium text-ink-muted hover:text-negative-500">Unpin</button>
-                            <button onClick={() => { setThreadRootMsg(p); setShowPins(false); }} className="text-[10px] font-medium text-ink-muted hover:text-primary-500">Reply</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => updateMembership.mutate({ muted: !activeChannel.muted })}
-                className="rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink"
-                title={activeChannel.muted ? "Unmute group" : "Mute group"}
-              >
-                {activeChannel.muted ? <BellOffIcon className="size-5" /> : <BellIcon className="size-5" />}
-              </button>
-            </div>
-          </div>
+          <ChannelHeader
+            channel={activeChannel}
+            currentUserId={currentUserId}
+            pins={pins}
+            onBack={() => setMobileShowChat(false)}
+            onSearchSelect={(cid) => {
+              setActiveChannelId(cid);
+              setThreadRootMsg(null);
+            }}
+            onToggleMute={() => updateMembership.mutate({ muted: !activeChannel.muted })}
+            onUnpin={(m) => unpinMsg.mutate(m.id)}
+            onReplyToPin={setThreadRootMsg}
+          />
 
-          <div className="flex-1 overflow-y-auto py-4">
+          <div className="flex-1 overflow-y-auto py-[10px]">
             {destinationError ? <p role="status" className="p-4 text-sm text-ink-muted">{destinationError}</p> : null}
             {hasPreviousPage && (
               <div className="flex justify-center py-4">
@@ -277,30 +200,37 @@ export function ChatWorkspace({ projectId = "" }: { projectId?: string }) {
                 </Button>
               </div>
             )}
-            {groups.map((group, i) => (
-              <MessageGroup
-                key={group[0]!.id + i}
-                messages={group}
-                currentUserId={currentUserId}
-                pinnedIds={pinnedIds}
-                onEdit={setEditingMsg}
-                onDelete={setDeletingMsg}
-                onPin={(m) => pinMsg.mutate(m.id)}
-                onUnpin={(m) => unpinMsg.mutate(m.id)}
-                onReply={setThreadRootMsg}
-                onQuote={setQuotedMsg}
-                onJumpToMessage={handleJumpToMessage}
-                onReaction={handleReaction}
-                onForward={handleForward}
-              />
-            ))}
+            {groups.map((group, i) => {
+              const first = group[0]!;
+              const previousFirst = groups[i - 1]?.[0];
+              return (
+                <Fragment key={first.id + i}>
+                  {!previousFirst || dayKey(previousFirst.createdAt) !== dayKey(first.createdAt) ? (
+                    <DayDivider iso={first.createdAt} />
+                  ) : null}
+                  <MessageGroup
+                    messages={group}
+                    currentUserId={currentUserId}
+                    pinnedIds={pinnedIds}
+                    onEdit={setEditingMsg}
+                    onDelete={setDeletingMsg}
+                    onPin={(m) => pinMsg.mutate(m.id)}
+                    onUnpin={(m) => unpinMsg.mutate(m.id)}
+                    onReply={setThreadRootMsg}
+                    onQuote={setQuotedMsg}
+                    onJumpToMessage={handleJumpToMessage}
+                    onReaction={handleReaction}
+                    onForward={handleForward}
+                  />
+                </Fragment>
+              );
+            })}
             <div ref={bottomRef} className="h-4" />
           </div>
 
           <Composer
             channelId={activeChannelId}
             projectId={projectId}
-            placeholder={activeChannel.type === "dm" ? "Message direct message" : `Message #${activeChannel.name || "general"}`}
             quotedMessage={quotedMsg}
             onClearQuote={() => setQuotedMsg(null)}
           />
@@ -325,6 +255,8 @@ export function ChatWorkspace({ projectId = "" }: { projectId?: string }) {
           onReaction={handleReaction}
         />
       )}
+
+      </div>
 
       {showNewDm && (
         <NewDmModal

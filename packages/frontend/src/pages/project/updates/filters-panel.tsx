@@ -61,13 +61,13 @@ export function FiltersPanel({
       <div className="flex flex-col gap-2">
         <Button
           type="button"
-          size="md"
+          size="lg"
           onClick={onApply}
           disabled={!dateFrom && !dateTo}
         >
           Apply Filter
         </Button>
-        <Button size="md" type="button" variant="ghost" onClick={onReset}>
+        <Button size="lg" type="button" variant="ghost" onClick={onReset}>
           Reset
         </Button>
       </div>

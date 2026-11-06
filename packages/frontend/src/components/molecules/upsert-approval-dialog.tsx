@@ -39,7 +39,7 @@ interface Props {
 const CATEGORY_OPTIONS = ["Finishes", "Fittings", "Materials", "Structural", "Other"].map((c) => ({ value: c, label: c }));
 const ANY_APPROVER = "__any__";
 
-const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
+const LABEL_CLASS = "text-caption-m! font-semibold text-[#1E1E1E]";
 const FIELD_HEIGHT = "h-[46px]";
 
 function UpsertApprovalDialog({
@@ -129,7 +129,7 @@ function UpsertApprovalDialog({
               value={category}
               onChange={setCategory}
               placeholder="Select a category"
-              className={cn(FIELD_HEIGHT, "px-4 text-sm")}
+              className={cn(FIELD_HEIGHT, "px-4 text-caption-l!")}
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -176,7 +176,7 @@ function UpsertApprovalDialog({
               disabled={isSubmitting}
             />
             {!attachmentsEnabled && files.length > 0 ? (
-              <p role="status" className="text-xs text-warning-600">
+              <p role="status" className="text-caption-m! text-warning-600">
                 File upload is not switched on for approvals yet, so these files
                 will not be sent with the request.
               </p>
@@ -196,7 +196,7 @@ function UpsertApprovalDialog({
               setRequestedReviewerId(!next || next === ANY_APPROVER ? "" : next)
             }
             placeholder="Select who's needed to approve"
-            className={cn(FIELD_HEIGHT, "px-4 text-sm")}
+            className={cn(FIELD_HEIGHT, "px-4 text-caption-l!")}
           />
         </div>
       </div>

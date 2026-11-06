@@ -48,7 +48,7 @@ SummaryCard.displayName = "SummaryCard";
 export function HealthTrendCard({ points }: { points: HealthPoint[] }) {
   return (
     <section aria-label="Health trend" className="border-[0.5px] border-[#EBEBEB] bg-white p-6">
-      <h2 className="border-b border-[#EBEBEB] pb-2 text-sm font-semibold text-black-500">
+      <h2 className="border-b border-[#EBEBEB] pb-2 text-caption-l! font-semibold text-black-500">
         Health Trend
       </h2>
       <HealthTrendChart points={points} />

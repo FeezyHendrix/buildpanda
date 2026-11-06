@@ -145,20 +145,16 @@ export function DateFilterPopover({
           <Button
             type="button"
             variant="secondary"
-            size="md"
+            size="lg"
             onClick={apply}
             disabled={!draftFrom || !draftTo}
-            className="mt-4 h-11 w-full"
+            className="mt-4 w-full"
           >
             Apply Filter
           </Button>
-          <button
-            type="button"
-            onClick={reset}
-            className="mt-1 w-full py-1 text-center text-sm font-medium text-[#111827] outline-none hover:underline"
-          >
+          <Button type="button" variant="ghost" size="lg" onClick={reset} className="mt-1 w-full">
             Reset
-          </button>
+          </Button>
         </div>
       )}
     </div>

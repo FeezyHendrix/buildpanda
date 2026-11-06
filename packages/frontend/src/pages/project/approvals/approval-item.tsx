@@ -30,7 +30,7 @@ function AttachmentChip({ attachment }: { attachment: ApprovalAttachment }) {
       <span className="truncate">{attachment.fileName}</span>
     </>
   );
-  const className = "inline-flex h-9 max-w-[260px] items-center gap-2 bg-[#F5F5F5] px-3 text-sm font-medium text-[#1E1E1E]";
+  const className = "inline-flex h-9 max-w-[260px] items-center gap-2 bg-[#F5F5F5] px-3 text-caption-l! font-medium text-[#1E1E1E]";
 
   return attachment.url ? (
     <a href={attachment.url} target="_blank" rel="noreferrer" title={attachment.fileName} className={cn(className, "hover:bg-[#EBEBEB]")}>
@@ -79,16 +79,16 @@ export function ApprovalItem({
     <article className="px-6 py-6" title={approval.requestedReviewerName ? `Reviewer: ${approval.requestedReviewerName}` : undefined}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className={cn("inline-flex h-6 items-center rounded-full border px-2.5 text-xs font-medium whitespace-nowrap", meta.className)}>
+          <span className={cn("inline-flex h-6 items-center rounded-full border px-2.5 text-caption-m! font-medium whitespace-nowrap", meta.className)}>
             {meta.label}
           </span>
           {approval.category ? (
-            <span className="inline-flex h-6 items-center rounded-full border border-[#EBEBEB] bg-white px-2.5 text-xs font-medium text-[#1E1E1E]">
+            <span className="inline-flex h-6 items-center rounded-full border border-[#EBEBEB] bg-white px-2.5 text-caption-m! font-medium text-[#1E1E1E]">
               {approval.category}
             </span>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-3 text-xs italic text-gray-500">
+        <div className="flex shrink-0 items-center gap-3 text-caption-m! italic text-gray-500">
           {approval.commentCount > 0 ? (
             <span className="inline-flex items-center gap-1 not-italic">
               <MessagesIcon className="size-3.5" />
@@ -121,9 +121,9 @@ export function ApprovalItem({
       </div>
 
       <button type="button" onClick={onOpen} className="mt-3 block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10">
-        <h3 className="text-sm font-semibold text-[#1E1E1E]">{approval.title}</h3>
+        <h3 className="text-caption-l! font-semibold text-[#1E1E1E]">{approval.title}</h3>
         {approval.description ? (
-          <p className="mt-2 line-clamp-1 text-sm text-[#1E1E1E]">{approval.description}</p>
+          <p className="mt-2 line-clamp-1 text-caption-l! text-[#1E1E1E]">{approval.description}</p>
         ) : null}
       </button>
 
@@ -133,7 +133,7 @@ export function ApprovalItem({
             <AttachmentChip key={attachment.id} attachment={attachment} />
           ))}
           {extra > 0 ? (
-            <span className="inline-flex h-9 items-center bg-[#F5F5F5] px-3 text-sm font-medium text-[#1E1E1E]">+{extra}</span>
+            <span className="inline-flex h-9 items-center bg-[#F5F5F5] px-3 text-caption-l! font-medium text-[#1E1E1E]">+{extra}</span>
           ) : null}
         </div>
       ) : null}
@@ -141,19 +141,19 @@ export function ApprovalItem({
       {display === "needs-me" ? (
         // Approving needs no note; rejecting or asking for changes does, so those open the decision form.
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Button size="sm" loading={approving} onClick={onApprove} className="h-8 bg-[#00A63E] px-4 text-xs hover:bg-[#008236]">
+          <Button size="lg" loading={approving} onClick={onApprove} className="bg-[#00A63E] hover:bg-[#008236]">
             Approve
           </Button>
-          <Button size="sm" onClick={onOpen} className="h-8 bg-[#E7000B] px-4 text-xs hover:bg-[#A30006]">
+          <Button size="lg" onClick={onOpen} className="bg-[#E7000B] hover:bg-[#A30006]">
             Reject
           </Button>
-          <Button size="sm" variant="outline" onClick={onOpen} className="h-8 px-4 text-xs">
+          <Button size="lg" variant="outline" onClick={onOpen}>
             Request Revision
           </Button>
         </div>
       ) : display === "Resubmit" ? (
         <div className="mt-4">
-          <Button size="sm" onClick={onOpen} className="h-8 px-4 text-xs">
+          <Button size="lg" onClick={onOpen}>
             View Changes
           </Button>
         </div>

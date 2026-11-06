@@ -133,7 +133,8 @@ function activityRows(activities: Activity[], usedPhaseIds: ReadonlySet<string>,
       // to the activity's planned end, which made every delay look project-sized.
       const delayFinish = delayBarEnd(delay) ?? delayStart;
       rows.push({
-        id: `${activity.id}-${delay.id}`,
+        // The prefix lets the chart style delay rows without a custom renderer.
+        id: `delay:${activity.id}:${delay.id}`,
         text: `Delay: ${delay.reasonName} (${delay.daysLost} d)`,
         type: "task",
         parent,

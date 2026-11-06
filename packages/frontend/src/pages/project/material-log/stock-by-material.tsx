@@ -24,7 +24,7 @@ function StockTile({
   return (
     <div className="flex flex-col border-[0.5px] border-[#EBEBEB] bg-white">
       <div className="flex items-center justify-between gap-2 border-b border-[#EBEBEB] px-4 py-2.5">
-        <p title={stock.materialName} className="truncate text-sm font-semibold text-black-500">
+        <p title={stock.materialName} className="truncate text-caption-l! font-semibold text-black-500">
           {stock.materialName}
         </p>
         {alert ? (
@@ -44,7 +44,7 @@ function StockTile({
             type="button"
             onClick={onEditPolicy}
             aria-label={`Reorder policy for ${stock.materialName}`}
-            className="self-start text-sm font-medium text-primary hover:underline"
+            className="self-start text-caption-l! font-medium text-primary hover:underline"
           >
             Reorder Policy
           </button>
@@ -79,7 +79,7 @@ export function StockByMaterial({ stock, canManage, onLogMaterial, onEditPolicy 
             type="button"
             onClick={() => setShowAll((current) => !current)}
             aria-expanded={showAll}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            className="inline-flex items-center gap-1.5 text-caption-l! font-medium text-primary hover:underline"
           >
             <ArrowUpRight className="size-4" />
             {showAll ? "Show fewer" : "View All Stocks by Material"}

@@ -1,18 +1,17 @@
-import { Link } from "react-router-dom";
-import { Badge } from "@/components/atoms/badge";
-import { Card } from "@/components/atoms/card";
-import { ProgressBar } from "@/components/atoms/progress-bar";
 import { Spinner } from "@/components/atoms/spinner";
-import { HealthTrendChart } from "@/components/organisms/charts/health-trend-chart";
 import { useKeyDates } from "@/hooks/use-key-dates";
-import { useReportingSnapshot, type PhaseRef } from "@/hooks/use-reporting-snapshot";
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { formatShortDate } from "@/lib/formatters";
 import type { KeyDate, Project } from "@/lib/project-types";
-import { TimelineStepper } from "./timeline-stepper";
+import { cn } from "@/lib/utils";
+import { CardHeaderLink, OverviewCard, SectionEyebrow } from "./overview-card";
 import { CompletionPosition } from "./completion-position";
+import { TimelineStepper } from "./timeline-stepper";
 
-const UPCOMING_KEY_DATE_LIMIT = 3;
+const UPCOMING_KEY_DATE_LIMIT = 5;
 const MS_PER_DAY = 86_400_000;
+/** A key date this close reads as urgent. */
+const URGENT_WITHIN_DAYS = 7;
 
 interface UpcomingKeyDate {
   keyDate: KeyDate;
@@ -43,109 +42,69 @@ function dueLabel(days: number): string {
   return `Due in ${days} ${days === 1 ? "day" : "days"}`;
 }
 
-function PhaseRow({ phase }: { phase: PhaseRef }) {
-  return (
-    <li className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-3 text-[13px]">
-        <span className="truncate font-medium text-black-500">{phase.name}</span>
-        <span className="shrink-0 tabular-nums text-black-300">{Math.round(phase.progressPercent)}%</span>
-      </div>
-      <ProgressBar value={phase.progressPercent} size="sm" />
-    </li>
-  );
-}
-
 function KeyDateRow({ item }: { item: UpcomingKeyDate }) {
+  const urgent = item.daysUntil <= URGENT_WITHIN_DAYS;
   return (
-    <li className="flex items-center justify-between gap-3 text-[13px]">
+    <li className="flex items-center justify-between gap-3 border-b border-[#EEEEEE] py-[10px] last:border-b-0">
       <div className="min-w-0">
-        <p className="truncate font-medium text-black-500">{item.keyDate.label}</p>
-        <p className="text-[12px] text-black-300">{formatShortDate(item.keyDate.targetDate)}</p>
+        <p className="truncate text-[12px] font-semibold leading-[16px] text-[#1E1E1E]">{item.keyDate.label}</p>
+        <p className="text-[12px] leading-[16px] text-[#737373]">{formatShortDate(item.keyDate.targetDate)}</p>
       </div>
-      <Badge tone={item.daysUntil <= 7 ? "warning" : "neutral"} size="sm" className="shrink-0">
+      <span
+        className={cn(
+          "inline-flex h-[22px] shrink-0 items-center rounded-full border px-[9px] text-[12px] leading-[16px]",
+          urgent ? "border-[#FFE7A8] bg-[#FFF8E6] text-[#E17100]" : "border-[#EEEEEE] bg-white text-[#1E1E1E]",
+        )}
+      >
         {dueLabel(item.daysUntil)}
-      </Badge>
+      </span>
     </li>
   );
-}
-
-function SectionTitle({ children }: { children: string }) {
-  return <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-black-300">{children}</p>;
 }
 
 export function ProgrammeCard({ project, className }: { project: Project; className?: string }) {
   const snapshot = useReportingSnapshot(project.id);
   const keyDates = useKeyDates(project.id);
-  const inProgress = snapshot.data?.schedule.phasesInProgress ?? [];
   const upcoming = nextKeyDates(keyDates.data ?? [], startOfToday());
-  const healthPoints = snapshot.data?.health.trendOldestFirst ?? [];
   const isPending = snapshot.isPending || keyDates.isPending;
 
   return (
-    <Card data-tour="construction-timeline" className={className}>
-      <div className="flex items-center justify-between py-3 px-5">
-        <div className="flex gap-2 items-center">
-          <h3 className="text-[13px] font-semibold text-black-300">Programme</h3>
-        </div>
-        <Link
-          to={`/project/${project.id}/schedules/project-chart`}
-          className="text-xs font-semibold text-[#004DE7] hover:underline"
-        >
-          View Detailed Gantt
-        </Link>
+    <OverviewCard
+      data-tour="construction-timeline"
+      title="Programme Of Works"
+      className={className}
+      action={<CardHeaderLink to={`/project/${project.id}/schedules/project-chart`}>View Gantt Chart</CardHeaderLink>}
+    >
+      <div className="border-b border-[#EEEEEE] pb-[26px] pt-[26px]">
+        <TimelineStepper phases={project.timeline} />
       </div>
-      <div className="h-full flex flex-col gap-5 px-5 pb-5">
-        <div className="overflow-x-auto">
-          <div className="min-w-[480px]">
-            <TimelineStepper phases={project.timeline} />
-          </div>
+
+      {isPending ? (
+        <div className="flex min-h-[120px] flex-1 items-center justify-center">
+          <Spinner size="md" />
         </div>
-
-        {isPending ? (
-          <div className="flex min-h-[120px] items-center justify-center">
-            <Spinner size="md" />
-          </div>
-        ) : (
-          <>
-            <CompletionPosition
-              schedule={snapshot.data?.schedule}
-              currency={project.currency ?? "NGN"}
-            />
-
-            {inProgress.length > 0 ? (
-              <section className="flex flex-col gap-3">
-                <SectionTitle>In progress</SectionTitle>
-                <ul className="flex flex-col gap-3">
-                  {inProgress.map((phase) => (
-                    <PhaseRow key={phase.id} phase={phase} />
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            <section className="flex flex-col gap-3">
-              <SectionTitle>Next key dates</SectionTitle>
-              {upcoming.length === 0 ? (
-                <p className="text-[13px] text-black-300">No upcoming key dates.</p>
-              ) : (
-                <ul className="flex flex-col gap-3">
-                  {upcoming.map((item) => (
-                    <KeyDateRow key={item.keyDate.id} item={item} />
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            {healthPoints.length >= 2 ? (
-              <section className="flex flex-col gap-2">
-                <SectionTitle>Health trend</SectionTitle>
-                <HealthTrendChart points={healthPoints} compact />
-              </section>
-            ) : null}
-          </>
-        )}
-      </div>
-    </Card>
+      ) : (
+        <>
+          <CompletionPosition
+            schedule={snapshot.data?.schedule}
+            currency={project.currency ?? "NGN"}
+            className="mx-[14px] mt-[14px]"
+          />
+          <section className="px-[14px] pb-[6px] pt-[16px]">
+            <SectionEyebrow>Next key dates</SectionEyebrow>
+            {upcoming.length === 0 ? (
+              <p className="py-[14px] text-[13px] text-[#737373]">No upcoming key dates.</p>
+            ) : (
+              <ul className="mt-[4px] flex flex-col">
+                {upcoming.map((item) => (
+                  <KeyDateRow key={item.keyDate.id} item={item} />
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
+    </OverviewCard>
   );
 }
 

@@ -40,7 +40,7 @@ export default function ProjectPandaAi() {
       {isAnalyzing ? (
         <div className="flex h-64 flex-col items-center justify-center space-y-4">
           <Spinner size="md" />
-          <p className="text-sm text-gray-500">Panda AI is analyzing project data...</p>
+          <p className="text-caption-l! text-gray-500">Panda AI is analyzing project data...</p>
         </div>
       ) : !insight ? (
         <EmptyState

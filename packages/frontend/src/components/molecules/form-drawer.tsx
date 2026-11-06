@@ -29,6 +29,11 @@ interface FormDrawerProps {
   children: ReactNode;
   width?: FormDrawerWidth;
   className?: string;
+  /** Optional style hooks for drawers whose design departs from the defaults. */
+  titleClassName?: string;
+  headerClassName?: string;
+  bodyClassName?: string;
+  footerClassName?: string;
   /** `split` puts Cancel and Submit side by side as equal-width buttons, with no rule above. */
   footerVariant?: "default" | "stacked" | "split";
   /** `roomy` is the large-title, 40px-padded sheet used for the longer invite-style forms. */
@@ -51,6 +56,10 @@ function OpenFormDrawer({
   children,
   width = "md",
   className,
+  titleClassName,
+  headerClassName,
+  bodyClassName,
+  footerClassName,
   footerVariant = "default",
   size = "default",
 }: FormDrawerProps) {
@@ -87,8 +96,8 @@ function OpenFormDrawer({
             onSubmit={handleSubmit}
             className="flex h-full flex-col no-scrollbar"
           >
-            <header className={cn(roomy ? "px-10 pb-5 pt-10" : "px-6 py-5")}>
-              <Dialog.Title className={cn("font-bold text-grey-800", "text-h6")}>
+            <header className={cn(roomy ? "px-10 pb-5 pt-10" : "px-6 py-5", headerClassName)}>
+              <Dialog.Title className={cn("font-bold text-grey-800", "text-h6", titleClassName)}>
                 {title}
               </Dialog.Title>
               {description && (
@@ -98,7 +107,7 @@ function OpenFormDrawer({
               )}
             </header>
 
-            <div className={cn("flex flex-1 flex-col gap-4 overflow-y-auto no-scrollbar", roomy ? "px-10 py-3" : "px-6 py-5")}>
+            <div className={cn("flex flex-1 flex-col gap-4 overflow-y-auto no-scrollbar", roomy ? "px-10 py-3" : "px-6 py-5", bodyClassName)}>
               {children}
             </div>
 
@@ -109,7 +118,7 @@ function OpenFormDrawer({
             )}
 
             {footerVariant === "split" ? (
-              <footer className="flex items-center justify-end px-10 pb-10 pt-6">
+              <footer className={cn("flex items-center justify-end px-10 pb-10 pt-6", footerClassName)}>
                 <Dialog.Close
                   render={
                     <Button type="button" variant="ghost" size="lg" className="h-[46px] w-[191px]">
@@ -129,7 +138,7 @@ function OpenFormDrawer({
                 </Button>
               </footer>
             ) : footerVariant === "stacked" ? (
-              <footer className="flex flex-col gap-2 px-6 pb-6 pt-2">
+              <footer className={cn("flex flex-col gap-2 px-6 pb-6 pt-2", footerClassName)}>
                 <Button
                   type="submit"
                   variant="primary"
@@ -154,7 +163,7 @@ function OpenFormDrawer({
                 />
               </footer>
             ) : (
-              <footer className="flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
+              <footer className={cn("flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4", footerClassName)}>
                 <Dialog.Close
                   render={
                     <Button

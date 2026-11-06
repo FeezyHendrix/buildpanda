@@ -1,5 +1,5 @@
 import type { BadgeTone } from "@/components/atoms/badge";
-import type { Rfi, RfiStatus } from "@/lib/project-types";
+import type { Rfi, RfiPriority, RfiStatus } from "@/lib/project-types";
 
 export const RFI_STATUS_META: Record<RfiStatus, { label: string; tone: BadgeTone }> = {
   Draft: { label: "Draft", tone: "neutral" },
@@ -42,3 +42,29 @@ export function rfiOverdueDays(rfi: Pick<Rfi, "status" | "dueDate">, today = tod
 export function overdueLabel(days: number): string {
   return days === 1 ? "Overdue 1 day" : `Overdue ${days} days`;
 }
+
+/** Shared look of the small rounded status / priority pills on an RFI. */
+export const RFI_PILL_BASE =
+  "inline-flex h-[24px] items-center rounded-full border px-[8px] text-[12px] font-medium leading-none whitespace-nowrap";
+
+export const RFI_STATUS_PILL: Record<RfiStatus, string> = {
+  Draft: "border-[#EFEFEF] bg-[#F5F5F5] text-[#737373]",
+  Open: "border-transparent bg-[#E6EDFD] text-[#004DE7]",
+  InReview: "border-[#FEF0B8] bg-[#FFFBEB] text-[#E17100]",
+  Answered: "border-[#D4FAE1] bg-[#F0FDF4] text-[#00A63E]",
+  Closed: "border-[#EFEFEF] bg-[#F5F5F5] text-[#737373]",
+  Void: "border-[#FEDDDD] bg-[#FEF2F2] text-[#E7000B]",
+};
+
+export const RFI_PRIORITY_PILL: Record<RfiPriority, string> = {
+  High: "border-[#FEDDDD] bg-[#FEF2F2] text-[#E7000B]",
+  Normal: "border-[#FEF0B8] bg-[#FFFBEB] text-[#E17100]",
+  Low: "border-[#EEEEEE] bg-white text-[#1E1E1E]",
+};
+
+/** The stored middle priority is `Normal`; people call it Medium. */
+export const RFI_PRIORITY_LABEL: Record<RfiPriority, string> = {
+  High: "High Priority",
+  Normal: "Medium Priority",
+  Low: "Low Priority",
+};

@@ -72,7 +72,7 @@ function WorkingCalendarFields({
                 aria-pressed={on}
                 onClick={() => toggleDay(day.value)}
                 className={cn(
-                  "h-6 rounded-full px-2.5 !text-xs font-medium transition-colors",
+                  "h-6 rounded-full px-2.5 text-caption-m! font-medium transition-colors",
                   on ? "border-none bg-primary-50 !text-primary" : "text-gray-600 hover:bg-gray-200",
                 )}
               >
@@ -81,7 +81,7 @@ function WorkingCalendarFields({
             );
           })}
         </div>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-caption-m! text-gray-500">
           Days the site works. Missed daily logs, durations and extensions of time are all
           counted in these days.
         </p>

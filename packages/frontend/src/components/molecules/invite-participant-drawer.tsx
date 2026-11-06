@@ -179,7 +179,7 @@ export function InviteParticipantDrawer({
     }
   }
 
-const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
+const LABEL_CLASS = "text-caption-m! font-semibold text-[#1E1E1E]";
 
   const resourceKeys = Object.keys(resources);
 
@@ -242,6 +242,9 @@ const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
       footerVariant="split"
       size="roomy"
       className="w-[min(717px,100vw)]"
+      headerClassName="px-[40px] pb-[12px] pt-[40px]"
+      bodyClassName="gap-0 px-[40px] pb-0 pt-[9px]"
+      footerClassName="px-[40px] pb-[40px] pt-[24px]"
     >
       {/* Phase 1 — contact info */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -256,7 +259,7 @@ const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
               placeholder="name@example.com"
               value={email}
               onChange={setEmail}
-              className="h-[46px] px-4"
+              className="h-[45px] border border-[#EEEEEE] px-4"
             />
           )}
         </div>
@@ -270,16 +273,16 @@ const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
               placeholder="e.g. Sam Okonkwo"
               value={name}
               onChange={setName}
-              className="h-[46px] px-4"
+              className="h-[45px] border border-[#EEEEEE] px-4"
             />
           </div>
         )}
       </div>
 
       {/* Phase 2 — role selection */}
-      <div className="mt-6 border-t border-[#EBEBEB] pt-6">
-        <h3 className="text-base font-semibold text-[#1E1E1E]">Role Presets</h3>
-        <div role="group" aria-label="Role presets" className="mt-3 flex flex-wrap gap-x-2 gap-y-4">
+      <div className="mt-[24px] border-t border-[#F6F6F6] pt-[27px]">
+        <h3 className="text-[16px] font-semibold leading-[24px] text-[#1E1E1E]">Role Presets</h3>
+        <div role="group" aria-label="Role presets" className="mt-[5px] flex flex-wrap gap-x-[14px] gap-y-[16px]">
           {rolePills.map((pill) => {
             const isSelected = role === pill.label;
             return (
@@ -291,10 +294,10 @@ const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "rounded-full border px-2.5 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                  "h-[24px] rounded-full border px-[8px] text-caption-m! font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
                   isSelected
-                    ? "border-transparent bg-[#E4ECFF] text-primary"
-                    : "border-[#EBEBEB] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
+                    ? "border-transparent bg-[#E6EDFD] text-primary"
+                    : "border-[#EEEEEE] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
                 )}
               >
                 {pill.label}
@@ -303,9 +306,10 @@ const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
           })}
         </div>
 
-        <div className="mt-6 flex flex-col gap-1.5">
+        <div className="mt-[24px] flex flex-col gap-[5px]">
           <label htmlFor="invite-custom-role" className={LABEL_CLASS}>Custom Category</label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-[8px]">
+            <div className="min-w-0 flex-1">
             <TextInput
               id="invite-custom-role"
               placeholder="e.g. Lead Engineer"
@@ -320,14 +324,15 @@ const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
                   addCustomRole();
                 }
               }}
-              className="h-9 flex-1 px-4"
+              className="h-[36px] w-full border border-[#EEEEEE] px-4"
             />
+            </div>
             <button
               type="button"
               aria-label="Add custom role"
               onClick={addCustomRole}
               disabled={!customDraft.trim()}
-              className="flex size-9 shrink-0 items-center justify-center bg-primary text-white outline-none transition-colors hover:bg-primary-800 focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex size-[36px] shrink-0 items-center justify-center bg-primary text-white outline-none transition-colors hover:bg-primary-800 focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="size-5" />
             </button>
@@ -336,13 +341,13 @@ const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
       </div>
 
       {/* Phase 3 — permissions */}
-      <div className="mt-6 border-t border-[#EBEBEB] pt-6">
-        <h3 className="text-base font-semibold text-[#1E1E1E]">Permissions</h3>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="mt-[24px] border-t border-[#F6F6F6] pt-[27px]">
+        <h3 className="text-[16px] font-semibold leading-[24px] text-[#1E1E1E]">Permissions</h3>
+        <p className="mt-[2px] text-caption-l! text-[#737373]">
           Grant specific actions for each area of the project. Selecting a preset above sets a baseline.
         </p>
 
-        <div className="mt-6 flex flex-col gap-6">
+        <div className="mt-[24px] flex flex-col gap-[24px]">
           {finalGroups.map((group) => (
             <PermissionGroupCard key={group.name} title={group.name} rows={groupRows(group)} onToggle={handleToggleGrant} />
           ))}

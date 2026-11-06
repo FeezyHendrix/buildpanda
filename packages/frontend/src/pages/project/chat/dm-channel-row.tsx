@@ -2,43 +2,38 @@ import { useChannelMembers } from "@/hooks/use-chat";
 import { Avatar } from "@/components/atoms/avatar";
 import { cn } from "@/lib/utils";
 import type { Channel } from "@/lib/project-types";
+import { CHANNEL_ROW_CLASS, channelRowTone, UnreadBadge } from "./channel-row";
 
 export function DmChannelRow({
   channel,
   currentUserId,
   isActive,
+  filter = "",
   onClick,
 }: {
   channel: Channel;
   currentUserId: string;
   isActive: boolean;
+  /** Lower-cased text the channel list is being filtered by; rows that don't match hide. */
+  filter?: string;
   onClick: () => void;
 }) {
   const { data: members = [] } = useChannelMembers(channel.id);
-  const otherMember = members.find(m => m.id !== currentUserId);
+  const otherMember = members.find((m) => m.id !== currentUserId);
   const displayName = otherMember?.name || channel.name || "Unknown User";
+
+  if (filter && !displayName.toLowerCase().includes(filter)) return null;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
-        isActive
-          ? "bg-primary-50 text-primary-500"
-          : "text-ink hover:bg-black/5",
-        channel.muted && !isActive && "text-ink-muted"
-      )}
+      aria-current={isActive ? "true" : undefined}
+      className={cn(CHANNEL_ROW_CLASS, "gap-[8px] px-[12px]", channelRowTone(isActive, Boolean(channel.muted)))}
     >
-      <div className="shrink-0 relative">
-        <Avatar name={displayName} size="sm" />
-      </div>
+      <Avatar name={displayName} className="size-[26px] bg-primary text-[9px] text-white" />
       <span className="flex-1 truncate">{displayName}</span>
-      {channel.unreadCount > 0 && (
-        <span className="flex h-5 items-center justify-center rounded-full bg-primary-500 px-2 text-[10px] font-semibold text-white">
-          {channel.unreadCount}
-        </span>
-      )}
+      <UnreadBadge count={channel.unreadCount} />
     </button>
   );
 }

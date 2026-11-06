@@ -28,7 +28,7 @@ const STATUS_OPTIONS: { value: BuildingStatus; label: string }[] = [
   { value: "on_hold", label: "On hold" },
 ];
 
-const LABEL_CLASS = "text-xs font-semibold text-[#1E1E1E]";
+const LABEL_CLASS = "text-caption-m! font-semibold text-[#1E1E1E]";
 
 /** Fill and track are painted on the input itself; the thumb is a thin tick at the current value. */
 const PROGRESS_INPUT_CLASS = [
@@ -88,7 +88,7 @@ export function UpsertBuildingDialog({
       className="w-[min(462px,calc(100vw-2rem))]"
     >
       <div className="flex flex-col gap-2">
-        <label htmlFor="building-progress" className="text-sm font-medium text-[#1E1E1E]">
+        <label htmlFor="building-progress" className="text-caption-l! font-medium text-[#1E1E1E]">
           Progress
         </label>
         <div className="flex items-center gap-4">
@@ -102,7 +102,7 @@ export function UpsertBuildingDialog({
             className={PROGRESS_INPUT_CLASS}
             style={{ background: `linear-gradient(to right, #004DE7 ${progress}%, #E5E5E5 ${progress}%)` }}
           />
-          <span className="w-9 shrink-0 text-sm font-medium text-[#1E1E1E]">{progress}%</span>
+          <span className="w-9 shrink-0 text-caption-l! font-medium text-[#1E1E1E]">{progress}%</span>
         </div>
       </div>
 
@@ -120,7 +120,7 @@ export function UpsertBuildingDialog({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="building-code" className="text-sm font-medium text-[#1E1E1E]">
+        <label htmlFor="building-code" className="text-caption-l! font-medium text-[#1E1E1E]">
           Code <span className="font-normal text-[#B0B0B0]">(optional)</span>
         </label>
         <TextInput
@@ -142,7 +142,7 @@ export function UpsertBuildingDialog({
           value={status}
           onChange={(next) => setStatus(next as BuildingStatus | null)}
           placeholder="Select status"
-          className="h-[46px] px-4 text-sm"
+          className="h-[46px] px-4 text-caption-l!"
         />
       </div>
     </FormDialog>

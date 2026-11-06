@@ -19,7 +19,7 @@ export function BuildingStatusBadge({ status }: { status: BuildingStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center rounded-full border px-2 text-xs font-medium whitespace-nowrap",
+        "inline-flex h-6 items-center rounded-full border px-2 text-caption-m! font-medium whitespace-nowrap",
         STATUS_CLASS[status],
       )}
     >

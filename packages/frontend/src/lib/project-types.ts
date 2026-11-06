@@ -1363,6 +1363,8 @@ export interface ChannelMemberLite {
   name: string | null;
   email: string;
   role: "admin" | "member";
+  /** What the person does for a living (architect, site engineer…), from their profile. */
+  profession?: string | null;
 }
 
 export type TaskStatus = "Todo" | "Doing" | "Done";

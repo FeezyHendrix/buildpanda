@@ -29,7 +29,7 @@ export default function ProjectSettings() {
     <div className="w-full px-4 pt-10 pb-8 lg:px-8">
       <SettingsTabBar value={tab} onChange={setTab} />
 
-      <div className="mx-auto mt-11 max-w-[1003px] sm:w-[calc(100%-86px)]">
+      <div className="mt-11 max-w-[1003px] sm:ml-[43px] sm:w-[calc(100%-86px)]">
         {(tab === "general" || tab === "programme") && profile.error ? (
           <QueryError error={profile.error} retry={profile.refetch} noun="project settings" />
         ) : null}

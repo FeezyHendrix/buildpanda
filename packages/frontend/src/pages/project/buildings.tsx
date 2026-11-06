@@ -86,7 +86,7 @@ export default function ProjectBuildings() {
                 aria-pressed={on}
                 onClick={() => setStatusFilter(on ? null : status)}
                 className={cn(
-                  "h-9 rounded-full border px-4 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                  "h-9 rounded-full border px-4 text-caption-l! font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
                   on
                     ? "border-[#1E1E1E] bg-[#1E1E1E] text-white"
                     : "border-[#EBEBEB] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
@@ -117,10 +117,10 @@ export default function ProjectBuildings() {
 
           {visibleBuildings.length === 0 && !isLoading ? (
             <div className="flex flex-col items-center justify-center border border-dashed border-[#EBEBEB] py-12 text-center">
-              <h3 className="mt-2 text-sm font-semibold text-ink">
+              <h3 className="mt-2 text-caption-l! font-semibold text-ink">
                 {realBuildings.length === 0 ? "No buildings" : `No ${BUILDING_STATUS_LABEL[statusFilter!].toLowerCase()} buildings`}
               </h3>
-              <p className="mt-1 text-sm text-ink-muted">
+              <p className="mt-1 text-caption-l! text-ink-muted">
                 {realBuildings.length === 0
                   ? "Get started by adding a building to this project."
                   : "Pick another status, or select this one again to see every building."}

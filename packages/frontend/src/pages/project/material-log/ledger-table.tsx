@@ -26,7 +26,7 @@ import { ENTRY_TYPE_META, formatMeasure } from "./shared";
 
 const COLUMN_COUNT = 6;
 
-const HEADER_CELL_CLASS = "px-6 py-4 text-sm font-medium normal-case text-[#4D4D4D]";
+const HEADER_CELL_CLASS = "px-6 py-4 text-caption-l! font-medium normal-case text-[#4D4D4D]";
 
 const TYPE_BADGE_CLASS: Record<LedgerEntryType, string> = {
   IN: "border-transparent bg-[#E7F8EE] text-[#00A63E]",
@@ -156,16 +156,16 @@ function LedgerTableRow({ entry, canManage, approving, onVoid, onApprove }: RowP
 
   return (
     <TableRow className={cn("align-middle", isVoided && "bg-surface-alt")}>
-      <TableCell className="px-6 py-4 text-sm" title={detailTitle(entry) || undefined}>
+      <TableCell className="px-6 py-4 text-caption-l!" title={detailTitle(entry) || undefined}>
         <p className={cn("truncate font-medium text-[#1E1E1E]", isVoided && "line-through decoration-gray-400")}>
           {entry.materialName}
         </p>
-        <p className="mt-0.5 truncate text-xs text-gray-500">
+        <p className="mt-0.5 truncate text-caption-m! text-gray-500">
           {formatMeasure(entry.quantity, entry.unit)}
           {entry.stageName ? ` · ${entry.stageName}` : ""}
         </p>
         {entry.reason ? (
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-caption-m! text-gray-500">
             <span className="font-medium text-gray-700">{reasonLabel(entry)}:</span> {entry.reason}
           </p>
         ) : null}
@@ -173,15 +173,15 @@ function LedgerTableRow({ entry, canManage, approving, onVoid, onApprove }: RowP
       <TableCell className="px-6 py-4">
         <EntryStatusCell entry={entry} label={meta.label} />
       </TableCell>
-      <TableCell className="whitespace-nowrap px-6 py-4 text-sm text-[#1E1E1E]">
+      <TableCell className="whitespace-nowrap px-6 py-4 text-caption-l! text-[#1E1E1E]">
         <time dateTime={entry.occurredAt} title={formatDateTime(entry.occurredAt)}>
           {formatTimeAgo(entry.occurredAt)}
         </time>
       </TableCell>
-      <TableCell className="truncate px-6 py-4 text-sm text-[#1E1E1E]">
+      <TableCell className="truncate px-6 py-4 text-caption-l! text-[#1E1E1E]">
         {entry.loggedByName ?? "Unknown user"}
       </TableCell>
-      <TableCell className="px-6 py-4 text-sm">
+      <TableCell className="px-6 py-4 text-caption-l!">
         {photo ? (
           <a
             href={photo.url}
@@ -240,7 +240,7 @@ function EntryStatusCell({ entry, label }: { entry: LedgerEntry; label: string }
     <div className="flex flex-col items-start gap-1">
       <span
         className={cn(
-          "inline-flex h-6 items-center rounded-full border px-2.5 text-xs font-medium",
+          "inline-flex h-6 items-center rounded-full border px-2.5 text-caption-m! font-medium",
           TYPE_BADGE_CLASS[entry.entryType],
         )}
       >
