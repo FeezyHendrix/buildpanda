@@ -108,6 +108,12 @@ export const GrowthIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const JourneyIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...I(p)}>
+    <path d="M3 4h18l-7 8v7l-4 2v-9z" />
+  </svg>
+);
+
 export const EngagementIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...I(p)}>
     <path d="M22 12h-4l-3 8-4-16-3 8H4" />
