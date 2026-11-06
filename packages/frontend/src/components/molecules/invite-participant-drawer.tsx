@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { PermissionGroupCard } from "@/components/molecules/permission-group-card";
+import { TextInput } from "@/components/atoms/text-input";
 import { errorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { INPUT_CLASS } from "@/components/atoms/input";
@@ -10,6 +13,7 @@ import {
   useProjectAccess,
 } from "@/hooks/use-participants";
 import type { ProjectParticipant } from "@/lib/project-types";
+import { Button } from "../atoms";
 
 export interface InviteParticipantDrawerProps {
   open: boolean;
@@ -64,7 +68,7 @@ function getPresetLabel(key: string) {
 
 const GROUPS = [
   { name: "Project", keys: ["project", "tasks", "schedule", "documents", "bim", "stages"] },
-  { name: "Quality & risk", keys: ["inspections", "dailyLog", "risks"] },
+  { name: "Quality & Risks", keys: ["inspections", "dailyLog", "risks"] },
   { name: "Commercial", keys: ["finances", "materials"] },
   { name: "Workflow", keys: ["rfis", "approvals", "selections", "change-requests"] },
   { name: "Compliance", keys: ["permits", "key-dates"] },
@@ -85,6 +89,12 @@ export function InviteParticipantDrawer({
     initial?.role && initial.role !== "owner" ? initial.role : "",
   );
   
+  // Roles typed in "Custom Category" and added with +, shown as pills beside the presets.
+  const [customRoles, setCustomRoles] = useState<string[]>(() =>
+    initial?.role && initial.role !== "owner" ? [initial.role] : [],
+  );
+  const [customDraft, setCustomDraft] = useState("");
+
   const [grants, setGrants] = useState<Record<string, string[]>>(() => {
     if (initial?.grants && Object.keys(initial.grants).length > 0) {
       return initial.grants;
@@ -126,9 +136,18 @@ export function InviteParticipantDrawer({
   const privileged = catalog?.privileged ?? {};
   const presets = catalog?.presets ?? {};
 
+  function addCustomRole() {
+    const value = customDraft.trim();
+    if (!value) return;
+    setCustomRoles((prev) => (prev.includes(value) ? prev : [...prev, value]));
+    setRole(value);
+    setCustomDraft("");
+  }
+
   function handlePresetClick(presetKey: string) {
     const presetName = getPresetLabel(presetKey);
     setRole(presetName);
+    setCustomDraft("");
     
     if (!presets || !presets[presetKey]) return;
 
@@ -160,16 +179,15 @@ export function InviteParticipantDrawer({
     }
   }
 
-  const inputCls = INPUT_CLASS;
-  const labelCls = "mb-1.5 block text-sm font-medium text-ink";
+const LABEL_CLASS = "text-caption-m! font-semibold text-[#1E1E1E]";
 
   const resourceKeys = Object.keys(resources);
-  
+
   const resourceGroups: { name: string; resources: string[] }[] = GROUPS.map(g => ({ name: g.name, resources: [] }));
   const moreGroup = { name: "More", resources: [] as string[] };
-  
+
   const knownKeys = new Set(GROUPS.flatMap(g => g.keys));
-  
+
   for (const r of resourceKeys) {
     if (knownKeys.has(r)) {
       const group = resourceGroups.find(g => GROUPS.find(gr => gr.name === g.name)?.keys.includes(r));
@@ -178,168 +196,160 @@ export function InviteParticipantDrawer({
       moreGroup.resources.push(r);
     }
   }
-  
+
   const finalGroups = [...resourceGroups.filter(g => g.resources.length > 0)];
   if (moreGroup.resources.length > 0) {
     finalGroups.push(moreGroup);
   }
 
   const presetKeys = Object.keys(presets);
+  const presetLabels = presetKeys.map(getPresetLabel);
+  const customPills = customRoles.filter((label) => !presetLabels.includes(label));
+  const rolePills = [...presetLabels.map((label, i) => ({ key: presetKeys[i]!, label, preset: true })), ...customPills.map((label) => ({ key: `custom:${label}`, label, preset: false }))];
+
+  function groupRows(group: { resources: string[] }) {
+    return group.resources.map((resource) => ({
+      key: resource,
+      label: humanizeResource(resource),
+      actions: ((resources as Record<string, string[]>)[resource] ?? []).map((action) => {
+        const isPrivileged = (privileged as Record<string, string[]>)[resource]?.includes(action) ?? false;
+        return {
+          key: action,
+          label: humanizeAction(action),
+          selected: grants[resource]?.includes(action) ?? false,
+          disabled: isPrivileged && !isOrgAdmin,
+          disabledHint: "Admin only",
+        };
+      }),
+    }));
+  }
 
   return (
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={isEdit ? "Edit access" : "Invite someone"}
+      title={isEdit ? "Edit access" : "Invite Member"}
       description={
         isEdit
           ? "Update this person's role and access permissions."
           : "Invite a client or team member and control what they can see."
       }
-      submitLabel={isEdit ? "Save changes" : "Send invite"}
+      submitLabel={isEdit ? "Save changes" : "Send Invite"}
       submitting={mutation.isPending}
       submitDisabled={!isEdit && email.trim().length < 3}
       error={mutation.error ? errorMessage(mutation.error) : null}
       onSubmit={handleSubmit}
+      footerVariant="split"
+      size="roomy"
+      className="w-[min(717px,100vw)]"
+      headerClassName="px-[40px] pb-[12px] pt-[40px]"
+      bodyClassName="gap-0 px-[40px] pb-0 pt-[9px]"
+      footerClassName="px-[40px] pb-[40px] pt-[24px]"
     >
       {/* Phase 1 — contact info */}
-      <div className="flex flex-col gap-3">
-        <div>
-          <label className={labelCls}>Email</label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="invite-email" className={LABEL_CLASS}>Email</label>
           {isEdit ? (
-            <div className={cn(INPUT_CLASS, "flex items-center bg-surface-alt text-ink-muted")}>
-              {email}
-            </div>
+            <div className={cn(INPUT_CLASS, "flex items-center bg-surface-alt text-ink-muted")}>{email}</div>
           ) : (
-            <input
+            <TextInput
+              id="invite-email"
               type="email"
               placeholder="name@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputCls}
+              onChange={setEmail}
+              className="h-[45px] border border-[#EEEEEE] px-4"
             />
           )}
         </div>
         {!isEdit && (
-          <div>
-            <label className={labelCls}>
-              Name{" "}
-              <span className="font-normal text-ink-muted">(optional)</span>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="invite-name" className={LABEL_CLASS}>
+              Name <span className="font-normal text-gray-500">(optional)</span>
             </label>
-            <input
-              type="text"
+            <TextInput
+              id="invite-name"
               placeholder="e.g. Sam Okonkwo"
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputCls}
+              onChange={setName}
+              className="h-[45px] border border-[#EEEEEE] px-4"
             />
           </div>
         )}
       </div>
 
       {/* Phase 2 — role selection */}
-      <div className="mt-5 flex flex-col gap-3 border-t border-line-hair pt-5">
-        <div>
-          <label className={labelCls}>Role presets</label>
-          <div className="flex flex-wrap gap-2">
-            {presetKeys.map((key) => {
-              const label = getPresetLabel(key);
-              const isSelected = role === label;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handlePresetClick(key)}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                    isSelected
-                      ? "border-primary-500 bg-primary-50 text-primary-600"
-                      : "border-line bg-white text-ink-subtle hover:border-line-hover hover:bg-surface-alt"
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+      <div className="mt-[24px] border-t border-[#F6F6F6] pt-[27px]">
+        <h3 className="text-[16px] font-semibold leading-[24px] text-[#1E1E1E]">Role Presets</h3>
+        <div role="group" aria-label="Role presets" className="mt-[5px] flex flex-wrap gap-x-[14px] gap-y-[16px]">
+          {rolePills.map((pill) => {
+            const isSelected = role === pill.label;
+            return (
+              <Button
+                key={pill.key}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => (pill.preset ? handlePresetClick(pill.key) : (setRole(pill.label), setCustomDraft("")))}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-[24px] rounded-full border px-[8px] text-caption-m! font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                  isSelected
+                    ? "border-transparent bg-[#E6EDFD] text-primary"
+                    : "border-[#EEEEEE] bg-white text-[#1E1E1E] hover:bg-[#F5F5F5]",
+                )}
+              >
+                {pill.label}
+              </Button>
+            );
+          })}
         </div>
-        
-        <div>
-          <label className={labelCls}>Custom role</label>
-          <input
-            type="text"
-            placeholder="e.g. Lead Engineer"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className={cn(
-              inputCls,
-              role.trim() && !presetKeys.some(k => getPresetLabel(k) === role)
-                ? "border-primary-500/40 shadow-focus"
-                : ""
-            )}
-          />
+
+        <div className="mt-[24px] flex flex-col gap-[5px]">
+          <label htmlFor="invite-custom-role" className={LABEL_CLASS}>Custom Category</label>
+          <div className="flex items-center gap-[8px]">
+            <div className="min-w-0 flex-1">
+            <TextInput
+              id="invite-custom-role"
+              placeholder="e.g. Lead Engineer"
+              value={customDraft}
+              onChange={(value) => {
+                setCustomDraft(value);
+                setRole(value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addCustomRole();
+                }
+              }}
+              className="h-[36px] w-full border border-[#EEEEEE] px-4"
+            />
+            </div>
+            <button
+              type="button"
+              aria-label="Add custom role"
+              onClick={addCustomRole}
+              disabled={!customDraft.trim()}
+              className="flex size-[36px] shrink-0 items-center justify-center bg-primary text-white outline-none transition-colors hover:bg-primary-800 focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus className="size-5" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Phase 3 — permissions */}
-      <div className="mt-5 flex flex-col border-t border-line-hair pt-5">
-        <div>
-          <p className="text-sm font-semibold text-ink">Permissions</p>
-          <p className="mt-0.5 text-xs text-ink-muted">
-            Grant specific actions for each area of the project. Selecting a preset above sets a baseline.
-          </p>
-        </div>
+      <div className="mt-[24px] border-t border-[#F6F6F6] pt-[27px]">
+        <h3 className="text-[16px] font-semibold leading-[24px] text-[#1E1E1E]">Permissions</h3>
+        <p className="mt-[2px] text-caption-l! text-[#737373]">
+          Grant specific actions for each area of the project. Selecting a preset above sets a baseline.
+        </p>
 
-        <div className="mt-4 flex flex-col gap-6">
+        <div className="mt-[24px] flex flex-col gap-[24px]">
           {finalGroups.map((group) => (
-            <div key={group.name} className="flex flex-col gap-3">
-              <p className="text-xs font-medium uppercase text-ink-muted border-b border-line-hair pb-1">
-                {group.name}
-              </p>
-              
-              <div className="flex flex-col gap-4">
-                {group.resources.map((resource) => (
-                  <div key={resource}>
-                    <p className="mb-2 text-xs font-medium uppercase text-ink-muted">
-                      {humanizeResource(resource)}
-                    </p>
-                    <div className="grid grid-cols-2 gap-y-2 gap-x-4">
-                      {((resources as Record<string, string[]>)[resource] ?? []).map((action) => {
-                        const isPrivileged = (privileged as Record<string, string[]>)[resource]?.includes(action);
-                        const disabled = isPrivileged && !isOrgAdmin;
-                        const checked = grants[resource]?.includes(action) ?? false;
-                        
-                        return (
-                          <label
-                            key={action}
-                            className={cn(
-                              "flex items-center gap-2 cursor-pointer text-sm transition-colors",
-                              disabled ? "opacity-50 cursor-not-allowed" : "hover:text-primary-600"
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              disabled={disabled}
-                              checked={checked}
-                              onChange={(e) => handleToggleGrant(resource, action, e.target.checked)}
-                              className="h-4 w-4 rounded border-gray-300 text-brand focus:shadow-focus disabled:cursor-not-allowed"
-                            />
-                            <span className="flex flex-col">
-                              <span className="flex items-center gap-1.5 text-ink">
-                                {humanizeAction(action)}
-                                {disabled && (
-                                  <span className="text-xs font-medium text-ink-muted">(Admin only)</span>
-                                )}
-                              </span>
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <PermissionGroupCard key={group.name} title={group.name} rows={groupRows(group)} onToggle={handleToggleGrant} />
           ))}
         </div>
       </div>

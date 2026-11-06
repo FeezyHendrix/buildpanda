@@ -12,11 +12,11 @@ import {
 } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
-import { formatDateTime, formatShortDate, formatTimeAgo } from "@/lib/formatters";
-import type { LedgerEntry } from "@/lib/project-types";
+import { formatDateTime, formatTimeAgo } from "@/lib/formatters";
+import type { LedgerEntry, LedgerEntryType } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { AlertTriangleIcon, ClockAlertIcon, PaperclipIcon, StackIcon } from "./icons";
-import { ENTRY_TYPE_META, signedMeasure } from "./shared";
+import { ENTRY_TYPE_META, formatMeasure } from "./shared";
 
 /**
  * The stock ledger as a register: one row per movement, in the order the
@@ -24,7 +24,15 @@ import { ENTRY_TYPE_META, signedMeasure } from "./shared";
  * it stays legible, struck through and tagged.
  */
 
-const COLUMN_COUNT = 8;
+const COLUMN_COUNT = 6;
+
+const HEADER_CELL_CLASS = "px-6 py-4 text-caption-l! font-medium normal-case text-[#4D4D4D]";
+
+const TYPE_BADGE_CLASS: Record<LedgerEntryType, string> = {
+  IN: "border-transparent bg-[#E7F8EE] text-[#00A63E]",
+  USED: "border-transparent bg-[#E4ECFF] text-[#004DE7]",
+  VOID: "border-[#EBEBEB] bg-white text-[#1E1E1E]",
+};
 
 /**
  * `reason` carries whatever explains the movement, so the label has to match
@@ -61,20 +69,16 @@ export function LedgerTable({
   onClearFilters,
 }: LedgerTableProps) {
   return (
-    <div className="mt-4 overflow-hidden rounded-lg border border-line-hair bg-white">
-      <Table className="min-w-[1080px]">
-        <TableHead>
+    <div className="mt-4 overflow-hidden border border-[#EBEBEB] bg-white">
+      <Table className="min-w-[960px] table-fixed">
+        <TableHead className="bg-[#F0F0F0]">
           <tr>
-            <TableHeaderCell className="whitespace-nowrap">Date</TableHeaderCell>
-            <TableHeaderCell>Material</TableHeaderCell>
-            <TableHeaderCell align="right" className="whitespace-nowrap">
-              In / out
-            </TableHeaderCell>
-            <TableHeaderCell>Location</TableHeaderCell>
-            <TableHeaderCell>Supplier</TableHeaderCell>
-            <TableHeaderCell className="whitespace-nowrap">Logged by</TableHeaderCell>
-            <TableHeaderCell>Approval</TableHeaderCell>
-            <TableHeaderCell align="right" className="w-[120px]">
+            <TableHeaderCell className={cn(HEADER_CELL_CLASS, "w-[29%]")}>Material</TableHeaderCell>
+            <TableHeaderCell className={cn(HEADER_CELL_CLASS, "w-[14%]")}>Status</TableHeaderCell>
+            <TableHeaderCell className={cn(HEADER_CELL_CLASS, "w-[17%]")}>Date</TableHeaderCell>
+            <TableHeaderCell className={cn(HEADER_CELL_CLASS, "w-[19%]")}>Logged by</TableHeaderCell>
+            <TableHeaderCell className={cn(HEADER_CELL_CLASS, "w-[17%]")}>Photo</TableHeaderCell>
+            <TableHeaderCell align="right" className={cn(HEADER_CELL_CLASS, "w-[4%] min-w-[96px]")}>
               <span className="sr-only">Actions</span>
             </TableHeaderCell>
           </tr>
@@ -132,6 +136,17 @@ interface RowProps {
   onApprove: (entry: LedgerEntry) => void;
 }
 
+/** Everything the row's columns no longer show, kept one hover away. */
+function detailTitle(entry: LedgerEntry): string {
+  return [
+    entry.supplier ? `Supplier: ${entry.supplier}` : null,
+    entry.deliveryNote ? `Delivery note: ${entry.deliveryNote}` : null,
+    entry.locationKey ? `Location: ${entry.locationKey}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 function LedgerTableRow({ entry, canManage, approving, onVoid, onApprove }: RowProps) {
   const meta = ENTRY_TYPE_META[entry.entryType];
   const isPending = entry.approvalStatus === "Pending";
@@ -140,68 +155,49 @@ function LedgerTableRow({ entry, canManage, approving, onVoid, onApprove }: RowP
   const photo = entry.files[0];
 
   return (
-    <TableRow className={cn(isVoided && "bg-surface-alt")}>
-      <TableCell className="whitespace-nowrap">
-        <p className="font-medium">{formatShortDate(entry.occurredAt)}</p>
-        <time
-          dateTime={entry.occurredAt}
-          title={formatDateTime(entry.occurredAt)}
-          className="mt-0.5 block text-xs text-ink-muted"
-        >
+    <TableRow className={cn("align-middle", isVoided && "bg-surface-alt")}>
+      <TableCell className="px-6 py-4 text-caption-l!" title={detailTitle(entry) || undefined}>
+        <p className={cn("truncate font-medium text-[#1E1E1E]", isVoided && "line-through decoration-gray-400")}>
+          {entry.materialName}
+        </p>
+        <p className="mt-0.5 truncate text-caption-m! text-gray-500">
+          {formatMeasure(entry.quantity, entry.unit)}
+          {entry.stageName ? ` · ${entry.stageName}` : ""}
+        </p>
+        {entry.reason ? (
+          <p className="mt-0.5 text-caption-m! text-gray-500">
+            <span className="font-medium text-gray-700">{reasonLabel(entry)}:</span> {entry.reason}
+          </p>
+        ) : null}
+      </TableCell>
+      <TableCell className="px-6 py-4">
+        <EntryStatusCell entry={entry} label={meta.label} />
+      </TableCell>
+      <TableCell className="whitespace-nowrap px-6 py-4 text-caption-l! text-[#1E1E1E]">
+        <time dateTime={entry.occurredAt} title={formatDateTime(entry.occurredAt)}>
           {formatTimeAgo(entry.occurredAt)}
         </time>
       </TableCell>
-      <TableCell>
-        <p className={cn("font-medium text-ink", isVoided && "line-through decoration-gray-400")}>
-          {entry.materialName}
-        </p>
-        {entry.stageName ? <p className="mt-0.5 text-xs text-ink-muted">{entry.stageName}</p> : null}
-        {entry.reason ? (
-          <p className="mt-0.5 text-xs text-ink-muted">
-            <span className="font-medium text-gray-700">{reasonLabel(entry)}:</span>{" "}
-            {entry.reason}
-          </p>
+      <TableCell className="truncate px-6 py-4 text-caption-l! text-[#1E1E1E]">
+        {entry.loggedByName ?? "Unknown user"}
+      </TableCell>
+      <TableCell className="px-6 py-4 text-caption-l!">
+        {photo ? (
+          <a
+            href={photo.url}
+            target="_blank"
+            rel="noreferrer"
+            title={photo.name}
+            onClick={(event) => event.stopPropagation()}
+            className="inline-flex max-w-full items-center gap-1.5 font-medium text-primary hover:underline"
+          >
+            <PaperclipIcon className="size-3.5 shrink-0" />
+            <span className="truncate">{photo.name}</span>
+          </a>
         ) : null}
       </TableCell>
-      <TableCell align="right" className="whitespace-nowrap">
-        <div className="flex items-center justify-end gap-2">
-          <Badge tone={meta.tone} size="sm">
-            <meta.Icon className="size-3" />
-            {meta.label}
-          </Badge>
-          <span className={cn("font-semibold tabular-nums", isVoided && "line-through")}>
-            {signedMeasure(entry)}
-          </span>
-        </div>
-      </TableCell>
-      <TableCell className="whitespace-nowrap">{entry.locationKey || "—"}</TableCell>
-      <TableCell>
-        <p>{entry.supplier ?? "—"}</p>
-        {entry.deliveryNote ? (
-          <p className="mt-0.5 text-xs text-ink-muted">
-            <span className="font-medium text-gray-700">Delivery note:</span> {entry.deliveryNote}
-          </p>
-        ) : null}
-      </TableCell>
-      <TableCell className="whitespace-nowrap">{entry.loggedByName ?? "Unknown user"}</TableCell>
-      <TableCell>
-        <EntryStatusCell entry={entry} />
-      </TableCell>
-      <TableCell align="right">
+      <TableCell align="right" className="px-6 py-4">
         <div className="flex items-center justify-end gap-1">
-          {photo ? (
-            <a
-              href={photo.url}
-              target="_blank"
-              rel="noreferrer"
-              title={photo.name}
-              onClick={(event) => event.stopPropagation()}
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary-500 transition-colors hover:bg-primary-50"
-            >
-              <PaperclipIcon className="size-3.5" />
-              Proof
-            </a>
-          ) : null}
           {canManage && isPending && !isVoided ? (
             <Button
               size="sm"
@@ -233,17 +229,28 @@ function LedgerTableRow({ entry, canManage, approving, onVoid, onApprove }: RowP
 LedgerTableRow.displayName = "LedgerTableRow";
 
 /**
- * Approval state plus anything the entry is flagged for. Every flag carries a
- * glyph and a label, never colour alone (WCAG 1.4.1).
+ * The movement type, plus anything the entry is waiting on or flagged for.
+ * Every flag carries a glyph and a label, never colour alone (WCAG 1.4.1);
+ * a settled, unflagged entry shows the type alone.
  */
-function EntryStatusCell({ entry }: { entry: LedgerEntry }) {
+function EntryStatusCell({ entry, label }: { entry: LedgerEntry; label: string }) {
   const isPending = entry.approvalStatus === "Pending";
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <Badge dot tone={isPending ? "warning" : "success"} size="sm">
-        {isPending ? "Awaiting approval" : "Approved"}
-      </Badge>
+    <div className="flex flex-col items-start gap-1">
+      <span
+        className={cn(
+          "inline-flex h-6 items-center rounded-full border px-2.5 text-caption-m! font-medium",
+          TYPE_BADGE_CLASS[entry.entryType],
+        )}
+      >
+        {label}
+      </span>
+      {isPending ? (
+        <Badge dot tone="warning" size="sm">
+          Awaiting approval
+        </Badge>
+      ) : null}
       {entry.selfApproved ? (
         <Badge tone="warning" size="sm" variant="outline" title="Approved by the person who logged it">
           Self approved
@@ -265,9 +272,6 @@ function EntryStatusCell({ entry }: { entry: LedgerEntry }) {
           <ClockAlertIcon className="size-3" />
           Time flagged
         </Badge>
-      ) : null}
-      {entry.approvedByName && !isPending ? (
-        <p className="w-full text-xs text-ink-muted">by {entry.approvedByName}</p>
       ) : null}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -28,6 +28,14 @@ interface Props {
   placeholder?: string;
   disabled?: boolean;
   ariaLabel?: string;
+  /**
+   * `panel` is the flat comment box used in side panels: a 30px grey toolbar with
+   * the numbered list before the bullets, and room for a `footer` action inside
+   * the box. `default` is unchanged.
+   */
+  variant?: "default" | "panel";
+  /** Rendered inside the box, bottom right, in the `panel` variant (e.g. the submit button). */
+  footer?: ReactNode;
 }
 
 // Persist only the stable file id on the image node, never the src. The src is
@@ -65,11 +73,13 @@ function ToolbarButton({
   onClick,
   label,
   children,
+  panel = false,
 }: {
   active?: boolean;
   onClick: () => void;
   label: string;
   children: React.ReactNode;
+  panel?: boolean;
 }) {
   return (
     <button
@@ -81,10 +91,12 @@ function ToolbarButton({
         onClick();
       }}
       className={cn(
-        "flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-sm",
+        panel
+          ? "flex h-[30px] w-[32px] items-center justify-center text-sm"
+          : "flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-sm",
         active
-          ? "bg-grey-100 text-gray-900"
-          : "text-gray-600 hover:bg-grey-100",
+          ? panel ? "bg-[#E4E4E4] text-gray-900" : "bg-grey-100 text-gray-900"
+          : panel ? "text-[#1E1E1E] hover:bg-[#E8E8E8]" : "text-gray-600 hover:bg-grey-100",
       )}
     >
       {children}
@@ -101,7 +113,10 @@ export function RichTextEditor({
   placeholder,
   disabled,
   ariaLabel,
+  variant = "default",
+  footer,
 }: Props) {
+  const panel = variant === "panel";
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const editor = useEditor({
@@ -110,6 +125,8 @@ export function RichTextEditor({
       FileImage.configure({ inline: false }),
       Placeholder.configure({
         placeholder: placeholder ?? "Write a response…",
+        // A read-only box still says what it is for.
+        showOnlyWhenEditable: false,
       }),
     ],
     content: value,
@@ -200,10 +217,42 @@ export function RichTextEditor({
 
   if (!editor) return null;
 
+  const lists = [
+    <ToolbarButton
+      key="ordered"
+      panel={panel}
+      label="Numbered list"
+      active={editor.isActive("orderedList")}
+      onClick={() => editor.chain().focus().toggleOrderedList().run()}
+    >
+      <ReactSVG src={icons2.orderedList} />
+    </ToolbarButton>,
+    <ToolbarButton
+      key="bullet"
+      panel={panel}
+      label="Bullet list"
+      active={editor.isActive("bulletList")}
+      onClick={() => editor.chain().focus().toggleBulletList().run()}
+    >
+      <ReactSVG src={icons2.unorderedList} />
+    </ToolbarButton>,
+  ];
+  // The default editor lists bullets first; the panel lists numbers first.
+  const orderedLists = panel ? lists : [lists[1], lists[0]];
+  const divider = <div className={cn("self-stretch bg-[#0000001F]", panel ? "mx-[5px] w-px" : "-my-1.5 w-px")} />;
+
   return (
-    <div className="border-[0.5px] border-border bg-white">
-      <div className="flex flex-wrap items-center gap-1 border-b-[0.5px] border-border bg-grey-50 px-2 py-1.5">
+    <div className={cn("bg-white", panel ? "flex min-h-[206px] flex-col border border-[#EEEEEE]" : "border-[0.5px] border-border")}>
+      <div
+        className={cn(
+          "flex items-center",
+          panel
+            ? "h-[31px] shrink-0 border-b border-[#E6E6E6] bg-[#F0F0F0] pl-[10px]"
+            : "flex-wrap gap-1 border-b-[0.5px] border-border bg-grey-50 px-2 py-1.5",
+        )}
+      >
         <ToolbarButton
+          panel={panel}
           label="Bold"
           active={editor.isActive("bold")}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -211,6 +260,7 @@ export function RichTextEditor({
           <ReactSVG src={icons2.bold} />
         </ToolbarButton>
         <ToolbarButton
+          panel={panel}
           label="Italic"
           active={editor.isActive("italic")}
           onClick={() => editor.chain().focus().toggleItalic().run()}
@@ -218,29 +268,18 @@ export function RichTextEditor({
           <ReactSVG src={icons2.italic} />
         </ToolbarButton>
         <ToolbarButton
+          panel={panel}
           label="Strikethrough"
           active={editor.isActive("strike")}
           onClick={() => editor.chain().focus().toggleStrike().run()}
         >
           <ReactSVG src={icons2.strikethrough} />
         </ToolbarButton>
-        <div className="self-stretch -my-1.5 w-px bg-[#0000001F]" />
+        {divider}
+        {orderedLists}
+        {divider}
         <ToolbarButton
-          label="Bullet list"
-          active={editor.isActive("bulletList")}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-        >
-          <ReactSVG src={icons2.unorderedList} />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Numbered list"
-          active={editor.isActive("orderedList")}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        >
-          <ReactSVG src={icons2.orderedList} />
-        </ToolbarButton>
-        <div className="self-stretch -my-1.5 w-px bg-[#0000001F]" />
-        <ToolbarButton
+          panel={panel}
           label="Attach image"
           onClick={() => fileInputRef.current?.click()}
         >
@@ -257,8 +296,14 @@ export function RichTextEditor({
       </div>
       <EditorContent
         editor={editor}
-        className="prose prose-sm max-w-none px-3 py-2 text-base lg:text-sm [&_.ProseMirror]:min-h-[120px] [&_.ProseMirror]:max-h-[40vh] [&_.ProseMirror]:overflow-y-auto [&_.ProseMirror]:outline-none [&_img]:max-h-64 [&_img]:rounded [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-gray-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0"
+        className={cn(
+          "prose prose-sm max-w-none text-base lg:text-sm [&_.ProseMirror]:overflow-y-auto [&_.ProseMirror]:outline-none [&_img]:max-h-64 [&_img]:rounded [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0",
+          panel
+            ? "flex-1 px-[24px] pt-[18px] text-[14px] [&_.ProseMirror]:min-h-[96px] [&_.ProseMirror]:max-h-[30vh] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-[#A5A5A5]"
+            : "px-3 py-2 [&_.ProseMirror]:min-h-[120px] [&_.ProseMirror]:max-h-[40vh] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-gray-400",
+        )}
       />
+      {panel && footer ? <div className="flex justify-end px-[8px] pb-[7px]">{footer}</div> : null}
     </div>
   );
 }

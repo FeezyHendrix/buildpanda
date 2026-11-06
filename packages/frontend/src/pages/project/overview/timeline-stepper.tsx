@@ -1,87 +1,74 @@
-import { ReactSVG } from "react-svg";
-import { icons } from "@/assets/icons/icons";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PhaseStatus, ProjectPhase } from "@/lib/project-types";
 
+/** "12 Nov 2026 – 11 Dec 2026" → two ends; anything else (template ranges) stays one string. */
+const RANGE_SPLIT = /\s[–-]\s|\s+to\s+/;
+
+function splitRange(dateRange: string): [string, string] | null {
+  const parts = dateRange.split(RANGE_SPLIT).map((part) => part.trim());
+  return parts.length === 2 && parts[0] && parts[1] ? [parts[0], parts[1]] : null;
+}
+
+function StepSquare({ status }: { status: PhaseStatus }) {
+  const reached = status !== "Pending";
+  return (
+    <span
+      className={cn(
+        "flex size-[28px] shrink-0 items-center justify-center rounded-[2px]",
+        reached ? "bg-primary text-white" : "bg-[#E5E5E5] text-[#F7F7F7]",
+      )}
+    >
+      <Check className="size-[16px]" strokeWidth={2.5} aria-hidden />
+    </span>
+  );
+}
+
+function StepCaption({ phase }: { phase: ProjectPhase }) {
+  if (phase.status === "InProgress") {
+    return <p className="text-[12px] font-semibold leading-[15px] text-primary">In Progress</p>;
+  }
+  const range = splitRange(phase.dateRange);
+  if (!range) return <p className="text-[12px] leading-[15px] text-[#737373]">{phase.dateRange}</p>;
+  return (
+    <>
+      <p className="text-[12px] leading-[15px] text-[#737373]"><span className="text-primary">From</span> {range[0]}</p>
+      <p className="text-[12px] leading-[15px] text-[#737373]"><span className="text-primary">To</span> {range[1]}</p>
+    </>
+  );
+}
+
+function TimelineStep({ phase, prevPhase, isFirst }: { phase: ProjectPhase; prevPhase?: ProjectPhase; isFirst: boolean }) {
+  // A segment is blue when the work on its left has been reached: the first
+  // stub shows the phase it leads into, later ones the phase before them.
+  const leftReached = isFirst ? phase.status !== "Pending" : prevPhase?.status === "Done";
+  const rightReached = phase.status === "Done";
+
+  return (
+    <li className="flex w-[139px] shrink-0 flex-col items-center">
+      <div className="flex w-full items-center">
+        <div className={cn("h-[3px] flex-1", leftReached ? "bg-primary" : "bg-[#E5E5E5]")} />
+        <StepSquare status={phase.status} />
+        <div className={cn("h-[3px] flex-1", rightReached ? "bg-primary" : "bg-[#E5E5E5]")} />
+      </div>
+      <div className="mt-[7px] w-full px-[4px] text-center">
+        <p className="text-[12px] font-semibold leading-[16px] text-[#1E1E1E]">{phase.name}</p>
+        <StepCaption phase={phase} />
+      </div>
+    </li>
+  );
+}
+
 export function TimelineStepper({ phases }: { phases: ProjectPhase[] }) {
   return (
-    <div className="overflow-x-auto pb-2 no-scrollbar">
-      <ol className="flex min-w-max flex-row">
+    <div className="ml-[14px] overflow-x-auto no-scrollbar">
+      <ol className="-ml-[17px] flex min-w-max flex-row">
         {phases.map((phase, idx) => (
-          <TimelineStep
-            key={phase.id}
-            phase={phase}
-            prevPhase={idx > 0 ? phases[idx - 1] : undefined}
-            isFirst={idx === 0}
-          />
+          <TimelineStep key={phase.id} phase={phase} prevPhase={idx > 0 ? phases[idx - 1] : undefined} isFirst={idx === 0} />
         ))}
       </ol>
     </div>
   );
 }
 
-function TimelineStep({
-  phase,
-  prevPhase,
-  isFirst,
-}: {
-  phase: ProjectPhase;
-  prevPhase?: ProjectPhase;
-  isFirst: boolean;
-}) {
-  // Each line segment is blue when the dot on its LEFT is Done.
-  // For the first step's left stub, the "dot on the left" is the first dot itself.
-  const leftDone  = isFirst ? phase.status === "Done" : prevPhase?.status === "Done";
-  const rightDone = phase.status === "Done";
-
-  return (
-    <li className="flex basis-40 shrink-0 grow flex-col items-center">
-      <div className="flex w-full items-center">
-        <div className={cn("h-1 flex-1", leftDone  ? "bg-primary" : "bg-[#EDEDED]")} />
-        <StepDot status={phase.status} />
-        <div className={cn("h-1 flex-1", rightDone ? "bg-primary" : "bg-[#EDEDED]")} />
-      </div>
-
-      <div className="mt-3 w-full px-2 text-center">
-        <p className="text-[13px] font-semibold text-gray-900">{phase.name}</p>
-        {phase.status === "InProgress" ? (
-          <p className="mt-1 text-[11px] font-medium text-primary">In Progress</p>
-        ) : (
-          <p className="mt-1 text-[11px] text-gray-400">{phase.dateRange}</p>
-        )}
-      </div>
-    </li>
-  );
-}
-
-function StepDot({ status }: { status: PhaseStatus }) {
-  if (status === "Done") {
-    return (
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white">
-        <ReactSVG
-          src={icons.verifiedCheck}
-          className="[&_svg]:size-10"
-        />
-      </div>
-    );
-  } else if (status === "InProgress") {
-    return (
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white">
-        <ReactSVG 
-        src={icons.verifyLine}
-        className='[&_svg]:size-10' 
-      />
-      </div>
-    )
-  }
-  // Pending
-  return (
-    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white">
-      <ReactSVG
-        src={icons.verifiedCheck}
-        className='[&_svg]:size-10 [&_path]:fill-black-100'
-        // className="[&_path]:fill-[#C0C0C0] [&_circle]:fill-[#C0C0C0] [&_circle]:stroke-[#C0C0C0] [&_svg]:size-4"
-      />
-    </div>
-  );
-}
+TimelineStepper.displayName = "TimelineStepper";

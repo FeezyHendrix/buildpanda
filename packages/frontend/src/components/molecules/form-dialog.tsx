@@ -17,6 +17,8 @@ interface FormDialogProps {
   children: ReactNode;
   className?: string;
   footerVariant?: "default" | "stacked";
+  /** `roomy` is the large-title, 40px-padded modal used for short create forms. */
+  size?: "default" | "roomy";
 }
 
 interface SubmitEventLike {
@@ -37,7 +39,9 @@ function FormDialog({
   children,
   className,
   footerVariant = "default",
+  size = "default",
 }: FormDialogProps) {
+  const roomy = size === "roomy";
   function handleSubmit(event: SubmitEventLike): void {
     event.preventDefault();
     if (submitting || submitDisabled) return;
@@ -56,8 +60,8 @@ function FormDialog({
           )}
         >
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <header className="px-6 pt-6 mb-5">
-              <Dialog.Title className="text-h6 font-bold text-grey-800">
+            <header className={cn(roomy ? "px-10 pt-10 mb-4" : "px-6 pt-6 mb-5")}>
+              <Dialog.Title className={cn("font-bold text-grey-800", roomy ? "text-[32px] leading-10 tracking-tight" : "text-h6")}>
                 {title}
               </Dialog.Title>
               {description && (
@@ -67,7 +71,7 @@ function FormDialog({
               )}
             </header>
 
-            <div className="flex flex-col gap-4 overflow-y-auto px-6 py-5">{children}</div>
+            <div className={cn("flex flex-col overflow-y-auto", roomy ? "gap-5 px-10 py-3" : "gap-4 px-6 py-5")}>{children}</div>
 
             {error && (
               <p className="mx-6 mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
@@ -76,7 +80,7 @@ function FormDialog({
             )}
 
             {footerVariant === "stacked" ? (
-              <footer className="flex shrink-0 flex-col gap-2 px-6 pb-6 pt-2">
+              <footer className={cn("flex shrink-0 flex-col gap-2", roomy ? "px-10 pb-10 pt-8" : "px-6 pb-6 pt-2")}>
                 <Button
                   type="submit"
                   variant="primary"

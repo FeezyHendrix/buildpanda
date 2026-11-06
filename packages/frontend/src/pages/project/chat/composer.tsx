@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/atoms/button";
+import { AtSign, Link, Plus, Send, Smile } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { uploadFileRequest } from "@/hooks/use-files";
 import {
@@ -8,31 +7,25 @@ import {
   saveCachedDraft,
   clearCachedDraft,
 } from "@/lib/chat-cache";
-import {
-  SmileIcon,
-  PlusCircleIcon,
-  SendIcon,
-  BoldIcon,
-  ItalicIcon,
-  LinkIcon,
-  ListIcon,
-  CodeIcon,
-  AtSignIcon,
-} from "@/components/atoms/chat-icons";
+import { SmileIcon, SendIcon } from "@/components/atoms/chat-icons";
 import { chatFileUrl } from "./chat-utils";
 import { MentionDropdown, type MentionOption } from "./mention-dropdown";
 import { ReferencePicker } from "./reference-picker";
 import { EmojiPopover } from "./emoji-popover";
-import { QuotedBlock } from "./quoted-block";
+import { ComposerPreviews } from "./composer-previews";
 import { useChannelMembers, useSendMessage } from "@/hooks/use-chat";
 import type { ChatMessage } from "@/lib/project-types";
+
+const MAX_FIELD_HEIGHT = 160;
+const TOOL_BUTTON_CLASS =
+  "flex size-[36px] shrink-0 items-center justify-center text-[#4D4D4D] outline-none transition-[color,transform] duration-150 ease-out hover:text-[#1E1E1E] focus-visible:ring-2 focus-visible:ring-gray-900/10 active:scale-90 disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:scale-100";
 
 export function Composer({
   channelId,
   projectId,
   parentMessageId,
   isThread = false,
-  placeholder = "Message #general",
+  placeholder = "send a message",
   quotedMessage = null,
   onClearQuote,
 }: {
@@ -90,6 +83,14 @@ export function Composer({
     }, 500);
     return () => window.clearTimeout(timer);
   }, [channelId, parentMessageId, text]);
+
+  // The box grows with what is typed, up to a few lines, and shrinks back after a send.
+  useEffect(() => {
+    const field = textareaRef.current;
+    if (!field) return;
+    field.style.height = "auto";
+    field.style.height = `${Math.min(field.scrollHeight, MAX_FIELD_HEIGHT)}px`;
+  }, [text]);
 
   const handleFiles = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return;
@@ -169,216 +170,133 @@ export function Composer({
     handleKeyDown({ key: "Enter", preventDefault: () => {}, shiftKey: false } as unknown as React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>);
   };
 
-  return (
-    <div className={cn("relative", isThread ? "" : "px-4 lg:px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:pb-3 pt-1")}>
-      {showMentions && (
-        <MentionDropdown
-          members={members}
-          query={mentionQuery}
-          onSelect={handleMentionSelect}
-        />
-      )}
+  const canSend = Boolean(text.trim() || references.length > 0 || attachments.length > 0) && !send.isPending;
+  const previews = (
+    <ComposerPreviews
+      quotedMessage={quotedMessage}
+      onClearQuote={onClearQuote}
+      references={references}
+      onRemoveReference={(ref) => setReferences((prev) => prev.filter((x) => !(x.type === ref.type && x.id === ref.id)))}
+      attachments={attachments}
+      onRemoveAttachment={(fileId) => setAttachments((prev) => prev.filter((x) => x.fileId !== fileId))}
+    />
+  );
+  const overlays = (
+    <>
+      {showMentions && <MentionDropdown members={members} query={mentionQuery} onSelect={handleMentionSelect} />}
       {pickerOpen && (
         <ReferencePicker
           onSelect={(ref) => {
-            if (!references.find(r => r.type === ref.type && r.id === ref.id)) {
-              setReferences(prev => [...prev, ref]);
+            if (!references.find((r) => r.type === ref.type && r.id === ref.id)) {
+              setReferences((prev) => [...prev, ref]);
             }
           }}
           onClose={() => setPickerOpen(false)}
         />
       )}
-      
-      {quotedMessage && (
-        <div className="mb-2 flex items-center gap-2">
-          <QuotedBlock
-            quoted={{
-              id: quotedMessage.id,
-              authorName: quotedMessage.authorName,
-              body: quotedMessage.body,
-              deleted: Boolean(quotedMessage.deletedAt),
-            }}
-          />
-          <button
-            type="button"
-            onClick={onClearQuote}
-            className="shrink-0 text-ink-muted hover:text-ink"
-            aria-label="Remove quote"
-          >
-            ×
-          </button>
-        </div>
-      )}
+    </>
+  );
+  const fileInput = (
+    <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
+  );
+  const emojiPicker = (
+    <EmojiPopover
+      open={emojiOpen}
+      onClose={() => setEmojiOpen(false)}
+      onPick={(emoji) => {
+        insertEmoji(emoji);
+        setEmojiOpen(false);
+      }}
+    />
+  );
 
-      {references.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2">
-          {references.map((r) => (
-            <div key={`${r.type}-${r.id}`} className="inline-flex items-center gap-1.5 rounded-full border border-line-hair bg-white px-2.5 py-1 text-xs font-medium text-ink">
-              <span className="text-ink-muted">{r.type}</span>
-              {r.label}
-              <button
-                type="button"
-                onClick={() => setReferences(prev => prev.filter(x => !(x.type === r.type && x.id === r.id)))}
-                className="ml-0.5 text-ink-muted hover:text-ink"
-              >
-                ×
+  if (!isThread) {
+    return (
+      <div className="relative pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:pb-[24px]">
+        {overlays}
+        <div className="bg-[#F5F5F5]">
+          {quotedMessage || references.length > 0 || attachments.length > 0 ? (
+            <div className="px-[16px] pt-[10px]">{previews}</div>
+          ) : null}
+          <div className="flex items-end gap-[8px] py-[11px] pl-[8px] pr-[15px]">
+            {fileInput}
+            <div className="mr-[8px] hidden shrink-0 items-center sm:flex">
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Attach files" aria-label="Attach files" className={TOOL_BUTTON_CLASS}>
+                <Plus className="size-[18px]" strokeWidth={1.5} />
               </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {attachments.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2">
-          {attachments.map((a) => (
-            <div key={a.fileId} className="inline-flex items-center gap-1.5 rounded-lg border border-line-hair bg-white px-2.5 py-1.5 text-xs font-medium text-ink">
-              <svg className="h-3.5 w-3.5 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-              </svg>
-              <span className="max-w-[160px] truncate">{a.name}</span>
-              <button
-                type="button"
-                onClick={() => setAttachments((prev) => prev.filter((x) => x.fileId !== a.fileId))}
-                className="ml-0.5 text-ink-muted hover:text-ink"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className={cn(isThread ? "flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-3" : "overflow-hidden rounded-lg border border-line bg-white")}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => void handleFiles(e.target.files)}
-        />
-        {isThread ? (
-          <>
-            <input
-              ref={inputRef}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Reply..."
-              className="flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
-            />
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setEmojiOpen((v) => !v)}
-                className="flex size-7 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
-                aria-label="Insert emoji"
-              >
-                <SmileIcon className="size-5" />
-              </button>
-              <EmojiPopover
-                open={emojiOpen}
-                onClose={() => setEmojiOpen(false)}
-                onPick={(emoji) => { insertEmoji(emoji); setEmojiOpen(false); }}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={submitFromButton}
-              disabled={(!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending}
-              className="text-primary-500 transition-[color,transform] duration-150 ease-out hover:text-primary-600 active:scale-90 disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:scale-100"
-              aria-label="Send reply"
-            >
-              <SendIcon className="size-5" />
-            </button>
-          </>
-        ) : (
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="hidden items-center gap-1 border-b border-line-hair px-3 py-2 sm:flex">
-              {[BoldIcon, ItalicIcon, LinkIcon, ListIcon, CodeIcon].map((Icon, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  disabled
-                  className="flex size-8 items-center justify-center rounded-md text-ink-muted disabled:opacity-60"
-                >
-                  <Icon />
+              <div className="relative">
+                <button type="button" onClick={() => setEmojiOpen((v) => !v)} title="Insert emoji" aria-label="Insert emoji" className={TOOL_BUTTON_CLASS}>
+                  <Smile className="size-[18px]" strokeWidth={1.5} />
                 </button>
-              ))}
+                {emojiPicker}
+              </div>
+              <button type="button" onClick={() => setText((current) => `${current}@`)} title="Mention someone" aria-label="Mention someone" className={TOOL_BUTTON_CLASS}>
+                <AtSign className="size-[18px]" strokeWidth={1.5} />
+              </button>
+              <button type="button" onClick={() => setPickerOpen(!pickerOpen)} title="Reference project item" aria-label="Reference project item" className={TOOL_BUTTON_CLASS}>
+                <Link className="size-[18px]" strokeWidth={1.5} />
+              </button>
             </div>
-
             <textarea
               ref={textareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className="max-h-56 min-h-[56px] w-full resize-none px-4 py-3 text-sm leading-relaxed text-ink outline-none placeholder:text-ink-muted sm:min-h-[88px]"
-              rows={3}
+              aria-label="Message"
+              rows={1}
+              className="min-h-[36px] min-w-0 flex-1 resize-none border border-[#EEEEEE] bg-white px-[15px] py-[7px] text-[14px] leading-[20px] text-[#1E1E1E] outline-none placeholder:text-[#A5A5A5] focus:border-primary"
             />
-
-            <div className="flex items-center justify-between px-3 py-2.5">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  title="Attach files"
-                  className="flex size-8 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:scale-100"
-                >
-                  <PlusCircleIcon />
-                </button>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setEmojiOpen((v) => !v)}
-                    title="Insert emoji"
-                    aria-label="Insert emoji"
-                    className="flex size-8 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
-                  >
-                    <SmileIcon />
-                  </button>
-                  <EmojiPopover
-                    open={emojiOpen}
-                    onClose={() => setEmojiOpen(false)}
-                    onPick={(emoji) => { insertEmoji(emoji); setEmojiOpen(false); }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setText((current) => `${current}@`)}
-                  className="flex size-8 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
-                  title="Mention someone"
-                >
-                  <AtSignIcon />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPickerOpen(!pickerOpen)}
-                  className="flex size-8 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
-                  title="Reference project item"
-                >
-                  <LinkIcon className="size-5" />
-                </button>
-              </div>
-              <Button
-                type="button"
-                size="md"
-                onClick={submitFromButton}
-                disabled={(!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending}
-              >
-                Send
-                <SendIcon />
-              </Button>
-            </div>
-
+            <button
+              type="button"
+              onClick={submitFromButton}
+              disabled={!canSend}
+              aria-label="Send message"
+              className="flex size-[36px] shrink-0 items-center justify-center bg-primary text-white outline-none transition-colors hover:bg-[#0041C4] focus-visible:ring-2 focus-visible:ring-gray-900/30 disabled:opacity-50"
+            >
+              <Send className="size-[18px]" strokeWidth={1.5} />
+            </button>
           </div>
-        )}
+        </div>
       </div>
-      {!isThread && (
-        <p className="mt-2 hidden text-center text-xs text-ink-muted sm:block">
-          <span className="font-semibold">Return</span> to send, <span className="font-semibold">Shift + Return</span> for new line
-        </p>
-      )}
+    );
+  }
+
+  return (
+    <div className="relative">
+      {overlays}
+      {previews}
+      <div className="flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-3">
+        {fileInput}
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Reply..."
+          className="flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
+        />
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setEmojiOpen((v) => !v)}
+            className="flex size-7 items-center justify-center rounded-md text-ink-muted transition-[color,transform] duration-150 ease-out hover:bg-black/5 hover:text-ink active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
+            aria-label="Insert emoji"
+          >
+            <SmileIcon className="size-5" />
+          </button>
+          {emojiPicker}
+        </div>
+        <button
+          type="button"
+          onClick={submitFromButton}
+          disabled={!canSend}
+          className="text-primary-500 transition-[color,transform] duration-150 ease-out hover:text-primary-600 active:scale-90 disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:scale-100"
+          aria-label="Send reply"
+        >
+          <SendIcon className="size-5" />
+        </button>
+      </div>
     </div>
   );
 }

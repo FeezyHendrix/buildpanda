@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Label } from "@/components/atoms/label";
-import { MoneyInput } from "@/components/atoms/money-input";
-import { currencySymbol } from "@/lib/formatters";
+import { ChevronDown } from "lucide-react";
+import { Select } from "@/components/atoms/select";
+import { UnitInputField } from "@/components/molecules/unit-input-field";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import { htmlFromPlainText } from "@/lib/rich-text";
 import { ClaimableDelayPicker } from "./claimable-delay-picker";
@@ -11,7 +11,6 @@ import { useProjectRfis } from "@/hooks/use-rfis";
 import { useStages } from "@/hooks/use-stages";
 import { claimableDelays } from "@/lib/delay-meta";
 import { CHANGE_TYPES, type ChangeType } from "@/lib/project-types";
-import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
 /**
@@ -66,24 +65,44 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, { label: string; hint: strin
   },
 };
 
-const field = INPUT_CLASS;
+const LABEL_CLASS = "text-[12px] font-semibold leading-[16px] text-[#1E1E1E]";
+const FIELD_CLASS = "h-[45px] border border-[#EEEEEE] px-4 text-[14px]";
+const AREA_CLASS =
+  "w-full resize-none border border-[#EEEEEE] bg-white px-4 py-[14px] text-[14px] text-[#1E1E1E] outline-none placeholder:text-[#A5A5A5] focus:border-primary";
+const GROUP_CLASS = "flex flex-col gap-[5px]";
+
+const CURRENCY_OPTIONS = [
+  { value: "NGN", label: "NGN" },
+  { value: "USD", label: "USD" },
+];
+/** The register records time in days only; the selector is there for the design and for room to grow. */
+const TIME_UNIT_OPTIONS = [{ value: "days", label: "Days" }];
+const TYPE_OPTIONS = CHANGE_TYPES.map((value) => ({ value, label: CHANGE_TYPE_LABELS[value].label }));
+
+/** Digits, one decimal point and a leading minus (an omission is a negative cost). */
+function sanitiseAmount(raw: string): string {
+  const cleaned = raw.replace(/[^\d.-]/g, "");
+  const negative = cleaned.startsWith("-");
+  const [whole = "", ...rest] = cleaned.replace(/-/g, "").split(".");
+  return `${negative ? "-" : ""}${whole}${rest.length > 0 ? `.${rest.join("")}` : ""}`;
+}
 
 function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initial, assigneeOptions = [], onSubmit, isSubmitting = false, error }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [reason, setReason] = useState("");
   const [reasonHtml, setReasonHtml] = useState("");
-  const [cost, setCost] = useState("0");
-  const [days, setDays] = useState("0");
+  const [cost, setCost] = useState("");
+  const [days, setDays] = useState("");
   const [currency, setCurrency] = useState<"NGN" | "USD">("NGN");
   const [assigneeId, setAssigneeId] = useState("");
   const [type, setType] = useState<ChangeType>("variation");
   const [stageId, setStageId] = useState("");
   const [rfiId, setRfiId] = useState("");
   const [delayIds, setDelayIds] = useState<Set<string>>(new Set());
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const isTimeClaim = type === "eot_only";
-  const symbol = currencySymbol(currency);
   const { data: stages = [] } = useStages(open ? projectId : undefined);
   const { data: rfis = [] } = useProjectRfis(open ? projectId : undefined);
   const { data: activities = [] } = useProjectActivities(
@@ -97,14 +116,16 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
       setDescription(initial?.description ?? "");
       setReason(initial?.reason ?? "");
       setReasonHtml(initial?.reasonHtml ?? htmlFromPlainText(initial?.reason ?? ""));
-      setCost(String(initial?.costImpact ?? 0));
-      setDays(String(initial?.timeImpactDays ?? 0));
+      setCost(initial?.costImpact ? String(initial.costImpact) : "");
+      setDays(initial?.timeImpactDays ? String(initial.timeImpactDays) : "");
       setCurrency(initial?.currency ?? "NGN");
       setAssigneeId(initial?.assigneeId ?? "");
       setType(initial?.type ?? "variation");
       setStageId(initial?.stageId ?? "");
       setRfiId(initial?.rfiId ?? "");
       setDelayIds(new Set(initial?.delayIds ?? []));
+      // The extra fields stay out of the way unless the change already uses them.
+      setMoreOpen(Boolean(initial && ((initial.type ?? "variation") !== "variation" || initial.stageId || initial.rfiId)));
     }
   }, [open, initial]);
 
@@ -141,112 +162,181 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={mode === "create" ? "New change request" : "Edit change request"}
+      title={mode === "create" ? "New Change Request" : "Edit Change Request"}
       description="Propose a change to scope, cost or schedule."
-      submitLabel={mode === "create" ? "Create" : "Save changes"}
+      // A new change is proposed to whoever decides it, so creating also submits it.
+      submitLabel={mode === "create" ? "Send for approval" : "Save changes"}
       submitDisabled={!title.trim()}
       submitting={isSubmitting}
       error={error ?? null}
       onSubmit={handleSubmit}
+      footerVariant="stacked"
+      className="w-[min(430px,100vw)]"
+      titleClassName="text-[20px] leading-[28px] tracking-normal"
+      headerClassName="px-[24px] pb-[22px] pt-[40px]"
+      bodyClassName="gap-[19px] px-[24px] py-0"
+      footerClassName="gap-[3px] px-[24px] pb-[17px] pt-6 [&>button]:h-[46px]"
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="cr-title">Title</Label>
-        <input id="cr-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Additional 120 m lined drain at ch. 2+400" className={field} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="cr-desc">Details</Label>
-        <textarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} />
-      </div>
-      <RichTextField
-        label="Reason"
-        value={reasonHtml}
-        onChange={setReasonHtml}
-        onChangeText={setReason}
-        projectId={projectId}
-        placeholder="Why is it needed?"
-      />
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="cr-type">Type</Label>
-        <select id="cr-type" value={type} onChange={(e) => setType(e.target.value as ChangeType)} className={field}>
-          {CHANGE_TYPES.map((value) => (
-            <option key={value} value={value}>
-              {CHANGE_TYPE_LABELS[value].label}
-            </option>
-          ))}
-        </select>
-        <p className="text-xs text-ink-muted">{CHANGE_TYPE_LABELS[type].hint}</p>
+      <div className={GROUP_CLASS}>
+        <label htmlFor="cr-title" className={LABEL_CLASS}>Title</label>
+        <input
+          id="cr-title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Upgrade to imported floors"
+          autoFocus
+          className={cn(FIELD_CLASS, "w-full bg-white text-[#1E1E1E] outline-none placeholder:text-[#A5A5A5] focus:border-primary")}
+        />
       </div>
 
-      {isTimeClaim ? (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-days">Days claimed (calendar days)</Label>
-          <input id="cr-days" type="number" min={0} step={1} value={days} onChange={(e) => setDays(e.target.value)} className={field} />
-          <p className="text-xs text-ink-muted">
-            An award moves the revised completion date and every contractual key date by that many
-            calendar days. The decision may grant fewer.
-          </p>
+      <div className={GROUP_CLASS}>
+        <label htmlFor="cr-desc" className={LABEL_CLASS}>Details</label>
+        <textarea
+          id="cr-desc"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Describe what is changing"
+          className={cn(AREA_CLASS, "h-[123px]")}
+        />
+      </div>
+
+      {mode === "create" ? (
+        <div className={GROUP_CLASS}>
+          <label htmlFor="cr-reason" className={LABEL_CLASS}>Reason for Change</label>
+          <textarea
+            id="cr-reason"
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+              setReasonHtml(htmlFromPlainText(e.target.value));
+            }}
+            placeholder="Why is the change needed?"
+            className={cn(AREA_CLASS, "h-[110px]")}
+          />
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="cr-currency">Currency</Label>
-            <select id="cr-currency" value={currency} onChange={(e) => setCurrency(e.target.value as "NGN" | "USD")} className={field}>
-              <option value="NGN">NGN</option>
-              <option value="USD">USD</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="cr-cost">Cost impact</Label>
-            <MoneyInput id="cr-cost" value={cost} onChange={setCost} currencySymbol={symbol} placeholder="0.00" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="cr-days">Time (days)</Label>
-            <input id="cr-days" type="number" value={days} onChange={(e) => setDays(e.target.value)} className={field} />
-          </div>
-        </div>
+        // An existing reason may carry formatting or images, which a plain box would flatten.
+        <RichTextField
+          label="Reason for Change"
+          value={reasonHtml}
+          onChange={setReasonHtml}
+          onChangeText={setReason}
+          projectId={projectId}
+          placeholder="Why is the change needed?"
+        />
       )}
 
       {isTimeClaim ? (
-        <ClaimableDelayPicker delays={delays} selected={delayIds} onToggle={toggleDelay} />
-      ) : null}
+        <UnitInputField
+          id="cr-days"
+          label="Days Claimed"
+          unitOptions={TIME_UNIT_OPTIONS}
+          unit="days"
+          onUnitChange={() => undefined}
+          value={days}
+          onChange={(v) => setDays(v.replace(/\D/g, ""))}
+          placeholder="Enter Time Impact"
+          inputMode="numeric"
+          unitWidthClass="w-[80px]"
+        />
+      ) : (
+        <>
+          <UnitInputField
+            id="cr-cost"
+            label="Cost Impact"
+            unitOptions={CURRENCY_OPTIONS}
+            unit={currency}
+            onUnitChange={(next) => setCurrency(next as "NGN" | "USD")}
+            value={cost}
+            onChange={(v) => setCost(sanitiseAmount(v))}
+            placeholder="Enter Amount"
+          />
+          <UnitInputField
+            id="cr-days"
+            label="Time Impact"
+            unitOptions={TIME_UNIT_OPTIONS}
+            unit="days"
+            onUnitChange={() => undefined}
+            value={days}
+            onChange={(v) => setDays(v.replace(/[^\d-]/g, ""))}
+            placeholder="Enter Time Impact"
+            inputMode="numeric"
+            unitWidthClass="w-[80px]"
+          />
+        </>
+      )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-stage">Stage affected</Label>
-          <select id="cr-stage" value={stageId} onChange={(e) => setStageId(e.target.value)} className={field}>
-            <option value="">No stage</option>
-            {stages.map((stage) => (
-              <option key={stage.id} value={stage.id}>
-                {stage.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-ink-muted">Its end date shifts by the time impact when the change is executed.</p>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-rfi">Originating RFI</Label>
-          <select id="cr-rfi" value={rfiId} onChange={(e) => setRfiId(e.target.value)} className={field}>
-            <option value="">Not from an RFI</option>
-            {rfis.map((rfi) => (
-              <option key={rfi.id} value={rfi.id}>
-                RFI-{rfi.number} · {rfi.subject}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-ink-muted">Links the change back to the query that caused it.</p>
-        </div>
+      <div className={GROUP_CLASS}>
+        <label htmlFor="cr-assignee" className={LABEL_CLASS}>Assigned to</label>
+        <Select
+          id="cr-assignee"
+          options={[{ value: "", label: "Unassigned" }, ...assigneeOptions.map((a) => ({ value: a.id, label: a.name }))]}
+          value={assigneeId || null}
+          onChange={(next) => setAssigneeId(next ?? "")}
+          placeholder="Select who it's assigned to"
+          className={cn(FIELD_CLASS, "placeholder:text-[#A5A5A5]")}
+        />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="cr-assignee">Assignee</Label>
-        <select id="cr-assignee" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className={field}>
-          <option value="">Unassigned</option>
-          {assigneeOptions.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-col gap-[19px]">
+        <button
+          type="button"
+          onClick={() => setMoreOpen((v) => !v)}
+          aria-expanded={moreOpen}
+          className="flex items-center gap-[6px] self-start text-[12px] font-semibold leading-[16px] text-[#004DE7] outline-none hover:underline"
+        >
+          More options
+          <ChevronDown className={cn("size-[14px] transition-transform", moreOpen && "rotate-180")} aria-hidden />
+        </button>
+
+        {moreOpen ? (
+          <>
+            <div className={GROUP_CLASS}>
+              <label htmlFor="cr-type" className={LABEL_CLASS}>Type</label>
+              <Select
+                id="cr-type"
+                options={TYPE_OPTIONS}
+                value={type}
+                onChange={(next) => setType((next ?? "variation") as ChangeType)}
+                className={FIELD_CLASS}
+              />
+              <p className="text-[12px] leading-[16px] text-[#737373]">{CHANGE_TYPE_LABELS[type].hint}</p>
+              {isTimeClaim ? (
+                <p className="text-[12px] leading-[16px] text-[#737373]">
+                  An award moves the revised completion date and every contractual key date by that many calendar days.
+                  The decision may grant fewer.
+                </p>
+              ) : null}
+            </div>
+            {isTimeClaim ? (
+              <ClaimableDelayPicker delays={delays} selected={delayIds} onToggle={toggleDelay} />
+            ) : null}
+            <div className={GROUP_CLASS}>
+              <label htmlFor="cr-stage" className={LABEL_CLASS}>Stage affected</label>
+              <Select
+                id="cr-stage"
+                options={[{ value: "", label: "No stage" }, ...stages.map((stage) => ({ value: stage.id, label: stage.name }))]}
+                value={stageId || null}
+                onChange={(next) => setStageId(next ?? "")}
+                placeholder="No stage"
+                className={FIELD_CLASS}
+              />
+              <p className="text-[12px] leading-[16px] text-[#737373]">Its end date shifts by the time impact when the change is executed.</p>
+            </div>
+            <div className={GROUP_CLASS}>
+              <label htmlFor="cr-rfi" className={LABEL_CLASS}>Originating RFI</label>
+              <Select
+                id="cr-rfi"
+                options={[{ value: "", label: "Not from an RFI" }, ...rfis.map((rfi) => ({ value: rfi.id, label: `RFI-${rfi.number} · ${rfi.subject}` }))]}
+                value={rfiId || null}
+                onChange={(next) => setRfiId(next ?? "")}
+                placeholder="Not from an RFI"
+                className={FIELD_CLASS}
+              />
+              <p className="text-[12px] leading-[16px] text-[#737373]">Links the change back to the query that caused it.</p>
+            </div>
+          </>
+        ) : null}
       </div>
     </FormDrawer>
   );

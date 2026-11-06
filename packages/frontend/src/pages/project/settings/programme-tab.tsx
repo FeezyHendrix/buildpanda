@@ -1,8 +1,8 @@
-import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { Spinner } from "@/components/atoms/spinner";
 import { toast } from "@/lib/toast";
-import { SaveRow, SettingsCard } from "./settings-tabs";
+import { FIELD_LABEL_CLASS, SaveRow, SettingsCard } from "./settings-tabs";
+import { DateInputField } from "@/components/molecules/date-input-field";
 import { WorkingCalendarFields } from "./working-calendar-fields";
 import type { useProfileDraft } from "./use-profile-draft";
 
@@ -38,28 +38,24 @@ function ProgrammeTab({ canManage, profile }: ProgrammeTabProps) {
       title="Contract dates & working calendar"
       description="When the job runs and which days the site works. Schedule health, missed days and durations are all measured against these."
     >
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-6 grid gap-6 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="profile-start">Commencement date</Label>
-          <input
+          <Label htmlFor="profile-start" className={FIELD_LABEL_CLASS}>Commencement Date</Label>
+          <DateInputField
             id="profile-start"
-            type="date"
             value={draft.startDate ?? ""}
             disabled={!canManage}
-            onChange={(event) => update("startDate", event.target.value || null)}
-            className={INPUT_CLASS}
+            onChange={(value) => update("startDate", value || null)}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="profile-completion">Contract completion date</Label>
-          <input
+          <Label htmlFor="profile-completion" className={FIELD_LABEL_CLASS}>Contract completion date</Label>
+          <DateInputField
             id="profile-completion"
-            type="date"
             value={draft.completionDate ?? ""}
             disabled={!canManage}
             aria-invalid={datesInverted || undefined}
-            onChange={(event) => update("completionDate", event.target.value || null)}
-            className={INPUT_CLASS}
+            onChange={(value) => update("completionDate", value || null)}
           />
           {datesInverted ? (
             <p className="text-xs text-negative-600">Completion must not be before commencement.</p>

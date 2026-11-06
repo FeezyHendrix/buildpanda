@@ -1,24 +1,19 @@
-import { useUrlState } from "@/hooks/use-url-state";
-import { QueryError } from "@/components/molecules/query-error";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FileCheck } from "lucide-react";
-import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { useUrlState } from "@/hooks/use-url-state";
+import { useSetPageTitle } from "@/contexts/page-title-context";
+import { QueryError } from "@/components/molecules/query-error";
 import { CreateButton } from "@/components/molecules/create-button";
-import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PageHeader } from "@/components/molecules/page-header";
-import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { NumberedPagination } from "@/components/molecules/numbered-pagination";
+import { ToolbarSearch } from "@/components/molecules/toolbar-search";
 import {
   UpsertApprovalDialog,
   type UpsertApprovalValues,
 } from "@/components/molecules/upsert-approval-dialog";
-import {
-  ApprovalDetailDialog,
-  APPROVAL_STATUS_META,
-} from "@/components/molecules/approval-detail-dialog";
+import { ApprovalDetailDialog } from "@/components/molecules/approval-detail-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useSession } from "@/stores/auth";
 import { useAssignableUsers } from "@/hooks/use-tasks";
@@ -28,61 +23,80 @@ import {
   useDeleteApproval,
   useUpdateApproval,
 } from "@/hooks/use-approvals";
-import { formatDayMonth } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
-import type { Approval, ApprovalStatus } from "@/lib/project-types";
-import { MessagesIcon } from "@/components/atoms/project-nav-icons";
+import type { Approval } from "@/lib/project-types";
 import { errorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
+import { filesApi } from "@/api/files";
+import { APPROVAL_ATTACHMENTS_ENABLED } from "@/api/approvals";
+import { ApprovalItem } from "./approvals/approval-item";
+import { ApprovalsFilterPanel } from "./approvals/approvals-filter-panel";
+import {
+  APPROVAL_FILTERS,
+  displayStatus,
+  matchesApprovalSearch,
+  matchesSubmittedRange,
+  sortByAttention,
+  type ApprovalFilter,
+} from "./approvals/shared";
 
-const FILTERS: { value: ApprovalStatus | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "Pending", label: "Pending" },
-  { value: "Approved", label: "Approved" },
-  { value: "Resubmit", label: "Resubmit" },
-  { value: "Rejected", label: "Rejected" },
-];
-
-function formatDue(value: string | null): string | null {
-  return formatDayMonth(value) || null;
-}
+const PAGE_SIZE = 10;
+const FILTER_VALUES = APPROVAL_FILTERS.map((f) => f.value);
 
 export default function ProjectApprovals() {
+  useSetPageTitle("Approvals", "Sign-offs on selections, specs and changes, with who decided and why.");
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "approvals", "manage");
   const canDecide = access?.capabilities?.canDecideApprovals ?? false;
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? "";
   const { data: reviewerOptions = [] } = useAssignableUsers(project.id);
-  const [filter, setFilter] = useUrlState<ApprovalStatus | "all">("status", "all", FILTERS.map(f => f.value));
-  const { data: approvals = [], isLoading, error: listError, refetch } = useApprovals(
-    project.id,
-    filter === "all" ? undefined : filter,
-  );
+  // The whole register is fetched once; the status pills, search and dates all
+  // narrow it here, so "Needs my Approval" can use who the viewer is.
+  const { data: approvals = [], isLoading, error: listError, refetch } = useApprovals(project.id);
   const createApproval = useCreateApproval();
   const updateApproval = useUpdateApproval();
   const deleteApproval = useDeleteApproval();
 
+  const [filter, setFilter] = useUrlState<ApprovalFilter>("status", "all", FILTER_VALUES);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
+
   const [createOpen, setCreateOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [editApproval, setEditApproval] = useState<Approval | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailId, setDetailId] = useUrlState<string | null>("approval", null);
 
-  function canDecideApproval(approval: Approval): boolean {
+  function mayDecide(approval: Approval): boolean {
     if (!canDecide) return false;
-    if (approval.requestedReviewerId && approval.requestedReviewerId !== currentUserId) {
-      return false;
-    }
+    if (approval.requestedReviewerId && approval.requestedReviewerId !== currentUserId) return false;
     return true;
   }
 
-  function handleCreate(values: UpsertApprovalValues): void {
+  async function handleCreate({ files = [], ...values }: UpsertApprovalValues): Promise<void> {
+    let attachments: { fileId: string }[] | undefined;
+    if (APPROVAL_ATTACHMENTS_ENABLED && files.length > 0) {
+      setUploading(true);
+      try {
+        const uploaded = await Promise.all(files.map((file) => filesApi.upload(file, undefined, project.id)));
+        attachments = uploaded.map((file) => ({ fileId: file.id }));
+      } catch (error) {
+        toast(errorMessage(error, "Could not upload the attachments"), "error");
+        return;
+      } finally {
+        setUploading(false);
+      }
+    }
     createApproval.mutate(
-      { projectId: project.id, ...values },
+      { projectId: project.id, ...values, ...(attachments ? { attachments } : {}) },
       { onSuccess: () => setCreateOpen(false) },
     );
   }
 
-  function handleEdit(values: UpsertApprovalValues): void {
+  function handleEdit({ files: _files, ...values }: UpsertApprovalValues): void {
     if (!editApproval) return;
     updateApproval.mutate(
       { projectId: project.id, approvalId: editApproval.id, ...values },
@@ -90,106 +104,128 @@ export default function ProjectApprovals() {
     );
   }
 
-  const awaitingDecision = approvals.filter(a => a.status === "Pending");
-  const resubmitRequested = approvals.filter(a => a.status === "Resubmit");
-  const decided = approvals.filter(a => a.status === "Approved" || a.status === "Rejected");
+  function handleApprove(approval: Approval): void {
+    updateApproval.mutate(
+      { projectId: project.id, approvalId: approval.id, status: "Approved" },
+      {
+        onSuccess: () => toast("Approval approved", "success"),
+        onError: () => toast("Could not record the decision"),
+      },
+    );
+  }
+
+  const visible = useMemo(
+    () =>
+      sortByAttention(approvals, mayDecide)
+        .filter((a) => filter === "all" || displayStatus(a, mayDecide(a)) === filter)
+        .filter((a) => matchesApprovalSearch(a, search))
+        .filter((a) => matchesSubmittedRange(a, dateFrom, dateTo)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [approvals, filter, search, dateFrom, dateTo, canDecide, currentUserId],
+  );
+  const isFiltered = filter !== "all" || search.trim() !== "" || dateFrom !== "" || dateTo !== "";
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  function resetFilters(): void {
+    setFilter("all");
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  }
 
   return (
-    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
-      <PageHeader
-        title="Approvals"
-        actions={
-          canManage ? (
-            <CreateButton onClick={() => setCreateOpen(true)}>Submit for approval</CreateButton>
-          ) : null
-        }
-      />
-
-      <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
-        <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter approvals" />
-        {awaitingDecision.length > 0 ? (
-          <span className="text-sm text-ink-muted">{awaitingDecision.length} awaiting decision</span>
-        ) : null}
-      </div>
-
-      {listError ? <QueryError error={listError} retry={refetch} noun="approvals" /> : isLoading ? (
+    <div className="w-full px-4 pb-8 pt-6 lg:px-8">
+      {listError ? (
+        <QueryError error={listError} retry={refetch} noun="approvals" />
+      ) : isLoading ? (
         <div className="flex justify-center py-10">
           <Spinner size="md" />
         </div>
-      ) : approvals.length === 0 && filter === "all" ? (
+      ) : approvals.length === 0 ? (
         <EmptyState
           icon={<FileCheck />}
           title="No approvals yet"
           description="Submit a selection or spec to get sign-off."
-          action={canManage ? { label: "Submit for approval", onClick: () => setCreateOpen(true) } : undefined}
+          action={canManage ? { label: "New approval request", onClick: () => setCreateOpen(true) } : undefined}
         />
       ) : (
-        <div className="flex flex-col gap-8">
-          {awaitingDecision.length > 0 && (
-            <section>
-              <h3 className="text-sm font-semibold text-ink mb-3 flex items-center gap-2">
-                Awaiting decision
-                <Badge tone="neutral">{awaitingDecision.length}</Badge>
-              </h3>
-              <div className="flex flex-col gap-3">
-                {awaitingDecision.map((a) => (
-                  <ApprovalCard
-                    key={a.id}
-                    approval={a}
-                    canManage={canManage}
-                    canDecide={canDecideApproval(a)}
-                    onEdit={() => setEditApproval(a)}
-                    onDelete={() => setDeleteId(a.id)}
-                    onClick={() => setDetailId(a.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-10">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <ToolbarSearch
+                value={search}
+                onChange={(value) => {
+                  setSearch(value);
+                  setPage(1);
+                }}
+                placeholder="Search Keyword"
+                ariaLabel="Search approvals"
+                className="max-w-[396px]"
+                inputClassName="h-11"
+              />
+              {canManage ? (
+                <CreateButton onClick={() => setCreateOpen(true)} className="h-11 px-5">
+                  New approval request
+                </CreateButton>
+              ) : null}
+            </div>
 
-          {resubmitRequested.length > 0 && (
-            <section>
-              <h3 className="text-sm font-semibold text-ink mb-3 flex items-center gap-2">
-                Resubmit requested
-                <Badge tone="warning">{resubmitRequested.length}</Badge>
-              </h3>
-              <div className="flex flex-col gap-3">
-                {resubmitRequested.map((a) => (
-                  <ApprovalCard
+            <div className="mt-4 divide-y divide-[#EBEBEB] border border-[#EBEBEB] bg-white">
+              {pageItems.length === 0 ? (
+                <EmptyState
+                  variant="inline"
+                  title="No approvals match these filters"
+                  description="Nothing in the register falls under this view."
+                  action={isFiltered ? { label: "Clear filters", onClick: resetFilters } : undefined}
+                />
+              ) : (
+                pageItems.map((a) => (
+                  <ApprovalItem
                     key={a.id}
                     approval={a}
+                    mayDecide={mayDecide(a)}
                     canManage={canManage}
-                    canDecide={canDecideApproval(a)}
+                    approving={updateApproval.isPending && updateApproval.variables?.approvalId === a.id}
+                    onOpen={() => setDetailId(a.id)}
+                    onApprove={() => handleApprove(a)}
                     onEdit={() => setEditApproval(a)}
                     onDelete={() => setDeleteId(a.id)}
-                    onClick={() => setDetailId(a.id)}
                   />
-                ))}
-              </div>
-            </section>
-          )}
+                ))
+              )}
+            </div>
 
-          {decided.length > 0 && (
-            <section>
-              <h3 className="text-sm font-semibold text-ink mb-3 flex items-center gap-2 opacity-70">
-                Decided
-                <Badge tone="neutral">{decided.length}</Badge>
-              </h3>
-              <div className="flex flex-col gap-3 opacity-80 transition-opacity hover:opacity-100">
-                {decided.map((a) => (
-                  <ApprovalCard
-                    key={a.id}
-                    approval={a}
-                    canManage={canManage}
-                    canDecide={false}
-                    onEdit={() => setEditApproval(a)}
-                    onDelete={() => setDeleteId(a.id)}
-                    onClick={() => setDetailId(a.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
+            {visible.length > 0 ? (
+              <NumberedPagination
+                page={currentPage}
+                pageSize={PAGE_SIZE}
+                total={visible.length}
+                noun="Approvals"
+                onPageChange={setPage}
+              />
+            ) : null}
+          </div>
+
+          <div className="w-full lg:sticky lg:top-6 lg:w-[291px] lg:shrink-0">
+            <ApprovalsFilterPanel
+              status={filter}
+              onStatusChange={(value) => {
+                setFilter(value);
+                setPage(1);
+              }}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onApplyDates={(from, to) => {
+                setDateFrom(from);
+                setDateTo(to);
+                setPage(1);
+              }}
+              onReset={resetFilters}
+            />
+          </div>
         </div>
       )}
 
@@ -199,8 +235,9 @@ export default function ProjectApprovals() {
           onOpenChange={setCreateOpen}
           mode="create"
           reviewerOptions={reviewerOptions}
-          onSubmit={handleCreate}
-          isSubmitting={createApproval.isPending}
+          onSubmit={(values) => void handleCreate(values)}
+          isSubmitting={createApproval.isPending || uploading}
+          attachmentsEnabled={APPROVAL_ATTACHMENTS_ENABLED}
           error={createApproval.error ? errorMessage(createApproval.error) : null}
         />
       )}
@@ -246,79 +283,5 @@ export default function ProjectApprovals() {
         />
       )}
     </div>
-  );
-}
-
-function ApprovalCard({
-  approval,
-  canManage,
-  canDecide,
-  onClick,
-  onEdit,
-  onDelete,
-}: {
-  approval: Approval;
-  canManage: boolean;
-  canDecide: boolean;
-  onClick: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const statusMeta = APPROVAL_STATUS_META[approval.status];
-  const due = formatDue(approval.dueDate);
-
-  return (
-    <Card className="overflow-hidden hover:border-line transition-colors group">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between p-4 gap-4" onClick={onClick} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClick(); } }} role="button" tabIndex={0}>
-        <div className="flex flex-col gap-2 flex-grow">
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-ink">{approval.title}</span>
-            <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
-            {approval.commentCount > 0 && (
-              <span className="flex items-center gap-1 text-xs text-ink-muted font-medium ml-1">
-                <MessagesIcon className="w-3.5 h-3.5" />
-                {approval.commentCount}
-              </span>
-            )}
-          </div>
-
-          <div className="text-sm text-ink-muted flex flex-wrap items-center gap-2">
-            <span>{approval.category}</span>
-            {due && (
-              <>
-                <span>·</span>
-                <span>due {due}</span>
-              </>
-            )}
-            {approval.requestedReviewerName && (
-              <>
-                <span>·</span>
-                <span>reviewer: {approval.requestedReviewerName}</span>
-              </>
-            )}
-          </div>
-
-          {canDecide && (approval.status === "Pending" || approval.status === "Resubmit") && (
-            <div className="flex flex-wrap items-center gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-              <Button size="sm" variant="secondary" className="border-success-500/40 text-success-600 hover:border-success-500 hover:bg-success-50 hover:text-success-700" onClick={onClick}>
-                Review decision
-              </Button>
-
-            </div>
-          )}
-        </div>
-
-        {canManage && (
-          <div className="flex items-center gap-2 self-start opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" onClick={onEdit}>
-              Edit
-            </Button>
-            <Button variant="danger" onClick={onDelete}>
-              Delete
-            </Button>
-          </div>
-        )}
-      </div>
-    </Card>
   );
 }

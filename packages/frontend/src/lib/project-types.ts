@@ -207,6 +207,16 @@ export type BimUploadTicket =
 
 export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Resubmit";
 
+/** A file submitted with an approval request. The list returns the first few; `Approval.attachmentCount` is the total. */
+export interface ApprovalAttachment {
+  id: string;
+  fileName: string;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
+  /** Short-lived view link; absent when the viewer may not open the file. */
+  url?: string | null;
+}
+
 export interface Approval {
   id: string;
   projectId: string;
@@ -224,6 +234,9 @@ export interface Approval {
   reviewedByName: string | null;
   reviewedAt: string | null;
   commentCount: number;
+  /** Not yet returned by the API (see docs/approvals-page-backend.md); the page shows chips only when present. */
+  attachments?: ApprovalAttachment[];
+  attachmentCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1350,6 +1363,8 @@ export interface ChannelMemberLite {
   name: string | null;
   email: string;
   role: "admin" | "member";
+  /** What the person does for a living (architect, site engineer…), from their profile. */
+  profession?: string | null;
 }
 
 export type TaskStatus = "Todo" | "Doing" | "Done";

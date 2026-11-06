@@ -1,28 +1,24 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/atoms/badge";
+import { useState, type ReactNode } from "react";
+import { ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/atoms/button";
-import { INPUT_BASE_CLASS, INPUT_SM_CLASS } from "@/components/atoms/input";
-import { MoneyInput } from "@/components/atoms/money-input";
-import {
-  useAddChangeComment,
-  useChangeRequest,
-  useChangeRequestBudgetLinks,
-  useSetChangeRequestBudgetLinks,
-} from "@/hooks/use-change-requests";
+import { INPUT_BASE_CLASS } from "@/components/atoms/input";
+import { useAddChangeComment, useChangeRequest } from "@/hooks/use-change-requests";
+import { useParticipants } from "@/hooks/use-participants";
 import { ChangeRequestActions } from "@/components/molecules/change-request-actions";
+import { ChangeRequestBudgetAllocations } from "@/components/molecules/change-request-budget-allocations";
 import {
   ChangeClaimDelays,
   ChangeRequestLinks,
   ChangeRequestRevisions,
   ChangeTypeBadge,
 } from "@/components/molecules/change-request-context";
-import { useProjectBudget } from "@/hooks/use-budget";
+import { InfoCard } from "@/components/molecules/rfi-detail/info-card";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { currencySymbol, formatCurrency, formatShortDate, formatWholeCurrency } from "@/lib/formatters";
-import type { ChangeStatus, ChangeRequestDetail } from "@/lib/project-types";
+import { formatShortDate, formatWholeCurrency } from "@/lib/formatters";
+import type { ChangeRequestDetail, ChangeStatus } from "@/lib/project-types";
 
 export const CHANGE_STATUS_META: Record<
   ChangeStatus,
@@ -35,123 +31,113 @@ export const CHANGE_STATUS_META: Record<
   Rejected: { label: "Rejected", tone: "danger" },
 };
 
-function money(amount: number, currency: string): string {
-  return formatWholeCurrency(amount, currency);
-}
+/** The status as a small pill — shared by the register rows and this modal. */
+export const CHANGE_STATUS_PILL: Record<ChangeStatus, string> = {
+  Draft: "border-transparent bg-[#F5F5F5] text-[#737373]",
+  Submitted: "border-transparent bg-[#E6EDFD] text-[#004DE7]",
+  Approved: "border-[#DCF5E4] bg-[#F0FDF4] text-[#00A63E]",
+  Executed: "border-transparent bg-[#F6EEFD] text-[#5D5FEF]",
+  Rejected: "border-[#FFD9D9] bg-[#FEF2F2] text-[#E7000B]",
+};
+
+const VALUE_CLASS = "mt-[2px] text-[14px] leading-[20px] text-[#1E1E1E]";
+const CELL_CLASS = "min-h-[56px] py-[8px]";
 
 function formatWhen(value: string): string {
   return formatShortDate(value) || value;
 }
 
-function CRBudgetAllocations({ projectId, cr }: { projectId: string; cr: ChangeRequestDetail }) {
-  const { data: budget } = useProjectBudget(projectId);
-  const { data: links = [], isPending } = useChangeRequestBudgetLinks(projectId, cr.id);
-  const setLinks = useSetChangeRequestBudgetLinks();
-  
-  const [allocations, setAllocations] = useState<Array<{categoryId: string; amount: string}>>([]);
+function days(n: number): string {
+  return `${n} ${n === 1 ? "day" : "days"}`;
+}
 
-  useEffect(() => {
-    if (!isPending) {
-      if (links.length > 0) {
-        setAllocations(links.map(l => ({ categoryId: l.budgetCategoryId, amount: String(l.amount) })));
-      } else {
-        const first = budget?.categories?.[0];
-        if (first) {
-          setAllocations([{ categoryId: first.id, amount: "" }]);
-        }
-      }
-    }
-  }, [links, isPending, budget?.categories]);
+/** What the change costs and moves: money and days, or days claimed against days awarded for a time claim. */
+function ImpactCells({ cr }: { cr: ChangeRequestDetail }) {
+  if (cr.type === "eot_only") {
+    return (
+      <>
+        <InfoCard label="Days Claimed" className={CELL_CLASS}>
+          <p className={VALUE_CLASS}>{days(cr.timeImpactDays)}</p>
+        </InfoCard>
+        <InfoCard label="Days Awarded" className={CELL_CLASS}>
+          <p className={VALUE_CLASS}>{cr.daysAwarded === null ? "Not yet awarded" : days(cr.daysAwarded)}</p>
+        </InfoCard>
+      </>
+    );
+  }
+  return (
+    <>
+      <InfoCard label="Cost Impact" className={CELL_CLASS}>
+        <p className={cn(VALUE_CLASS, "tabular-nums")}>{formatWholeCurrency(cr.costImpact, cr.currency)}</p>
+      </InfoCard>
+      <InfoCard label="Time Impact" className={CELL_CLASS}>
+        <p className={VALUE_CLASS}>{cr.timeImpactDays > 0 ? `+${days(cr.timeImpactDays)}` : "None"}</p>
+      </InfoCard>
+    </>
+  );
+}
 
-  if (isPending || !budget) return null;
+function Discussion({ projectId, cr }: { projectId: string; cr: ChangeRequestDetail }) {
+  const addComment = useAddChangeComment();
+  const [comment, setComment] = useState("");
 
-  const totalAllocated = allocations.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
-  const isOver = totalAllocated > cr.costImpact;
-
-  function handleSave() {
-    setLinks.mutate(
+  function submitComment(): void {
+    if (!comment.trim()) return;
+    addComment.mutate(
+      { projectId, changeId: cr.id, body: { content: comment.trim() } },
       {
-        projectId,
-        changeId: cr.id,
-        links: allocations
-          .filter((a) => a.categoryId && Number(a.amount) > 0)
-          .map((a) => ({ budgetCategoryId: a.categoryId, amount: Number(a.amount) })),
+        onSuccess: () => setComment(""),
+        onError: (error) => toast(getApiErrorMessage(error), "error"),
       },
-      { onError: (error) => toast(getApiErrorMessage(error), "error") },
     );
   }
 
-  function addRow() {
-    const first = budget?.categories?.[0];
-    if (first) {
-      setAllocations([...allocations, { categoryId: first.id, amount: "" }]);
-    }
-  }
-
-  function updateRow(idx: number, field: "categoryId" | "amount", val: string) {
-    const copy = [...allocations];
-    const item = copy[idx];
-    if (item) {
-      if (field === "categoryId") item.categoryId = val;
-      if (field === "amount") item.amount = val;
-      setAllocations(copy);
-    }
-  }
-
-  function removeRow(idx: number) {
-    setAllocations(allocations.filter((_, i) => i !== idx));
-  }
-
   return (
-    <div className="mt-6 border-t border-line-hair pt-5">
-      <p className="text-xs font-medium uppercase text-ink-muted mb-3">
-        Allocate to budget categories
+    <div className="mt-5">
+      <p className="text-[12px] font-semibold uppercase leading-[16px] tracking-[0.08em] text-[#737373]">
+        Discussion ({cr.comments.length})
       </p>
-      
-      <div className="flex flex-col gap-2">
-        {allocations.map((a, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <select
-              value={a.categoryId}
-              onChange={e => updateRow(i, "categoryId", e.target.value)}
-              className={cn(INPUT_SM_CLASS, "flex-1")}
-            >
-              {budget.categories.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-            <MoneyInput
-              currencySymbol={currencySymbol(cr.currency)}
-              value={a.amount}
-              onChange={val => updateRow(i, "amount", val)}
-              className="w-32"
-            />
-            <Button variant="ghost" size="sm" className="text-negative-500" onClick={() => removeRow(i)}>
-              ✕
-            </Button>
-          </div>
-        ))}
-      </div>
-      
-      <div className="mt-3 flex items-center justify-between">
-        <Button variant="secondary" size="sm" onClick={addRow}>+ Add category</Button>
-        <div className="flex items-center gap-4">
-          <span className={cn("text-sm font-medium", isOver ? "text-negative-500" : "text-ink")}>
-            Total: {formatCurrency(totalAllocated, cr.currency)} / {formatCurrency(cr.costImpact, cr.currency)}
-          </span>
-          <Button 
-            variant="primary" 
-            size="sm" 
-            loading={setLinks.isPending}
-            disabled={isOver} 
-            onClick={handleSave}
-          >
-            Save allocations
-          </Button>
-        </div>
+      {cr.comments.length === 0 ? (
+        <p className="py-3 text-[14px] text-[#737373]">No comments yet.</p>
+      ) : (
+        <ul className="mt-2 flex flex-col gap-3">
+          {cr.comments.map((c) => (
+            <li key={c.id} className="border border-[#EEEEEE] p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[14px] font-medium text-[#1E1E1E]">{c.authorName}</span>
+                <span className="text-[12px] text-[#737373]">{formatWhen(c.createdAt)}</span>
+              </div>
+              <p className="mt-1 whitespace-pre-wrap text-[14px] text-[#404040]">{c.body}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex items-center gap-2">
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          rows={1}
+          placeholder="Add a comment…"
+          className={cn(INPUT_BASE_CLASS, "min-h-[40px] flex-1 px-3 py-2")}
+        />
+        <Button type="button" variant="primary" size="md" disabled={!comment.trim()} loading={addComment.isPending} onClick={submitComment}>
+          Send
+        </Button>
       </div>
     </div>
   );
+}
+
+function ReasonValue({ cr }: { cr: ChangeRequestDetail }): ReactNode {
+  if (cr.reasonHtml) {
+    return (
+      <div
+        className="prose prose-sm max-w-none text-[14px] leading-[20px] text-[#1E1E1E] [&>p]:my-0 [&_img]:max-h-64"
+        dangerouslySetInnerHTML={{ __html: cr.reasonHtml }}
+      />
+    );
+  }
+  return <p className="text-[14px] leading-[20px] text-[#1E1E1E]">{cr.reason ?? "—"}</p>;
 }
 
 interface Props {
@@ -163,19 +149,12 @@ interface Props {
 
 function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: Props) {
   const { data: cr, isLoading } = useChangeRequest(projectId, changeId ?? undefined);
-  const addComment = useAddChangeComment();
-  const [comment, setComment] = useState("");
+  const { data: participants = [] } = useParticipants(open ? projectId : undefined);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
-  function submitComment(): void {
-    if (!changeId || !comment.trim()) return;
-    addComment.mutate(
-      { projectId, changeId, body: { content: comment.trim() } },
-      {
-        onSuccess: () => setComment(""),
-        onError: (error) => toast(getApiErrorMessage(error), "error"),
-      },
-    );
-  }
+  // The record keeps who submitted it, not who first drafted it, so a draft has no author to show yet.
+  const submitter = cr?.submittedById ? participants.find((p) => p.userId === cr.submittedById) : undefined;
+  const createdBy = submitter ? (submitter.name ?? submitter.email) : "—";
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -183,105 +162,88 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />
         <Dialog.Popup
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(580px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-            "overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
+            "fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[min(548px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
+            "overflow-hidden border border-[#EEEEEE] bg-white shadow-lg outline-none",
           )}
         >
           {isLoading || !cr ? (
-            <div className="p-8 text-center text-sm text-ink-muted">Loading…</div>
+            <div className="p-8 text-center text-[14px] text-[#737373]">Loading…</div>
           ) : (
             <>
-              <header className="px-6 pt-6">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={CHANGE_STATUS_META[cr.status].tone} size="sm">
+              <header className="relative shrink-0 px-[24px] pt-[24px]">
+                <div className="flex flex-wrap items-center gap-[8px] pr-[40px]">
+                  <span
+                    className={cn(
+                      "inline-flex h-[22px] items-center rounded-full border px-[10px] text-[12px] font-medium leading-[16px]",
+                      CHANGE_STATUS_PILL[cr.status],
+                    )}
+                  >
                     {CHANGE_STATUS_META[cr.status].label}
-                  </Badge>
+                  </span>
                   <ChangeTypeBadge type={cr.type} />
-                  {cr.type === "eot_only" ? (
-                    <>
-                      <span className="text-xs font-medium text-ink tabular-nums">
-                        {cr.timeImpactDays} {cr.timeImpactDays === 1 ? "day" : "days"} claimed
-                      </span>
-                      <span className="text-xs text-ink-muted tabular-nums">
-                        {cr.daysAwarded === null
-                          ? "Not yet awarded"
-                          : `${cr.daysAwarded} ${cr.daysAwarded === 1 ? "day" : "days"} awarded`}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-xs font-medium text-ink">{money(cr.costImpact, cr.currency)}</span>
-                      {cr.timeImpactDays > 0 ? (
-                        <span className="text-xs text-ink-muted">+{cr.timeImpactDays} days</span>
-                      ) : null}
-                    </>
-                  )}
                 </div>
-                <Dialog.Title className="mt-2 text-lg font-semibold text-ink">{cr.title}</Dialog.Title>
-                {cr.description && <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-muted">{cr.description}</p>}
-                {cr.reasonHtml ? (
-                  <div className="mt-1 text-xs text-ink-muted">
-                    Reason:{" "}
-                    <span
-                      className="prose prose-sm inline max-w-none [&>p]:inline [&_img]:max-h-64 [&_img]:rounded"
-                      dangerouslySetInnerHTML={{ __html: cr.reasonHtml }}
-                    />
-                  </div>
-                ) : cr.reason ? (
-                  <p className="mt-1 text-xs text-ink-muted">Reason: {cr.reason}</p>
-                ) : null}
-                {cr.decidedByName && (
-                  <p className="mt-1 text-xs text-ink-muted">
-                    {cr.status} by {cr.decidedByName}
-                    {cr.decidedAt ? ` · ${formatWhen(cr.decidedAt)}` : ""}
-                  </p>
-                )}
-                {cr.rejectedReason ? (
-                  <p className="mt-1 text-xs text-negative-600">Reason: {cr.rejectedReason}</p>
+                <Dialog.Close
+                  aria-label="Close"
+                  className="absolute right-[24px] top-[24px] flex size-[24px] items-center justify-center text-[#737373] outline-none hover:text-[#1E1E1E] focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                >
+                  <X className="size-[20px]" strokeWidth={1.5} />
+                </Dialog.Close>
+                <Dialog.Title className="mt-[10px] text-[20px] font-bold leading-[28px] tracking-[-0.02em] text-[#111111]">
+                  {cr.title}
+                </Dialog.Title>
+                {cr.description ? (
+                  <p className="mt-[2px] whitespace-pre-wrap text-[14px] leading-[20px] text-[#737373]">{cr.description}</p>
                 ) : null}
               </header>
 
-              <div className="mt-4 flex-1 overflow-y-auto border-t border-line-hair px-6 py-4">
-                <ChangeRequestActions projectId={projectId} cr={cr} />
+              <div className="mt-[24px] flex-1 overflow-y-auto px-[24px] pb-[16px]">
+                <div className="grid grid-cols-2 gap-[12px]">
+                  <InfoCard label="Created by" className={CELL_CLASS}>
+                    <p className={VALUE_CLASS}>{createdBy}</p>
+                  </InfoCard>
+                  <InfoCard label="Assigned to" className={CELL_CLASS}>
+                    <p className={VALUE_CLASS}>{cr.assigneeName ?? "Unassigned"}</p>
+                  </InfoCard>
+                  <ImpactCells cr={cr} />
+                  <InfoCard label="Reason" labelClassName="text-[14px]" className="col-span-2 min-h-[79px] py-[16px]">
+                    <div className="mt-[8px]">
+                      <ReasonValue cr={cr} />
+                    </div>
+                  </InfoCard>
+                  {cr.decidedByName ? (
+                    <InfoCard label="Decision" className={cn(CELL_CLASS, "col-span-2")}>
+                      <p className={VALUE_CLASS}>
+                        {cr.status} by {cr.decidedByName}
+                        {cr.decidedAt ? ` · ${formatWhen(cr.decidedAt)}` : ""}
+                      </p>
+                      {cr.rejectedReason ? <p className="mt-[2px] text-[14px] leading-[20px] text-[#E7000B]">{cr.rejectedReason}</p> : null}
+                    </InfoCard>
+                  ) : null}
+                </div>
 
-                <ChangeRequestLinks projectId={projectId} cr={cr} />
-                <ChangeClaimDelays cr={cr} />
-                <ChangeRequestRevisions cr={cr} />
+                <button
+                  type="button"
+                  onClick={() => setDetailsOpen((v) => !v)}
+                  aria-expanded={detailsOpen}
+                  className="mt-[16px] flex items-center gap-[6px] text-[12px] font-semibold leading-[16px] text-[#004DE7] outline-none hover:underline"
+                >
+                  Details and discussion ({cr.comments.length})
+                  <ChevronDown className={cn("size-[14px] transition-transform", detailsOpen && "rotate-180")} aria-hidden />
+                </button>
 
-                {cr.costImpact > 0 && <CRBudgetAllocations projectId={projectId} cr={cr} />}
-
-                <p className="mt-5 text-xs font-medium uppercase text-ink-muted">
-                  Discussion ({cr.comments.length})
-                </p>
-                {cr.comments.length === 0 ? (
-                  <p className="py-3 text-sm text-ink-muted">No comments yet.</p>
-                ) : (
-                  <ul className="mt-2 flex flex-col gap-3">
-                    {cr.comments.map((c) => (
-                      <li key={c.id} className="rounded-lg bg-surface-alt p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-ink">{c.authorName}</span>
-                          <span className="text-xs text-ink-muted">{formatWhen(c.createdAt)}</span>
-                        </div>
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">{c.body}</p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {detailsOpen ? (
+                  <div className="mt-2">
+                    <ChangeRequestLinks projectId={projectId} cr={cr} />
+                    <ChangeClaimDelays cr={cr} />
+                    <ChangeRequestRevisions cr={cr} />
+                    {cr.costImpact > 0 ? <ChangeRequestBudgetAllocations projectId={projectId} cr={cr} /> : null}
+                    <Discussion projectId={projectId} cr={cr} />
+                  </div>
+                ) : null}
               </div>
 
-              <footer className="flex items-center gap-2 border-t border-line-hair px-6 py-4">
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  rows={1}
-                  placeholder="Add a comment…"
-                  className={cn(INPUT_BASE_CLASS, "min-h-[40px] flex-1 px-3 py-2")}
-                />
-                <Button type="button" variant="primary" size="md" disabled={!comment.trim()} loading={addComment.isPending} onClick={submitComment}>
-                  Send
-                </Button>
-                <Dialog.Close render={<Button type="button" variant="secondary" size="md">Close</Button>} />
+              <footer className="shrink-0 px-[24px] pb-[24px] pt-[8px]">
+                <ChangeRequestActions projectId={projectId} cr={cr} appearance="modal" />
               </footer>
             </>
           )}

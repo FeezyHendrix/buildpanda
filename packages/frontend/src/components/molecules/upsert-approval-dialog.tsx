@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
-import { Label } from "@/components/atoms/label";
-import { FormDrawer } from "./form-drawer";
-import { INPUT_CLASS } from "@/components/atoms/input";
+import { Select } from "@/components/atoms/select";
+import { TextInput } from "@/components/atoms/text-input";
+import { INPUT_BASE_CLASS } from "@/components/atoms/input";
+import { InfoTooltip } from "@/components/atoms/tooltip";
 import { cn } from "@/lib/utils";
+import { ApprovalAttachmentsField } from "./approval-attachments-field";
+import { DateInputField } from "./date-input-field";
+import { FormDrawer } from "./form-drawer";
 
 export interface UpsertApprovalValues {
   title: string;
@@ -10,6 +14,8 @@ export interface UpsertApprovalValues {
   description: string | null;
   dueDate: string | null;
   requestedReviewerId: string | null;
+  /** Files picked on a new request; sent only once the server accepts attachments. */
+  files?: File[];
 }
 
 export interface ReviewerOption {
@@ -26,11 +32,15 @@ interface Props {
   onSubmit: (values: UpsertApprovalValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  /** Whether picked files are actually sent; when not, the dialog says so instead of dropping them silently. */
+  attachmentsEnabled?: boolean;
 }
 
-const CATEGORIES = ["Finishes", "Fittings", "Materials", "Structural", "Other"];
+const CATEGORY_OPTIONS = ["Finishes", "Fittings", "Materials", "Structural", "Other"].map((c) => ({ value: c, label: c }));
+const ANY_APPROVER = "__any__";
 
-const field = INPUT_CLASS;
+const LABEL_CLASS = "text-caption-m! font-semibold text-[#1E1E1E]";
+const FIELD_HEIGHT = "h-[46px]";
 
 function UpsertApprovalDialog({
   open,
@@ -41,31 +51,40 @@ function UpsertApprovalDialog({
   onSubmit,
   isSubmitting = false,
   error,
+  attachmentsEnabled = true,
 }: Props) {
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Finishes");
+  const [category, setCategory] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [requestedReviewerId, setRequestedReviewerId] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (open) {
       setTitle(initial?.title ?? "");
-      setCategory(initial?.category ?? "Finishes");
+      setCategory(initial?.category ?? null);
       setDescription(initial?.description ?? "");
       setDueDate(initial?.dueDate ?? "");
       setRequestedReviewerId(initial?.requestedReviewerId ?? "");
+      setFiles([]);
     }
   }, [open, initial]);
+
+  const approverOptions = [
+    { value: ANY_APPROVER, label: "Anyone who can approve" },
+    ...reviewerOptions.map((r) => ({ value: r.id, label: r.name })),
+  ];
 
   function handleSubmit(): void {
     if (!title.trim()) return;
     onSubmit({
       title: title.trim(),
-      category: category || null,
+      category,
       description: description.trim() || null,
       dueDate: dueDate || null,
       requestedReviewerId: requestedReviewerId || null,
+      files,
     });
   }
 
@@ -73,72 +92,113 @@ function UpsertApprovalDialog({
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={mode === "create" ? "Submit for approval" : "Edit approval"}
-      description="Submit a selection or specification for sign-off."
-      submitLabel={mode === "create" ? "Submit" : "Save changes"}
+      title={
+        mode === "create" ? "New approval request" : "Edit approval request"
+      }
+      description="Send a selection, specification, or project decision to the right person for review."
+      submitLabel={mode === "create" ? "Send for approval" : "Save changes"}
       submitDisabled={!title.trim()}
       submitting={isSubmitting}
       error={error ?? null}
       onSubmit={handleSubmit}
+      footerVariant="stacked"
+      className="w-[min(430px,100vw)]"
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="ap-title">Title</Label>
-        <input
-          id="ap-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Living room tile selection"
-          className={field}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="ap-category">Category</Label>
-          <select id="ap-category" value={category} onChange={(e) => setCategory(e.target.value)} className={field}>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <label htmlFor="ap-title" className={LABEL_CLASS}>
+            What needs approval?
+          </label>
+          <TextInput
+            id="ap-title"
+            value={title}
+            onChange={setTitle}
+            placeholder="e.g. Living room floor tile selection"
+            className={cn(FIELD_HEIGHT, "px-4")}
+          />
         </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="ap-category" className={LABEL_CLASS}>
+              Category
+            </label>
+            <Select
+              id="ap-category"
+              options={CATEGORY_OPTIONS}
+              value={category}
+              onChange={setCategory}
+              placeholder="Select a category"
+              className={cn(FIELD_HEIGHT, "px-4 text-caption-l!")}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="ap-due" className={LABEL_CLASS}>
+                Decision needed by
+              </label>
+              <InfoTooltip text="Set a deadline so the project isn't delayed." />
+            </div>
+            <DateInputField
+              id="ap-due"
+              value={dueDate}
+              onChange={setDueDate}
+              className={FIELD_HEIGHT}
+            />
+          </div>
+        </div>
+
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="ap-due">Needed by</Label>
-          <input id="ap-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} />
+          <div className="flex items-center justify-between">
+            <label htmlFor="ap-desc" className={LABEL_CLASS}>
+              More Information
+            </label>
+            <InfoTooltip text="Include relevant dimensions, materials, finishes, quantities, or other information needed to make a decision." />
+          </div>
+          <textarea
+            id="ap-desc"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={4000}
+            placeholder="Describe the selection, specification, or decision you'd like the approver to review."
+            className={cn(
+              INPUT_BASE_CLASS,
+              "h-[130px] resize-none py-3 leading-5",
+            )}
+          />
         </div>
-      </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="ap-desc">Details</Label>
-        <textarea
-          id="ap-desc"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          placeholder="Describe what's being submitted for approval"
-          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
-        />
-      </div>
+        {mode === "create" ? (
+          <div className="flex flex-col gap-1.5">
+            <ApprovalAttachmentsField
+              files={files}
+              onChange={setFiles}
+              disabled={isSubmitting}
+            />
+            {!attachmentsEnabled && files.length > 0 ? (
+              <p role="status" className="text-caption-m! text-warning-600">
+                File upload is not switched on for approvals yet, so these files
+                will not be sent with the request.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="ap-reviewer">Request approval from</Label>
-        <select
-          id="ap-reviewer"
-          value={requestedReviewerId}
-          onChange={(e) => setRequestedReviewerId(e.target.value)}
-          className={field}
-        >
-          <option value="">Anyone who can approve (clients & team)</option>
-          {reviewerOptions.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-        <p className="text-xs text-gray-400">
-          Pick a person to send this to them specifically; otherwise clients and other approvers can sign off.
-        </p>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="ap-reviewer" className={LABEL_CLASS}>
+            Approver
+          </label>
+          <Select
+            id="ap-reviewer"
+            options={approverOptions}
+            value={requestedReviewerId || null}
+            onChange={(next) =>
+              setRequestedReviewerId(!next || next === ANY_APPROVER ? "" : next)
+            }
+            placeholder="Select who's needed to approve"
+            className={cn(FIELD_HEIGHT, "px-4 text-caption-l!")}
+          />
+        </div>
       </div>
     </FormDrawer>
   );

@@ -437,6 +437,61 @@ input[type="radio"] {
   --wx-gantt-milestone-border-radius: 3px;
 }
 
+/* ─── Programme of work chart ────────────────────────────────────────────────
+   Flat, square bars on a ruled grid: dark blue for milestones and summaries,
+   green for work, an orange outline for a delay. Delay rows carry a `delay:` id
+   so they can be tinted without a custom row renderer. Scoped to the schedule
+   page; the pre-construction chart keeps the default look. */
+.bp-schedule .wx-willow-theme {
+  --wx-gantt-task-color: #00A63E;
+  --wx-gantt-task-fill-color: #00A63E;
+  --wx-gantt-task-border-color: #80D29E;
+  --wx-gantt-summary-color: #053DAB;
+  --wx-gantt-summary-fill-color: #053DAB;
+  --wx-gantt-summary-border-color: #436DC0;
+  --wx-gantt-milestone-color: #053DAB;
+  --wx-gantt-bar-border-radius: 0px;
+  --wx-gantt-milestone-border-radius: 0px;
+  --wx-gantt-border: 1px solid #DDDDDD;
+  --wx-gantt-border-color: #DDDDDD;
+}
+.bp-schedule .wx-bar:not(.e) {
+  height: 32px !important;
+  line-height: 32px !important;
+  margin-top: 5px;
+}
+.bp-schedule .wx-bar > .wx-content,
+.bp-schedule .wx-bar > [class*="-wrapper"],
+.bp-schedule .wx-bar > [class*="-marker"] {
+  display: none;
+}
+.bp-schedule .wx-bar[data-id^=":delay:"] {
+  background: #FFFBEB !important;
+  border: 1px solid #F0B675 !important;
+}
+.bp-schedule .wx-grid .wx-row[data-id^=":delay:"] {
+  background: #FFFBEB;
+}
+.bp-schedule .wx-grid .wx-row[data-id^=":delay:"] .wx-text,
+.bp-schedule .wx-grid .wx-row[data-id^=":delay:"] .wx-text > div {
+  font-style: italic;
+  color: #BB4D00;
+}
+.bp-schedule .wx-grid .wx-h-row:nth-child(2) {
+  background: #F5F5F5;
+}
+.bp-schedule .wx-grid .wx-header .wx-cell,
+.bp-schedule .wx-chart .wx-scale .wx-cell {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1E1E1E;
+}
+.bp-schedule .wx-chart .wx-scale .wx-row:first-child .wx-cell {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
 /* ─── Micro-interaction primitives ───────────────────────────────────────── */
 @keyframes search-slide-in {
   from { opacity: 0; transform: translateY(-8px) scale(0.97); }
@@ -445,6 +500,20 @@ input[type="radio"] {
 @keyframes search-slide-out {
   from { opacity: 1; transform: translateY(0) scale(1); }
   to   { opacity: 0; transform: translateY(-8px) scale(0.97); }
+}
+
+@keyframes search-bar-in {
+  from { opacity: 0; clip-path: inset(0 0 0 100%); transform: translateX(24px); }
+  to   { opacity: 1; clip-path: inset(0 0 0 0);    transform: translateX(0); }
+}
+@keyframes search-bar-out {
+  from { opacity: 1; clip-path: inset(0 0 0 0);    transform: translateX(0); }
+  to   { opacity: 0; clip-path: inset(0 0 0 100%); transform: translateX(24px); }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }
 
 @keyframes fab-backdrop-in {

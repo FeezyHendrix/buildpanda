@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { ProgressBar } from "@/components/atoms/progress-bar";
-import { PageHeader } from "@/components/molecules/page-header";
 import { TourGuide } from "@/components/molecules/tour-guide";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectUpdates } from "@/hooks/use-updates";
@@ -15,8 +14,7 @@ import { CONSTRUCTION_TOUR_KEY, CONSTRUCTION_TOUR_STEPS } from "@/lib/tour-steps
 import { useProjectRiskFactors } from "@/hooks/use-risks";
 import { ProjectRiskBadge } from "./overview/project-risk-badge";
 
-import { WhatsNextCard } from "@/components/organisms/whats-next-card";
-import { WeatherDashboard } from "@/components/organisms/weather-dashboard";
+import { HealthTrendChart } from "@/components/organisms/charts/health-trend-chart";
 import { CashFlowSCurve } from "@/components/organisms/charts/cash-flow-s-curve";
 import { BudgetVsActualBar } from "@/components/organisms/charts/budget-vs-actual-bar";
 import { useSession } from "@/stores/auth";
@@ -26,6 +24,10 @@ import { OverviewKpis } from "./overview/overview-kpis";
 import { NeedsAttentionCard } from "./overview/needs-attention-card";
 import { ProgrammeCard } from "./overview/programme-card";
 import { FieldActivityCard } from "./overview/field-activity-card";
+import { HealthSection } from "./overview/health-section";
+import { OverviewCard } from "./overview/overview-card";
+import { OverviewGreeting } from "./overview/overview-greeting";
+import { WeatherSection } from "./overview/weather-section";
 import { FeatureGate } from "@/components/atoms/feature-gate";
 import type { Building } from "@/api/buildings";
 
@@ -97,16 +99,14 @@ export default function ProjectOverview() {
     enabled: true,
   });
 
+  const healthPoints = snapshot.data?.health.trendOldestFirst ?? [];
+
   return (
-    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
-      <PageHeader
-        title={`Welcome back, ${firstName}`}
-        badges={
-          <div className="flex items-center gap-2 order-1 lg:order-2 self-end lg:self-auto">
-            <ProjectRiskBadge projectId={project.id} />
-          </div>
-        }
-      />
+    <div className="w-full px-4 pb-8 pt-[27px] sm:px-10 lg:px-[37px]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <OverviewGreeting firstName={firstName} />
+        <ProjectRiskBadge projectId={project.id} />
+      </div>
 
       {realBuildings.length > 1 ? (
         <section className="mt-8 flex flex-col gap-4">
@@ -120,42 +120,40 @@ export default function ProjectOverview() {
       ) : null}
 
       <ProjectSetupChecklist />
-      <div className="my-4"><WhatsNextCard projectId={project.id} /></div>
-      <OverviewKpis project={project} />
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <CashFlowSCurve
-            points={finance?.cashFlow.points ?? EMPTY_POINTS}
-            programmeCurve={snapshot.data?.schedule.programmeCostCurve}
-            currency={project.currency}
-            isLoading={snapshot.isPending}
-          />
-        </div>
-        <NeedsAttentionCard projectId={project.id} className={PANEL_CLASS} />
+      <HealthSection projectId={project.id} className="mt-[22px]" />
+      <OverviewKpis project={project} className="mt-[35px]" />
+
+      <div className="mt-[35px] grid grid-cols-1 gap-[23px] lg:grid-cols-[minmax(0,474fr)_minmax(0,534fr)]">
+        <NeedsAttentionCard projectId={project.id} />
+        <ProgrammeCard project={project} />
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <FeatureGate flag="projects.weather">
+        <WeatherSection projectId={project.id} className="mt-[35px]" />
+      </FeatureGate>
+
+      {/* Not in the new overview design, kept so nothing the page offered is lost. */}
+      <div className="mt-[35px] grid grid-cols-1 gap-[23px] lg:grid-cols-2">
+        <CashFlowSCurve
+          points={finance?.cashFlow.points ?? EMPTY_POINTS}
+          programmeCurve={snapshot.data?.schedule.programmeCostCurve}
+          currency={project.currency}
+          isLoading={snapshot.isPending}
+        />
         <BudgetVsActualBar
           categories={finance?.budget.categories ?? EMPTY_CATEGORIES}
           currency={project.currency}
           isLoading={snapshot.isPending}
         />
-        <ProgrammeCard project={project} className={PANEL_CLASS} />
-      </div>
-
-      <FeatureGate flag="projects.weather">
-        <div className="mt-6">
-          <WeatherDashboard projectId={project.id} />
-        </div>
-      </FeatureGate>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <FieldActivityCard projectId={project.id} className={PANEL_CLASS} />
-
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 pb-8 lg:grid-cols-2">
+        {healthPoints.length >= 2 ? (
+          <OverviewCard title="Health Trend">
+            <div className="p-[14px]">
+              <HealthTrendChart points={healthPoints} compact />
+            </div>
+          </OverviewCard>
+        ) : null}
         <RecentUpdatesPanel updates={recent} projectId={project.id} className={PANEL_CLASS} />
         <div id="risk-factors" className="scroll-mt-24">
           <RiskFactorsPanel projectId={project.id} risks={risks} className={PANEL_CLASS} />

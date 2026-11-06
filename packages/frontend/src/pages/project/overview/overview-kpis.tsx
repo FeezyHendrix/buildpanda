@@ -1,6 +1,3 @@
-import { Card } from "@/components/atoms/card";
-import { Spinner } from "@/components/atoms/spinner";
-import { KpiCard, type KpiCardProps } from "@/components/molecules/kpi-card";
 import { useChangeRequestSummary } from "@/hooks/use-change-requests";
 import { useFinancePosition } from "@/hooks/use-finances";
 import { useProjectActivities } from "@/hooks/use-activities";
@@ -9,7 +6,9 @@ import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { formatWholeCurrency } from "@/lib/formatters";
 import { useProjectContext } from "@/layouts/project-layout";
 import type { Activity, Project, ProjectPhase } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
 import { isRfiOverdue } from "@/lib/rfi-meta";
+import { OverviewStatCard } from "./overview-stat-card";
 
 /** RFI statuses that still count as open work. */
 const OPEN_RFI_STATUSES = new Set(["Open", "InReview"]);
@@ -103,20 +102,13 @@ function pluralise(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-/** KpiCard renders its value inside a <p>, so a pending card swaps the figure for a centred spinner instead. */
-function Kpi({ pending, ...props }: KpiCardProps & { pending?: boolean }) {
-  if (!pending) return <KpiCard {...props} />;
-  return (
-    <Card padding="md" className="flex min-w-0 flex-col gap-3 p-5">
-      <p className="text-[13px] font-medium text-black-300">{props.label}</p>
-      <div className="flex h-[52px] items-center justify-center">
-        <Spinner size="sm" />
-      </div>
-    </Card>
-  );
+function scheduleHelperTone(gap: ScheduleGap): "muted" | "positive" | "negative" {
+  if (gap.gapPts === null) return "muted";
+  if (gap.gapPts < -ON_TRACK_BAND_PTS || gap.delayedCount > 0) return "negative";
+  return "positive";
 }
 
-export function OverviewKpis({ project }: { project: Project }) {
+export function OverviewKpis({ project, className }: { project: Project; className?: string }) {
   const { access } = useProjectContext();
   const snapshot = useReportingSnapshot(project.id);
   const activities = useProjectActivities(project.id);
@@ -164,44 +156,41 @@ export function OverviewKpis({ project }: { project: Project }) {
   ].join(" · ");
 
   return (
-    // Six across needs a genuinely wide screen. On a laptop it left each card
-    // ~135px of text width, which is narrower than the figures it has to hold,
-    // so the strip runs three-up until there is room for six.
-    <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6">
-      <div data-tour="construction-progress">
-        <KpiCard
-          label="Construction progress"
-          progress={project.progressPercent}
-          helper={`${phasesDone} of ${phases.length} phases complete`}
-        />
-      </div>
-      <Kpi
+    <section className={cn("grid grid-cols-1 gap-[23px] sm:grid-cols-2 lg:grid-cols-3", className)}>
+      <OverviewStatCard
+        dataTour="construction-progress"
+        label="Construction Progress"
+        progress={project.progressPercent}
+        helper={`${phasesDone} of ${phases.length} phases complete`}
+      />
+      <OverviewStatCard
         pending={activities.isPending}
         label="Schedule"
         value={gap.gapPts === null ? "—" : formatPts(gap.gapPts)}
         helper={gap.gapPts === null ? "No programme yet" : scheduleHelper(gap)}
+        helperTone={scheduleHelperTone(gap)}
         tone={scheduleDanger ? "danger" : "default"}
       />
       {canViewCosts ? (
-        <div data-tour="construction-budget">
-          <KpiCard
-            label="Budget used"
-            value={budget ? formatWholeCurrency(budgetUsed, currency) : "—"}
-            helper={
-              usedPct === null
-                ? "No budget set"
-                : spendAhead
-                  ? `${usedPct}% used · spending ahead of ${project.progressPercent}% progress`
-                  : `${usedPct}% of ${formatWholeCurrency(budgetTotal, currency)}`
-            }
-            tone={spendAhead ? "danger" : "default"}
-          />
-        </div>
+        <OverviewStatCard
+          dataTour="construction-budget"
+          label="Budget Used"
+          value={budget ? formatWholeCurrency(budgetUsed, currency) : "—"}
+          helper={
+            usedPct === null
+              ? "No budget set"
+              : spendAhead
+                ? `${usedPct}% used · spending ahead of ${project.progressPercent}% progress`
+                : `${usedPct}% of ${formatWholeCurrency(budgetTotal, currency)}`
+          }
+          helperTone={spendAhead ? "negative" : "muted"}
+          tone={spendAhead ? "danger" : "default"}
+        />
       ) : null}
       {canViewCosts ? (
-        <Kpi
+        <OverviewStatCard
           pending={snapshot.isPending}
-          label="Cost variance"
+          label="Cost Variance"
           value={budget ? formatWholeCurrency(budget.totalVariance, currency) : "—"}
           helper={
             budget
@@ -211,7 +200,7 @@ export function OverviewKpis({ project }: { project: Project }) {
           tone={budget && budget.totalVariance < 0 ? "danger" : "default"}
         />
       ) : null}
-      <Kpi
+      <OverviewStatCard
         pending={position.isPending}
         label="Cash"
         value={money ? formatWholeCurrency(money.unpaidCertified, currency) : "—"}
@@ -222,18 +211,17 @@ export function OverviewKpis({ project }: { project: Project }) {
         }
         tone={money && money.unpaidCertified > 0 ? "danger" : "default"}
       />
-      <div data-tour="construction-approvals">
-        <Kpi
-          pending={rfis.isPending}
-          label="Open items"
-          value={openItems}
-          helper={
-            pendingChangeValue > 0
-              ? `${openItemsHelper} · pending change value ${formatWholeCurrency(pendingChangeValue, currency)}`
-              : openItemsHelper
-          }
-        />
-      </div>
+      <OverviewStatCard
+        dataTour="construction-approvals"
+        pending={rfis.isPending}
+        label="Open Items"
+        value={openItems}
+        helper={
+          pendingChangeValue > 0
+            ? `${openItemsHelper} · pending change value ${formatWholeCurrency(pendingChangeValue, currency)}`
+            : openItemsHelper
+        }
+      />
     </section>
   );
 }

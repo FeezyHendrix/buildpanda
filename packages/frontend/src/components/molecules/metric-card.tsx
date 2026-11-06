@@ -46,6 +46,12 @@ function MetricCard({ label, value, helperText, trend, className }: MetricCardPr
   );
 }
 
+/** A larger, lighter headline figure for a MetricCard's `value`. */
+function MetricFigure({ children, className }: { children: ReactNode; className?: string }) {
+  return <span className={cn("block py-1 text-2xl font-medium", className)}>{children}</span>;
+}
+
+MetricFigure.displayName = "MetricFigure";
 MetricCard.displayName = "MetricCard";
 
-export { MetricCard, type MetricCardProps, type MetricCardTrend };
+export { MetricCard, MetricFigure, type MetricCardProps, type MetricCardTrend };

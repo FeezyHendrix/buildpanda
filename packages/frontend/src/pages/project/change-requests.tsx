@@ -1,37 +1,33 @@
 import { useState } from "react";
-import { CreateButton } from "@/components/molecules/create-button";
+import { Plus, Search } from "lucide-react";
+import { Button } from "@/components/atoms/button";
+import { useSetPageTitle } from "@/contexts/page-title-context";
+import { NumberedPagination } from "@/components/molecules/numbered-pagination";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { ClipboardIcon } from "@/components/atoms/project-nav-icons";
-import { PageHeader } from "@/components/molecules/page-header";
-import { FilterTabs, VIEW_MODE_ITEMS } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertChangeRequestDialog,
   type UpsertChangeValues,
 } from "@/components/molecules/upsert-change-request-dialog";
 import { ChangeRequestDetailDialog } from "@/components/molecules/change-request-detail-dialog";
-import { KanbanBoard } from "@/components/molecules/kanban-board";
-import { ChangeOrderSummaryStrip } from "./change-requests/summary-strip";
+import { ChangeFilterPanel } from "./change-requests/change-filter-panel";
+import {
+  matchesChangeFilters,
+  matchesChangeSearch,
+  noChangeFilters,
+  type ChangeFilterValues,
+  type StatusFilter,
+} from "./change-requests/shared";
 import { ChangeRow } from "./change-requests/change-row";
-import {
-  CHANGE_TYPE_FILTERS,
-  TimeClaimPosition,
-  timeClaimDays,
-  type ChangeTypeFilter,
-} from "./change-requests/time-claim-position";
-import {
-  CHANGE_COLUMNS,
-  textMeta,
-  assigneeFooter,
-} from "@/components/molecules/kanban-configs";
+import { TimeClaimPosition, timeClaimDays } from "./change-requests/time-claim-position";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useParticipants } from "@/hooks/use-participants";
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import {
   useChangeRequestAction,
   useChangeRequests,
-  useChangeRequestSummary,
   useCreateChangeRequest,
   useDeleteChangeRequest,
   useUpdateChangeRequest,
@@ -39,43 +35,24 @@ import {
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { canResourceAction } from "@/lib/project-types";
-import type { ChangeAction, ChangeRequest, ChangeStatus } from "@/lib/project-types";
-import { formatWholeCurrency } from "@/lib/formatters";
+import type { ChangeRequest } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
 
-const FILTERS: { value: ChangeStatus | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "Draft", label: "Draft" },
-  { value: "Submitted", label: "Submitted" },
-  { value: "Approved", label: "Approved" },
-  { value: "Executed", label: "Executed" },
-  { value: "Rejected", label: "Rejected" },
-];
-
-function money(amount: number, currency: string): string {
-  return formatWholeCurrency(amount, currency);
-}
-
-/**
- * The action that lands a change in each board column. Rejected is absent on
- * purpose: a rejection carries a reason, which a drag cannot give it.
- */
-const BOARD_ACTION: Partial<Record<ChangeStatus, ChangeAction>> = {
-  Submitted: "submit",
-  Approved: "approve",
-  Executed: "execute",
-};
+const PAGE_SIZE = 10;
+const EMPTY_CHANGES: ChangeRequest[] = [];
 
 export default function ProjectChangeRequests() {
+  useSetPageTitle("Change Requests", "Scope, cost and time changes, and the decisions that settle them.");
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "change-requests", "manage");
-  const [filter, setFilter] = useState<ChangeStatus | "all">("all");
-  const [typeFilter, setTypeFilter] = useState<ChangeTypeFilter>("all");
-  const [view, setView] = useState<"list" | "board">("list");
-  const { data: items = [], isLoading } = useChangeRequests(
+  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [applied, setApplied] = useState<ChangeFilterValues>(() => noChangeFilters(project.currency));
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const { data: items = EMPTY_CHANGES, isLoading } = useChangeRequests(
     project.id,
     filter === "all" ? undefined : filter,
   );
-  const { data: summary } = useChangeRequestSummary(project.id);
   const snapshot = useReportingSnapshot(project.id);
   const createCr = useCreateChangeRequest();
   const updateCr = useUpdateChangeRequest();
@@ -92,13 +69,20 @@ export default function ProjectChangeRequests() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  // The type filter is a client-side read of the loaded register: a QS wants
-  // variations, omissions, time claims and provisional sums apart.
-  const shown = items.filter((cr) => typeFilter === "all" || cr.type === typeFilter);
-  const filtering = filter !== "all" || typeFilter !== "all";
-  const approvedCost = shown
-    .filter((i) => i.status === "Approved" || i.status === "Executed")
-    .reduce((s, i) => s + i.costImpact, 0);
+  // Status is applied by the server; search, type and cost range read the loaded register.
+  const shown = items.filter((cr) => matchesChangeSearch(cr, search) && matchesChangeFilters(cr, applied));
+  const filtering =
+    filter !== "all" || search.trim() !== "" || applied.type !== "all" || applied.costFrom !== "" || applied.costTo !== "";
+  const pageCount = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageItems = shown.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  function clearFilters(): void {
+    setFilter("all");
+    setSearch("");
+    setApplied(noChangeFilters(project.currency));
+    setPage(1);
+  }
 
   const schedule = snapshot.data?.schedule;
   const days = timeClaimDays(items);
@@ -110,35 +94,26 @@ export default function ProjectChangeRequests() {
     daysAwarded > 0 || daysPending > 0 || items.some((cr) => cr.type === "eot_only");
 
   /**
-   * A board drag is still a contractual decision, so it runs the action that
-   * reaches that column rather than writing a status. Rejecting needs a reason,
-   * which a drag cannot supply — that one opens the card instead.
+   * "Send for approval" is two contractual steps: the change is recorded, then
+   * submitted for decision. If the submit is refused the record still exists as
+   * a draft, so the dialog closes and the reason is stated rather than lost.
    */
-  function handleMove(cr: ChangeRequest, status: ChangeStatus): void {
-    if (cr.status === status) return;
-    const action = BOARD_ACTION[status];
-    if (!action) {
-      setDetailId(cr.id);
-      toast("Rejecting a change needs a reason — open it to record one.");
-      return;
-    }
-    runAction.mutate(
-      { projectId: project.id, changeId: cr.id, action },
-      { onError: (error) => toast(getApiErrorMessage(error), "error") },
-    );
-  }
-
-  function handleAssign(cr: ChangeRequest, assigneeId: string | null): void {
-    updateCr.mutate(
-      { projectId: project.id, changeId: cr.id, assigneeId },
-      { onError: (error) => toast(getApiErrorMessage(error), "error") },
-    );
-  }
-
   function handleCreate(values: UpsertChangeValues): void {
     createCr.mutate(
       { projectId: project.id, ...values },
-      { onSuccess: () => setCreateOpen(false) },
+      {
+        onSuccess: (created) => {
+          setCreateOpen(false);
+          runAction.mutate(
+            { projectId: project.id, changeId: created.id, action: "submit" },
+            {
+              onSuccess: () => toast("Change request sent for approval", "success"),
+              onError: (error) =>
+                toast(`Saved as a draft, but it could not be sent: ${getApiErrorMessage(error)}`, "error"),
+            },
+          );
+        },
+      },
     );
   }
   function handleEdit(values: UpsertChangeValues): void {
@@ -150,20 +125,7 @@ export default function ProjectChangeRequests() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
-      <PageHeader
-        title="Change orders"
-        actions={
-          canManage ? (
-            <CreateButton onClick={() => setCreateOpen(true)}>
-              New change order
-      </CreateButton>
-          ) : undefined
-        }
-      />
-
-      <ChangeOrderSummaryStrip summary={summary} items={items} className="mt-6" />
-
+    <div className="w-full px-4 pb-8 pt-[40px] lg:px-[40px]">
       {hasTimeClaims ? (
         <TimeClaimPosition
           completionDate={schedule?.completionDate ?? null}
@@ -173,60 +135,51 @@ export default function ProjectChangeRequests() {
         />
       ) : null}
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter change requests" />
-          <FilterTabs
-            items={CHANGE_TYPE_FILTERS}
-            value={typeFilter}
-            onChange={setTypeFilter}
-            ariaLabel="Filter by change type"
+      <div className={cn("grid items-start gap-x-[40px] gap-y-[15px] lg:grid-cols-[minmax(0,1fr)_291px] lg:grid-rows-[auto_1fr]", hasTimeClaims && "mt-[24px]")}>
+        <div className="flex flex-wrap items-center justify-between gap-3 lg:col-start-1">
+          <div className="relative w-full min-w-0 sm:w-[396px]">
+            <Search className="pointer-events-none absolute left-[16px] top-1/2 size-[18px] -translate-y-1/2 text-[#1E1E1E]" strokeWidth={1.5} />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search Keyword"
+              aria-label="Search change requests"
+              className="h-[45px] w-full appearance-none border border-[#EEEEEE] bg-white pl-[44px] pr-[16px] text-[14px] text-[#1E1E1E] outline-none placeholder:text-[#A5A5A5] focus:border-primary [&::-webkit-search-cancel-button]:hidden"
+            />
+          </div>
+          <div className="ml-auto flex items-center">
+            {canManage ? (
+              <Button type="button" variant="primary" onClick={() => setCreateOpen(true)} className="h-[45px] gap-[8px] px-[20px] text-[14px] font-semibold">
+                <Plus className="size-[18px]" strokeWidth={1.5} aria-hidden />
+                New Change Request
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-[60px]">
+          <ChangeFilterPanel
+            key={`${applied.currency}|${applied.costFrom}|${applied.costTo}|${applied.type}`}
+            status={filter}
+            onStatusChange={(next) => {
+              setFilter(next);
+              setPage(1);
+            }}
+            applied={applied}
+            onApply={(values) => {
+              setApplied(values);
+              setPage(1);
+            }}
+            onReset={clearFilters}
+            defaultCurrency={project.currency}
           />
         </div>
-        <div className="flex items-center gap-3 justify-end lg:justify-start self-end lg:self-auto">
-          <FilterTabs items={VIEW_MODE_ITEMS} value={view} onChange={setView} ariaLabel="View" />
-          {approvedCost > 0 ? (
-            <p className="text-xs text-ink-muted">
-              Approved impact: {money(approvedCost, project.currency)}
-            </p>
-          ) : null}
-        </div>
-      </div>
 
-      {view === "board" ? (
-        <div className="mt-5">
-          {isLoading ? (
-            <div className="flex justify-center py-10">
-              <Spinner size="md" />
-            </div>
-          ) : (
-            <KanbanBoard
-              items={shown}
-              columns={CHANGE_COLUMNS}
-              canManage={canManage}
-              getId={(cr) => cr.id}
-              getStatus={(cr) => cr.status}
-              getTitle={(cr) => cr.title}
-              renderMeta={(cr) =>
-                textMeta(
-                  cr.type === "eot_only"
-                    ? `${cr.timeImpactDays} days claimed`
-                    : cr.costImpact
-                      ? money(cr.costImpact, cr.currency)
-                      : null,
-                )
-              }
-              renderFooter={(cr) => assigneeFooter(cr.assigneeName, null)}
-              onMove={handleMove}
-              onOpen={setDetailId}
-              assigneeOptions={assigneeOptions}
-              getAssigneeId={(cr) => cr.assigneeId}
-              onAssign={handleAssign}
-            />
-          )}
-        </div>
-      ) : (
-        <div className="mt-5 flex flex-col gap-3">
+        <div className="lg:col-start-1">
           {isLoading ? (
             <div className="flex justify-center py-10">
               <Spinner size="md" />
@@ -236,39 +189,40 @@ export default function ProjectChangeRequests() {
               icon={<ClipboardIcon />}
               // The status filter is applied by the server, so an empty list
               // under one means "nothing matches" — never "none exist".
-              title={filtering ? "Nothing matches these filters" : "No change orders yet"}
+              title={filtering ? "Nothing matches these filters" : "No change requests yet"}
               description={
                 filtering
-                  ? "Try a different status or type."
+                  ? "Try a different status, type or cost range."
                   : "Raise one when scope, cost or schedule changes."
               }
-              action={
-                filtering
-                  ? {
-                      label: "Clear filters",
-                      onClick: () => {
-                        setFilter("all");
-                        setTypeFilter("all");
-                      },
-                    }
-                  : undefined
-              }
+              action={filtering ? { label: "Clear filters", onClick: clearFilters } : undefined}
             />
           ) : (
-            shown.map((cr) => (
-              <ChangeRow
-                key={cr.id}
-                cr={cr}
-                projectId={project.id}
-                canManage={canManage}
-                onOpen={() => setDetailId(cr.id)}
-                onEdit={() => setEditItem(cr)}
-                onDelete={() => setDeleteId(cr.id)}
+            <>
+              <div className="border border-[#EEEEEE] bg-white">
+                {pageItems.map((cr) => (
+                  <ChangeRow
+                    key={cr.id}
+                    cr={cr}
+                    projectId={project.id}
+                    canManage={canManage}
+                    onOpen={() => setDetailId(cr.id)}
+                    onEdit={() => setEditItem(cr)}
+                    onDelete={() => setDeleteId(cr.id)}
+                  />
+                ))}
+              </div>
+              <NumberedPagination
+                page={currentPage}
+                pageSize={PAGE_SIZE}
+                total={shown.length}
+                noun="Change Requests"
+                onPageChange={setPage}
               />
-            ))
+            </>
           )}
         </div>
-      )}
+      </div>
 
       <UpsertChangeRequestDialog
         open={createOpen}
@@ -277,7 +231,7 @@ export default function ProjectChangeRequests() {
         mode="create"
         assigneeOptions={assigneeOptions}
         onSubmit={handleCreate}
-        isSubmitting={createCr.isPending}
+        isSubmitting={createCr.isPending || runAction.isPending}
         error={createCr.error ? getApiErrorMessage(createCr.error) : null}
       />
       <UpsertChangeRequestDialog
@@ -330,8 +284,8 @@ export default function ProjectChangeRequests() {
             },
           );
         }}
-        title="Delete change order"
-        description="This permanently removes the change order and its discussion."
+        title="Delete change request"
+        description="This permanently removes the change request and its discussion."
         confirmLabel="Delete"
         variant="danger"
       />

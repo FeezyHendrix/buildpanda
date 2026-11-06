@@ -21,6 +21,7 @@ import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
 import { BuildingScopeProvider } from "@/contexts/building-scope-context";
+import { InfoTooltip } from "@/components/atoms/tooltip";
 import { PageTitleProvider, usePageTitleContext } from "@/contexts/page-title-context";
 import type { Session } from "@/stores/auth";
 import type { Project, ProjectAccess } from "@/lib/project-types";
@@ -152,7 +153,7 @@ function ProjectTopBar({ session, onLogout, notificationsEnabled }: ProjectTopBa
         title ? (
           <div className="flex items-center gap-2">
             <span className="text-body-l font-semibold text-gray-900">{title}</span>
-            {description && <InfoTooltip text={description} />}
+            {description && <InfoTooltip text={description} align="start" />}
           </div>
         ) : undefined
       }
@@ -165,37 +166,6 @@ function ProjectTopBar({ session, onLogout, notificationsEnabled }: ProjectTopBa
         />
       }
     />
-  );
-}
-
-function InfoTooltip({ text }: { text: string }) {
-  return (
-    <span className="group relative inline-flex">
-      <svg
-        viewBox="0 0 20 20"
-        fill="currentColor"
-        className="size-4 shrink-0 cursor-default text-primary-500"
-        aria-hidden="true"
-      >
-        <path
-          fillRule="evenodd"
-          d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z"
-          clipRule="evenodd"
-        />
-      </svg>
-      {/* Tooltip */}
-      <span
-        role="tooltip"
-        className={[
-          "pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2",
-          "w-64 rounded-lg bg-primary-50 px-3 py-2 text-caption-m leading-relaxed text-primary shadow-lg",
-          "opacity-0 transition-opacity duration-150 group-hover:opacity-100",
-        ].join(" ")}
-      >
-        {text}
-        <span className="absolute left-1/2 bottom-full -translate-x-1/2 border-4 border-transparent border-b-primary-50" />
-      </span>
-    </span>
   );
 }
 

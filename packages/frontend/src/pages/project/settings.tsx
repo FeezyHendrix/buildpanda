@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PageHeader } from "@/components/molecules/page-header";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import { QueryError } from "@/components/molecules/query-error";
 import { AiUpdateCadenceSection } from "@/components/molecules/ai-update-cadence-section";
 import { EditBudgetDrawer } from "@/components/molecules/edit-budget-drawer";
@@ -16,6 +16,7 @@ import { useProfileDraft } from "./settings/use-profile-draft";
  * one long stack of unrelated cards.
  */
 export default function ProjectSettings() {
+  useSetPageTitle("Settings", "Manage this project's details, programme, money and Panda AI.");
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
   const { tab, setTab } = useSettingsTab();
@@ -25,12 +26,10 @@ export default function ProjectSettings() {
   const profileAvailable = !profile.error || Boolean(profile.draft);
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
-      <PageHeader title="Settings" />
-
+    <div className="w-full px-4 pt-10 pb-8 lg:px-8">
       <SettingsTabBar value={tab} onChange={setTab} />
 
-      <div className="mt-6">
+      <div className="mt-11 max-w-[1003px] sm:ml-[43px] sm:w-[calc(100%-86px)]">
         {(tab === "general" || tab === "programme") && profile.error ? (
           <QueryError error={profile.error} retry={profile.refetch} noun="project settings" />
         ) : null}

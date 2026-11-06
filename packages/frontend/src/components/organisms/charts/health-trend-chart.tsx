@@ -1,4 +1,4 @@
-import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip, XAxis } from "recharts";
+import { CartesianGrid, LineChart, Line, ResponsiveContainer, YAxis, Tooltip, XAxis } from "recharts";
 import type { HealthPoint } from "@/hooks/use-reporting-snapshot";
 
 interface HealthTrendChartProps {
@@ -12,6 +12,16 @@ function formatDate(isoString: string, includeYear: boolean = false) {
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   if (includeYear) opts.year = "numeric";
   return date.toLocaleDateString("en-US", opts);
+}
+
+const Y_TICKS = [0, 25, 50, 75, 100];
+const AXIS_TICK = { fill: "#4D4D4D", fontSize: 12 };
+
+/** "Sep 07": every point is labelled, so the day is zero-padded to keep the labels even. */
+function formatTick(isoString: string) {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return isoString;
+  return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 }
 
 export function HealthTrendChart({ points, compact = false }: HealthTrendChartProps) {
@@ -48,36 +58,40 @@ export function HealthTrendChart({ points, compact = false }: HealthTrendChartPr
   }
 
   return (
-    <div className="h-64 w-full">
+    <div className="h-80 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <LineChart data={points} margin={{ top: 15, right: 0, left: 0, bottom: 0 }}>
+          <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="#6B6B6B" />
           <XAxis
             dataKey="at"
-            tickFormatter={(val) => formatDate(val)}
-            stroke="#9CA3AF"
-            fontSize={12}
+            tickFormatter={formatTick}
+            tick={AXIS_TICK}
             tickLine={false}
             axisLine={false}
-            minTickGap={30}
+            height={50}
+            tickMargin={17}
+            minTickGap={16}
+            interval="preserveStartEnd"
           />
           <YAxis
             domain={[0, 100]}
-            stroke="#9CA3AF"
-            fontSize={12}
+            ticks={Y_TICKS}
+            tick={AXIS_TICK}
             tickLine={false}
             axisLine={false}
+            width={30}
           />
           <Tooltip
             contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
             labelFormatter={(val) => formatDate(val as string, true)}
           />
           <Line
-            type="monotone"
+            type="linear"
             dataKey="score"
-            stroke={color}
-            strokeWidth={3}
-            dot={{ r: 4, strokeWidth: 0, fill: color }}
-            activeDot={{ r: 6, strokeWidth: 0, fill: color }}
+            stroke="#004DE7"
+            strokeWidth={4}
+            dot={false}
+            activeDot={{ r: 5, strokeWidth: 0, fill: "#004DE7" }}
             isAnimationActive={false}
           />
         </LineChart>

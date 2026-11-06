@@ -1,7 +1,6 @@
 import { QueryError } from "@/components/molecules/query-error";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Badge, type BadgeTone } from "@/components/atoms/badge";
-import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -12,10 +11,22 @@ import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { BUDGET_INVOICES_PATH } from "@/lib/finance-routes";
 import type { ProjectReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import type { KeyDate, Rfi } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
+import { CardHeaderButton, OverviewCard } from "./overview-card";
 
 const OPEN_RFI_STATUSES = new Set<Rfi["status"]>(["Open", "InReview"]);
 /** Days without a site update before the dashboard nags. */
 const STALE_UPDATE_DAYS = 3;
+/** Rows shown before "View All". */
+const COLLAPSED_LIMIT = 5;
+
+type AttentionTag = "Blocking" | "Due soon" | "Review";
+
+const TAG_STYLE: Record<AttentionTag, string> = {
+  Blocking: "border-[#FFD9D9] bg-[#FFF1F1] text-[#E7000B]",
+  "Due soon": "border-[#FFE7A8] bg-[#FFF8E6] text-[#E17100]",
+  Review: "border-[#D6E3FF] bg-[#EDF3FF] text-[#004DE7]",
+};
 
 interface AttentionItem {
   key: string;
@@ -23,7 +34,9 @@ interface AttentionItem {
   label: string;
   /** Route tail under `/project/:id/`, or a hash on this page. */
   to: string;
-  tone: BadgeTone;
+  tag: AttentionTag;
+  /** The part of the project the item lives in. */
+  area: string;
 }
 
 function startOfToday(): number {
@@ -71,58 +84,68 @@ function buildItems(args: {
       count: ops?.overdueRfis ?? countOverdueRfis(rfis, today),
       label: "overdue RFIs",
       to: "rfis?status=overdue",
-      tone: "danger",
+      tag: "Blocking", area: "RFIs",
     },
-    { key: "approvals", count: ops?.pendingApprovals ?? 0, label: "pending approvals", to: "approvals?status=Pending", tone: "warning" },
-    { key: "changes", count: submittedChanges, label: "change orders awaiting decision", to: "change-requests", tone: "warning" },
-    { key: "inspections", count: snapshot?.inspections.failed ?? 0, label: "failed inspections", to: "inspections", tone: "danger" },
+    { key: "approvals", count: ops?.pendingApprovals ?? 0, label: "pending approvals", to: "approvals?status=Pending", tag: "Review", area: "Approvals", },
+    { key: "changes", count: submittedChanges, label: "change orders awaiting decision", to: "change-requests", tag: "Review", area: "Change requests", },
+    { key: "inspections", count: snapshot?.inspections.failed ?? 0, label: "failed inspections", to: "inspections", tag: "Blocking", area: "Inspections", },
     // An expired permit and one expiring in a month are different problems; the
     // tile used to call both "permits expiring" (finding #10).
-    { key: "permits-expired", count: ops?.expiredPermits ?? 0, label: "permits expired", to: "permits", tone: "danger" },
-    { key: "permits", count: ops?.expiringPermits ?? 0, label: "permits expiring within 30 days", to: "permits", tone: "warning" },
-    { key: "overdue-tasks", count: ops?.overdueTasks ?? 0, label: "overdue tasks", to: "tasks", tone: "danger" },
+    { key: "permits-expired", count: ops?.expiredPermits ?? 0, label: "permits expired", to: "permits", tag: "Blocking", area: "Permits", },
+    { key: "permits", count: ops?.expiringPermits ?? 0, label: "permits expiring within 30 days", to: "permits", tag: "Due soon", area: "Permits", },
+    { key: "overdue-tasks", count: ops?.overdueTasks ?? 0, label: "overdue tasks", to: "tasks", tag: "Blocking", area: "Tasks", },
     {
       key: "delayed",
       count: snapshot?.schedule.delayedActivities?.count ?? 0,
       label: delayedLabel(snapshot?.schedule.delayedActivities ?? null),
       to: "schedules/activities?delayed=1",
-      tone: "danger",
+      tag: "Blocking", area: "Programme",
     },
-    { key: "late-orders", count: ops?.lateMaterialOrders ?? 0, label: "material orders late", to: "materials?late=late", tone: "danger" },
-    { key: "material-approvals", count: ops?.pendingMaterialApprovals ?? 0, label: "material approvals pending", to: "material-approvals", tone: "warning" },
-    { key: "invoices", count: snapshot?.finance.invoices.overdueCount ?? 0, label: "overdue invoices", to: `${BUDGET_INVOICES_PATH}?tab=invoices&status=Overdue`, tone: "danger" },
-    { key: "key-dates", count: countMissedKeyDates(keyDates, today), label: "missed key dates", to: "schedules/key-dates", tone: "danger" },
-    { key: "risks", count: snapshot?.risks.high ?? 0, label: "high risks", to: "#risk-factors", tone: "warning" },
+    { key: "late-orders", count: ops?.lateMaterialOrders ?? 0, label: "material orders late", to: "materials?late=late", tag: "Blocking", area: "Materials", },
+    { key: "material-approvals", count: ops?.pendingMaterialApprovals ?? 0, label: "material approvals pending", to: "material-approvals", tag: "Review", area: "Materials", },
+    { key: "invoices", count: snapshot?.finance.invoices.overdueCount ?? 0, label: "overdue invoices", to: `${BUDGET_INVOICES_PATH}?tab=invoices&status=Overdue`, tag: "Blocking", area: "Finance", },
+    { key: "key-dates", count: countMissedKeyDates(keyDates, today), label: "missed key dates", to: "schedules/key-dates", tag: "Blocking", area: "Key dates", },
+    { key: "risks", count: snapshot?.risks.high ?? 0, label: "high risks", to: "#risk-factors", tag: "Review", area: "Risks", },
     {
       key: "stale",
       count: staleDays !== null && staleDays >= STALE_UPDATE_DAYS ? staleDays : 0,
       label: "days without a site update",
       to: "updates",
-      tone: "warning",
+      tag: "Due soon", area: "Site updates",
     },
   ];
   return items.filter((i) => i.count > 0);
 }
 
-const ROW_CLASS = "flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] text-black-500 hover:bg-gray-50";
-
 function AttentionRow({ item, projectId }: { item: AttentionItem; projectId: string }) {
   const body = (
     <>
-      <Badge tone={item.tone} size="sm" className="min-w-[28px] justify-center tabular-nums">
-        {item.count}
-      </Badge>
-      <span className="flex-1 truncate">{item.label}</span>
-      <ChevronRightIcon className="size-4 shrink-0 text-black-300" />
+      <div className="min-w-0">
+        <span
+          className={cn(
+            "inline-flex h-[20px] items-center rounded-full border px-[8px] text-[12px] font-medium leading-[16px]",
+            TAG_STYLE[item.tag],
+          )}
+        >
+          {item.tag}
+        </span>
+        <p className="mt-[8px] truncate text-[14px] leading-[20px] text-[#1E1E1E]">
+          <span className="tabular-nums">{item.count}</span> {item.label}
+        </p>
+        <p className="text-[12px] leading-[16px] text-[#737373]">{item.area}</p>
+      </div>
+      <ChevronRightIcon className="size-[16px] shrink-0 text-[#1E1E1E]" />
     </>
   );
+  const rowClass =
+    "flex items-center justify-between gap-3 border-b border-[#EEEEEE] px-[14px] pb-[10px] pt-[11px] hover:bg-[#FAFAFA]";
   // A hash target is a panel on this page; a plain anchor scrolls to it, a router Link does not.
   return (
-    <li>
+    <li className="last:[&>*]:border-b-0">
       {item.to.startsWith("#") ? (
-        <a href={item.to} className={ROW_CLASS}>{body}</a>
+        <a href={item.to} className={rowClass}>{body}</a>
       ) : (
-        <Link to={`/project/${projectId}/${item.to}`} className={ROW_CLASS}>{body}</Link>
+        <Link to={`/project/${projectId}/${item.to}`} className={rowClass}>{body}</Link>
       )}
     </li>
   );
@@ -133,6 +156,7 @@ export function NeedsAttentionCard({ projectId, className }: { projectId: string
   const rfis = useProjectRfis(projectId);
   const keyDates = useKeyDates(projectId);
   const changes = useChangeRequestSummary(projectId);
+  const [expanded, setExpanded] = useState(false);
   const isPending = snapshot.isPending || rfis.isPending || keyDates.isPending || changes.isPending;
 
   const items = isPending
@@ -143,20 +167,30 @@ export function NeedsAttentionCard({ projectId, className }: { projectId: string
         keyDates: keyDates.data ?? [],
         submittedChanges: changes.data?.submitted ?? 0,
       });
+  const hasMore = items.length > COLLAPSED_LIMIT;
+  const visible = expanded ? items : items.slice(0, COLLAPSED_LIMIT);
 
   return (
-    <Card className={className}>
-      <div className="flex items-center justify-between py-3 px-5">
-        <h3 className="text-[13px] font-semibold text-black-300">Needs attention</h3>
-        {items.length > 0 ? (
-          <span className="text-[12px] text-black-300">{items.length} {items.length === 1 ? "item" : "items"}</span>
-        ) : null}
-      </div>
-      <div className="h-full px-2 pb-2">
-        {snapshot.error || rfis.error || keyDates.error || changes.error ? <QueryError
-          error={snapshot.error || rfis.error || keyDates.error || changes.error}
-          retry={() => Promise.all([snapshot.refetch(), rfis.refetch(), keyDates.refetch(), changes.refetch()])} noun="attention items" /> : isPending ? (
-          <div className="flex h-full min-h-[160px] items-center justify-center">
+    <OverviewCard
+      title="Attention Areas"
+      className={className}
+      action={
+        hasMore ? (
+          <CardHeaderButton onClick={() => setExpanded((open) => !open)}>
+            {expanded ? "Show Less" : "View All"}
+          </CardHeaderButton>
+        ) : null
+      }
+    >
+      <div className="flex flex-1 flex-col">
+        {snapshot.error || rfis.error || keyDates.error || changes.error ? (
+          <QueryError
+            error={snapshot.error || rfis.error || keyDates.error || changes.error}
+            retry={() => Promise.all([snapshot.refetch(), rfis.refetch(), keyDates.refetch(), changes.refetch()])}
+            noun="attention items"
+          />
+        ) : isPending ? (
+          <div className="flex min-h-[160px] flex-1 items-center justify-center">
             <Spinner size="md" />
           </div>
         ) : items.length === 0 ? (
@@ -167,13 +201,13 @@ export function NeedsAttentionCard({ projectId, className }: { projectId: string
           />
         ) : (
           <ul className="flex flex-col">
-            {items.map((item) => (
+            {visible.map((item) => (
               <AttentionRow key={item.key} item={item} projectId={projectId} />
             ))}
           </ul>
         )}
       </div>
-    </Card>
+    </OverviewCard>
   );
 }
 

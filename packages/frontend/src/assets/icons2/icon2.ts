@@ -49,6 +49,7 @@ import CalendarIcon from "@/assets/icons2/calendar.icon.svg";
 import ReorderIcon from "@/assets/icons2/reorder.icon.svg";
 import PDFIcon from "@/assets/icons2/pdf.icon.svg";
 import PNGIcon from "@/assets/icons2/png.icon.svg";
+import JPGIcon from "@/assets/icons2/jpg.svg";
 import MOVIcon from "@/assets/icons2/mov.icon.svg";
 import XLSXIcon from "@/assets/icons2/xls.icon.svg";
 import TXTIcon from "@/assets/icons2/txt.icon.svg";
@@ -59,6 +60,7 @@ import AmberDocIcon from "@/assets/icons2/amber-document.icon.svg";
 import PurpleDocIcon from "@/assets/icons2/purple-document.icon.svg";
 import GreenDocIcon from "@/assets/icons2/green-document.icon.svg";
 import EditTwoIcon from "@/assets/icons2/edit-2.icon.svg";
+import FileIcon from "@/assets/icons2/file.icon.svg";
 
 export const documentIcons = [
   BlueDocIcon,
@@ -120,6 +122,7 @@ export const icons2 = {
   reorder: ReorderIcon,
   pdf: PDFIcon,
   png: PNGIcon,
+  jpg: JPGIcon,
   mov: MOVIcon,
   xls: XLSXIcon,
   txt: TXTIcon,
@@ -131,4 +134,5 @@ export const icons2 = {
   greenDoc: GreenDocIcon,
   documentIcons,
   editTwo: EditTwoIcon,
+  file: FileIcon,
 };

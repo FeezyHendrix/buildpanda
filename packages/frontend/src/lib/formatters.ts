@@ -142,3 +142,25 @@ export function getInitials(name: string): string {
   if (parts.length === 1) return parts[0]![0]?.toUpperCase() ?? "";
   return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
 }
+
+/** Clock time of a chat message: 24-hour `12:24`, no seconds and no AM/PM. */
+export function formatClockTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(DATE_LOCALE, { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+/** Compact lowercase size as a chat attachment shows it: `812b`, `28kb`, `1.4mb`. */
+export function formatCompactFileSize(bytes: number): string {
+  if (bytes < 1024) return `${Math.max(0, Math.round(bytes))}b`;
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}kb`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}mb`;
+}
+
+/** Day heading above a run of messages: Today, Yesterday, then the full date. */
+export function formatDayHeading(iso: string, now = new Date()): string {
+  const day = new Date(iso);
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOf(now) - startOf(day)) / 86_400_000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return day.toLocaleDateString(DATE_LOCALE, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}

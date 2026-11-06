@@ -93,7 +93,7 @@ function Select({
                   value={label}
                   className={cn(
                     "w-full cursor-default bg-white border border-[#EBEBEB] px-4 py-3",
-                    "text-[14px] font-semibold text-[#1E1E1E] outline-none select-none",
+                    "text-caption-m font-semibold text-[#1E1E1E] outline-none select-none",
                     "data-[highlighted]:border-[#004DE7]/20 data-[highlighted]:bg-[#EEF3FF]",
                     "data-[selected]:text-[#004DE7]",
                   )}
