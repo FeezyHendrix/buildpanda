@@ -1,24 +1,35 @@
-import { NotFoundError, ValidationError } from "../../lib/errors.ts";
+import { config } from "../../config/index.ts";
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import {
-  type ApprovalsDeps,
-  notifyApprovalDecided,
-  notifyApprovalReviewer,
-} from "./notify.ts";
-import type { ApprovalsRepository, ApprovalUpdatePatch } from "./repository.ts";
+import { approvalAttachments, type AttachmentPick } from "./attachments.ts";
+import { approvalCategories, approverRules } from "./approvers.ts";
+import { type ApprovalsDeps, notifyApprovalDecided, notifyApprovalRequested } from "./notify.ts";
+import type { ApprovalsRepository, ApprovalUpdatePatch, AttachmentWithFile } from "./repository.ts";
 import {
   DECISION_STATUSES,
   type Approval,
   type ApprovalAttachment,
-  type ApprovalAttachmentRow,
   type ApprovalComment,
   type ApprovalCommentRow,
+  type ApprovalDecision,
+  type ApprovalDecisionRow,
   type ApprovalDetail,
+  type ApprovalListQuery,
+  type ApprovalPage,
+  type ApprovalRevision,
   type ApprovalRow,
   type ApprovalStatus,
+  type ApprovalViewer,
 } from "./types.ts";
 
 export type { ApprovalsDeps };
+
+export interface ApprovalProject {
+  id: string;
+  ownerId: string | null;
+  organizationId: string | null;
+  startDate: string | null;
+}
 
 export interface CreateApprovalInput {
   title: string;
@@ -30,7 +41,7 @@ export interface CreateApprovalInput {
   documentId?: string | null;
   documentVersionId?: string | null;
   sourceMarkupId?: string | null;
-  attachments?: { fileId: string }[];
+  attachments?: AttachmentPick[];
 }
 
 export interface UpdateApprovalInput {
@@ -45,16 +56,26 @@ export interface UpdateApprovalInput {
   requestedReviewerId?: string | null;
 }
 
-// What the form may attach (docs/approval-request-form-backend.md §2.2).
-const MAX_ATTACHMENTS = 5;
-const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-const ATTACHMENT_MIME_TYPES = new Set(["image/png", "image/jpeg", "application/pdf"]);
+export interface ResubmitApprovalInput {
+  description?: string | null;
+  descriptionHtml?: string | null;
+  attachments?: AttachmentPick[];
+}
+
 // The list shows this many chips and a "+N" for the rest.
 const LIST_ATTACHMENTS = 3;
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 50;
+const SETTLED: readonly ApprovalStatus[] = ["Approved", "Rejected"];
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-type AttachmentRows = Awaited<ReturnType<ApprovalsRepository["listAttachments"]>>;
+const fieldError = (field: string, message: string) => new ValidationError(message, { fields: { [field]: message } });
 
-function toApproval(row: ApprovalRow, commentCount: number, attachments: ApprovalAttachment[] = [], attachmentCount = attachments.length): Approval {
+function viewerCanDecide(row: ApprovalRow, viewer: ApprovalViewer): boolean {
+  return viewer.canDecide && (!row.requested_reviewer_id || row.requested_reviewer_id === viewer.id);
+}
+
+function toApproval(row: ApprovalRow, commentCount: number, viewer: ApprovalViewer, attachments: ApprovalAttachment[], attachmentCount: number): Approval {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -73,198 +94,264 @@ function toApproval(row: ApprovalRow, commentCount: number, attachments: Approva
     reviewedById: row.reviewed_by_id,
     reviewedByName: row.reviewed_by_name,
     reviewedAt: row.reviewed_at,
+    revision: row.revision,
     commentCount,
     attachments,
     attachmentCount,
+    viewerCanDecide: viewerCanDecide(row, viewer),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 function toComment(row: ApprovalCommentRow): ApprovalComment {
+  return { id: row.id, approvalId: row.approval_id, authorId: row.author_id, authorName: row.author_name, body: row.body, createdAt: row.created_at };
+}
+
+function toDecision(row: ApprovalDecisionRow): ApprovalDecision {
   return {
     id: row.id,
-    approvalId: row.approval_id,
-    authorId: row.author_id,
-    authorName: row.author_name,
-    body: row.body,
-    createdAt: row.created_at,
+    decision: row.decision,
+    note: row.note,
+    noteHtml: row.note_html,
+    actorId: row.actor_id,
+    actorName: row.actor_name ?? null,
+    decidedAt: row.decided_at,
+    revision: row.revision,
   };
 }
 
+function decisionRow(approvalId: string, decision: ApprovalStatus, note: string | null, noteHtml: string | null, actorId: string, revision: number): ApprovalDecisionRow {
+  return { id: generateId("aprd"), approval_id: approvalId, decision, note, note_html: noteHtml, actor_id: actorId, decided_at: new Date().toISOString(), revision };
+}
+
 export function approvalsService(repository: ApprovalsRepository, deps: ApprovalsDeps = {}) {
-  async function presign(rows: AttachmentRows): Promise<ApprovalAttachment[]> {
+  const files = approvalAttachments(repository, deps);
+  const { approvers, reviewerOrDeciders } = approverRules(repository);
+
+  async function found(projectId: string, approvalId: string): Promise<ApprovalRow> {
+    const row = await repository.findById(approvalId);
+    if (!row || row.project_id !== projectId) throw new NotFoundError("Approval");
+    return row;
+  }
+
+  async function present(rows: ApprovalRow[], viewer: ApprovalViewer, limit: number): Promise<Approval[]> {
+    const ids = rows.map((r) => r.id);
+    const [counts, attachments] = await Promise.all([repository.commentCounts(ids), files.rowsFor(ids)]);
     return Promise.all(
-      rows.map(async (a) => ({
-        id: a.id,
-        fileName: a.file.file_name,
-        mimeType: a.file.mime_type,
-        sizeBytes: Number(a.file.size_bytes),
-        url: deps.files ? await deps.files.presignViewUrl(a.file) : "",
-      })),
+      rows.map(async (r) => {
+        const a = await files.current(attachments.get(r.id), r.revision, viewer.canOpenFiles, limit);
+        return toApproval(r, counts.get(r.id) ?? 0, viewer, a.attachments, a.count);
+      }),
     );
   }
 
-  // Attachments for a page of approvals in one query, capped per approval for the list.
-  async function attachmentsFor(approvalIds: string[], limit = Infinity) {
-    const rows = await repository.listAttachments(approvalIds);
-    const byApproval = new Map<string, AttachmentRows>();
-    for (const r of rows) byApproval.set(r.approval_id, [...(byApproval.get(r.approval_id) ?? []), r]);
-    const out = new Map<string, { attachments: ApprovalAttachment[]; count: number }>();
-    for (const [id, list] of byApproval) {
-      out.set(id, { attachments: await presign(list.slice(0, limit)), count: list.length });
+  function checkDueDate(dueDate: string | null | undefined, project: ApprovalProject): void {
+    if (!dueDate) return;
+    const day = dueDate.slice(0, 10);
+    if (!ISO_DAY.test(day) || Number.isNaN(Date.parse(`${day}T00:00:00Z`))) throw fieldError("dueDate", "Use a date in yyyy-mm-dd form");
+    if (project.startDate && day < project.startDate.slice(0, 10)) throw fieldError("dueDate", "The decision date is before the project starts");
+  }
+
+  async function revisions(row: ApprovalRow, rows: AttachmentWithFile[], decisions: ApprovalDecisionRow[], viewer: ApprovalViewer): Promise<ApprovalRevision[]> {
+    const out: ApprovalRevision[] = [];
+    for (let revision = 1; revision <= row.revision; revision += 1) {
+      const submitted = revision === 1 ? row.created_at : decisions.find((d) => d.revision === revision && d.decision === "Pending")?.decided_at;
+      const decided = [...decisions].reverse().find((d) => d.revision === revision && d.decision !== "Pending");
+      out.push({
+        revision,
+        submittedAt: submitted ?? row.created_at,
+        attachments: await files.present(rows.filter((a) => a.revision === revision), viewer.canOpenFiles),
+        decision: decided?.decision ?? null,
+        decisionNote: decided?.note ?? null,
+      });
     }
     return out;
   }
 
-  // The UI checks are convenience; this is the rule. Errors name the file.
-  async function attachmentRows(
-    projectId: string,
-    approvalId: string,
-    userId: string,
-    picked: { fileId: string }[],
-  ): Promise<ApprovalAttachmentRow[]> {
-    if (picked.length === 0) return [];
-    const fields = (attachments: string) => ({ fields: { attachments } });
-    if (picked.length > MAX_ATTACHMENTS) {
-      throw new ValidationError(`At most ${MAX_ATTACHMENTS} attachments per request`, fields("too_many"));
-    }
-    const ids = picked.map((p) => p.fileId);
-    if (new Set(ids).size !== ids.length) throw new ValidationError("The same file is attached twice", fields("duplicate"));
-    if (!deps.files) throw new ValidationError("File upload is not switched on for approvals", fields("unavailable"));
-    const files = new Map((await deps.files.findRows(ids)).map((f) => [f.id, f]));
-    const taken = new Set(await repository.attachedFileIds(ids));
-    const now = new Date().toISOString();
-    return ids.map((fileId, position) => {
-      const f = files.get(fileId);
-      if (!f || f.project_id !== projectId || f.owner_id !== userId) {
-        throw new ValidationError("That file is not one you uploaded to this project", fields(fileId));
-      }
-      // shortcut: trusts the mime type recorded at upload, sniff the bytes if a mislabelled file ever gets through.
-      if (!ATTACHMENT_MIME_TYPES.has(f.mime_type)) {
-        throw new ValidationError(`${f.file_name}: only PNG, JPG or PDF files can be attached`, fields(fileId));
-      }
-      if (Number(f.size_bytes) > MAX_ATTACHMENT_BYTES) {
-        throw new ValidationError(`${f.file_name}: attachments must be 10 MB or smaller`, fields(fileId));
-      }
-      if (taken.has(fileId)) throw new ValidationError(`${f.file_name} is already attached to another request`, fields(fileId));
-      return { id: generateId("apra"), approval_id: approvalId, file_id: fileId, position, created_by: userId, created_at: now };
-    });
-  }
-
   return {
-    async list(projectId: string, status?: ApprovalStatus): Promise<Approval[]> {
-      const rows = await repository.listByProject(projectId, status);
-      const ids = rows.map((r) => r.id);
-      const [counts, attachments] = await Promise.all([repository.commentCounts(ids), attachmentsFor(ids, LIST_ATTACHMENTS)]);
-      return rows.map((r) => {
-        const a = attachments.get(r.id);
-        return toApproval(r, counts.get(r.id) ?? 0, a?.attachments, a?.count);
-      });
+    approvers,
+
+    async list(projectId: string, viewer: ApprovalViewer, status?: ApprovalStatus): Promise<Approval[]> {
+      return present(await repository.listByProject(projectId, status), viewer, LIST_ATTACHMENTS);
     },
 
-    async get(projectId: string, approvalId: string): Promise<ApprovalDetail> {
-      const row = await repository.findById(approvalId);
-      if (!row || row.project_id !== projectId) throw new NotFoundError("Approval");
-      const [comments, attachments] = await Promise.all([repository.listComments(approvalId), attachmentsFor([approvalId])]);
-      const a = attachments.get(approvalId);
-      return { ...toApproval(row, comments.length, a?.attachments, a?.count), comments: comments.map(toComment) };
+    async page(projectId: string, query: ApprovalListQuery, viewer: ApprovalViewer): Promise<ApprovalPage> {
+      const page = Math.max(1, query.page ?? 1);
+      const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, query.pageSize ?? DEFAULT_PAGE_SIZE));
+      const [{ rows, total }, counts] = await Promise.all([
+        repository.search(projectId, query, viewer, config.timezone, page, pageSize),
+        repository.counts(projectId, viewer),
+      ]);
+      return { items: await present(rows, viewer, LIST_ATTACHMENTS), total, page, pageSize, counts };
     },
 
-    async create(projectId: string, input: CreateApprovalInput, userId: string): Promise<Approval> {
+    async get(projectId: string, approvalId: string, viewer: ApprovalViewer): Promise<ApprovalDetail> {
+      const row = await found(projectId, approvalId);
+      const [comments, attachments, decisions] = await Promise.all([
+        repository.listComments(approvalId),
+        files.rowsFor([approvalId]),
+        repository.listDecisions(approvalId),
+      ]);
+      const rows = attachments.get(approvalId) ?? [];
+      const a = await files.current(rows, row.revision, viewer.canOpenFiles);
+      return {
+        ...toApproval(row, comments.length, viewer, a.attachments, a.count),
+        comments: comments.map(toComment),
+        decisions: decisions.map(toDecision),
+        revisions: await revisions(row, rows, decisions, viewer),
+      };
+    },
+
+    async create(project: ApprovalProject, input: CreateApprovalInput, userId: string, viewer: ApprovalViewer): Promise<Approval> {
+      const title = input.title.trim();
+      if (!title) throw fieldError("title", "Say what needs approval");
+      checkDueDate(input.dueDate, project);
+      const recipients = await reviewerOrDeciders(project, input.requestedReviewerId);
       const id = generateId("apr");
-      const attachments = await attachmentRows(projectId, id, userId, input.attachments ?? []);
-      const row = await repository.create({
-        id,
-        project_id: projectId,
-        title: input.title,
-        category: input.category ?? null,
-        description: input.description ?? null,
-        description_html: input.descriptionHtml ?? null,
-        status: "Pending",
-        due_date: input.dueDate ?? null,
-        submitted_by_id: userId,
-        requested_reviewer_id: input.requestedReviewerId ?? null,
-        document_id: input.documentId ?? null,
-        document_version_id: input.documentVersionId ?? null,
-        source_markup_id: input.sourceMarkupId ?? null,
-      }, attachments);
-      notifyApprovalReviewer(deps, row.requested_reviewer_id, projectId, row.title, userId, row.id);
-      const a = (await attachmentsFor([id])).get(id);
-      return toApproval(row, 0, a?.attachments, a?.count);
+      const attachments = await files.validate(project.id, id, userId, input.attachments ?? [], 1);
+      const row = await repository.create(
+        {
+          id,
+          project_id: project.id,
+          title,
+          category: input.category ?? null,
+          description: input.description ?? null,
+          description_html: input.descriptionHtml ?? null,
+          status: "Pending",
+          due_date: input.dueDate ?? null,
+          submitted_by_id: userId,
+          requested_reviewer_id: input.requestedReviewerId ?? null,
+          document_id: input.documentId ?? null,
+          document_version_id: input.documentVersionId ?? null,
+          source_markup_id: input.sourceMarkupId ?? null,
+        },
+        attachments,
+      );
+      const [created] = await present([row], viewer, LIST_ATTACHMENTS);
+      notifyApprovalRequested(deps, recipients, project.id, { id, title, dueDate: row.due_date, attachmentCount: created!.attachmentCount }, userId);
+      return created!;
     },
 
-    async update(
-      projectId: string,
-      approvalId: string,
-      input: UpdateApprovalInput,
-      userId: string,
-    ): Promise<Approval> {
-      const existing = await repository.findById(approvalId);
-      if (!existing || existing.project_id !== projectId) throw new NotFoundError("Approval");
+    async update(project: ApprovalProject, approvalId: string, input: UpdateApprovalInput, userId: string, viewer: ApprovalViewer): Promise<Approval> {
+      const existing = await found(project.id, approvalId);
+      const editsRecord = [input.title, input.category, input.description, input.descriptionHtml, input.dueDate, input.requestedReviewerId].some((v) => v !== undefined);
+      // A settled approval is a record of what was decided; it is reopened, not rewritten.
+      if (editsRecord && SETTLED.includes(existing.status) && input.status !== "Pending") {
+        throw new ConflictError("This approval has been decided. Set it back to Pending to change the request.");
+      }
 
       const patch: ApprovalUpdatePatch = { updated_at: new Date().toISOString() };
-      if (input.title !== undefined) patch.title = input.title;
+      if (input.title !== undefined) {
+        patch.title = input.title.trim();
+        if (!patch.title) throw fieldError("title", "Say what needs approval");
+      }
       if (input.category !== undefined) patch.category = input.category;
       if (input.description !== undefined) patch.description = input.description;
       if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
       if (input.response !== undefined) patch.response = input.response;
       if (input.responseHtml !== undefined) patch.response_html = input.responseHtml;
-      if (input.dueDate !== undefined) patch.due_date = input.dueDate;
+      if (input.dueDate !== undefined) {
+        checkDueDate(input.dueDate, project);
+        patch.due_date = input.dueDate;
+      }
+      let newReviewer: string[] = [];
       if (input.requestedReviewerId !== undefined) {
         patch.requested_reviewer_id = input.requestedReviewerId;
         if (input.requestedReviewerId && input.requestedReviewerId !== existing.requested_reviewer_id) {
-          notifyApprovalReviewer(deps, input.requestedReviewerId, projectId, input.title ?? existing.title, userId, existing.id);
+          newReviewer = await reviewerOrDeciders(project, input.requestedReviewerId);
         }
       }
 
-      if (input.status !== undefined) {
+      let decision: ApprovalDecisionRow | undefined;
+      if (input.status !== undefined && input.status !== existing.status) {
         // Sending work back without saying why is not a decision anyone can act on.
         const note = input.response !== undefined ? input.response : existing.response;
         if ((input.status === "Rejected" || input.status === "Resubmit") && !note?.trim()) {
-          throw new ValidationError("A note is required to reject or request changes", { fields: { response: "required" } });
+          throw fieldError("response", "A note is required to reject or request changes");
         }
         patch.status = input.status;
-        // Stamp the reviewer when a decision is made; clear when reset to Pending.
-        if (
-          DECISION_STATUSES.includes(input.status) &&
-          !DECISION_STATUSES.includes(existing.status)
-        ) {
-          patch.reviewed_at = new Date().toISOString();
+        const noteHtml = input.responseHtml !== undefined ? input.responseHtml : existing.response_html;
+        decision = decisionRow(approvalId, input.status, note ?? null, noteHtml ?? null, userId, existing.revision);
+        if (DECISION_STATUSES.includes(input.status)) {
+          patch.reviewed_at = decision.decided_at;
           patch.reviewed_by_id = userId;
-          notifyApprovalDecided(deps, existing.submitted_by_id, projectId, existing.title, input.status, userId, existing.id);
-        } else if (input.status === "Pending") {
+          notifyApprovalDecided(deps, existing.submitted_by_id, project.id, existing.title, input.status, userId, existing.id);
+        } else {
+          // Back to Pending: clear the decision stamp and restart decision chasing from level one.
           patch.reviewed_at = null;
           patch.reviewed_by_id = null;
-          if (existing.status !== "Pending") {
-            // Reopening restarts decision chasing from level one.
-            patch.reminder_level = null;
-            patch.last_reminded_at = null;
-          }
+          patch.reminder_level = null;
+          patch.last_reminded_at = null;
         }
       }
 
-      const updated = await repository.update(approvalId, patch);
+      const updated = await repository.update(approvalId, patch, decision);
       if (!updated) throw new NotFoundError("Approval");
-      const [counts, attachments] = await Promise.all([repository.commentCounts([approvalId]), attachmentsFor([approvalId])]);
-      const a = attachments.get(approvalId);
-      return toApproval(updated, counts.get(approvalId) ?? 0, a?.attachments, a?.count);
+      const [result] = await present([updated], viewer, LIST_ATTACHMENTS);
+      if (newReviewer.length > 0) {
+        notifyApprovalRequested(deps, newReviewer, project.id, { id: updated.id, title: updated.title, dueDate: updated.due_date, attachmentCount: result!.attachmentCount }, userId);
+      }
+      return result!;
+    },
+
+    /** The requester answers "changes requested" with a new revision; the reviewer gets it again. */
+    async resubmit(project: ApprovalProject, approvalId: string, input: ResubmitApprovalInput, userId: string, viewer: ApprovalViewer): Promise<Approval> {
+      const existing = await found(project.id, approvalId);
+      if (existing.submitted_by_id !== userId) throw new ForbiddenError("Only the requester can resubmit this approval");
+      if (existing.status !== "Resubmit") throw new ConflictError("Only an approval with changes requested can be resubmitted");
+      const revision = existing.revision + 1;
+      let attachments = await files.validate(project.id, approvalId, userId, input.attachments ?? [], revision);
+      if (input.attachments === undefined) {
+        // Nothing said about files: the previous revision's set carries forward.
+        const previous = ((await files.rowsFor([approvalId])).get(approvalId) ?? []).filter((a) => a.revision === existing.revision);
+        attachments = previous.map((a) => ({ ...a, id: generateId("apra"), revision, created_by: userId, created_at: new Date().toISOString(), file: undefined, current_version_id: undefined }) as never);
+      }
+      const patch: ApprovalUpdatePatch = {
+        status: "Pending",
+        revision,
+        response: null,
+        response_html: null,
+        reviewed_at: null,
+        reviewed_by_id: null,
+        reminder_level: null,
+        last_reminded_at: null,
+        updated_at: new Date().toISOString(),
+      };
+      if (input.description !== undefined) patch.description = input.description;
+      if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
+      const updated = await repository.resubmit(approvalId, patch, attachments, decisionRow(approvalId, "Pending", null, null, userId, revision));
+      if (!updated) throw new NotFoundError("Approval");
+      const [result] = await present([updated], viewer, LIST_ATTACHMENTS);
+      const recipients = await reviewerOrDeciders(project, updated.requested_reviewer_id);
+      notifyApprovalRequested(deps, recipients, project.id, { id: updated.id, title: updated.title, dueDate: updated.due_date, attachmentCount: result!.attachmentCount, resubmitted: true }, userId);
+      return result!;
+    },
+
+    /** Add or remove files while the request is still Pending; a decided revision is never rewritten. */
+    async changeAttachments(project: ApprovalProject, approvalId: string, change: { add?: AttachmentPick[]; remove?: string[] }, userId: string, viewer: ApprovalViewer): Promise<Approval> {
+      const existing = await found(project.id, approvalId);
+      if (existing.status !== "Pending") throw new ConflictError("Attachments can only change while the approval is pending");
+      const current = ((await files.rowsFor([approvalId])).get(approvalId) ?? []).filter((a) => a.revision === existing.revision);
+      const remove = (change.remove ?? []).filter((id) => current.some((a) => a.id === id));
+      const kept = current.length - remove.length;
+      const added = await files.validate(project.id, approvalId, userId, change.add ?? [], existing.revision);
+      if (kept + added.length > 5) throw fieldError("attachments", "At most 5 attachments per request");
+      added.forEach((a, i) => (a.position = kept + i));
+      await repository.removeAttachments(approvalId, remove);
+      await repository.addAttachments(added);
+      const [result] = await present([existing], viewer, LIST_ATTACHMENTS);
+      return result!;
     },
 
     async remove(projectId: string, approvalId: string): Promise<void> {
-      const existing = await repository.findById(approvalId);
-      if (!existing || existing.project_id !== projectId) throw new NotFoundError("Approval");
+      const existing = await found(projectId, approvalId);
+      if (SETTLED.includes(existing.status)) throw new ConflictError("A decided approval is a record and cannot be deleted");
       await repository.remove(approvalId);
     },
 
-    async addComment(
-      projectId: string,
-      approvalId: string,
-      body: string,
-      author: { id: string; name: string },
-    ): Promise<ApprovalComment> {
-      const existing = await repository.findById(approvalId);
-      if (!existing || existing.project_id !== projectId) throw new NotFoundError("Approval");
+    async addComment(projectId: string, approvalId: string, body: string, author: { id: string; name: string }): Promise<ApprovalComment> {
+      await found(projectId, approvalId);
       const row = await repository.addComment({
         id: generateId("aprc"),
         approval_id: approvalId,
@@ -275,6 +362,9 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
       });
       return toComment(row);
     },
+
+    categories: (projectId: string) => approvalCategories(repository).list(projectId),
+    replaceCategories: (projectId: string, names: string[]) => approvalCategories(repository).replace(projectId, names),
   };
 }
 

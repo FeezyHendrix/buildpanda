@@ -869,7 +869,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_open_items", "Get the open items needing attention across RFIs, client approvals and material approval requests — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', 'what is pending sign-off', or 'which materials are awaiting approval'."), async (ctx) => {
+    tool(fn("get_open_items", "Get the open items needing attention across RFIs, approvals (client sign-offs, with who they are waiting on and for how long) and material approval requests — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', 'what is pending sign-off', or 'which materials are awaiting approval'."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const now = Date.now();
       const overdue = (d: unknown): boolean => Boolean(d) && new Date(d as string).getTime() < now;
@@ -885,7 +885,7 @@ export function buildTools(): AgentTool[] {
       return {
         output: {
           rfis: rfis.map((r) => ({ title: r.title, status: r.status, priority: r.priority, dueDate: r.due_date, overdue: overdue(r.due_date) })),
-          approvals: may("approvals") ? approvals.filter((a) => a.kind !== "material").map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })) : [],
+          approvals: may("approvals") ? approvals.filter((a) => a.kind !== "material").map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, waitingOn: a.requestedReviewer ?? "anyone who can approve", waitingDays: Math.floor((now - new Date(a.created_at as string).getTime()) / 86_400_000), attachmentCount: Number(a.attachmentCount ?? 0), dueDate: a.due_date, overdue: overdue(a.due_date) })) : [],
           materialApprovals: may("materialApprovals") ? approvals.filter((a) => a.kind === "material").map((a) => ({ title: a.title, material: a.materialName, quantity: a.materialQuantity, unit: a.materialUnit, supplier: a.materialSupplier, neededBy: a.materialNeededBy, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })) : [],
           notPermitted: withheld,
         },

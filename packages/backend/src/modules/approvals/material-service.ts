@@ -91,6 +91,8 @@ function toMaterialApproval(
     commentCount,
     attachments: [],
     attachmentCount: 0,
+    revision: row.revision,
+    viewerCanDecide: false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...toDetails(details),
