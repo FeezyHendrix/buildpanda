@@ -87,8 +87,9 @@ export function approvalAttachments(repository: ApprovalsRepository, deps: Appro
           if (!f || f.project_id !== projectId || f.owner_id !== userId) {
             throw new ValidationError("That file is not one you uploaded to this project", fields(pick.fileId));
           }
-          // shortcut: trusts the mime type recorded at upload, sniff the bytes if a mislabelled file ever gets through.
-          if (!ATTACHMENT_MIME_TYPES.has(f.mime_type)) {
+          // The bytes decide, not the name or the label the browser sent.
+          const sniffed = await deps.files!.sniffMimeType(f);
+          if (!sniffed || !ATTACHMENT_MIME_TYPES.has(sniffed)) {
             throw new ValidationError(`${f.file_name}: only PNG, JPG or PDF files can be attached`, fields(pick.fileId));
           }
           if (Number(f.size_bytes) > MAX_ATTACHMENT_BYTES) {

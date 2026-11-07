@@ -16,6 +16,7 @@ import { registerLifecycleEmailWorker } from "../modules/lifecycle/index.ts";
 import { registerDecisionChasingWorker } from "../modules/lifecycle/decision-chasing-job.ts";
 import { registerProposalExpiryWorker } from "../modules/proposals/expiry-job.ts";
 import { registerRfiReminderWorker } from "../modules/rfis/reminder-job.ts";
+import { registerOrphanFileWorker } from "../modules/files/orphan-sweep.ts";
 import { registerBimProcessingWorker } from "../modules/bim/job.ts";
 import { registerBoqImportWorker } from "../modules/materials-equipment/boq-job.ts";
 import { registerProgrammeImportWorker } from "../modules/panda-ai/programme/job.ts";
@@ -59,6 +60,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerPermitExpiryWorker(fastify.db, manager);
     registerComplianceExpiryWorker(fastify.db, manager);
     registerKeyDateReminderWorker(fastify.db, manager);
+    registerOrphanFileWorker(fastify.db, manager, fastify.log);
     registerLifecycleEmailWorker(fastify.db, manager);
     registerDecisionChasingWorker(fastify.db, manager, fastify.log);
     registerWeatherImpactWorker(fastify.db, manager, fastify.log);

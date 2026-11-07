@@ -97,6 +97,11 @@ function harness(files: UploadedFileRow[], taken: string[] = []) {
       async presignViewUrl(row: UploadedFileRow) {
         return `signed:${row.id}`;
       },
+      // The fake "storage": an .html file holds HTML whatever its label says.
+      async sniffMimeType(row: UploadedFileRow) {
+        if (row.file_name.endsWith(".html")) return null;
+        return row.mime_type === "image/png" || row.mime_type === "image/jpeg" || row.mime_type === "application/pdf" ? row.mime_type : null;
+      },
     },
   });
   return { service, attachments, decisions };
@@ -125,6 +130,7 @@ test("create rejects files the caller cannot attach, before writing anything", a
     ["another project's file", [file("f1", { project_id: "prj_2" })], ["f1"], /not one you uploaded/],
     ["unknown file", [], ["f9"], /not one you uploaded/],
     ["wrong type", [file("f1", { mime_type: "text/html" })], ["f1"], /only PNG, JPG or PDF/],
+    ["mislabelled bytes", [file("f1", { mime_type: "image/png", file_name: "really.html" })], ["f1"], /only PNG, JPG or PDF/],
     ["too big", [file("f1", { size_bytes: 11 * 1024 * 1024 })], ["f1"], /10 MB/],
     ["duplicate", [file("f1")], ["f1", "f1"], /attached twice/],
     ["too many", [1, 2, 3, 4, 5, 6].map((n) => file(`f${n}`)), [1, 2, 3, 4, 5, 6].map((n) => `f${n}`), /At most 5/],

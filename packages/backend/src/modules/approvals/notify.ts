@@ -4,7 +4,7 @@ import type { NotificationsService } from "../notifications/service.ts";
 
 export interface ApprovalsDeps {
   notifications?: Pick<NotificationsService, "notify">;
-  files?: Pick<FilesService, "findRows" | "presignViewUrl">;
+  files?: Pick<FilesService, "findRows" | "presignViewUrl" | "sniffMimeType">;
   documents?: Pick<DocumentsService, "resolveVersionFile">;
 }
 
