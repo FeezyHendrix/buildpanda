@@ -12,7 +12,7 @@ import {
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PendingInvitesBanner } from "@/components/molecules/pending-invites-banner";
 import { NumberedPagination } from "@/components/molecules/numbered-pagination";
-import { useProjects } from "@/hooks/use-projects";
+import { useProjectPage } from "@/hooks/use-projects";
 import { useHasOrgPermission } from "@/hooks/use-organization";
 import { useSession } from "@/stores/auth";
 import emptyIcon from "@/assets/images/empty-dashboard.svg";
@@ -23,8 +23,6 @@ import { ProjectCard } from "./project-card";
 import {
   NO_PROJECT_FILTERS,
   isFiltering,
-  matchesProjectFilters,
-  sortProjects,
   type ProjectFilters,
   type ProjectSort,
 } from "./project-filters";
@@ -36,25 +34,41 @@ function getGreeting(hour: number): string {
 }
 
 const PAGE_SIZE = 12;
+const SORT_PARAM: Record<ProjectSort, "recent" | "name_asc" | "name_desc" | "newest" | "oldest"> = {
+  recent: "recent",
+  "name-asc": "name_asc",
+  "name-desc": "name_desc",
+  newest: "newest",
+  oldest: "oldest",
+};
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { data: projects, isPending } = useProjects();
   const { data: session } = useSession();
   const canCreateProject = useHasOrgPermission("project", "create");
   const [filters, setFilters] = useState<ProjectFilters>(NO_PROJECT_FILTERS);
   const [sort, setSort] = useState<ProjectSort>("recent");
   const [page, setPage] = useState(1);
+  // The server searches, filters by creation date, sorts and pages (docs/dashboard-page-backend.md).
+  const { data, isPending } = useProjectPage({
+    q: filters.search.trim() || undefined,
+    createdFrom: filters.from || undefined,
+    createdTo: filters.to || undefined,
+    sort: SORT_PARAM[sort],
+    page,
+    pageSize: PAGE_SIZE,
+  });
   const greeting = getGreeting(new Date().getHours());
   const firstName = (session?.user?.name ?? "").trim().split(" ")[0];
 
   if (isPending) return <LoadingSpinner />;
 
-  const list = projects ?? [];
+  const total = data?.total ?? 0;
+  const pageItems = data?.items ?? [];
 
-  if (list.length === 0) {
+  if (total === 0 && !isFiltering(filters)) {
     return canCreateProject ? (
       <DashboardEmptyState onCreate={() => navigate("/project/create")} />
     ) : (
@@ -62,11 +76,9 @@ export default function Dashboard() {
     );
   }
 
-  // Search, the date range and sort read the loaded list; the API has no paging yet.
-  const shown = sortProjects(list.filter((project) => matchesProjectFilters(project, filters)), sort);
-  const pageCount = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  const shown = pageItems;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
-  const pageItems = shown.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="mx-auto w-full max-w-[1080px] px-4 pb-12 pt-[52px] lg:px-10">
@@ -82,7 +94,7 @@ export default function Dashboard() {
             {firstName && <span className="text-black">, {firstName}</span>}
           </h5>
           <p className="mt-1 text-caption-m font-medium text-black-500 opacity-50">
-            {list.length} project{list.length !== 1 ? "s" : ""} available
+            {total} project{total !== 1 ? "s" : ""} available
           </p>
         </div>
 
@@ -158,7 +170,7 @@ export default function Dashboard() {
             <NumberedPagination
               page={currentPage}
               pageSize={PAGE_SIZE}
-              total={shown.length}
+              total={total}
               noun="Projects"
               onPageChange={setPage}
             />
