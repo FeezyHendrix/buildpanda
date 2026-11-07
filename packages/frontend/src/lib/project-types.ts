@@ -99,7 +99,10 @@ export interface ProjectPhase {
   id: string;
   name: string;
   status: PhaseStatus;
+  /** Display text; use startDate / endDate for anything that computes. */
   dateRange: string;
+  startDate: string | null;
+  endDate: string | null;
 }
 
 export type RfiStatus = "Draft" | "Open" | "InReview" | "Answered" | "Closed" | "Void";

@@ -38,7 +38,9 @@ function timelineBounds(timeline: ProjectPhase[]): { start: number; end: number 
   let start: number | null = null;
   let end: number | null = null;
   for (const phase of timeline) {
-    for (const part of phase.dateRange.split(/\s[–-]\s|\s+to\s+/)) {
+    // Real dates first; the display text is only parsed when the phase has none.
+    const parts = phase.startDate && phase.endDate ? [phase.startDate, phase.endDate] : phase.dateRange.split(/\s[–-]\s|\s+to\s+/);
+    for (const part of parts) {
       const t = toTime(part.trim());
       if (t === null) continue;
       if (start === null || t < start) start = t;

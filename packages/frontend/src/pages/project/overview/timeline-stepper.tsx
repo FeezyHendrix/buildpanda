@@ -5,6 +5,10 @@ import type { PhaseStatus, ProjectPhase } from "@/lib/project-types";
 /** "12 Nov 2026 – 11 Dec 2026" → two ends; anything else (template ranges) stays one string. */
 const RANGE_SPLIT = /\s[–-]\s|\s+to\s+/;
 
+function formatDay(iso: string): string {
+  return new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 function splitRange(dateRange: string): [string, string] | null {
   const parts = dateRange.split(RANGE_SPLIT).map((part) => part.trim());
   return parts.length === 2 && parts[0] && parts[1] ? [parts[0], parts[1]] : null;
@@ -28,7 +32,9 @@ function StepCaption({ phase }: { phase: ProjectPhase }) {
   if (phase.status === "InProgress") {
     return <p className="text-[12px] font-semibold leading-[15px] text-primary">In Progress</p>;
   }
-  const range = splitRange(phase.dateRange);
+  // Real dates when the phase has them; the display text otherwise (template ranges).
+  const range: [string, string] | null =
+    phase.startDate && phase.endDate ? [formatDay(phase.startDate), formatDay(phase.endDate)] : splitRange(phase.dateRange);
   if (!range) return <p className="text-[12px] leading-[15px] text-[#737373]">{phase.dateRange}</p>;
   return (
     <>
