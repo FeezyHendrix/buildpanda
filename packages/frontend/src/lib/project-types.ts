@@ -420,6 +420,9 @@ export interface ChangeRequest {
   timeImpactDays: number;
   currency: "NGN" | "USD";
   submittedById: string | null;
+  /** Who drafted it: submittedById is stamped at create and never changes. */
+  createdById: string | null;
+  createdByName: string | null;
   decidedById: string | null;
   decidedByName: string | null;
   assigneeId: string | null;

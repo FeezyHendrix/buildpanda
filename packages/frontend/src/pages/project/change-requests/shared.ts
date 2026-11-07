@@ -1,4 +1,4 @@
-import type { ChangeRequest, ChangeStatus } from "@/lib/project-types";
+import type { ChangeStatus } from "@/lib/project-types";
 import { CHANGE_TYPE_FILTERS, type ChangeTypeFilter } from "./time-claim-position";
 
 export type StatusFilter = ChangeStatus | "all";
@@ -45,17 +45,3 @@ export function hasAppliedFilters(values: ChangeFilterValues): boolean {
 }
 
 /** A cost range only means something in one currency, so rows in another never match it. */
-export function matchesChangeFilters(cr: ChangeRequest, values: ChangeFilterValues): boolean {
-  if (values.type !== "all" && cr.type !== values.type) return false;
-  const from = parseAmount(values.costFrom);
-  const to = parseAmount(values.costTo);
-  if (from === null && to === null) return true;
-  if (cr.currency !== values.currency) return false;
-  return (from === null || cr.costImpact >= from) && (to === null || cr.costImpact <= to);
-}
-
-export function matchesChangeSearch(cr: ChangeRequest, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return [cr.title, cr.description, cr.reason].some((text) => text?.toLowerCase().includes(q));
-}

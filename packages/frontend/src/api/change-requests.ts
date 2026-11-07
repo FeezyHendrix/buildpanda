@@ -27,6 +27,26 @@ export interface ChangeRequestInput {
   rfiId?: string | null;
   /** The delays a time claim is argued from; every one must be EOT-claimable. */
   delayIds?: string[];
+  /** Create and submit in one request ("Send for approval"). */
+  submit?: boolean;
+}
+
+export interface ChangeRequestPageQuery {
+  status?: ChangeStatus;
+  q?: string;
+  type?: ChangeType[];
+  currency?: string;
+  costFrom?: number;
+  costTo?: number;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ChangeRequestPage {
+  items: ChangeRequest[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 /**
@@ -58,6 +78,11 @@ export interface ChangeRequestBudgetLink {
 }
 
 export const changeRequestsApi = {
+  page: (projectId: string, query: ChangeRequestPageQuery) =>
+    api
+      .get<ChangeRequestPage>(`/projects/${projectId}/change-requests`, { params: { page: 1, ...query } })
+      .then((r) => r.data),
+
   list: (projectId: string, status?: ChangeStatus) =>
     api
       .get<ChangeRequest[]>(`/projects/${projectId}/change-requests`, {

@@ -239,6 +239,7 @@ export const changeRequestKeys = {
   all: (projectId: string) => ["projects", projectId, "change-requests"] as const,
   list: (projectId: string, status?: string) =>
     [...changeRequestKeys.all(projectId), "list", status ?? "all"] as const,
+  page: (projectId: string, query: unknown) => [...changeRequestKeys.all(projectId), "page", query] as const,
   detail: (projectId: string, changeId: string) =>
     [...changeRequestKeys.all(projectId), "detail", changeId] as const,
   summary: (projectId: string) => [...changeRequestKeys.all(projectId), "summary"] as const,

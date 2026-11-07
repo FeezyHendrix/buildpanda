@@ -1,15 +1,25 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   changeRequestsApi,
   type ChangeActionInput,
   type ChangeRequestBudgetLink,
   type ChangeRequestInput,
+  type ChangeRequestPageQuery,
   type ChangeRequestSummary,
 } from "@/api/change-requests";
 import { changeRequestKeys, financeKeys, keyDateKeys, stageKeys } from "./query-keys";
 import type { ChangeAction, ChangeStatus } from "@/lib/project-types";
 
 export type { ChangeActionInput, ChangeRequestInput, ChangeRequestBudgetLink, ChangeRequestSummary };
+
+export function useChangeRequestPage(projectId: string | undefined, query: ChangeRequestPageQuery) {
+  return useQuery({
+    queryKey: changeRequestKeys.page(projectId ?? "__none__", query),
+    queryFn: () => changeRequestsApi.page(projectId!, query),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
 
 export function useChangeRequests(projectId: string | undefined, status?: ChangeStatus) {
   return useQuery({
