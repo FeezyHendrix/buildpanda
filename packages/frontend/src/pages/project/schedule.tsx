@@ -12,6 +12,9 @@ import { useProjectActivities } from "@/hooks/use-activities";
 import { useKeyDates } from "@/hooks/use-key-dates";
 import { useStages } from "@/hooks/use-stages";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { activitiesApi } from "@/api/activities";
+import { errorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
 import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
@@ -67,29 +70,23 @@ export default function ProjectSchedule() {
     [activities, dailyLogs.length, milestones],
   );
 
-  function downloadReport(): void {
-    const payload = {
-      project: { id: project.id, name: project.name },
-      generatedAt: new Date().toISOString(),
-      report: {
-        ...report,
-        plannedStart: report.plannedStart?.toISOString() ?? null,
-        plannedEnd: report.plannedEnd?.toISOString() ?? null,
-        projectedEnd: report.projectedEnd?.toISOString() ?? null,
-      },
-      milestones,
-      activities,
-      dailyLogs,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-schedule-report.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const [exporting, setExporting] = useState(false);
+  // Export Programme is a real file from the server (docs/programme-of-work-backend.md §1).
+  async function downloadReport(format: "xlsx" | "xml" | "pdf" = "xlsx"): Promise<void> {
+    setExporting(true);
+    try {
+      const blob = await activitiesApi.exportProgramme(project.id, format, selectedBuildingId ?? undefined);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-programme.${format}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast(errorMessage(error, "Could not export the programme"), "error");
+    } finally {
+      setExporting(false);
+    }
   }
 
   const loggedToday = useMemo(
@@ -131,7 +128,7 @@ export default function ProjectSchedule() {
               Import programme
             </Button>
           )}
-          <Button variant="primary" onClick={downloadReport} className="h-[36px] gap-[8px] px-[16px] text-[14px] font-medium">
+          <Button variant="primary" onClick={() => void downloadReport()} loading={exporting} className="h-[36px] gap-[8px] px-[16px] text-[14px] font-medium">
             <Download className="size-[18px]" strokeWidth={1.5} />
             Export Programme
           </Button>
