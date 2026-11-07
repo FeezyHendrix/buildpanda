@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
-import type { ApprovalCommentRow, ApprovalRow, ApprovalStatus } from "./types.ts";
+import type { UploadedFileRow } from "../files/types.ts";
+import type { ApprovalAttachmentRow, ApprovalCommentRow, ApprovalRow, ApprovalStatus } from "./types.ts";
 
 export interface NewApprovalRecord {
   id: string;
@@ -90,8 +91,12 @@ export function approvalsRepository(db: Knex) {
       return new Map(rows.map((r) => [r.approval_id, Number(r.count)]));
     },
 
-    async create(record: NewApprovalRecord): Promise<ApprovalRow> {
-      await db("approvals").insert({ ...record, kind: "client" });
+    // The approval and its attachment rows land together or not at all.
+    async create(record: NewApprovalRecord, attachments: ApprovalAttachmentRow[] = []): Promise<ApprovalRow> {
+      await db.transaction(async (trx) => {
+        await trx("approvals").insert({ ...record, kind: "client" });
+        if (attachments.length > 0) await trx("approval_attachments").insert(attachments);
+      });
       const row = await this.findById(record.id);
       if (!row) throw new Error("Failed to insert approval");
       return row;
@@ -104,6 +109,21 @@ export function approvalsRepository(db: Knex) {
 
     async remove(id: string): Promise<void> {
       await db("approvals").where({ id, kind: "client" }).del();
+    },
+
+    listAttachments(approvalIds: string[]): Promise<(ApprovalAttachmentRow & { file: UploadedFileRow })[]> {
+      if (approvalIds.length === 0) return Promise.resolve([]);
+      return db("approval_attachments as aa")
+        .join("uploaded_files as f", "f.id", "aa.file_id")
+        .whereIn("aa.approval_id", approvalIds)
+        .orderBy(["aa.approval_id", "aa.position"])
+        .select("aa.*", db.raw("row_to_json(f.*) as file"));
+    },
+
+    async attachedFileIds(fileIds: string[]): Promise<string[]> {
+      if (fileIds.length === 0) return [];
+      const rows = await db("approval_attachments").whereIn("file_id", fileIds).select("file_id");
+      return rows.map((r) => r.file_id as string);
     },
 
     listComments(approvalId: string): Promise<ApprovalCommentRow[]> {

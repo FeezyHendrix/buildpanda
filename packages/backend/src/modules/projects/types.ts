@@ -57,7 +57,10 @@ export interface ProjectPhase {
   id: string;
   name: string;
   status: PhaseStatus;
+  /** Display text; use startDate / endDate for anything that computes. */
   dateRange: string;
+  startDate: string | null;
+  endDate: string | null;
 }
 
 export interface Project {
@@ -127,6 +130,8 @@ export interface ProjectPhaseRow {
   name: string;
   status: PhaseStatus;
   date_range: string | null;
+  start_date: Date | string | null;
+  end_date: Date | string | null;
   sort_order: number;
 }
 

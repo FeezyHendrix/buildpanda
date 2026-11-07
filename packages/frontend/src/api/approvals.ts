@@ -6,12 +6,8 @@ import type {
   ApprovalStatus,
 } from "@/lib/project-types";
 
-/**
- * Files on a new request. The server does not accept `attachments` yet (its
- * create schema rejects unknown fields), so uploads stay off until
- * docs/approvals-page-backend.md §2 ships; flip this then.
- */
-export const APPROVAL_ATTACHMENTS_ENABLED = false;
+/** Files on a new request: up to 5 PNG/JPG/PDF, 10 MB each (docs/approval-request-form-backend.md §2). */
+export const APPROVAL_ATTACHMENTS_ENABLED = true;
 
 export interface ApprovalCreateInput {
   title: string;

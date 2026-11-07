@@ -89,6 +89,8 @@ function toChange(
     timeImpactDays: row.time_impact_days,
     currency: row.currency,
     submittedById: row.submitted_by_id,
+    createdById: row.submitted_by_id,
+    createdByName: row.submitted_by_name ?? null,
     decidedById: row.decided_by_id,
     decidedByName: row.decided_by_name,
     decidedAt: row.decided_at,

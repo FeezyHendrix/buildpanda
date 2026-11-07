@@ -32,6 +32,10 @@ export interface Rfi {
   changeRequestId: string | null;
   reopenedCount: number;
   createdById: string | null;
+  createdByName: string | null;
+  /** Awaiting an answer past its due date, judged on the project's local day. */
+  isOverdue: boolean;
+  overdueDays: number;
   commentCount: number;
   createdAt: string;
   updatedAt: string;
@@ -102,6 +106,7 @@ export interface RfiRow {
   change_request_id: string | null;
   reopened_count: number;
   created_by_id: string | null;
+  created_by_name: string | null;
   created_at: string;
   updated_at: string;
 }

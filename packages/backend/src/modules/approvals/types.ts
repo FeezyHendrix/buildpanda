@@ -9,6 +9,15 @@ export const DECISION_STATUSES: readonly ApprovalStatus[] = ["Approved", "Reject
 export const APPROVAL_KINDS = ["client", "material"] as const;
 export type ApprovalKind = (typeof APPROVAL_KINDS)[number];
 
+export interface ApprovalAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  /** Short-lived view link. */
+  url: string;
+}
+
 export interface Approval {
   id: string;
   projectId: string;
@@ -28,6 +37,9 @@ export interface Approval {
   reviewedByName: string | null;
   reviewedAt: string | null;
   commentCount: number;
+  /** The list carries the first few; the detail carries them all. */
+  attachments: ApprovalAttachment[];
+  attachmentCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -73,5 +85,14 @@ export interface ApprovalCommentRow {
   author_id: string;
   author_name: string;
   body: string;
+  created_at: string;
+}
+
+export interface ApprovalAttachmentRow {
+  id: string;
+  approval_id: string;
+  file_id: string;
+  position: number;
+  created_by: string | null;
   created_at: string;
 }

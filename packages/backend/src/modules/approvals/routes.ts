@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { ForbiddenError } from "../../lib/errors.ts";
+import { filesRepository } from "../files/repository.ts";
+import { filesService } from "../files/service.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { approvalsRepository } from "./repository.ts";
@@ -49,6 +51,16 @@ const createBody = {
     documentId: { type: ["string", "null"], maxLength: 100 },
     documentVersionId: { type: ["string", "null"], maxLength: 100 },
     sourceMarkupId: { type: ["string", "null"], maxLength: 100 },
+    attachments: {
+      type: "array",
+      maxItems: 5,
+      items: {
+        type: "object",
+        required: ["fileId"],
+        additionalProperties: false,
+        properties: { fileId: { type: "string", minLength: 1, maxLength: 100 } },
+      },
+    },
   },
 } as const;
 
@@ -79,6 +91,7 @@ const commentBody = {
 const approvalRoutes: FastifyPluginAsync = async (fastify) => {
   const service = approvalsService(approvalsRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+    files: filesService(filesRepository(fastify.db)),
   });
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ApprovalStatus } }>(

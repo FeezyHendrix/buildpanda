@@ -547,7 +547,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
     async listMembers(channelId: string, userId: string) {
       await requireMembership(channelId, userId);
       const rows = await repository.listMembers(channelId);
-      return rows.map((m) => ({ id: m.user_id, name: m.name, email: m.email, role: m.role }));
+      return rows.map((m) => ({ id: m.user_id, name: m.name, email: m.email, role: m.role, profession: m.profession ?? null }));
     },
 
     async addMembers(channelId: string, memberIds: string[], actorId: string): Promise<void> {

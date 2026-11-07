@@ -39,12 +39,16 @@ function toProfile(row: ProjectRow): ProjectProfile {
   };
 }
 
+const isoDay = (v: Date | string | null) => (v ? new Date(v).toISOString().slice(0, 10) : null);
+
 function toPhase(row: ProjectPhaseRow): ProjectPhase {
   return {
     id: row.id,
     name: row.name,
     status: row.status,
     dateRange: row.date_range ?? "",
+    startDate: isoDay(row.start_date),
+    endDate: isoDay(row.end_date),
   };
 }
 

@@ -1,7 +1,9 @@
+import type { FilesService } from "../files/service.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 
 export interface ApprovalsDeps {
   notifications?: Pick<NotificationsService, "notify">;
+  files?: Pick<FilesService, "findRows" | "presignViewUrl">;
 }
 
 export function notifyApprovalDecided(

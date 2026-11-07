@@ -108,6 +108,10 @@ export function filesService(repository: FilesRepository) {
       return repository.findById(id);
     },
 
+    findRows(ids: string[]): Promise<UploadedFileRow[]> {
+      return repository.findByIds(ids);
+    },
+
     async presignViewUrl(
       row: UploadedFileRow,
       disposition: "inline" | "attachment" = "inline",

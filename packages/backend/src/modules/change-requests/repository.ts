@@ -74,6 +74,7 @@ const SELECT = [
   "c.time_impact_days",
   "c.currency",
   "c.submitted_by_id",
+  "sb.name as submitted_by_name",
   "c.decided_by_id",
   "u.name as decided_by_name",
   "c.decided_at",
@@ -92,6 +93,7 @@ export function changeRequestsRepository(db: Knex) {
   function base() {
     return db("change_requests as c")
       .leftJoin("user as u", "u.id", "c.decided_by_id")
+      .leftJoin("user as sb", "sb.id", "c.submitted_by_id")
       .leftJoin("user as asg", "asg.id", "c.assignee_id");
   }
 

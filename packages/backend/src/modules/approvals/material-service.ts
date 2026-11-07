@@ -89,6 +89,8 @@ function toMaterialApproval(
     reviewedAt: row.reviewed_at,
     resubmittedFromId: row.resubmitted_from_id,
     commentCount,
+    attachments: [],
+    attachmentCount: 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...toDetails(details),

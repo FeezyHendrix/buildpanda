@@ -92,6 +92,7 @@ export function rfisRepository(db: Knex) {
     "r.change_request_id",
     "r.reopened_count",
     "r.created_by_id",
+    "cb.name as created_by_name",
     "r.created_at",
     "r.updated_at",
   ];
@@ -99,6 +100,7 @@ export function rfisRepository(db: Knex) {
   function base() {
     return db("rfis as r")
       .leftJoin("user as bic", "bic.id", "r.ball_in_court_id")
+      .leftJoin("user as cb", "cb.id", "r.created_by_id")
       .leftJoin("user as resp", "resp.id", "r.official_responded_by_id");
   }
 

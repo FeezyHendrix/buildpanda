@@ -90,6 +90,9 @@ export interface ChangeRequest {
   submittedAt: string | null;
   revisions: ChangeRevision[];
   submittedById: string | null;
+  /** submitted_by_id is stamped at create and never changes, so it is also who drafted it. */
+  createdById: string | null;
+  createdByName: string | null;
   decidedById: string | null;
   decidedByName: string | null;
   decidedAt: string | null;
@@ -163,6 +166,7 @@ export interface ChangeRequestRow {
   submitted_at: string | null;
   revisions: ChangeRevision[] | string | null;
   submitted_by_id: string | null;
+  submitted_by_name: string | null;
   decided_by_id: string | null;
   decided_by_name: string | null;
   decided_at: string | null;
