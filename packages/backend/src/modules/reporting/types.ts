@@ -103,8 +103,16 @@ export interface ScheduleReportingSlice {
    */
   ldExposure: number | null;
   delayedActivities: DelayedActivitiesSlice;
-  /** How far the projected finish has moved from the baseline programme, in days. */
+  /**
+   * How far the projected finish has moved from the baseline programme, in
+   * calendar days; positive = behind. Zero until a baseline exists.
+   */
   timelineShiftDays: number;
+  timelineShiftStatus: "on_schedule" | "behind" | "ahead";
+  /** Work rows only: summaries and milestones are not work items. */
+  workItems: { total: number; completed: number; remaining: number };
+  /** Non-voided daily logs dated today, in the project's timezone. */
+  dailyLogsToday: number;
 }
 
 export interface OperationsReportingSlice {

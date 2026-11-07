@@ -95,6 +95,7 @@ const updateActivityBody = {
   type: "object",
   additionalProperties: false,
   properties: {
+    parentActivityId: { type: ["string", "null"], maxLength: 100 },
     name: { type: "string", minLength: 1, maxLength: 200 },
     activityType: { type: "string", minLength: 1, maxLength: 100 },
     phaseId: { type: ["string", "null"], minLength: 1, maxLength: 100 },

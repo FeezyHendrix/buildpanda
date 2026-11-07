@@ -6,6 +6,7 @@ import {
   DEFAULT_CALENDAR,
   type WorkingCalendar,
 } from "../../lib/working-days.ts";
+import { baselineOnFirstMove, plannedDatesMove, recordProgrammeEdit } from "./programme-edits.ts";
 import { programmeToMspdiXml } from "./programme-export.ts";
 import { buildDelay } from "./delay-mapper.ts";
 import type {
@@ -307,6 +308,14 @@ export function activitiesService(
       if (input.status !== undefined) patch.status = input.status;
       if (input.plannedStartAt !== undefined) patch.planned_start_at = input.plannedStartAt;
       if (input.plannedEndAt !== undefined) patch.planned_end_at = input.plannedEndAt;
+      if (input.parentActivityId !== undefined) {
+        if (input.parentActivityId === activityId) throw new BadRequestError("An activity cannot be its own parent");
+        const parent = input.parentActivityId ? await loadProjectActivity(projectId, input.parentActivityId) : null;
+        patch.parent_activity_id = parent?.id ?? null;
+        patch.outline_level = parent ? (parent.outline_level ?? 1) + 1 : 1;
+      }
+      const datesMove = plannedDatesMove(existing, input);
+      if (datesMove) Object.assign(patch, baselineOnFirstMove(existing));
       if (input.actualStartAt !== undefined) patch.actual_start_at = input.actualStartAt;
       if (input.actualEndAt !== undefined) patch.actual_end_at = input.actualEndAt;
       if (input.workerCountPlanned !== undefined)
@@ -334,6 +343,7 @@ export function activitiesService(
 
       const updated = await repository.update(activityId, patch);
       if (!updated) throw new ConflictError("Activity update failed");
+      if (datesMove) await recordProgrammeEdit(repository, projectId, existing, updated, actorId ?? null);
 
       if (input.assigneeId !== undefined && input.assigneeId !== existing.assignee_id) {
         notifyAssignee(updated.assignee_id, projectId, updated.name, actorId ?? "", updated.id);

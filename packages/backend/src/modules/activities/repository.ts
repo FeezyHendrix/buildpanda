@@ -54,6 +54,8 @@ export interface ActivityUpdatePatch {
   is_milestone?: boolean;
   baseline_start_at?: string | null;
   baseline_end_at?: string | null;
+  parent_activity_id?: string | null;
+  outline_level?: number | null;
 }
 
 export interface NewActivityEventRecord {

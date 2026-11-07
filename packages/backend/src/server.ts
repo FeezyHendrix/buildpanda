@@ -39,6 +39,7 @@ import notificationRoutes from "./modules/notifications/routes.ts";
 import searchRoutes from "./modules/search/routes.ts";
 import fileRoutes from "./modules/files/routes.ts";
 import activityRoutes from "./modules/activities/routes.ts";
+import programmeExportRoutes from "./modules/activities/export-routes.ts";
 import activityReferencesRoutes from "./modules/activities/references-routes.ts";
 import dailyLogRoutes from "./modules/daily-logs/routes.ts";
 import teamMemberRoutes from "./modules/team-members/routes.ts";
@@ -190,6 +191,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(searchRoutes);
   await app.register(fileRoutes);
   await app.register(activityRoutes);
+  await app.register(programmeExportRoutes);
   await app.register(activityReferencesRoutes);
   await app.register(dailyLogRoutes);
   await app.register(teamMemberRoutes);

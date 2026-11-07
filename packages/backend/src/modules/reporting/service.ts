@@ -87,6 +87,9 @@ function toCashFlowCurve(
   });
 }
 
+import { programmeFigures, timelineShiftStatus } from "./programme-figures.ts";
+import { localToday } from "../rfis/service.ts";
+
 export function reportingService(db: Knex) {
   const budgetRepo = budgetRepository(db);
   const invoiceRepo = invoicesRepository(db);
@@ -575,6 +578,8 @@ export function reportingService(db: Knex) {
           daysLost: toNumber(delayedActivities?.days),
         },
         timelineShiftDays: Math.round(toNumber(timelineShift?.shift)),
+        timelineShiftStatus: timelineShiftStatus(Math.round(toNumber(timelineShift?.shift))),
+        ...(await programmeFigures(db, projectId, localToday(now))),
         progressPercent: toNumber(project.progress_percent),
         phasesInProgress,
         phasesUpcoming,

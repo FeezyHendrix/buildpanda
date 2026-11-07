@@ -18,6 +18,7 @@ import { purchaseOrdersRepository } from "../../purchase-orders/repository.ts";
 import { transactionsRepository } from "../../transactions/repository.ts";
 import { financeTools } from "./finance-tools.ts";
 import { rfiTools } from "./rfi-tools.ts";
+import { timelineShiftStatus } from "../../reporting/programme-figures.ts";
 import { GET_PRECON_BOQ_DESCRIPTION, preconBoqLines } from "./precon-boq.ts";
 import { preconWorkbookNotes } from "./precon-workbook.ts";
 import { agentRepository } from "./repository.ts";
@@ -243,7 +244,10 @@ export function buildTools(): AgentTool[] {
           eotDaysPending,
           // Needs the contract's LD rate and cap to be meaningful; never guessed.
           ldExposure: null,
+          // The programme page's "Timeline shift" and "Projected end" cards read the same fields.
           timelineShiftDays: Math.round(Number(shift?.shift ?? 0)),
+          timelineShiftStatus: timelineShiftStatus(Math.round(Number(shift?.shift ?? 0))),
+          projectedEndDate: dates?.revised_completion_date ?? dates?.completion_date ?? null,
           openDelayCount: openDelays.length,
           daysLostOpen: openDelays.reduce((sum, d) => sum + Number(d.days_lost ?? 0), 0),
           claims: claims.map((c) => ({
