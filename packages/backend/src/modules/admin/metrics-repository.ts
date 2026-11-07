@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { JOURNEY_FEATURES, type SignupJourneyRow } from "./signup-journey.ts";
 
 const TZ = "Africa/Lagos";
 
@@ -117,6 +118,67 @@ export function adminMetricsRepository(db: Knex) {
       { step: "Created proposal", value: num(withProposal) },
       { step: "Ran take-off", value: num(withTakeoff) },
     ];
+  }
+
+  // shortcut: loads the whole signup cohort into memory, fine for thousands of signups per range; aggregate in SQL beyond that.
+  async function signupJourneys(range: MetricRange): Promise<SignupJourneyRow[]> {
+    const cohort = db("user").whereBetween("createdAt", [range.from, range.to]).select("id");
+    const query = db("user as u")
+      .whereBetween("u.createdAt", [range.from, range.to])
+      .orderBy("u.createdAt", "desc")
+      // Earliest invite sent to this email, from either a project or a workspace.
+      .joinRaw(
+        `LEFT JOIN (
+           SELECT email, MIN(sent_at) AS sent_at FROM (
+             SELECT lower(email) AS email, created_at AS sent_at FROM project_participants
+             UNION ALL
+             SELECT lower(email), "createdAt" FROM invitation
+           ) sent GROUP BY email
+         ) inv ON inv.email = lower(u.email)`,
+      )
+      .select(
+        "u.id",
+        "u.name",
+        "u.email",
+        "u.accountType",
+        "u.country",
+        "u.emailVerified",
+        "u.createdAt",
+        "u.last_activity_at as lastActivityAt",
+        "inv.sent_at as invitedAt",
+      );
+    // One grouped pass per table for the first time each user did the thing,
+    // rather than a lookup per user.
+    JOURNEY_FEATURES.forEach((f, i) => {
+      const firsts = db(f.table)
+        .whereIn(f.column, cohort.clone())
+        .groupBy(f.column)
+        .select({ uid: f.column })
+        .min({ at: f.time ?? "created_at" })
+        .as(`f${i}`);
+      void query.leftJoin(firsts, `f${i}.uid`, "u.id").select(`f${i}.at as f${i}`);
+    });
+    const rows: Array<Record<string, unknown>> = await query;
+    const date = (v: unknown) => (v ? new Date(v as string | Date) : null);
+    return rows.map((r) => {
+      const createdAt = new Date(r["createdAt"] as string | Date);
+      const invitedAt = date(r["invitedAt"]);
+      return {
+        id: r["id"] as string,
+        name: r["name"] as string,
+        email: r["email"] as string,
+        accountType: (r["accountType"] as string | null) ?? null,
+        country: (r["country"] as string | null) ?? null,
+        emailVerified: Boolean(r["emailVerified"]),
+        createdAt,
+        lastActivityAt: date(r["lastActivityAt"]),
+        invited: invitedAt !== null && invitedAt < createdAt,
+        actions: JOURNEY_FEATURES.flatMap((f, i) => {
+          const at = date(r[`f${i}`]);
+          return at ? [{ label: f.label, at }] : [];
+        }),
+      };
+    });
   }
 
   async function aiTokenSeries(range: MetricRange): Promise<Array<{ day: string; tokensIn: number; tokensOut: number; costUsd: number }>> {
@@ -244,6 +306,7 @@ export function adminMetricsRepository(db: Knex) {
     totalSignups,
     activeUsers,
     activationFunnel,
+    signupJourneys,
     aiTokenSeries,
     aiCostByOrg,
     aiJobHealth,

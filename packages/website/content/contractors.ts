@@ -1,5 +1,3 @@
-import { site } from "./site";
-
 export type ContractorWinId = "leads" | "proposals" | "handoff";
 
 export type SolutionId = "daily-log" | "build-stages" | "tasks" | "project-chart" | "materials" | "budget";
@@ -17,8 +15,7 @@ export const contractors = {
     eyebrow: "For Contractors & Builders",
     headline: "Win more work and deliver it without the chaos",
     body: "This is the software you run your own builds on. Win work with professional proposals, then manage the project, the schedule and the finances from a single dashboard",
-    // The app is where a contractor signs up.
-    action: { label: "Get Started", href: site.appUrl },
+    action: { label: "Book a Demo", href: "/talk-to-us/" },
     image: {
       src: "/contractors/hero.png",
       width: 2085,
@@ -52,8 +49,7 @@ export const contractors = {
   solutions: {
     eyebrow: "Our Solutions",
     headline: "Everything you need",
-    // The home page is the product tour.
-    action: { label: "Explore Product", href: "/" },
+    action: { label: "Explore Product", href: "/talk-to-us/" },
     listLabel: "BuildPanda product areas",
     image: SOLUTION_IMAGE,
     items: [
