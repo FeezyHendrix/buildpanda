@@ -177,3 +177,15 @@ export interface UpdateProjectBudgetInput {
   budgetMax: number;
   currency?: Currency;
 }
+
+export const PROJECT_SORTS = ["recent", "name_asc", "name_desc", "newest", "oldest"] as const;
+export type ProjectSort = (typeof PROJECT_SORTS)[number];
+
+export interface ProjectListQuery {
+  q?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  sort?: ProjectSort;
+  page?: number;
+  pageSize?: number;
+}
