@@ -130,7 +130,12 @@ export interface Rfi {
   changeRequestId: string | null;
   reopenedCount: number;
   createdById: string | null;
+  createdByName: string | null;
+  /** Past its due date and still unanswered, judged on the project's local day. */
+  isOverdue: boolean;
+  overdueDays: number;
   commentCount: number;
+  responseCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -242,6 +247,22 @@ export interface Approval {
   revision: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RfiCounts {
+  all: number;
+  open: number;
+  answered: number;
+  closed: number;
+  overdue: number;
+}
+
+export interface RfiPage {
+  items: Rfi[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: RfiCounts;
 }
 
 export interface ApprovalCounts {

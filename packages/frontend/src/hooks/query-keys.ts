@@ -192,6 +192,7 @@ export const rfiKeys = {
   all: (projectId: string) => ["projects", projectId, "rfis"] as const,
   list: (projectId: string, status?: string) =>
     [...rfiKeys.all(projectId), "list", status ?? "all"] as const,
+  page: (projectId: string, query: unknown) => [...rfiKeys.all(projectId), "page", query] as const,
   detail: (projectId: string, rfiId: string) =>
     [...rfiKeys.all(projectId), "detail", rfiId] as const,
   events: (projectId: string, rfiId: string) =>

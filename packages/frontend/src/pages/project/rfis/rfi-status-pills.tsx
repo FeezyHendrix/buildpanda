@@ -6,7 +6,7 @@ export function RfiStatusPills<T extends string>({
   value,
   onChange,
 }: {
-  items: readonly { value: T; label: string }[];
+  items: readonly { value: T; label: string; count?: number }[];
   value: T;
   onChange: (value: T) => void;
 }) {
@@ -29,6 +29,7 @@ export function RfiStatusPills<T extends string>({
             )}
           >
             {item.label}
+            {item.count !== undefined ? <span className="ml-1 opacity-70">{item.count}</span> : null}
           </button>
         );
       })}

@@ -13,17 +13,18 @@ import {
 } from "@/components/molecules/upsert-rfi-dialog";
 import { RfiDetailDialog } from "@/components/molecules/rfi-detail-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useCreateRfi, useProjectRfis, useUpdateRfi } from "@/hooks/use-rfis";
+import { useCreateRfi, useRfiPage, useUpdateRfi } from "@/hooks/use-rfis";
+import type { RfiPageQuery } from "@/api/rfis";
+import { NumberedPagination } from "@/components/molecules/numbered-pagination";
 import { useParticipants } from "@/hooks/use-participants";
 import { useProjectTeam } from "@/hooks/use-team";
 import { errorMessage } from "@/lib/api-error";
 import { choiceLabel, participantChoices } from "@/lib/assignee-options";
-import { isRfiOverdue } from "@/lib/rfi-meta";
 import { canResourceAction } from "@/lib/project-types";
-import type { Rfi, RfiStatus } from "@/lib/project-types";
+import type { Rfi, RfiCounts, RfiStatus } from "@/lib/project-types";
 import { RfiFilterPanel } from "./rfis/rfi-filter-panel";
 import { RfiRow } from "./rfis/rfi-row";
-import { NO_RFI_FILTERS, matchesRfiFilters, matchesRfiSearch, type RfiFilterValues } from "./rfis/shared";
+import { NO_RFI_FILTERS, type RfiFilterValues } from "./rfis/shared";
 import { RfiStatusPills } from "./rfis/rfi-status-pills";
 
 /** "overdue" is a view of the list, not a backend status, so it filters client-side. */
@@ -37,6 +38,8 @@ const STATUS_FILTERS: { value: RfiFilter; label: string }[] = [
 ];
 const OVERDUE_FILTER: { value: RfiFilter; label: string } = { value: "overdue", label: "Overdue" };
 const FILTER_VALUES: RfiFilter[] = [...STATUS_FILTERS.map((filter) => filter.value), "overdue"];
+const COUNT_KEY: Record<RfiFilter, keyof RfiCounts> = { all: "all", Open: "open", Answered: "answered", Closed: "closed", overdue: "overdue", Draft: "open", InReview: "open", Void: "closed" };
+const PAGE_SIZE = 25;
 const EMPTY_RFIS: Rfi[] = [];
 
 export default function ProjectRfis() {
@@ -47,9 +50,23 @@ export default function ProjectRfis() {
   const canRespond = canResourceAction(access, "rfis", "respond");
 
   const [filter, setFilter] = useUrlState<RfiFilter>("status", "all", FILTER_VALUES);
-  // Overdue is derived, so the list is always fetched unfiltered for it.
-  const statusParam = filter === "all" || filter === "overdue" ? undefined : filter;
-  const { data: rfis = EMPTY_RFIS, isLoading, error, refetch } = useProjectRfis(project.id, statusParam);
+  const [search, setSearch] = useState("");
+  const [applied, setApplied] = useState<RfiFilterValues>(NO_RFI_FILTERS);
+  const [page, setPage] = useState(1);
+  // The server filters, counts and pages the register (docs/rfis-page-backend.md §2).
+  const query: RfiPageQuery = {
+    status: filter === "all" || filter === "overdue" ? undefined : [filter],
+    overdue: filter === "overdue" || undefined,
+    q: search.trim() || undefined,
+    priority: applied.priority ? [applied.priority] : undefined,
+    dueFrom: applied.dueFrom || undefined,
+    dueTo: applied.dueTo || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  };
+  const { data, isLoading, error, refetch } = useRfiPage(project.id, query);
+  const rfis = data?.items ?? EMPTY_RFIS;
+  const counts = data?.counts;
   const createRfi = useCreateRfi();
   const updateRfi = useUpdateRfi();
 
@@ -77,22 +94,18 @@ export default function ProjectRfis() {
   const [editing, setEditing] = useState<Rfi | null>(null);
   const [detailId, setDetailId] = useUrlState<string | null>("rfi", null);
 
-  const [search, setSearch] = useState("");
-  const [applied, setApplied] = useState<RfiFilterValues>(NO_RFI_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const visible = useMemo(
-    () =>
-      rfis.filter(
-        (rfi) =>
-          (filter !== "overdue" || isRfiOverdue(rfi)) && matchesRfiSearch(rfi, search) && matchesRfiFilters(rfi, applied),
-      ),
-    [rfis, filter, search, applied],
-  );
-  const overdueCount = rfis.filter((rfi) => isRfiOverdue(rfi)).length;
+  const visible = rfis;
+  const total = data?.total ?? 0;
+  const overdueCount = counts?.overdue ?? 0;
   // Overdue is a view of the list: offered while something is late, and kept if a link asked for it.
-  const statusFilters = overdueCount > 0 || filter === "overdue" ? [STATUS_FILTERS[0]!, STATUS_FILTERS[1]!, OVERDUE_FILTER, ...STATUS_FILTERS.slice(2)] : STATUS_FILTERS;
+  const statusFilters = (overdueCount > 0 || filter === "overdue" ? [STATUS_FILTERS[0]!, STATUS_FILTERS[1]!, OVERDUE_FILTER, ...STATUS_FILTERS.slice(2)] : STATUS_FILTERS).map((f) => ({
+    ...f,
+    count: counts ? counts[COUNT_KEY[f.value]] : undefined,
+  }));
   const narrowed = search.trim() !== "" || Boolean(applied.priority || applied.dueFrom || applied.dueTo);
+  const registerEmpty = (counts?.all ?? 0) === 0 && !narrowed && filter === "all";
 
   function handleCreate(values: UpsertRfiValues): void {
     createRfi.mutate({ projectId: project.id, ...values }, { onSuccess: () => setCreateOpen(false) });
@@ -110,7 +123,7 @@ export default function ProjectRfis() {
     <div className="w-full px-4 pb-8 pt-[40px] lg:pl-8 lg:pr-[40px]">
       <div className="grid items-start gap-x-[40px] gap-y-[24px] lg:grid-cols-[minmax(0,1fr)_290px]">
         <div className="flex flex-wrap items-center justify-between gap-3 lg:col-start-1">
-          <RfiStatusPills items={statusFilters} value={filter} onChange={setFilter} />
+          <RfiStatusPills items={statusFilters} value={filter} onChange={(v) => { setFilter(v); setPage(1); }} />
           <div className="flex items-center gap-[10px]">
             <Button type="button" variant="ghost" onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen} className="h-[36px] border border-[#EEEEEE] px-[16px] text-[14px] lg:hidden">
               Filters
@@ -124,7 +137,7 @@ export default function ProjectRfis() {
         </div>
 
         <div className={filtersOpen ? "lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-[58px]" : "hidden lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-[58px] lg:block"}>
-          <RfiFilterPanel key={`${applied.priority}|${applied.dueFrom}|${applied.dueTo}`} search={search} onSearchChange={setSearch} applied={applied} onApply={setApplied} />
+          <RfiFilterPanel key={`${applied.priority}|${applied.dueFrom}|${applied.dueTo}`} search={search} onSearchChange={(v) => { setSearch(v); setPage(1); }} applied={applied} onApply={(v) => { setApplied(v); setPage(1); }} />
         </div>
 
         <div className="lg:col-start-1">
@@ -137,9 +150,9 @@ export default function ProjectRfis() {
             ) : visible.length === 0 ? (
               <EmptyState
                 icon={<MessageCircleQuestion />}
-                title={filter === "all" && !narrowed ? "No RFIs yet" : "No RFIs match this filter"}
+                title={registerEmpty ? "No RFIs yet" : "No RFIs match this filter"}
                 description={
-                  filter === "all" && !narrowed
+                  registerEmpty
                     ? "Requests for information raised against this project will appear here."
                     : "Choose another status, clear the search, or reset the filter."
                 }
@@ -159,11 +172,14 @@ export default function ProjectRfis() {
                 }
               />
             ) : (
-              <div className="border border-[#EEEEEE] bg-white">
-                {visible.map((rfi) => (
-                  <RfiRow key={rfi.id} rfi={rfi} onOpen={setDetailId} />
-                ))}
-              </div>
+              <>
+                <div className="border border-[#EEEEEE] bg-white">
+                  {visible.map((rfi) => (
+                    <RfiRow key={rfi.id} rfi={rfi} onOpen={setDetailId} />
+                  ))}
+                </div>
+                <NumberedPagination page={Math.min(page, Math.max(1, Math.ceil(total / PAGE_SIZE)))} pageSize={PAGE_SIZE} total={total} noun="RFIs" onPageChange={setPage} />
+              </>
             )
           ) : null}
         </div>
