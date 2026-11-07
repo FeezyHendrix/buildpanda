@@ -211,6 +211,9 @@ export const approvalKeys = {
   all: (projectId: string) => ["projects", projectId, "approvals"] as const,
   list: (projectId: string, status?: string) =>
     [...approvalKeys.all(projectId), "list", status ?? "all"] as const,
+  page: (projectId: string, query: unknown) => [...approvalKeys.all(projectId), "page", query] as const,
+  approvers: (projectId: string) => [...approvalKeys.all(projectId), "approvers"] as const,
+  categories: (projectId: string) => [...approvalKeys.all(projectId), "categories"] as const,
   detail: (projectId: string, approvalId: string) =>
     [...approvalKeys.all(projectId), "detail", approvalId] as const,
 };

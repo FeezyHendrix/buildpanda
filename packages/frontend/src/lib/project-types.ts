@@ -234,11 +234,41 @@ export interface Approval {
   reviewedByName: string | null;
   reviewedAt: string | null;
   commentCount: number;
-  /** Not yet returned by the API (see docs/approvals-page-backend.md); the page shows chips only when present. */
-  attachments?: ApprovalAttachment[];
-  attachmentCount?: number;
+  /** The list carries the first three; the detail carries them all. */
+  attachments: ApprovalAttachment[];
+  attachmentCount: number;
+  /** The caller may record a decision: the same rule the PATCH guard enforces. */
+  viewerCanDecide: boolean;
+  revision: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ApprovalCounts {
+  needsMe: number;
+  awaiting: number;
+  approved: number;
+  rejected: number;
+  changesRequested: number;
+}
+
+export interface ApprovalPage {
+  items: Approval[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: ApprovalCounts;
+}
+
+export interface Approver {
+  id: string;
+  name: string;
+  role: string;
+}
+
+export interface ApprovalCategory {
+  id: string;
+  name: string;
 }
 
 export interface ApprovalComment {
@@ -250,8 +280,29 @@ export interface ApprovalComment {
   createdAt: string;
 }
 
+export interface ApprovalDecision {
+  id: string;
+  decision: ApprovalStatus;
+  note: string | null;
+  noteHtml: string | null;
+  actorId: string | null;
+  actorName: string | null;
+  decidedAt: string;
+  revision: number;
+}
+
+export interface ApprovalRevision {
+  revision: number;
+  submittedAt: string;
+  attachments: ApprovalAttachment[];
+  decision: ApprovalStatus | null;
+  decisionNote: string | null;
+}
+
 export interface ApprovalDetail extends Approval {
   comments: ApprovalComment[];
+  decisions: ApprovalDecision[];
+  revisions: ApprovalRevision[];
 }
 
 export type SelectionStatus = "open" | "decided" | "cancelled";

@@ -108,7 +108,12 @@ export function approvalsRepository(db: Knex) {
   function filtered(projectId: string, query: ApprovalListQuery, viewer: ApprovalViewer, timeZone: string) {
     const q = base().where("a.project_id", projectId);
     if (query.status?.length) q.whereIn("a.status", query.status);
-    if (query.needsMyDecision) needsMe(q, viewer);
+    if (query.needsMyDecision === true) needsMe(q, viewer);
+    else if (query.needsMyDecision === false) {
+      // Pending, but not this caller's to decide.
+      q.where("a.status", "Pending");
+      if (viewer.canDecide) q.andWhere((b) => b.whereNotNull("a.requested_reviewer_id").andWhereNot("a.requested_reviewer_id", viewer.id));
+    }
     if (query.q) {
       const like = `%${query.q.replace(/[%_]/g, (c) => `\\${c}`)}%`;
       q.andWhere((b) =>

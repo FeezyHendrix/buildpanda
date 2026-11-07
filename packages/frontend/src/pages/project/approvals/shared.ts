@@ -28,30 +28,16 @@ export const DISPLAY_STATUS_META: Record<ApprovalDisplayStatus, { label: string;
   Resubmit: { label: "Changes Requested", className: "border-[#EBEBEB] bg-white text-[#1E1E1E]" },
 };
 
-/** Waiting items first (what needs a person), then everything settled; API order is kept within each. */
-export function sortByAttention(approvals: Approval[], mayDecideOf: (a: Approval) => boolean): Approval[] {
-  const rank = (a: Approval): number => {
-    if (a.status === "Pending") return mayDecideOf(a) ? 0 : 1;
-    if (a.status === "Resubmit") return 2;
-    return 3;
-  };
-  return approvals
-    .map((approval, index) => ({ approval, index }))
-    .sort((a, b) => rank(a.approval) - rank(b.approval) || a.index - b.index)
-    .map(({ approval }) => approval);
-}
-
-export function matchesApprovalSearch(approval: Approval, rawQuery: string): boolean {
-  const query = rawQuery.trim().toLowerCase();
-  if (!query) return true;
-  return [approval.title, approval.description, approval.category, approval.requestedReviewerName].some((field) =>
-    field?.toLowerCase().includes(query),
-  );
-}
-
-/** `from` / `to` are `yyyy-mm-dd` (inclusive, "" = open) compared with the day the request was submitted. */
-export function matchesSubmittedRange(approval: Approval, from: string, to: string): boolean {
-  if (!from && !to) return true;
-  const day = new Date(approval.createdAt).toLocaleDateString("en-CA");
-  return (!from || day >= from) && (!to || day <= to);
+/** The server-side query behind each pill (docs/approvals-page-backend.md §3). */
+export function filterToQuery(filter: ApprovalFilter): { status?: ApprovalStatus[]; needsMyDecision?: boolean } {
+  switch (filter) {
+    case "all":
+      return {};
+    case "needs-me":
+      return { needsMyDecision: true };
+    case "awaiting":
+      return { needsMyDecision: false };
+    default:
+      return { status: [filter] };
+  }
 }

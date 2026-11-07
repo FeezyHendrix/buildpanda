@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { FileCheck } from "lucide-react";
 import { useUrlState } from "@/hooks/use-url-state";
 import { useSetPageTitle } from "@/contexts/page-title-context";
@@ -15,30 +15,23 @@ import {
 } from "@/components/molecules/upsert-approval-dialog";
 import { ApprovalDetailDialog } from "@/components/molecules/approval-detail-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useSession } from "@/stores/auth";
-import { useAssignableUsers } from "@/hooks/use-tasks";
 import {
-  useApprovals,
+  useApprovalCategories,
+  useApprovalPage,
+  useApprovers,
   useCreateApproval,
   useDeleteApproval,
   useUpdateApproval,
 } from "@/hooks/use-approvals";
 import { canResourceAction } from "@/lib/project-types";
 import type { Approval } from "@/lib/project-types";
-import { errorMessage } from "@/lib/api-error";
+import { errorFieldName, errorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { filesApi } from "@/api/files";
-import { APPROVAL_ATTACHMENTS_ENABLED } from "@/api/approvals";
+import { APPROVAL_ATTACHMENTS_ENABLED, type ApprovalPageQuery } from "@/api/approvals";
 import { ApprovalItem } from "./approvals/approval-item";
 import { ApprovalsFilterPanel } from "./approvals/approvals-filter-panel";
-import {
-  APPROVAL_FILTERS,
-  displayStatus,
-  matchesApprovalSearch,
-  matchesSubmittedRange,
-  sortByAttention,
-  type ApprovalFilter,
-} from "./approvals/shared";
+import { APPROVAL_FILTERS, filterToQuery, type ApprovalFilter } from "./approvals/shared";
 
 const PAGE_SIZE = 10;
 const FILTER_VALUES = APPROVAL_FILTERS.map((f) => f.value);
@@ -47,16 +40,8 @@ export default function ProjectApprovals() {
   useSetPageTitle("Approvals", "Sign-offs on selections, specs and changes, with who decided and why.");
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "approvals", "manage");
-  const canDecide = access?.capabilities?.canDecideApprovals ?? false;
-  const { data: session } = useSession();
-  const currentUserId = session?.user?.id ?? "";
-  const { data: reviewerOptions = [] } = useAssignableUsers(project.id);
-  // The whole register is fetched once; the status pills, search and dates all
-  // narrow it here, so "Needs my Approval" can use who the viewer is.
-  const { data: approvals = [], isLoading, error: listError, refetch } = useApprovals(project.id);
-  const createApproval = useCreateApproval();
-  const updateApproval = useUpdateApproval();
-  const deleteApproval = useDeleteApproval();
+  const { data: reviewerOptions = [] } = useApprovers(project.id);
+  const { data: categories = [] } = useApprovalCategories(project.id);
 
   const [filter, setFilter] = useUrlState<ApprovalFilter>("status", "all", FILTER_VALUES);
   const [search, setSearch] = useState("");
@@ -64,17 +49,26 @@ export default function ProjectApprovals() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
 
+  // The server filters, sorts (attention first) and pages the register, and
+  // decides "Needs my approval" from who the viewer is.
+  const query: ApprovalPageQuery = {
+    ...filterToQuery(filter),
+    q: search.trim() || undefined,
+    submittedFrom: dateFrom || undefined,
+    submittedTo: dateTo || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  };
+  const { data, isLoading, error: listError, refetch } = useApprovalPage(project.id, query);
+  const createApproval = useCreateApproval();
+  const updateApproval = useUpdateApproval();
+  const deleteApproval = useDeleteApproval();
+
   const [createOpen, setCreateOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editApproval, setEditApproval] = useState<Approval | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailId, setDetailId] = useUrlState<string | null>("approval", null);
-
-  function mayDecide(approval: Approval): boolean {
-    if (!canDecide) return false;
-    if (approval.requestedReviewerId && approval.requestedReviewerId !== currentUserId) return false;
-    return true;
-  }
 
   async function handleCreate({ files = [], ...values }: UpsertApprovalValues): Promise<void> {
     let attachments: { fileId: string }[] | undefined;
@@ -114,19 +108,13 @@ export default function ProjectApprovals() {
     );
   }
 
-  const visible = useMemo(
-    () =>
-      sortByAttention(approvals, mayDecide)
-        .filter((a) => filter === "all" || displayStatus(a, mayDecide(a)) === filter)
-        .filter((a) => matchesApprovalSearch(a, search))
-        .filter((a) => matchesSubmittedRange(a, dateFrom, dateTo)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [approvals, filter, search, dateFrom, dateTo, canDecide, currentUserId],
-  );
+  const pageItems = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const counts = data?.counts;
+  const registerSize = counts ? counts.needsMe + counts.awaiting + counts.approved + counts.rejected + counts.changesRequested : 0;
   const isFiltered = filter !== "all" || search.trim() !== "" || dateFrom !== "" || dateTo !== "";
-  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
-  const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   function resetFilters(): void {
     setFilter("all");
@@ -144,7 +132,7 @@ export default function ProjectApprovals() {
         <div className="flex justify-center py-10">
           <Spinner size="md" />
         </div>
-      ) : approvals.length === 0 ? (
+      ) : registerSize === 0 && !isFiltered ? (
         <EmptyState
           icon={<FileCheck />}
           title="No approvals yet"
@@ -186,7 +174,7 @@ export default function ProjectApprovals() {
                   <ApprovalItem
                     key={a.id}
                     approval={a}
-                    mayDecide={mayDecide(a)}
+                    mayDecide={a.viewerCanDecide}
                     canManage={canManage}
                     approving={updateApproval.isPending && updateApproval.variables?.approvalId === a.id}
                     onOpen={() => setDetailId(a.id)}
@@ -198,11 +186,11 @@ export default function ProjectApprovals() {
               )}
             </div>
 
-            {visible.length > 0 ? (
+            {total > 0 ? (
               <NumberedPagination
                 page={currentPage}
                 pageSize={PAGE_SIZE}
-                total={visible.length}
+                total={total}
                 noun="Approvals"
                 onPageChange={setPage}
               />
@@ -212,6 +200,7 @@ export default function ProjectApprovals() {
           <div className="w-full lg:sticky lg:top-6 lg:w-[291px] lg:shrink-0">
             <ApprovalsFilterPanel
               status={filter}
+              counts={counts}
               onStatusChange={(value) => {
                 setFilter(value);
                 setPage(1);
@@ -235,10 +224,12 @@ export default function ProjectApprovals() {
           onOpenChange={setCreateOpen}
           mode="create"
           reviewerOptions={reviewerOptions}
+          categoryOptions={categories.map((c) => c.name)}
           onSubmit={(values) => void handleCreate(values)}
           isSubmitting={createApproval.isPending || uploading}
           attachmentsEnabled={APPROVAL_ATTACHMENTS_ENABLED}
           error={createApproval.error ? errorMessage(createApproval.error) : null}
+          errorField={errorFieldName(createApproval.error)}
         />
       )}
 
@@ -249,9 +240,11 @@ export default function ProjectApprovals() {
           mode="edit"
           initial={editApproval}
           reviewerOptions={reviewerOptions}
+          categoryOptions={categories.map((c) => c.name)}
           onSubmit={handleEdit}
           isSubmitting={updateApproval.isPending}
           error={updateApproval.error ? errorMessage(updateApproval.error) : null}
+          errorField={errorFieldName(updateApproval.error)}
         />
       )}
 
@@ -278,8 +271,6 @@ export default function ProjectApprovals() {
           onOpenChange={(o) => !o && setDetailId(null)}
           projectId={project.id}
           approvalId={detailId}
-          currentUserId={currentUserId}
-          canDecide={canDecide}
         />
       )}
     </div>

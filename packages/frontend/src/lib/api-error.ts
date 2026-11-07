@@ -48,6 +48,12 @@ export function errorField(err: unknown): string | null {
 
 /** The bare field name a 400 names ("location"), for matching a form input. */
 export function errorFieldName(err: unknown): string | null {
+  // A 422 names its fields as { details: { fields: { name: message } } }.
+  const fields = (body(err)?.details as { fields?: Record<string, string> } | undefined)?.fields;
+  if (fields && typeof fields === "object") {
+    const first = Object.keys(fields)[0];
+    if (first) return first;
+  }
   const path = errorField(err);
   if (!path) return null;
   const parts = path.split("/").filter((part) => part.length > 0 && !/^\d+$/.test(part));
