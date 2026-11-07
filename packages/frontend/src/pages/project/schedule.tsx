@@ -157,7 +157,9 @@ export default function ProjectSchedule() {
           <div className="mt-[24px]">
             <ScheduleReportPanel
               report={report}
-              loggedToday={loggedToday}
+              loggedToday={snapshot?.schedule.dailyLogsToday ?? loggedToday}
+              workItems={snapshot?.schedule.workItems}
+              timelineShiftStatus={snapshot?.schedule.timelineShiftStatus}
               timelineShiftDays={snapshot?.schedule.timelineShiftDays ?? null}
               projectedEndDate={snapshot?.schedule.revisedCompletionDate ?? snapshot?.schedule.completionDate ?? null}
             />
