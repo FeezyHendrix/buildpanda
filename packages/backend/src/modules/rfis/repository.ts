@@ -105,6 +105,11 @@ export function rfisRepository(db: Knex) {
   }
 
   return {
+    /** The joined, selected RFI rows for a sibling (list-repository) to filter. */
+    query() {
+      return base().select(...select);
+    },
+
     listByProject(
       projectId: string,
       filter: { status?: RfiStatus; ballInCourtId?: string; sharedOnly?: boolean },

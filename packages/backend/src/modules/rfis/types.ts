@@ -36,7 +36,10 @@ export interface Rfi {
   /** Awaiting an answer past its due date, judged on the project's local day. */
   isOverdue: boolean;
   overdueDays: number;
+  /** Every comment on the RFI, proposed responses included; the official response is not a comment. */
   commentCount: number;
+  /** Same figure under the name the page uses; commentCount stays as an alias. */
+  responseCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -160,4 +163,37 @@ export interface RfiDistributionRow {
   token_expires_at: string | null;
   token_consumed_at: string | null;
   created_at: string;
+}
+
+export const RFI_SORTS = ["number", "dueDate"] as const;
+export type RfiSort = (typeof RFI_SORTS)[number];
+
+export interface RfiListQuery {
+  status?: RfiStatus[];
+  overdue?: boolean;
+  q?: string;
+  priority?: RfiPriority[];
+  dueFrom?: string;
+  dueTo?: string;
+  page?: number;
+  pageSize?: number;
+  sort?: RfiSort;
+  /** The caller's own ball-in-court items only. */
+  ballInCourtId?: string;
+}
+
+export interface RfiCounts {
+  all: number;
+  open: number;
+  answered: number;
+  closed: number;
+  overdue: number;
+}
+
+export interface RfiPage {
+  items: Rfi[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: RfiCounts;
 }

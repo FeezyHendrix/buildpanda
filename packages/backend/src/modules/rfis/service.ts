@@ -85,7 +85,7 @@ export function overdueDays(row: Pick<RfiRow, "status" | "due_date">, today = lo
   return Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${due}T00:00:00Z`)) / 86_400_000);
 }
 
-function toRfi(row: RfiRow, commentCount: number): Rfi {
+export function toRfi(row: RfiRow, commentCount: number): Rfi {
   const late = overdueDays(row);
   return {
     id: row.id,
@@ -116,6 +116,7 @@ function toRfi(row: RfiRow, commentCount: number): Rfi {
     isOverdue: late > 0,
     overdueDays: late,
     commentCount,
+    responseCount: commentCount,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

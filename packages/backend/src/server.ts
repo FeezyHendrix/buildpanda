@@ -54,6 +54,7 @@ import adminRoutes from "./modules/admin/routes.ts";
 import stageRoutes from "./modules/stages/routes.ts";
 import buildingRoutes from "./modules/buildings/routes.ts";
 import rfiRoutes from "./modules/rfis/routes.ts";
+import rfiListRoutes from "./modules/rfis/list-routes.ts";
 import publicRfiRoutes from "./modules/rfis/public-routes.ts";
 import bimRoutes from "./modules/bim/routes.ts";
 import approvalRoutes from "./modules/approvals/routes.ts";
@@ -203,6 +204,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(stageRoutes);
   await app.register(buildingRoutes);
   await app.register(rfiRoutes);
+  await app.register(rfiListRoutes);
   await app.register(publicRfiRoutes);
   await app.register(bimRoutes);
   await app.register(approvalRoutes);

@@ -90,6 +90,7 @@ export const TOOL_PERMISSIONS: Record<string, ToolPermission | null> = {
   // Writes — the same checks POST /tasks and POST /rfis run.
   create_task: { resource: "tasks", action: "add" },
   create_rfi: { resource: "rfis", action: "create" },
+  get_rfis: { resource: "rfis", action: "view" },
 };
 
 /** Deny by default: a tool with no policy entry is not readable by anyone. */

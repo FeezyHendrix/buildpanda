@@ -16,3 +16,35 @@ test("today follows the project's timezone, not UTC", () => {
   assert.equal(localToday(new Date("2026-11-06T23:30:00Z"), "Africa/Lagos"), "2026-11-07");
   assert.equal(localToday(new Date("2026-11-06T23:30:00Z"), "UTC"), "2026-11-06");
 });
+
+test("the list keyword understands RFI numbers", async () => {
+  const { rfiListRepository } = await import("./list-repository.ts");
+  // Exercise numberIn through a fake query builder: capture the where callback.
+  const captured: unknown[] = [];
+  const fakeQ = {
+    where() { return this; },
+    andWhere(arg: unknown) { if (typeof arg === "function") captured.push(arg); return this; },
+    whereIn() { return this; },
+    whereNotNull() { return this; },
+    clearSelect() { return this; },
+    async count() { return [{ count: "0" }]; },
+    orderBy() { return this; },
+    orderByRaw() { return this; },
+    limit() { return this; },
+    offset() { return Promise.resolve([]); },
+  };
+  const repo = rfiListRepository({} as never, { query: () => fakeQ } as never);
+  for (const q of ["3", "rfi 3", "RFI-3", "rfi-3 "]) {
+    captured.length = 0;
+    await repo.search("prj", { q }, false, "2026-11-07", 1, 10);
+    const ors: unknown[][] = [];
+    const b = {
+      whereILike() { return this; },
+      orWhereILike() { return this; },
+      orWhereRaw() { return this; },
+      orWhere(...args: unknown[]) { ors.push(args); return this; },
+    };
+    (captured[captured.length - 1] as (b: unknown) => void)(b);
+    assert.deepEqual(ors, [["r.number", 3]], q);
+  }
+});

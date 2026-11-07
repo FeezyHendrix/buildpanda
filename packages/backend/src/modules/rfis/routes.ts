@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import { canProjectPermission } from "../../lib/authorization.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { config } from "../../config/index.ts";
@@ -8,6 +8,7 @@ import { changeRequestsRepository } from "../change-requests/repository.ts";
 import { changeRequestsService } from "../change-requests/service.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
+import { isCompanyCaller } from "./caller.ts";
 import { rfisRepository } from "./repository.ts";
 import {
   rfisService,
@@ -19,9 +20,7 @@ import {
 import {
   RFI_DISTRIBUTION_ROLES,
   RFI_PRIORITIES,
-  RFI_STATUSES,
   type Rfi,
-  type RfiStatus,
 } from "./types.ts";
 
 const TRANSITION_TARGETS = ["Closed", "Void", "Open"] as const;
@@ -38,14 +37,6 @@ const rfiParams = {
   },
 } as const;
 
-const listQuery = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    status: { type: "string", enum: RFI_STATUSES },
-    ballInCourt: { type: "string", enum: ["mine"] },
-  },
-} as const;
 
 const createBody = {
   type: "object",
@@ -185,15 +176,6 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
 
-  function isCompanyCaller(
-    request: FastifyRequest,
-    project: { owner_id: string | null; organization_id: string | null },
-  ): boolean {
-    const user = request.requireAuth();
-    if (project.owner_id === user.id) return true;
-    return Boolean(project.organization_id && request.orgRoles.has(project.organization_id));
-  }
-
   async function sendBallInCourtEmail(rfi: Rfi, projectName: string, actorEmail: string): Promise<void> {
     if (!rfi.ballInCourtEmail) return;
     if (rfi.ballInCourtEmail.toLowerCase() === actorEmail.toLowerCase()) return;
@@ -214,20 +196,6 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
       html,
     }).catch(() => undefined);
   }
-
-  fastify.get<{ Params: { id: string }; Querystring: { status?: RfiStatus; ballInCourt?: "mine" } }>(
-    "/projects/:id/rfis",
-    { schema: { params: projectIdParams, querystring: listQuery } },
-    async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "rfis", "view");
-      const user = request.requireAuth();
-      return service.list(project.id, {
-        status: request.query.status,
-        ballInCourtId: request.query.ballInCourt === "mine" ? user.id : undefined,
-        sharedOnly: !isCompanyCaller(request, project),
-      });
-    },
-  );
 
   fastify.post<{ Params: { id: string }; Body: CreateRfiInput }>(
     "/projects/:id/rfis",
