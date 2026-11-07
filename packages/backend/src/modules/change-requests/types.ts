@@ -231,3 +231,15 @@ export interface ChangeActionInput {
   timeImpactDays?: number;
   daysAwarded?: number;
 }
+
+export interface ChangeRequestListQuery {
+  status?: ChangeStatus;
+  q?: string;
+  type?: ChangeType[];
+  /** costFrom / costTo compare in this currency; rows in another currency never match a range. */
+  currency?: Currency;
+  costFrom?: number;
+  costTo?: number;
+  page?: number;
+  pageSize?: number;
+}
