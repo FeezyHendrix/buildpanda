@@ -17,6 +17,8 @@ import { stageCostsService } from "../../finances/stage-costs.ts";
 import { purchaseOrdersRepository } from "../../purchase-orders/repository.ts";
 import { transactionsRepository } from "../../transactions/repository.ts";
 import { financeTools } from "./finance-tools.ts";
+import { rfiTools } from "./rfi-tools.ts";
+import { timelineShiftStatus } from "../../reporting/programme-figures.ts";
 import { GET_PRECON_BOQ_DESCRIPTION, preconBoqLines } from "./precon-boq.ts";
 import { preconWorkbookNotes } from "./precon-workbook.ts";
 import { agentRepository } from "./repository.ts";
@@ -242,7 +244,10 @@ export function buildTools(): AgentTool[] {
           eotDaysPending,
           // Needs the contract's LD rate and cap to be meaningful; never guessed.
           ldExposure: null,
+          // The programme page's "Timeline shift" and "Projected end" cards read the same fields.
           timelineShiftDays: Math.round(Number(shift?.shift ?? 0)),
+          timelineShiftStatus: timelineShiftStatus(Math.round(Number(shift?.shift ?? 0))),
+          projectedEndDate: dates?.revised_completion_date ?? dates?.completion_date ?? null,
           openDelayCount: openDelays.length,
           daysLostOpen: openDelays.reduce((sum, d) => sum + Number(d.days_lost ?? 0), 0),
           claims: claims.map((c) => ({
@@ -869,7 +874,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_open_items", "Get the open items needing attention across RFIs, client approvals and material approval requests — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', 'what is pending sign-off', or 'which materials are awaiting approval'."), async (ctx) => {
+    tool(fn("get_open_items", "Get the open items needing attention across RFIs, approvals (client sign-offs, with who they are waiting on and for how long) and material approval requests — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', 'what is pending sign-off', or 'which materials are awaiting approval'."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const now = Date.now();
       const overdue = (d: unknown): boolean => Boolean(d) && new Date(d as string).getTime() < now;
@@ -885,7 +890,7 @@ export function buildTools(): AgentTool[] {
       return {
         output: {
           rfis: rfis.map((r) => ({ title: r.title, status: r.status, priority: r.priority, dueDate: r.due_date, overdue: overdue(r.due_date) })),
-          approvals: may("approvals") ? approvals.filter((a) => a.kind !== "material").map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })) : [],
+          approvals: may("approvals") ? approvals.filter((a) => a.kind !== "material").map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, waitingOn: a.requestedReviewer ?? "anyone who can approve", waitingDays: Math.floor((now - new Date(a.created_at as string).getTime()) / 86_400_000), attachmentCount: Number(a.attachmentCount ?? 0), dueDate: a.due_date, overdue: overdue(a.due_date) })) : [],
           materialApprovals: may("materialApprovals") ? approvals.filter((a) => a.kind === "material").map((a) => ({ title: a.title, material: a.materialName, quantity: a.materialQuantity, unit: a.materialUnit, supplier: a.materialSupplier, neededBy: a.materialNeededBy, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })) : [],
           notPermitted: withheld,
         },
@@ -1120,6 +1125,7 @@ export function buildTools(): AgentTool[] {
     }),
 
     ...financeTools(),
+    ...rfiTools(),
 
     tool(fn("navigate", "Point the user to a page in the app. Returns a navigation target the UI shows as a button. Use when the user asks to go somewhere or you reference a page they should open.", { target: { type: "string", description: `One of: ${Object.keys(NAV_TARGETS).join(", ")}` } }, ["target"]), async (ctx, args) => {
       const key = String(args.target ?? "").toLowerCase();

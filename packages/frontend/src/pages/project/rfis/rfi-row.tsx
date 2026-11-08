@@ -1,8 +1,6 @@
 import { MessageSquare } from "lucide-react";
 import {
-  isRfiOverdue,
   overdueLabel,
-  rfiOverdueDays,
   RFI_PILL_BASE as PILL,
   RFI_PRIORITY_PILL as PRIORITY_PILL,
   RFI_STATUS_META,
@@ -19,8 +17,9 @@ interface RfiRowProps {
 
 /** One RFI in the register: number, status, priority, what it asks, how many have answered. */
 function RfiRow({ rfi, onOpen }: RfiRowProps) {
-  const overdue = isRfiOverdue(rfi);
-  const days = rfiOverdueDays(rfi);
+  // Decided on the server in the project's timezone, so every viewer agrees.
+  const overdue = rfi.isOverdue;
+  const days = rfi.overdueDays;
 
   return (
     // A row that opens a drawer is a button, not a div (finding F41).

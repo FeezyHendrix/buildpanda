@@ -2,10 +2,21 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { DateInputField } from "@/components/molecules/date-input-field";
 import { cn } from "@/lib/utils";
+import type { ApprovalCounts } from "@/lib/project-types";
 import { APPROVAL_FILTERS, type ApprovalFilter } from "./shared";
+
+const COUNT_KEY: Record<Exclude<ApprovalFilter, "all">, keyof ApprovalCounts> = {
+  "needs-me": "needsMe",
+  awaiting: "awaiting",
+  Approved: "approved",
+  Rejected: "rejected",
+  Resubmit: "changesRequested",
+};
+const countFor = (counts: ApprovalCounts, value: Exclude<ApprovalFilter, "all">) => counts[COUNT_KEY[value]];
 
 interface ApprovalsFilterPanelProps {
   status: ApprovalFilter;
+  counts?: ApprovalCounts;
   onStatusChange: (value: ApprovalFilter) => void;
   dateFrom: string;
   dateTo: string;
@@ -19,7 +30,7 @@ const LABEL_CLASS = "text-caption-m! font-semibold text-[#1E1E1E]";
  * Status pills apply as you pick them; the date range applies together on
  * "Apply Filter", which stays disabled until both dates are set.
  */
-export function ApprovalsFilterPanel({ status, onStatusChange, dateFrom, dateTo, onApplyDates, onReset }: ApprovalsFilterPanelProps) {
+export function ApprovalsFilterPanel({ status, counts, onStatusChange, dateFrom, dateTo, onApplyDates, onReset }: ApprovalsFilterPanelProps) {
   const [draftFrom, setDraftFrom] = useState(dateFrom);
   const [draftTo, setDraftTo] = useState(dateTo);
 
@@ -49,6 +60,7 @@ export function ApprovalsFilterPanel({ status, onStatusChange, dateFrom, dateTo,
               )}
             >
               {option.label}
+              {counts && option.value !== "all" ? <span className="ml-1 opacity-70">{countFor(counts, option.value)}</span> : null}
             </Button>
           );
         })}

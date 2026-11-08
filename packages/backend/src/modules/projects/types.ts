@@ -57,7 +57,10 @@ export interface ProjectPhase {
   id: string;
   name: string;
   status: PhaseStatus;
+  /** Display text; use startDate / endDate for anything that computes. */
   dateRange: string;
+  startDate: string | null;
+  endDate: string | null;
 }
 
 export interface Project {
@@ -127,6 +130,8 @@ export interface ProjectPhaseRow {
   name: string;
   status: PhaseStatus;
   date_range: string | null;
+  start_date: Date | string | null;
+  end_date: Date | string | null;
   sort_order: number;
 }
 
@@ -171,4 +176,16 @@ export interface UpdateProjectBudgetInput {
   budgetMin: number;
   budgetMax: number;
   currency?: Currency;
+}
+
+export const PROJECT_SORTS = ["recent", "name_asc", "name_desc", "newest", "oldest"] as const;
+export type ProjectSort = (typeof PROJECT_SORTS)[number];
+
+export interface ProjectListQuery {
+  q?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  sort?: ProjectSort;
+  page?: number;
+  pageSize?: number;
 }

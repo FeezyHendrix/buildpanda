@@ -14,8 +14,6 @@ import {
 import { ChangeRequestDetailDialog } from "@/components/molecules/change-request-detail-dialog";
 import { ChangeFilterPanel } from "./change-requests/change-filter-panel";
 import {
-  matchesChangeFilters,
-  matchesChangeSearch,
   noChangeFilters,
   type ChangeFilterValues,
   type StatusFilter,
@@ -27,7 +25,7 @@ import { useParticipants } from "@/hooks/use-participants";
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import {
   useChangeRequestAction,
-  useChangeRequests,
+  useChangeRequestPage,
   useCreateChangeRequest,
   useDeleteChangeRequest,
   useUpdateChangeRequest,
@@ -49,10 +47,20 @@ export default function ProjectChangeRequests() {
   const [applied, setApplied] = useState<ChangeFilterValues>(() => noChangeFilters(project.currency));
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const { data: items = EMPTY_CHANGES, isLoading } = useChangeRequests(
-    project.id,
-    filter === "all" ? undefined : filter,
-  );
+  // The server filters and pages the register (docs/change-requests-page-backend.md).
+  const costFrom = applied.costFrom.trim() === "" ? undefined : Number(applied.costFrom);
+  const costTo = applied.costTo.trim() === "" ? undefined : Number(applied.costTo);
+  const { data: pageData, isLoading } = useChangeRequestPage(project.id, {
+    status: filter === "all" ? undefined : filter,
+    q: search.trim() || undefined,
+    type: applied.type === "all" ? undefined : [applied.type],
+    currency: costFrom !== undefined || costTo !== undefined ? applied.currency : undefined,
+    costFrom: Number.isFinite(costFrom) ? costFrom : undefined,
+    costTo: Number.isFinite(costTo) ? costTo : undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+  const items = pageData?.items ?? EMPTY_CHANGES;
   const snapshot = useReportingSnapshot(project.id);
   const createCr = useCreateChangeRequest();
   const updateCr = useUpdateChangeRequest();
@@ -69,13 +77,13 @@ export default function ProjectChangeRequests() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  // Status is applied by the server; search, type and cost range read the loaded register.
-  const shown = items.filter((cr) => matchesChangeSearch(cr, search) && matchesChangeFilters(cr, applied));
+  const shown = items;
+  const total = pageData?.total ?? 0;
   const filtering =
     filter !== "all" || search.trim() !== "" || applied.type !== "all" || applied.costFrom !== "" || applied.costTo !== "";
-  const pageCount = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
-  const pageItems = shown.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageItems = items;
 
   function clearFilters(): void {
     setFilter("all");
@@ -93,25 +101,15 @@ export default function ProjectChangeRequests() {
   const hasTimeClaims =
     daysAwarded > 0 || daysPending > 0 || items.some((cr) => cr.type === "eot_only");
 
-  /**
-   * "Send for approval" is two contractual steps: the change is recorded, then
-   * submitted for decision. If the submit is refused the record still exists as
-   * a draft, so the dialog closes and the reason is stated rather than lost.
-   */
+  // "Send for approval" creates and submits in one request; a refused submit
+  // leaves no half-sent draft behind, so the error is the whole story.
   function handleCreate(values: UpsertChangeValues): void {
     createCr.mutate(
-      { projectId: project.id, ...values },
+      { projectId: project.id, ...values, submit: true },
       {
-        onSuccess: (created) => {
+        onSuccess: () => {
           setCreateOpen(false);
-          runAction.mutate(
-            { projectId: project.id, changeId: created.id, action: "submit" },
-            {
-              onSuccess: () => toast("Change request sent for approval", "success"),
-              onError: (error) =>
-                toast(`Saved as a draft, but it could not be sent: ${getApiErrorMessage(error)}`, "error"),
-            },
-          );
+          toast("Change request sent for approval", "success");
         },
       },
     );
@@ -215,7 +213,7 @@ export default function ProjectChangeRequests() {
               <NumberedPagination
                 page={currentPage}
                 pageSize={PAGE_SIZE}
-                total={shown.length}
+                total={total}
                 noun="Change Requests"
                 onPageChange={setPage}
               />

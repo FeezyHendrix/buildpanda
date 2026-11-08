@@ -29,6 +29,10 @@ interface Props {
   mode: "create" | "edit";
   initial?: Partial<UpsertApprovalValues>;
   reviewerOptions?: ReviewerOption[];
+  /** From GET /approval-categories; the built-in list is the fallback. */
+  categoryOptions?: string[];
+  /** The input a 422 blamed (`title`, `dueDate`, `requestedReviewerId`, `attachments`). */
+  errorField?: string | null;
   onSubmit: (values: UpsertApprovalValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -36,7 +40,12 @@ interface Props {
   attachmentsEnabled?: boolean;
 }
 
-const CATEGORY_OPTIONS = ["Finishes", "Fittings", "Materials", "Structural", "Other"].map((c) => ({ value: c, label: c }));
+const DEFAULT_CATEGORIES = ["Finishes", "Fittings", "Materials", "Structural", "Other"];
+
+function FieldError({ field, blamed, message }: { field: string; blamed: string | null; message: string | null | undefined }) {
+  if (blamed !== field || !message) return null;
+  return <p className="text-caption-m! text-negative-600">{message}</p>;
+}
 const ANY_APPROVER = "__any__";
 
 const LABEL_CLASS = "text-caption-m! font-semibold text-[#1E1E1E]";
@@ -48,6 +57,8 @@ function UpsertApprovalDialog({
   mode,
   initial,
   reviewerOptions = [],
+  categoryOptions,
+  errorField = null,
   onSubmit,
   isSubmitting = false,
   error,
@@ -99,7 +110,7 @@ function UpsertApprovalDialog({
       submitLabel={mode === "create" ? "Send for approval" : "Save changes"}
       submitDisabled={!title.trim()}
       submitting={isSubmitting}
-      error={error ?? null}
+      error={errorField ? null : (error ?? null)}
       onSubmit={handleSubmit}
       footerVariant="stacked"
       className="w-[min(430px,100vw)]"
@@ -115,7 +126,9 @@ function UpsertApprovalDialog({
             onChange={setTitle}
             placeholder="e.g. Living room floor tile selection"
             className={cn(FIELD_HEIGHT, "px-4")}
+            aria-invalid={errorField === "title" || undefined}
           />
+          <FieldError field="title" blamed={errorField} message={error} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -125,7 +138,7 @@ function UpsertApprovalDialog({
             </label>
             <Select
               id="ap-category"
-              options={CATEGORY_OPTIONS}
+              options={(categoryOptions?.length ? categoryOptions : DEFAULT_CATEGORIES).map((c) => ({ value: c, label: c }))}
               value={category}
               onChange={setCategory}
               placeholder="Select a category"
@@ -145,6 +158,7 @@ function UpsertApprovalDialog({
               onChange={setDueDate}
               className={FIELD_HEIGHT}
             />
+            <FieldError field="dueDate" blamed={errorField} message={error} />
           </div>
         </div>
 
@@ -175,6 +189,7 @@ function UpsertApprovalDialog({
               onChange={setFiles}
               disabled={isSubmitting}
             />
+            <FieldError field="attachments" blamed={errorField} message={error} />
             {!attachmentsEnabled && files.length > 0 ? (
               <p role="status" className="text-caption-m! text-warning-600">
                 File upload is not switched on for approvals yet, so these files
@@ -198,6 +213,7 @@ function UpsertApprovalDialog({
             placeholder="Select who's needed to approve"
             className={cn(FIELD_HEIGHT, "px-4 text-caption-l!")}
           />
+          <FieldError field="requestedReviewerId" blamed={errorField} message={error} />
         </div>
       </div>
     </FormDrawer>

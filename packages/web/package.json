@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 --port 3001",
-    "build": "next build",
-    "start": "next start -H :: -p ${PORT:-3001}",
+    "dev": "node init && next dev -H 0.0.0.0 --port 3001",
+    "build": "node init && next build",
+    "start": "node init && next start -H :: -p ${PORT:-3001}",
     "lint": "next lint"
   },
   "dependencies": {

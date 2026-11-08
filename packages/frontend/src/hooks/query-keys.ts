@@ -1,6 +1,7 @@
 export const projectKeys = {
   all: ["projects"] as const,
   list: () => [...projectKeys.all, "list"] as const,
+  page: (query: unknown) => [...projectKeys.all, "page", query] as const,
   detail: (id: string) => [...projectKeys.all, "detail", id] as const,
   settings: (id: string) => [...projectKeys.all, "settings", id] as const,
   profile: (id: string) => [...projectKeys.all, "profile", id] as const,
@@ -192,6 +193,7 @@ export const rfiKeys = {
   all: (projectId: string) => ["projects", projectId, "rfis"] as const,
   list: (projectId: string, status?: string) =>
     [...rfiKeys.all(projectId), "list", status ?? "all"] as const,
+  page: (projectId: string, query: unknown) => [...rfiKeys.all(projectId), "page", query] as const,
   detail: (projectId: string, rfiId: string) =>
     [...rfiKeys.all(projectId), "detail", rfiId] as const,
   events: (projectId: string, rfiId: string) =>
@@ -211,6 +213,9 @@ export const approvalKeys = {
   all: (projectId: string) => ["projects", projectId, "approvals"] as const,
   list: (projectId: string, status?: string) =>
     [...approvalKeys.all(projectId), "list", status ?? "all"] as const,
+  page: (projectId: string, query: unknown) => [...approvalKeys.all(projectId), "page", query] as const,
+  approvers: (projectId: string) => [...approvalKeys.all(projectId), "approvers"] as const,
+  categories: (projectId: string) => [...approvalKeys.all(projectId), "categories"] as const,
   detail: (projectId: string, approvalId: string) =>
     [...approvalKeys.all(projectId), "detail", approvalId] as const,
 };
@@ -235,6 +240,7 @@ export const changeRequestKeys = {
   all: (projectId: string) => ["projects", projectId, "change-requests"] as const,
   list: (projectId: string, status?: string) =>
     [...changeRequestKeys.all(projectId), "list", status ?? "all"] as const,
+  page: (projectId: string, query: unknown) => [...changeRequestKeys.all(projectId), "page", query] as const,
   detail: (projectId: string, changeId: string) =>
     [...changeRequestKeys.all(projectId), "detail", changeId] as const,
   summary: (projectId: string) => [...changeRequestKeys.all(projectId), "summary"] as const,

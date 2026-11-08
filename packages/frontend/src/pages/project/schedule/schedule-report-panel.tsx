@@ -30,6 +30,8 @@ export function ScheduleReportPanel({
   loggedToday,
   timelineShiftDays,
   projectedEndDate,
+  workItems,
+  timelineShiftStatus,
 }: {
   report: ScheduleReport;
   /** Daily logs dated today. */
@@ -37,10 +39,15 @@ export function ScheduleReportPanel({
   /** Signed working-day shift off the baseline programme; null until loaded. */
   timelineShiftDays: number | null;
   projectedEndDate: string | null;
+  workItems?: { total: number; completed: number; remaining: number };
+  timelineShiftStatus?: "on_schedule" | "behind" | "ahead";
 }) {
-  const remaining = Math.max(0, report.activityCount - report.completedActivities);
+  // The server's figures when the snapshot has them; the chart's own count until it loads.
+  const total = workItems?.total ?? report.activityCount;
+  const completed = workItems?.completed ?? report.completedActivities;
+  const remaining = workItems?.remaining ?? Math.max(0, total - completed);
   const shift = timelineShiftDays ?? 0;
-  const behind = shift > 0;
+  const behind = (timelineShiftStatus ?? (shift > 0 ? "behind" : shift < 0 ? "ahead" : "on_schedule")) === "behind";
   const end = projectedEndDate ? new Date(projectedEndDate) : null;
   const endValid = end !== null && !Number.isNaN(end.getTime());
 
@@ -48,7 +55,7 @@ export function ScheduleReportPanel({
     <section aria-label="Schedule report" className="grid gap-[20px] sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
         label="Work Items"
-        value={`${report.completedActivities}/${report.activityCount}`}
+        value={`${completed}/${total}`}
         note="completed"
         indicator={
           remaining > 0 ? (

@@ -108,6 +108,10 @@ export function filesService(repository: FilesRepository) {
       return repository.findById(id);
     },
 
+    findRows(ids: string[]): Promise<UploadedFileRow[]> {
+      return repository.findByIds(ids);
+    },
+
     async presignViewUrl(
       row: UploadedFileRow,
       disposition: "inline" | "attachment" = "inline",
@@ -119,6 +123,33 @@ export function filesService(repository: FilesRepository) {
           contentType: row.mime_type,
         }),
       );
+    },
+
+    /**
+     * What the bytes say the file is, for the few types a caller must be sure
+     * of; the client-sent mime type is a label, not proof. Returns null for
+     * anything else.
+     */
+    async sniffMimeType(row: UploadedFileRow): Promise<"image/png" | "image/jpeg" | "application/pdf" | null> {
+      const stream = await throughStorage(() => openStoredFile(row.storage_path));
+      const head = await new Promise<Buffer>((resolve, reject) => {
+        const chunks: Buffer[] = [];
+        let size = 0;
+        stream.on("data", (chunk: Buffer) => {
+          chunks.push(chunk);
+          size += chunk.length;
+          if (size >= 8) {
+            (stream as unknown as { destroy?: () => void }).destroy?.();
+            resolve(Buffer.concat(chunks).subarray(0, 8));
+          }
+        });
+        stream.on("end", () => resolve(Buffer.concat(chunks)));
+        stream.on("error", reject);
+      });
+      if (head.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+      if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return "image/jpeg";
+      if (head.subarray(0, 5).toString("latin1") === "%PDF-") return "application/pdf";
+      return null;
     },
 
     async open(row: UploadedFileRow): Promise<DownloadHandle> {

@@ -189,6 +189,8 @@ export interface UpdateActivityInput {
   name?: string;
   activityType?: string;
   phaseId?: string | null;
+  /** Indent under another row, or null to outdent to the top level. */
+  parentActivityId?: string | null;
   location?: string | null;
   status?: ActivityStatus;
   plannedStartAt?: string;

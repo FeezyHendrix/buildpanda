@@ -648,6 +648,7 @@ export function agentRepository(db: Knex) {
         // Material approvals share this table; kind + material keep them from
         // being reported to the PM as client sign-offs.
         .leftJoin("material_approval_details as md", "md.approval_id", "a.id")
+        .leftJoin("user as rr", "rr.id", "a.requested_reviewer_id")
         .where("a.project_id", projectId)
         .whereIn("a.status", ["Pending", "Resubmit"])
         .orderBy("a.due_date", "asc")
@@ -659,7 +660,10 @@ export function agentRepository(db: Knex) {
           "a.category",
           "a.status",
           "a.due_date",
+          "a.created_at",
           "u.name as submittedBy",
+          "rr.name as requestedReviewer",
+          db.raw("(SELECT count(*) FROM approval_attachments aa WHERE aa.approval_id = a.id AND aa.revision = a.revision) as attachmentCount"),
           "md.material_name as materialName",
           "md.quantity as materialQuantity",
           "md.unit as materialUnit",

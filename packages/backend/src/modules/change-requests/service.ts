@@ -18,6 +18,7 @@ import type {
   ChangeDelayRow,
   ChangeRequest,
   ChangeRequestDetail,
+  ChangeRequestListQuery,
   ChangeRequestRow,
   ChangeRequestSummary,
   ChangeStatus,
@@ -89,6 +90,8 @@ function toChange(
     timeImpactDays: row.time_impact_days,
     currency: row.currency,
     submittedById: row.submitted_by_id,
+    createdById: row.submitted_by_id,
+    createdByName: row.submitted_by_name ?? null,
     decidedById: row.decided_by_id,
     decidedByName: row.decided_by_name,
     decidedAt: row.decided_at,
@@ -158,17 +161,14 @@ export function changeRequestsService(
   }
 
   return {
-    async list(projectId: string, status?: ChangeStatus): Promise<ChangeRequest[]> {
-      const rows = await repository.listByProject(projectId, status);
+    async list(projectId: string, query: ChangeRequestListQuery): Promise<{ items: ChangeRequest[]; total: number; page: number; pageSize: number }> {
+      const page = Math.max(1, query.page ?? 1);
+      const pageSize = query.page === undefined ? 1000 : Math.min(100, Math.max(1, query.pageSize ?? 10));
+      const { rows, total } = await repository.listByProject(projectId, query, page, pageSize);
       const ids = rows.map((r) => r.id);
-      const [counts, contracts, delays] = await Promise.all([
-        repository.commentCounts(ids),
-        contractIds(ids),
-        delaysByChange(ids),
-      ]);
-      return rows.map((r) =>
-        toChange(r, counts.get(r.id) ?? 0, contracts.get(r.id) ?? null, delays.get(r.id) ?? []),
-      );
+      const [counts, contracts, delays] = await Promise.all([repository.commentCounts(ids), contractIds(ids), delaysByChange(ids)]);
+      const items = rows.map((r) => toChange(r, counts.get(r.id) ?? 0, contracts.get(r.id) ?? null, delays.get(r.id) ?? []));
+      return { items, total, page, pageSize };
     },
 
     async get(projectId: string, id: string): Promise<ChangeRequestDetail> {

@@ -99,7 +99,10 @@ export interface ProjectPhase {
   id: string;
   name: string;
   status: PhaseStatus;
+  /** Display text; use startDate / endDate for anything that computes. */
   dateRange: string;
+  startDate: string | null;
+  endDate: string | null;
 }
 
 export type RfiStatus = "Draft" | "Open" | "InReview" | "Answered" | "Closed" | "Void";
@@ -130,7 +133,12 @@ export interface Rfi {
   changeRequestId: string | null;
   reopenedCount: number;
   createdById: string | null;
+  createdByName: string | null;
+  /** Past its due date and still unanswered, judged on the project's local day. */
+  isOverdue: boolean;
+  overdueDays: number;
   commentCount: number;
+  responseCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -234,11 +242,57 @@ export interface Approval {
   reviewedByName: string | null;
   reviewedAt: string | null;
   commentCount: number;
-  /** Not yet returned by the API (see docs/approvals-page-backend.md); the page shows chips only when present. */
-  attachments?: ApprovalAttachment[];
-  attachmentCount?: number;
+  /** The list carries the first three; the detail carries them all. */
+  attachments: ApprovalAttachment[];
+  attachmentCount: number;
+  /** The caller may record a decision: the same rule the PATCH guard enforces. */
+  viewerCanDecide: boolean;
+  revision: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RfiCounts {
+  all: number;
+  open: number;
+  answered: number;
+  closed: number;
+  overdue: number;
+}
+
+export interface RfiPage {
+  items: Rfi[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: RfiCounts;
+}
+
+export interface ApprovalCounts {
+  needsMe: number;
+  awaiting: number;
+  approved: number;
+  rejected: number;
+  changesRequested: number;
+}
+
+export interface ApprovalPage {
+  items: Approval[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: ApprovalCounts;
+}
+
+export interface Approver {
+  id: string;
+  name: string;
+  role: string;
+}
+
+export interface ApprovalCategory {
+  id: string;
+  name: string;
 }
 
 export interface ApprovalComment {
@@ -250,8 +304,29 @@ export interface ApprovalComment {
   createdAt: string;
 }
 
+export interface ApprovalDecision {
+  id: string;
+  decision: ApprovalStatus;
+  note: string | null;
+  noteHtml: string | null;
+  actorId: string | null;
+  actorName: string | null;
+  decidedAt: string;
+  revision: number;
+}
+
+export interface ApprovalRevision {
+  revision: number;
+  submittedAt: string;
+  attachments: ApprovalAttachment[];
+  decision: ApprovalStatus | null;
+  decisionNote: string | null;
+}
+
 export interface ApprovalDetail extends Approval {
   comments: ApprovalComment[];
+  decisions: ApprovalDecision[];
+  revisions: ApprovalRevision[];
 }
 
 export type SelectionStatus = "open" | "decided" | "cancelled";
@@ -345,6 +420,9 @@ export interface ChangeRequest {
   timeImpactDays: number;
   currency: "NGN" | "USD";
   submittedById: string | null;
+  /** Who drafted it: submittedById is stamped at create and never changes. */
+  createdById: string | null;
+  createdByName: string | null;
   decidedById: string | null;
   decidedByName: string | null;
   assigneeId: string | null;

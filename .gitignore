@@ -6,12 +6,9 @@ dist/
 build/
 
 # Environment
-.env
-.env.local
 .env.*.local
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -174,3 +171,4 @@ branch_structure.json
 # slash so a real .claude/skills or a package's own store is unaffected.
 /.claude/worktrees/
 /.pnpm-store/
+config.bat

@@ -89,7 +89,11 @@ export interface ProjectReportingSnapshot {
     eotDaysApproved?: number | null;
     eotDaysPending?: number | null;
     ldExposure?: number | null;
+    /** Calendar days; positive = behind. */
     timelineShiftDays?: number | null;
+    timelineShiftStatus?: "on_schedule" | "behind" | "ahead";
+    workItems?: { total: number; completed: number; remaining: number };
+    dailyLogsToday?: number;
     delayedActivities?: { count: number; daysLost: number } | null;
   };
   operations: {

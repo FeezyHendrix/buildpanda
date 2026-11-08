@@ -1,4 +1,13 @@
 import api from "./client";
+
+export interface ProjectPageQuery {
+  q?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  sort?: "recent" | "name_asc" | "name_desc" | "newest" | "oldest";
+  page?: number;
+  pageSize?: number;
+}
 import type { AiUpdateCadence, Currency, Project } from "@/lib/project-types";
 
 export interface ProjectTemplateSummary {
@@ -44,6 +53,11 @@ export interface UpdateProjectBudgetInput {
 
 export const projectsApi = {
   list: () => api.get<Project[]>("/projects").then((r) => r.data),
+
+  page: (query: ProjectPageQuery) =>
+    api
+      .get<{ items: Project[]; total: number; page: number; pageSize: number }>("/projects", { params: { page: 1, ...query } })
+      .then((r) => r.data),
   
   detail: (id: string) => api.get<Project>(`/projects/${id}`).then((r) => r.data),
   

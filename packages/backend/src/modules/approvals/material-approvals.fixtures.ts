@@ -24,6 +24,7 @@ const CLIENT_ROW: MaterialApprovalRow = {
   id: "apr_client",
   project_id: "proj_1",
   kind: "client",
+  revision: 1,
   title: "Kitchen tile selection",
   category: null,
   description: null,

@@ -1,3 +1,4 @@
+import { config } from "../../config/index.ts";
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { randomBytes, createHash } from "node:crypto";
@@ -69,7 +70,23 @@ export interface Actor {
   name: string;
 }
 
-function toRfi(row: RfiRow, commentCount: number): Rfi {
+const AWAITING_ANSWER = new Set(["Draft", "Open", "InReview"]);
+
+/** Today as yyyy-mm-dd in the project's timezone, so two viewers never disagree about "late". */
+export function localToday(now = new Date(), timeZone = config.timezone): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/** Whole days an unanswered RFI is past its due date; 0 when it is not overdue. */
+export function overdueDays(row: Pick<RfiRow, "status" | "due_date">, today = localToday()): number {
+  if (!row.due_date || !AWAITING_ANSWER.has(row.status)) return 0;
+  const due = row.due_date.slice(0, 10);
+  if (due >= today) return 0;
+  return Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${due}T00:00:00Z`)) / 86_400_000);
+}
+
+export function toRfi(row: RfiRow, commentCount: number): Rfi {
+  const late = overdueDays(row);
   return {
     id: row.id,
     projectId: row.project_id,
@@ -95,7 +112,11 @@ function toRfi(row: RfiRow, commentCount: number): Rfi {
     changeRequestId: row.change_request_id,
     reopenedCount: row.reopened_count,
     createdById: row.created_by_id,
+    createdByName: row.created_by_name ?? null,
+    isOverdue: late > 0,
+    overdueDays: late,
     commentCount,
+    responseCount: commentCount,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
 import { generateId } from "../../lib/ids.ts";
 import type {
+  ChangeRequestListQuery,
   ChangeCommentRow,
   ChangeDelayRow,
   ChangeRequestRow,
@@ -74,6 +75,7 @@ const SELECT = [
   "c.time_impact_days",
   "c.currency",
   "c.submitted_by_id",
+  "sb.name as submitted_by_name",
   "c.decided_by_id",
   "u.name as decided_by_name",
   "c.decided_at",
@@ -92,6 +94,7 @@ export function changeRequestsRepository(db: Knex) {
   function base() {
     return db("change_requests as c")
       .leftJoin("user as u", "u.id", "c.decided_by_id")
+      .leftJoin("user as sb", "sb.id", "c.submitted_by_id")
       .leftJoin("user as asg", "asg.id", "c.assignee_id");
   }
 
@@ -101,10 +104,25 @@ export function changeRequestsRepository(db: Knex) {
       const row = await db("projects").where({ id: projectId }).select("estimate_id").first();
       return (row?.estimate_id as string | null | undefined) ?? null;
     },
-    listByProject(projectId: string, status?: ChangeStatus): Promise<ChangeRequestRow[]> {
-      const q = base().where("c.project_id", projectId);
-      if (status) q.andWhere("c.status", status);
-      return q.select(...SELECT).orderBy("c.created_at", "desc");
+    async listByProject(projectId: string, query: ChangeRequestListQuery, page: number, pageSize: number): Promise<{ rows: ChangeRequestRow[]; total: number }> {
+      const filtered = () => {
+        const q = base().where("c.project_id", projectId);
+        if (query.status) q.andWhere("c.status", query.status);
+        if (query.type?.length) q.whereIn("c.type", query.type);
+        if (query.q) {
+          const like = `%${query.q.replace(/[%_]/g, (c) => `\\${c}`)}%`;
+          q.andWhere((b) => b.whereILike("c.title", like).orWhereILike("c.description", like).orWhereILike("c.reason", like));
+        }
+        if (query.costFrom !== undefined || query.costTo !== undefined) {
+          q.andWhere("c.currency", query.currency ?? "NGN");
+          if (query.costFrom !== undefined) q.andWhere("c.cost_impact", ">=", String(query.costFrom));
+          if (query.costTo !== undefined) q.andWhere("c.cost_impact", "<=", String(query.costTo));
+        }
+        return q;
+      };
+      const counted = (await filtered().count("c.id as count")) as { count: string }[];
+      const rows = await filtered().select(...SELECT).orderBy("c.created_at", "desc").limit(pageSize).offset((page - 1) * pageSize);
+      return { rows, total: Number(counted[0]?.count ?? 0) };
     },
 
     findById(id: string): Promise<ChangeRequestRow | undefined> {

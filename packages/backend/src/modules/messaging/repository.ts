@@ -137,14 +137,17 @@ export function messagingRepository(db: Knex) {
         .first();
     },
 
-    listMembers(channelId: string): Promise<(ChannelMemberRow & { name: string | null; email: string })[]> {
+    listMembers(
+      channelId: string,
+    ): Promise<(ChannelMemberRow & { name: string | null; email: string; profession: string | null })[]> {
       return db<ChannelMemberRow>("channel_members as cm")
         .join("user as u", "u.id", "cm.user_id")
         .where("cm.channel_id", channelId)
-        .select<(ChannelMemberRow & { name: string | null; email: string })[]>(
+        .select<(ChannelMemberRow & { name: string | null; email: string; profession: string | null })[]>(
           "cm.*",
           "u.name as name",
           "u.email as email",
+          "u.profession as profession",
         );
     },
 

@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { projectKeys, projectTemplateKeys } from "./query-keys";
-import { projectsApi } from "@/api/projects";
+import { projectsApi, type ProjectPageQuery } from "@/api/projects";
 import type {
   ProjectTemplateSummary,
   CreateProjectInput,
@@ -10,6 +10,14 @@ import type {
 } from "@/api/projects";
 
 export type { ProjectTemplateSummary, CreateProjectInput, ProjectSettings, UpdateProjectBudgetInput };
+
+export function useProjectPage(query: ProjectPageQuery) {
+  return useQuery({
+    queryKey: projectKeys.page(query),
+    queryFn: () => projectsApi.page(query),
+    placeholderData: keepPreviousData,
+  });
+}
 
 export function useProjects() {
   return useQuery({

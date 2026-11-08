@@ -19,7 +19,7 @@ import {
   CHANGE_TYPES,
   type ChangeAction,
   type ChangeActionInput,
-  type ChangeStatus,
+  type ChangeRequestListQuery,
   type CreateChangeRequestInput,
   type UpdateChangeRequestInput,
 } from "./types.ts";
@@ -42,10 +42,21 @@ const crParams = {
   },
 } as const;
 
+// `page` (or any filter beyond status) switches the response from the plain
+// array to { items, total, page, pageSize }.
 const listQuery = {
   type: "object",
   additionalProperties: false,
-  properties: { status: { type: "string", enum: STATUS } },
+  properties: {
+    status: { type: "string", enum: STATUS },
+    q: { type: "string", maxLength: 200 },
+    type: { type: "array", items: { type: "string", enum: CHANGE_TYPES }, maxItems: 4 },
+    currency: { type: "string", minLength: 3, maxLength: 3 },
+    costFrom: { type: "number" },
+    costTo: { type: "number" },
+    page: { type: "integer", minimum: 1 },
+    pageSize: { type: "integer", minimum: 1, maximum: 100 },
+  },
 } as const;
 
 const delayIdsField = {
@@ -59,6 +70,7 @@ const createBody = {
   required: ["title"],
   additionalProperties: false,
   properties: {
+    submit: { type: "boolean" },
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: ["string", "null"], maxLength: 4000 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
@@ -241,23 +253,36 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.get<{ Params: { id: string }; Querystring: { status?: ChangeStatus } }>(
+  fastify.get<{ Params: { id: string }; Querystring: ChangeRequestListQuery }>(
     "/projects/:id/change-requests",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "change-requests", "view");
-      return service.list(project.id, request.query.status);
+      const { status: _status, ...rest } = request.query;
+      const result = await service.list(project.id, request.query);
+      return Object.values(rest).some((v) => v !== undefined) ? result : result.items;
     },
   );
 
-  fastify.post<{ Params: { id: string }; Body: CreateChangeRequestInput }>(
+  // "Send for approval" creates and submits in one request. shortcut: two
+  // writes with a compensating delete rather than one transaction; fold the
+  // submit into the create transaction if a half-sent draft ever survives.
+  fastify.post<{ Params: { id: string }; Body: CreateChangeRequestInput & { submit?: boolean } }>(
     "/projects/:id/change-requests",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "change-requests", "manage");
       const user = request.requireAuth();
-      const created = await service.create(project.id, request.body, user.id);
-      return reply.status(201).send(created);
+      const { submit, ...input } = request.body;
+      const created = await service.create(project.id, input, user.id);
+      if (!submit) return reply.status(201).send(created);
+      try {
+        await actions.run(project.id, created.id, "submit", {}, { id: user.id, name: user.name, holdsApproval: holdsApproval(request, project) });
+      } catch (error) {
+        await service.remove(project.id, created.id).catch(() => undefined);
+        throw error;
+      }
+      return reply.status(201).send(await service.get(project.id, created.id));
     },
   );
 

@@ -4,7 +4,6 @@ import { ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { INPUT_BASE_CLASS } from "@/components/atoms/input";
 import { useAddChangeComment, useChangeRequest } from "@/hooks/use-change-requests";
-import { useParticipants } from "@/hooks/use-participants";
 import { ChangeRequestActions } from "@/components/molecules/change-request-actions";
 import { ChangeRequestBudgetAllocations } from "@/components/molecules/change-request-budget-allocations";
 import {
@@ -149,12 +148,8 @@ interface Props {
 
 function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: Props) {
   const { data: cr, isLoading } = useChangeRequest(projectId, changeId ?? undefined);
-  const { data: participants = [] } = useParticipants(open ? projectId : undefined);
   const [detailsOpen, setDetailsOpen] = useState(false);
-
-  // The record keeps who submitted it, not who first drafted it, so a draft has no author to show yet.
-  const submitter = cr?.submittedById ? participants.find((p) => p.userId === cr.submittedById) : undefined;
-  const createdBy = submitter ? (submitter.name ?? submitter.email) : "—";
+  const createdBy = cr?.createdByName ?? "—";
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

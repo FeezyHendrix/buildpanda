@@ -1,6 +1,6 @@
 import { personalWorkKeys } from "./personal-work-keys";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { rfisApi, type RfiCreateInput, type RfiUpdateInput, type RfiRespondInput } from "@/api/rfis";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { rfisApi, type RfiCreateInput, type RfiPageQuery, type RfiUpdateInput, type RfiRespondInput } from "@/api/rfis";
 import { rfiKeys } from "./query-keys";
 import type { RfiStatus } from "@/lib/project-types";
 
@@ -11,6 +11,15 @@ export function useProjectRfis(projectId: string | undefined, status?: RfiStatus
     queryKey: rfiKeys.list(projectId ?? "__none__", status),
     queryFn: () => rfisApi.list(projectId!, status),
     enabled: Boolean(projectId),
+  });
+}
+
+export function useRfiPage(projectId: string | undefined, query: RfiPageQuery) {
+  return useQuery({
+    queryKey: rfiKeys.page(projectId ?? "__none__", query),
+    queryFn: () => rfisApi.page(projectId!, query),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
   });
 }
 

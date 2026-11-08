@@ -291,7 +291,7 @@ export const FEATURE_FLAGS = [
     key: "workflow.changeRequests",
     label: "Change requests",
     group: "Workflow",
-    description: "Change requests, budgets and client approvals.",
+    description: "Change requests, budgets and approvals.",
     enabledByDefault: true,
     routePrefixes: ["/projects/:id/change-requests"],
   },

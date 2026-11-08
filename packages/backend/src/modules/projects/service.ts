@@ -1,3 +1,4 @@
+import { config } from "../../config/index.ts";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import { toIso } from "../../lib/dates.ts";
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
@@ -20,6 +21,7 @@ import type {
   ProjectSettings,
   UpdateProjectBudgetInput,
   UpdateProjectProfileInput,
+  ProjectListQuery,
 } from "./types.ts";
 
 function toProfile(row: ProjectRow): ProjectProfile {
@@ -39,12 +41,16 @@ function toProfile(row: ProjectRow): ProjectProfile {
   };
 }
 
+const isoDay = (v: Date | string | null) => (v ? new Date(v).toISOString().slice(0, 10) : null);
+
 function toPhase(row: ProjectPhaseRow): ProjectPhase {
   return {
     id: row.id,
     name: row.name,
     status: row.status,
     dateRange: row.date_range ?? "",
+    startDate: isoDay(row.start_date),
+    endDate: isoDay(row.end_date),
   };
 }
 
@@ -80,17 +86,19 @@ export function projectsService(repository: ProjectsRepository) {
     async listForUser(
       ownerId: string,
       orgRoles: ReadonlyMap<string, string>,
-    ): Promise<Project[]> {
-      const rows = await repository.listForUser(ownerId, orgRoles);
-      if (rows.length === 0) return [];
-      const phases = await repository.findPhasesByProjects(rows.map((r) => r.id));
+      query: ProjectListQuery = {},
+    ): Promise<{ items: Project[]; total: number; page: number; pageSize: number }> {
+      const page = Math.max(1, query.page ?? 1);
+      const pageSize = query.page === undefined ? 1000 : Math.min(100, Math.max(1, query.pageSize ?? 12));
+      const { rows, total } = await repository.listForUser(ownerId, orgRoles, query, config.timezone, page, pageSize);
+      const phases = rows.length ? await repository.findPhasesByProjects(rows.map((r) => r.id)) : [];
       const grouped = new Map<string, ProjectPhaseRow[]>();
       for (const phase of phases) {
         const list = grouped.get(phase.project_id) ?? [];
         list.push(phase);
         grouped.set(phase.project_id, list);
       }
-      return rows.map((row) => toProject(row, grouped.get(row.id) ?? []));
+      return { items: rows.map((row) => toProject(row, grouped.get(row.id) ?? [])), total, page, pageSize };
     },
 
     async getById(id: string): Promise<Project> {

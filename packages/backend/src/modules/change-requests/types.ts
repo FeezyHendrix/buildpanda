@@ -90,6 +90,9 @@ export interface ChangeRequest {
   submittedAt: string | null;
   revisions: ChangeRevision[];
   submittedById: string | null;
+  /** submitted_by_id is stamped at create and never changes, so it is also who drafted it. */
+  createdById: string | null;
+  createdByName: string | null;
   decidedById: string | null;
   decidedByName: string | null;
   decidedAt: string | null;
@@ -163,6 +166,7 @@ export interface ChangeRequestRow {
   submitted_at: string | null;
   revisions: ChangeRevision[] | string | null;
   submitted_by_id: string | null;
+  submitted_by_name: string | null;
   decided_by_id: string | null;
   decided_by_name: string | null;
   decided_at: string | null;
@@ -226,4 +230,16 @@ export interface ChangeActionInput {
   costImpact?: number;
   timeImpactDays?: number;
   daysAwarded?: number;
+}
+
+export interface ChangeRequestListQuery {
+  status?: ChangeStatus;
+  q?: string;
+  type?: ChangeType[];
+  /** costFrom / costTo compare in this currency; rows in another currency never match a range. */
+  currency?: Currency;
+  costFrom?: number;
+  costTo?: number;
+  page?: number;
+  pageSize?: number;
 }

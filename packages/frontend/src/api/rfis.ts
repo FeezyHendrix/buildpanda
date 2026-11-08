@@ -1,5 +1,16 @@
 import api from "./client";
-import type { Rfi, RfiDetail, RfiEvent, RfiPriority, RfiStatus } from "@/lib/project-types";
+
+export interface RfiPageQuery {
+  status?: RfiStatus[];
+  overdue?: boolean;
+  q?: string;
+  priority?: RfiPriority[];
+  dueFrom?: string;
+  dueTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+import type { Rfi, RfiDetail, RfiEvent, RfiPage, RfiPriority, RfiStatus } from "@/lib/project-types";
 
 export interface RfiCreateInput {
   subject: string;
@@ -40,6 +51,9 @@ export interface RfiRespondInput {
 }
 
 export const rfisApi = {
+  page: (projectId: string, query: RfiPageQuery) =>
+    api.get<RfiPage>(`/projects/${projectId}/rfis`, { params: { page: 1, ...query } }).then((r) => r.data),
+
   list: (projectId: string, status?: RfiStatus) =>
     api
       .get<Rfi[]>(`/projects/${projectId}/rfis`, {

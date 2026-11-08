@@ -13,7 +13,24 @@ import {
   type ProjectSettings,
   type UpdateProjectBudgetInput,
   type UpdateProjectProfileInput,
+  PROJECT_SORTS,
+  type ProjectListQuery,
 } from "./types.ts";
+
+const day = { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" } as const;
+
+const projectListQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    q: { type: "string", maxLength: 200 },
+    createdFrom: day,
+    createdTo: day,
+    sort: { type: "string", enum: PROJECT_SORTS },
+    page: { type: "integer", minimum: 1 },
+    pageSize: { type: "integer", minimum: 1, maximum: 100 },
+  },
+} as const;
 
 const listTemplatesResponse = {
   200: {
@@ -200,7 +217,9 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.get("/projects", async (request) => {
+  // `page` (or any filter) switches the response from the plain array to
+  // { items, total, page, pageSize }.
+  fastify.get<{ Querystring: ProjectListQuery }>("/projects", { schema: { querystring: projectListQuery } }, async (request) => {
     const user = request.requireAuth();
     const activeOrg =
       request.activeOrganizationId !== null && request.orgRoles.has(request.activeOrganizationId)
@@ -210,7 +229,8 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
       activeOrg !== null
         ? new Map([[activeOrg, request.orgRoles.get(activeOrg)!]])
         : new Map<string, string>();
-    return service.listForUser(user.id, activeOrgRoles);
+    const result = await service.listForUser(user.id, activeOrgRoles, request.query);
+    return Object.values(request.query).some((v) => v !== undefined) ? result : result.items;
   });
 
   fastify.post<{ Body: CreateProjectInput }>(

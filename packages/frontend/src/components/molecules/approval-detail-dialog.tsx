@@ -8,12 +8,14 @@ import { INPUT_BASE_CLASS } from "@/components/atoms/input";
 import {
   useAddApprovalComment,
   useApproval,
+  useResubmitApproval,
   useUpdateApproval,
 } from "@/hooks/use-approvals";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import { htmlFromPlainText } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { useSession } from "@/stores/auth";
 import type { ApprovalStatus } from "@/lib/project-types";
 
 export const APPROVAL_STATUS_META: Record<
@@ -42,14 +44,15 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   approvalId: string | null;
-  canDecide?: boolean;
-  currentUserId?: string;
 }
 
-function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDecide = false, currentUserId }: Props) {
+function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Props) {
   const { data: approval, isLoading, error, refetch } = useApproval(projectId, approvalId ?? undefined);
   const updateApproval = useUpdateApproval();
+  const resubmitApproval = useResubmitApproval();
   const addComment = useAddApprovalComment();
+  const { data: session } = useSession();
+  const isRequester = Boolean(approval && session?.user?.id && approval.submittedById === session.user.id);
   const [response, setResponse] = useState("");
   const [responseHtml, setResponseHtml] = useState("");
   const [comment, setComment] = useState("");
@@ -83,11 +86,8 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
   }
 
   const decided = approval && (approval.status === "Approved" || approval.status === "Rejected");
-  // Mirror the backend gate: the user may decide only if they are an approver,
-  // and when a specific reviewer was requested it must be them.
-  const mayDecide =
-    canDecide &&
-    (!approval?.requestedReviewerId || approval.requestedReviewerId === currentUserId);
+  // The server says whether this viewer may decide, with the same rule PATCH enforces.
+  const mayDecide = approval?.viewerCanDecide ?? false;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -180,6 +180,52 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                         : "You do not have permission to decide this approval."}
                   </p>
                 )}
+
+                {approval.status === "Resubmit" && isRequester ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    className="mt-3"
+                    loading={resubmitApproval.isPending}
+                    onClick={() =>
+                      resubmitApproval.mutate(
+                        { projectId, approvalId: approval.id },
+                        { onSuccess: () => toast("Sent back for review", "success"), onError: () => toast("Could not resubmit") },
+                      )
+                    }
+                  >
+                    Resubmit for review
+                  </Button>
+                ) : null}
+
+                {approval.revisions.length > 1 ? (
+                  <>
+                    <p className="mt-5 text-xs font-medium uppercase text-ink-muted">Revisions</p>
+                    <ol className="mt-2 flex flex-col gap-2">
+                      {approval.revisions.map((r) => (
+                        <li key={r.revision} className="rounded-lg bg-surface-alt p-3 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-ink">
+                              Revision {r.revision}
+                              {r.revision === approval.revision ? " (current)" : ""}
+                            </span>
+                            <span className="text-xs text-ink-muted">{formatWhen(r.submittedAt)}</span>
+                          </div>
+                          {r.attachments.length > 0 ? (
+                            <p className="mt-1 text-xs text-ink-muted">{r.attachments.map((a) => a.fileName).join(", ")}</p>
+                          ) : null}
+                          {r.decision ? (
+                            <p className="mt-1 text-xs text-ink-muted">
+                              {APPROVAL_STATUS_META[r.decision].label}
+                              {r.decisionNote ? ` — ${r.decisionNote}` : ""}
+                            </p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                ) : null}
 
                 <p className="mt-5 text-xs font-medium uppercase text-ink-muted">
                   Discussion ({approval.comments.length})

@@ -6,6 +6,7 @@ import type {
   ProjectPhaseRow,
   ProjectRow,
   ProjectSetup,
+  ProjectListQuery,
 } from "./types.ts";
 
 export interface NewProjectRecord {
@@ -130,7 +131,11 @@ export function projectsRepository(db: Knex) {
     async listForUser(
       ownerId: string,
       orgRoles: ReadonlyMap<string, string>,
-    ): Promise<ProjectRow[]> {
+      query: ProjectListQuery = {},
+      timeZone = "UTC",
+      page = 1,
+      pageSize = 1000,
+    ): Promise<{ rows: ProjectRow[]; total: number }> {
       const activeOrgIds = [...orgRoles.keys()];
 
       const participantQuery = db("project_participants as pp")
@@ -140,7 +145,7 @@ export function projectsRepository(db: Knex) {
       if (activeOrgIds.length) participantQuery.whereIn("p.organization_id", activeOrgIds);
       const participantProjectIds = await participantQuery.pluck<string[]>("pp.project_id");
 
-      return db<ProjectRow>("projects")
+      const visible = db<ProjectRow>("projects")
         .where(function () {
           this.where(function () {
             this.where("owner_id", ownerId).andWhere(function () {
@@ -152,8 +157,24 @@ export function projectsRepository(db: Knex) {
           });
           if (activeOrgIds.length) this.orWhereIn("organization_id", activeOrgIds);
           if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
-        })
-        .orderBy("updated_at", "desc");
+        });
+      if (query.q) {
+        const like = `%${query.q.replace(/[%_]/g, (c) => `\\${c}`)}%`;
+        visible.andWhere((b) => b.whereILike("name", like).orWhereILike("address", like));
+      }
+      if (query.createdFrom) visible.whereRaw("(created_at AT TIME ZONE ?)::date >= ?", [timeZone, query.createdFrom]);
+      if (query.createdTo) visible.whereRaw("(created_at AT TIME ZONE ?)::date <= ?", [timeZone, query.createdTo]);
+      const counted = (await visible.clone().count("id as count")) as { count: string }[];
+      const order: Record<NonNullable<ProjectListQuery["sort"]>, [string, "asc" | "desc"]> = {
+        recent: ["updated_at", "desc"],
+        name_asc: ["name", "asc"],
+        name_desc: ["name", "desc"],
+        newest: ["created_at", "desc"],
+        oldest: ["created_at", "asc"],
+      };
+      const [column, direction] = order[query.sort ?? "recent"];
+      const rows = await visible.orderBy(column, direction).limit(pageSize).offset((page - 1) * pageSize);
+      return { rows, total: Number(counted[0]?.count ?? 0) };
     },
 
     findById(id: string): Promise<ProjectRow | undefined> {
