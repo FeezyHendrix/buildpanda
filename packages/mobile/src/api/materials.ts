@@ -79,9 +79,20 @@ export interface CreateMaterialOrderInput {
   approvalId?: string | null;
 }
 
+/** A line from the project's imported BoQ, as the desktop order dialog offers it. */
+export interface BoqMaterialOption {
+  materialName: string;
+  unit: string;
+  estimatedCost: number;
+  supplier: string | null;
+}
+
 export const materialsApi = {
   list: (projectId: string) =>
     request<MaterialOrder[]>(`/projects/${projectId}/materials/orders`),
+
+  boqMaterials: (projectId: string) =>
+    request<BoqMaterialOption[]>(`/projects/${projectId}/materials/boq-materials`),
 
   create: (projectId: string, body: CreateMaterialOrderInput) =>
     request<MaterialOrder>(`/projects/${projectId}/materials/orders`, {

@@ -2,8 +2,9 @@ import { features } from "@/lib/feature-access";
 import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { Button, Field, FieldLabel, OptionRow, Spinner, Text } from "@/components/atoms";
+import { MaterialNameField } from "@/components/molecules/material-name-field";
 import { Page } from "@/components/molecules/page";
 import { ReceiptOrderPicker, isReceivable, type ReceivableOrder } from "@/components/molecules/receipt-order-picker";
 import { StageField } from "@/components/molecules/stage-field";
@@ -62,15 +63,9 @@ function LogForm({ db, projectId }: { db: Db; projectId: string }) {
 
   const quantityValue = Number(quantity.trim().replace(",", "."));
   const valid = materialName.trim().length > 0 && unit.trim().length > 0 && Number.isFinite(quantityValue) && quantityValue > 0;
-  const typed = materialName.trim().toLowerCase();
-  const suggestions = known
-    .filter((m) => m.name.toLowerCase() !== typed && (!typed || m.name.toLowerCase().includes(typed)))
-    .slice(0, 6);
-
-  function pickMaterial(name: string) {
+  function pickMaterial(name: string, knownUnit?: string) {
     setMaterialName(name);
-    const match = known.find((m) => m.name.toLowerCase() === name.trim().toLowerCase());
-    if (match?.unit) setUnit(match.unit);
+    if (knownUnit) setUnit(knownUnit);
   }
 
   /** A receipt against an order is that order's material, so the stock line matches. */
@@ -128,18 +123,7 @@ function LogForm({ db, projectId }: { db: Db; projectId: string }) {
         {entryType === "IN" ? (
           <ReceiptOrderPicker orders={orders} materialName={materialName} value={order?.id ?? null} onChange={pickOrder} />
         ) : null}
-        <View className="gap-2">
-          <Field label="Material" value={materialName} onChangeText={pickMaterial} placeholder="e.g. Cement" autoFocus />
-          {suggestions.length > 0 ? (
-            <View className="flex-row flex-wrap gap-2">
-              {suggestions.map((m) => (
-                <Pressable key={m.name} accessibilityRole="button" onPress={() => pickMaterial(m.name)} className="min-h-11 justify-center rounded-xl bg-surface-alt px-4">
-                  <Text weight="semibold" tone="secondary" className="text-[13px]">{m.name}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-        </View>
+        <MaterialNameField value={materialName} onChange={pickMaterial} options={known} autoFocus />
         <View className="flex-row gap-3">
           <Field label="Quantity" value={quantity} onChangeText={setQuantity} keyboardType="decimal-pad" className="flex-1" />
           <Field label="Unit" value={unit} onChangeText={setUnit} placeholder="bags" autoCapitalize="none" className="flex-1" />

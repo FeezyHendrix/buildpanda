@@ -5,12 +5,14 @@ import { withProjectPermission } from "@/components/molecules/permission-gate";
 import { goBack } from "@/lib/navigation";
 
 import { useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Text } from "@/components/atoms";
+import { MaterialNameField } from "@/components/molecules/material-name-field";
 import { Page } from "@/components/molecules/page";
 import { useLocalDb } from "@/db/provider";
 import { useCreateMaterialOrder } from "@/hooks/use-local-materials";
+import { useBoqMaterials } from "@/hooks/use-material-log";
 import { useFieldSession } from "@/lib/field-session";
 import { isIsoDate } from "@/lib/dates";
 import { useSyncState } from "@/lib/sync-provider";
@@ -36,6 +38,8 @@ function NewMaterialOrder() {
   const { db } = useLocalDb();
   const create = useCreateMaterialOrder(db, projectId);
   const { isOnline } = useSyncState();
+  const boq = useBoqMaterials(projectId);
+  const boqOptions = useMemo(() => boq.map((m) => ({ name: m.materialName, unit: m.unit })), [boq]);
 
   const [title, setTitle] = useState(from.materialName ?? "");
   const [materialName, setMaterialName] = useState(from.materialName ?? "");
@@ -45,6 +49,15 @@ function NewMaterialOrder() {
   const [neededBy, setNeededBy] = useState(from.neededBy ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** A BoQ pick fills the unit and supplier the way the desktop order dialog does; typed text leaves them alone. */
+  function pickMaterial(name: string, knownUnit?: string) {
+    setMaterialName(name);
+    if (!knownUnit) return;
+    setUnit(knownUnit);
+    const line = boq.find((m) => m.materialName.toLowerCase() === name.trim().toLowerCase());
+    if (line?.supplier && !supplier.trim()) setSupplier(line.supplier);
+  }
 
   // The API rejects an order with no quantity or no needed-by date, so the
   // form refuses them too instead of queuing a write that can never land.
@@ -115,7 +128,7 @@ function NewMaterialOrder() {
         ) : null}
         <StageField value={stageId} onChange={setStageId} />
         <Field label="Title" value={title} onChangeText={setTitle} placeholder="What is this for?" autoFocus />
-        <Field label="Material" value={materialName} onChangeText={setMaterialName} placeholder="e.g. Cement" />
+        <MaterialNameField value={materialName} onChange={pickMaterial} options={boqOptions} />
         <View className="flex-row gap-3">
           <Field label="Quantity" value={quantity} onChangeText={setQuantity} keyboardType="numeric" className="flex-1" />
           <Field label="Unit" value={unit} onChangeText={setUnit} placeholder="bags" className="flex-1" />
