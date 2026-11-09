@@ -6,9 +6,12 @@ dist/
 build/
 
 # Environment
+.env
+.env.local
 .env.*.local
 
 # IDE
+.vscode/
 .idea/
 *.swp
 *.swo
@@ -190,4 +193,3 @@ branch_structure.json
 !/packages/mobile/scripts/rbac/repositories.test.mjs
 !/packages/mobile/scripts/rbac/session.test.mjs
 !/packages/mobile/scripts/voice/execution.test.mjs
-config.bat
