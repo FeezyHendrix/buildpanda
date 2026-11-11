@@ -756,19 +756,21 @@ body {
   }
 
   /* ── Form fields ─────────────────────────────────────────────────────────
+     The product's field look: white, square, a hairline border, 45px tall.
      `.field-input` is a single control; `.field-group` is a box that holds
-     several controls and shows focus for whichever is active. */
+     several controls and shows focus once, for whichever is active. */
   .field-input,
   .field-group {
     width: 100%;
-    height: 2.75rem;
+    height: 2.8125rem;
     border: 1px solid var(--color-line);
     background-color: var(--color-white);
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
+    transition: border-color 150ms;
   }
 
   .field-input {
-    padding-inline: 0.75rem;
+    padding-inline: 0.875rem;
   }
 
   .field-input::placeholder {
@@ -778,8 +780,7 @@ body {
   .field-input:focus-visible,
   .field-group:focus-within {
     border-color: var(--color-brand);
-    outline: 2px solid var(--color-brand);
-    outline-offset: 1px;
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-brand) 15%, transparent);
   }
 
   /* ── FAQ ────────────────────────────────────────────────────────────────
@@ -1237,4 +1238,16 @@ body {
   to {
     transform: scaleY(1);
   }
+}
+
+/* The field's focus is its border (above). The page-wide outline would draw a
+   second box around the same control, and a third around a group's border, so
+   controls that sit in a field turn it off. This is outside the components
+   layer on purpose: an unlayered rule beats the unlayered global one only if
+   it is more specific, and layered rules lose to both. */
+.field-input:focus-visible,
+.field-group :focus-visible,
+.field-select:focus-visible,
+.field-bare:focus-visible {
+  outline: none;
 }

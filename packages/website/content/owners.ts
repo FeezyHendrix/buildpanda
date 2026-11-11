@@ -132,8 +132,7 @@ export const owners = {
     headline: "Tell us about your project",
     body: "Tell us about the home you want to build. We will walk you through how BuildPanda manages your project from inception to handover, and answer every question, with no obligation",
     form: {
-      firstName: { label: "First Name", placeholder: "Michael" },
-      lastName: { label: "Last Name", placeholder: "Scott" },
+      fullName: { label: "Full Name", placeholder: "Michael Scott" },
       email: { label: "Email", placeholder: "name@mail.com" },
       phone: {
         label: "Phone Number",
