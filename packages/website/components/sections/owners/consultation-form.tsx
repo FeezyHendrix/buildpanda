@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Field } from "@/components/ui/field";
-import { ChevronDownIcon } from "@/components/ui/icons";
+import { Select, type SelectOption } from "@/components/ui/select";
 import { countries } from "@/content/countries";
 import { owners } from "@/content/owners";
 import { sendConsultationLead } from "@/lib/leads";
@@ -11,10 +11,17 @@ type Status = "idle" | "submitting" | "success" | "error";
 
 const { form: copy } = owners.consultation;
 
+/** Keyed by country code: the United States and Canada share +1, so the dial code alone cannot name one. */
+const COUNTRY_OPTIONS: ReadonlyArray<SelectOption> = countries.map((country) => ({
+  value: country.code,
+  label: `${country.name} (${country.dial})`,
+  short: country.dial,
+}));
+const DEFAULT_COUNTRY = countries[0].code;
+
 /**
  * The consultation form. It maps its fields onto the lead endpoint's body
- * (see lib/leads.ts): the two names become one, and the dialling code is
- * joined to the number.
+ * (see lib/leads.ts): the dialling code is joined to the number.
  */
 export function ConsultationForm({
   projectType = copy.projectType,
@@ -28,8 +35,10 @@ export function ConsultationForm({
   submitLabel?: string;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
-  const [dial, setDial] = useState(countries[0].dial);
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY);
+  const dial = countries.find((country) => country.code === countryCode)?.dial ?? countries[0].dial;
   const confirmation = useRef<HTMLDivElement>(null);
+  const phoneBox = useRef<HTMLDivElement>(null);
 
   // After sending, focus moves to the confirmation so it is read out.
   useEffect(() => {
@@ -46,7 +55,7 @@ export function ConsultationForm({
     setStatus("submitting");
     try {
       await sendConsultationLead({
-        name: `${value("firstName")} ${value("lastName")}`.trim(),
+        name: value("fullName"),
         email: value("email"),
         phone: `${dial} ${value("phone")}`,
         location: value("location"),
@@ -55,7 +64,7 @@ export function ConsultationForm({
         source,
       });
       form.reset();
-      setDial(countries[0].dial);
+      setCountryCode(DEFAULT_COUNTRY);
       setStatus("success");
     } catch {
       setStatus("error");
@@ -82,25 +91,14 @@ export function ConsultationForm({
 
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-2 gap-x-4 gap-y-5 border border-line bg-white p-4 sm:p-6">
-      <Field htmlFor="consult-first-name" label={copy.firstName.label}>
+      <Field htmlFor="consult-full-name" label={copy.fullName.label} className="col-span-2">
         <input
-          id="consult-first-name"
-          name="firstName"
+          id="consult-full-name"
+          name="fullName"
           required
-          maxLength={100}
-          autoComplete="given-name"
-          placeholder={copy.firstName.placeholder}
-          className="field-input"
-        />
-      </Field>
-      <Field htmlFor="consult-last-name" label={copy.lastName.label}>
-        <input
-          id="consult-last-name"
-          name="lastName"
-          required
-          maxLength={99}
-          autoComplete="family-name"
-          placeholder={copy.lastName.placeholder}
+          maxLength={200}
+          autoComplete="name"
+          placeholder={copy.fullName.placeholder}
           className="field-input"
         />
       </Field>
@@ -118,24 +116,20 @@ export function ConsultationForm({
         />
       </Field>
 
-      <Field htmlFor="consult-phone" label={copy.phone.label}>
-        {/* The code and the number share one box, as designed. */}
-        <div className="field-group flex">
-          <div className="relative shrink-0 border-r border-line">
-            <select
-              aria-label={copy.phone.countryLabel}
-              value={dial}
-              onChange={(event) => setDial(event.target.value)}
-              autoComplete="tel-country-code"
-              className="h-full appearance-none bg-transparent py-0 pr-7 pl-3 text-[0.9375rem] font-medium outline-none"
-            >
-              {countries.map((country) => (
-                <option key={country.code} value={country.dial} label={`${country.name} (${country.dial})`}>
-                  {country.code}
-                </option>
-              ))}
-            </select>
-            <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2 size-3.5 -translate-y-1/2" />
+      <Field htmlFor="consult-phone" label={copy.phone.label} className="col-span-2 sm:col-span-1">
+        {/* The country and the number share one box; the box shows focus, not the two controls inside it. */}
+        <div ref={phoneBox} className="field-group flex min-w-0">
+          <div className="h-full w-[5.5rem] shrink-0 border-r border-line">
+            <Select
+              id="consult-country"
+              ariaLabel={copy.phone.countryLabel}
+              options={COUNTRY_OPTIONS}
+              searchPlaceholder="Search countries"
+              anchorRef={phoneBox}
+              value={countryCode}
+              onChange={setCountryCode}
+              className="w-full"
+            />
           </div>
           <input
             id="consult-phone"
@@ -148,11 +142,11 @@ export function ConsultationForm({
             title={copy.phone.hint}
             autoComplete="tel-national"
             placeholder={dial}
-            className="h-full min-w-0 flex-1 bg-transparent px-3 text-[0.9375rem] outline-none placeholder:text-ink-soft"
+            className="field-bare h-full min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-ink-soft"
           />
         </div>
       </Field>
-      <Field htmlFor="consult-location" label={copy.location.label}>
+      <Field htmlFor="consult-location" label={copy.location.label} className="col-span-2 sm:col-span-1">
         <input
           id="consult-location"
           name="location"
