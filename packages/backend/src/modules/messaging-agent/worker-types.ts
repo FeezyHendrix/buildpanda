@@ -19,4 +19,3 @@ export interface MessagingWorkerOptions {
 
 export type MessagingWorkerDependencies = Required<MessagingWorkerOptions>;
 
-export const MESSAGING_HELP = "Send a daily site note or daily-log header update as text or a voice note. Panda drafts it for your review before saving. Connect your account and choose the project/building in Panda Agent. Reply STOP to opt out; reconnect in the app to resume. Other field actions are not enabled yet.";

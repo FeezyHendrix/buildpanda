@@ -11,7 +11,7 @@ import errorHandler from "../../../../plugins/error-handler.ts";
 import fileReferenceAccess from "../../../../plugins/file-reference-access.ts";
 import payloadEncryption from "../../../../plugins/payload-encryption.ts";
 import security from "../../../../plugins/security.ts";
-import { telegramMessageId, telegramSenderId } from "./identifiers.ts";
+import { telegramCallbackMessageId, telegramMessageId, telegramSenderId } from "./identifiers.ts";
 import webhookRoutes from "./webhook-routes.ts";
 
 const databaseUrl = process.env.MESSAGING_AGENT_TEST_DATABASE_URL;
@@ -20,7 +20,7 @@ const secretHeader = { "x-telegram-bot-api-secret-token": settings.webhookSecret
 const headers = { "content-type": "application/json", ...secretHeader };
 const irrelevantUpdate = JSON.stringify({ update_id: 1 });
 
-async function webhookApp(options: { enabled?: boolean; db?: Knex; encrypted?: boolean } = {}) {
+async function webhookApp(options: { enabled?: boolean; db?: Knex; encrypted?: boolean; answerCallbackQuery?: (id: string) => Promise<void> } = {}) {
   const app = Fastify({ logger: false });
   let databaseCalls = 0;
   const deniedDb = Object.assign(() => { throw new Error("Webhook reached a database query without a real fixture"); }, {
@@ -43,7 +43,7 @@ async function webhookApp(options: { enabled?: boolean; db?: Knex; encrypted?: b
   let observedBody: unknown;
   app.addHook("preHandler", async (request) => { observedBody = request.body; });
   app.post("/ordinary-write", async (request) => request.body);
-  await app.register(webhookRoutes, { settings: { ...settings, enabled: options.enabled ?? true } });
+  await app.register(webhookRoutes, { settings: { ...settings, enabled: options.enabled ?? true }, answerCallbackQuery: options.answerCallbackQuery });
   await app.ready();
   return { app, databaseCalls: () => databaseCalls, authCalls: () => authCalls, inheritedParserCalls: () => inheritedParserCalls, body: () => observedBody };
 }
@@ -73,6 +73,58 @@ test("Telegram secret verification precedes JSON parsing and persistence", async
       payload: { update_id: 2, message: { message_id: 1, date: 1794657600, chat: { id: 701, type: "private" }, from: { id: 701, is_bot: false }, text: "Site update" } } });
     assert.equal(failedPersistence.statusCode, 500, failedPersistence.body);
   } finally { await app.close(); }
+});
+
+function reviewCallback(chatId: number, id = "press-1", data = "CONFIRM proposal_1 1") {
+  return { update_id: chatId, callback_query: {
+    id, data, from: { id: chatId, is_bot: false },
+    message: { message_id: 11, date: 1794657600, from: { id: Number(settings.botId), is_bot: true }, chat: { id: chatId, type: "private" } },
+  } };
+}
+
+test("unverified, ignored and failed callback intake never acknowledges acceptance", async () => {
+  let acknowledgements = 0;
+  const fixture = await webhookApp({ answerCallbackQuery: async () => { acknowledgements++; } });
+  try {
+    const callback = reviewCallback(701);
+    const unverified = await fixture.app.inject({ method: "POST", url: "/telegram/webhook", payload: callback, headers: { ...headers, ...{ "x-telegram-bot-api-secret-token": "wrong" } } });
+    assert.equal(unverified.statusCode, 403);
+    const ignored = await fixture.app.inject({ method: "POST", url: "/telegram/webhook", payload: reviewCallback(701, "ignored", "STOP"), headers });
+    assert.equal(ignored.statusCode, 200);
+    const failed = await fixture.app.inject({ method: "POST", url: "/telegram/webhook", payload: callback, headers });
+    assert.equal(failed.statusCode, 500);
+    assert.equal(acknowledgements, 0);
+  } finally { await fixture.app.close(); }
+});
+
+test("callback intake commits before acknowledging and replays cannot duplicate the command", { skip: !databaseUrl }, async () => {
+  const db = knex({ client: "pg", connection: databaseUrl });
+  const chatId = randomInt(1_000_000_000, 2_000_000_000), acknowledged: string[] = [];
+  let failAcknowledgement = false;
+  const fixture = await webhookApp({ db, answerCallbackQuery: async (id) => {
+    const row = await db("messaging_agent_inbox").where({ channel: "telegram", channel_account_id: settings.botId, provider_message_id: telegramCallbackMessageId(chatId, 11, id) }).first();
+    assert.ok(row, "The independent connection must observe the committed command before acknowledgement");
+    acknowledged.push(id);
+    if (failAcknowledgement) throw new Error("Simulated Telegram acknowledgement failure");
+  } });
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await fixture.app.inject({ method: "POST", url: "/telegram/webhook", payload: reviewCallback(chatId), headers });
+      assert.equal(response.statusCode, 200, response.body);
+    }
+    failAcknowledgement = true;
+    const second = await fixture.app.inject({ method: "POST", url: "/telegram/webhook", payload: reviewCallback(chatId, "press-2", "CANCEL proposal_1 1"), headers });
+    assert.equal(second.statusCode, 200, second.body);
+    const rows = await db("messaging_agent_inbox").where({ channel: "telegram", channel_account_id: settings.botId, sender_id: telegramSenderId(chatId, chatId) }).orderBy("source_text");
+    assert.equal(rows.length, 2);
+    assert.deepEqual(rows.map((row) => row.source_text), ["CANCEL proposal_1 1", "CONFIRM proposal_1 1"]);
+    assert.ok(rows.every((row) => new Date(row.sent_at).getTime() > 1794657600 * 1000));
+    assert.deepEqual(acknowledged, ["press-1", "press-1", "press-2"]);
+  } finally {
+    await fixture.app.close();
+    await db("messaging_agent_inbox").where({ channel: "telegram", channel_account_id: settings.botId, sender_id: telegramSenderId(chatId, chatId) }).del();
+    await db.destroy();
+  }
 });
 
 test("disabled Telegram intake is unavailable before parsing, even with missing headers", async () => {

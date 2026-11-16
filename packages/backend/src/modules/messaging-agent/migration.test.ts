@@ -4,8 +4,26 @@ import { test } from "node:test";
 import knex, { type Knex } from "knex";
 import { up as legacyUp, down as legacyDown } from "../../db/migrations/20261114_whatsapp_channel.ts";
 import { up, down } from "../../db/migrations/20261115_messaging_agent_channels.ts";
+import { up as buttonsUp, down as buttonsDown } from "../../db/migrations/20261116_messaging_agent_reply_buttons.ts";
 
 const databaseUrl = process.env.MESSAGING_AGENT_TEST_DATABASE_URL;
+
+test("reply button migration preserves legacy receipts and round-trips review metadata", { skip: !databaseUrl }, async () => {
+  const db = knex({ client: "pg", connection: databaseUrl });
+  const trx = await db.transaction(), schema = `buttons_${randomUUID().replaceAll("-", "")}`;
+  try {
+    await trx.raw("CREATE SCHEMA ??", [schema]); await trx.raw("SET LOCAL search_path TO ??, public", [schema]);
+    await trx.schema.createTable("messaging_agent_outbox", (table) => { table.text("id").primary(); table.text("body"); });
+    await trx("messaging_agent_outbox").insert({ id: "receipt", body: "Original\n\nreceipt" });
+    await buttonsUp(trx);
+    assert.deepEqual(await trx("messaging_agent_outbox").first(), { id: "receipt", body: "Original\n\nreceipt", buttons: null });
+    const buttons = [{ label: "Confirm", command: "CONFIRM review-1 1" }, { label: "Cancel", command: "CANCEL review-1 1" }];
+    await trx("messaging_agent_outbox").where({ id: "receipt" }).update({ buttons: JSON.stringify(buttons) });
+    assert.deepEqual((await trx("messaging_agent_outbox").first()).buttons, buttons);
+    await buttonsDown(trx);
+    assert.deepEqual(await trx("messaging_agent_outbox").first(), { id: "receipt", body: "Original\n\nreceipt" });
+  } finally { await trx.rollback(); await db.destroy(); }
+});
 
 async function fixture(run: (trx: Knex.Transaction, id: (name: string) => string, schema: string) => Promise<void>) {
   const db = knex({ client: "pg", connection: databaseUrl });

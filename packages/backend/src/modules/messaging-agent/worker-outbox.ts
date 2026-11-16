@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import { messagingAgentAccess } from "./access.ts";
 import { messagingAgentReadRepository } from "./read-repository.ts";
 import { messagingAgentRepository } from "./repository.ts";
+import { parseReviewButtonCommand, validReviewButtons } from "./reply-buttons.ts";
 import type { MessagingOutboxRow } from "./types.ts";
 import { type MessagingWorkerDependencies } from "./worker-types.ts";
 
@@ -13,8 +14,9 @@ export async function deliverMessagingOutbox(db: Knex, row: MessagingOutboxRow, 
     const source = await repo.inbox(row.inbox_id);
     const cancel = (reason: string) => repo.finishOutbox(row.id, "cancelled", undefined, reason);
     const adapter = deps.adapters.find(row.channel, row.channel_account_id);
+    const limit = row.buttons ? adapter?.maxButtonTextLength ?? adapter?.maxTextLength : adapter?.maxTextLength;
     if (!source || !adapter || source.channel !== row.channel || source.channel_account_id !== row.channel_account_id ||
-      source.reply_recipient_id !== row.recipient_id || source.conversation_type !== "direct" || source.origin === "web" || row.body.length > adapter.maxTextLength) {
+      source.reply_recipient_id !== row.recipient_id || source.conversation_type !== "direct" || source.origin === "web" || !limit || row.body.length > limit) {
       await cancel("Receiving number or sender changed"); return;
     }
     if (!row.identity_id) {
@@ -38,9 +40,20 @@ export async function deliverMessagingOutbox(db: Knex, row: MessagingOutboxRow, 
         await cancel("Current project permissions do not permit delivery"); return;
       }
     }
+    if (row.buttons) {
+      if (!row.identity_id || !validReviewButtons(row.buttons)) { await cancel("Invalid review buttons"); return; }
+      const target = parseReviewButtonCommand(row.buttons[0]!.command)!;
+      const proposal = await repo.proposal(target.proposalId);
+      if (!proposal || proposal.conversation_id !== row.conversation_id || proposal.scope_version !== row.scope_version ||
+        proposal.project_id !== source.project_id || proposal.building_id !== source.building_id || proposal.organization_id !== source.organization_id ||
+        proposal.version !== target.version || proposal.status !== "draft") {
+        await cancel("Review changed before delivery"); return;
+      }
+    }
     const result = await adapter.sendText({
       to: row.recipient_id, text: row.body,
       replyToMessageId: source.provider_message_id,
+      ...(row.buttons ? { buttons: row.buttons } : {}),
     });
     if (result.status === "accepted") await repo.finishOutbox(row.id, "accepted", result.messageId);
     else if (result.status === "unknown") await repo.finishOutbox(row.id, "unknown", undefined, result.reason);

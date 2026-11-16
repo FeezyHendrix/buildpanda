@@ -5,6 +5,7 @@ import { normalizeReview } from "./draft.ts";
 import { linkCodeHash } from "./service.ts";
 import { messagingAdapterRegistry } from "./channels.ts";
 import type { MessagingWorkerOptions } from "./worker-types.ts";
+import type { MessagingSendInput } from "./types.ts";
 import { fixture } from "./test-fixture.ts";
 
 const url = process.env.MESSAGING_AGENT_TEST_DATABASE_URL;
@@ -131,4 +132,62 @@ dbTest("long reviews never save truncated facts, and web drafts are not stolen b
   assert.equal(Number((await f.db("daily_logs").where({ project_id: f.scope.projectId }).count("*").first())!.count), 0);
   const web = await f.receive("App draft", { providerMessageId: `web:${randomUUID()}`, origin: "web" });
   await worker.processInbox(web.id); assert.equal((await f.repo.inbox(web.id))?.status, "received");
+});
+
+dbTest("review buttons survive the outbox and repeated confirmations save once", async (f) => {
+  await f.link(); const calls: MessagingSendInput[] = [];
+  const worker = f.worker({ adapters: messagingAdapterRegistry([{ ...f.adapter,
+    sendText: async (message) => { calls.push(message); return { status: "accepted", messageId: randomUUID() }; },
+  }]) });
+  const source = await f.receive("Eight workers.\n\nSlab poured — 12m³."); await worker.processInbox(source.id);
+  const review = await f.reply(source.id);
+  assert.deepEqual(review.buttons.map((button: { label: string }) => button.label), ["Confirm", "Cancel"]);
+  assert.ok(review.body.includes(source.source_text));
+  await worker.processOutbox(review.id);
+  assert.equal((await f.repo.outbox(review.id))?.status, "accepted"); assert.deepEqual(calls[0]?.buttons, review.buttons);
+  const first = await f.receive(review.buttons[0].command); await worker.processInbox(first.id);
+  const repeated = await f.receive(review.buttons[0].command); await worker.processInbox(repeated.id);
+  assert.equal((await f.reply(first.id)).buttons, null); assert.equal((await f.reply(repeated.id)).buttons, null);
+  assert.equal(Number((await f.db("daily_log_entries").where({ project_id: f.scope.projectId }).count("*").first())!.count), 1);
+  const cancelSaved = await f.receive(review.buttons[1].command); await worker.processInbox(cancelSaved.id);
+  assert.equal((await f.repo.inbox(cancelSaved.id))?.status, "failed");
+  assert.equal(Number((await f.db("daily_log_entries").where({ project_id: f.scope.projectId }).count("*").first())!.count), 1);
+});
+
+dbTest("changed reviews cancel stale queued buttons and reject stale taps", async (f) => {
+  await f.link(); const worker = f.worker();
+  const first = await f.receive("Four workers."); await worker.processInbox(first.id);
+  const oldReview = await f.reply(first.id);
+  const correction = await f.receive("Correction: eight workers."); await worker.processInbox(correction.id);
+  const latest = await f.reply(correction.id); assert.notDeepEqual(latest.buttons, oldReview.buttons);
+  await worker.processOutbox(oldReview.id); assert.equal((await f.repo.outbox(oldReview.id))?.status, "cancelled");
+  assert.equal(f.sent.length, 0);
+  const staleTap = await f.receive(oldReview.buttons[0].command); await worker.processInbox(staleTap.id);
+  assert.equal((await f.repo.inbox(staleTap.id))?.status, "failed");
+  assert.equal(Number((await f.db("daily_log_entries").where({ project_id: f.scope.projectId }).count("*").first())!.count), 0);
+  await worker.processOutbox(latest.id); assert.equal((await f.repo.outbox(latest.id))?.status, "accepted");
+  assert.equal(f.sent.length, 1);
+});
+
+dbTest("button message limits retain the full source without saving truncated facts", async (f) => {
+  await f.link(); const text = "Full source: " + "x".repeat(1000);
+  const source = await f.receive(text);
+  await f.worker({ adapters: messagingAdapterRegistry([{ ...f.adapter, maxButtonTextLength: 1024 }]) }).processInbox(source.id);
+  assert.equal((await f.repo.inbox(source.id))?.status, "failed");
+  assert.equal((await f.repo.inbox(source.id))?.source_text, text);
+  const reply = await f.reply(source.id); assert.match(reply.body, /shorter|review it in the app/); assert.equal(reply.buttons, null);
+  assert.equal(Number((await f.db("daily_log_entries").where({ project_id: f.scope.projectId }).count("*").first())!.count), 0);
+  assert.equal(Number((await f.db("messaging_agent_proposals").where({ inbox_id: source.id }).count("*").first())!.count), 0);
+});
+
+dbTest("button metadata cannot deliver another connection's review", async (f) => {
+  await f.link(); const worker = f.worker();
+  const own = await f.receive("Own draft."); await worker.processInbox(own.id);
+  const ownReply = await f.reply(own.id);
+  const otherSender = { ...f.sender, senderId: `US.${randomUUID()}` }; await f.link(otherSender);
+  const other = await f.receive("Other connection draft.", { ...otherSender, replyRecipientId: otherSender.senderId });
+  await worker.processInbox(other.id); const otherReply = await f.reply(other.id);
+  await f.db("messaging_agent_outbox").where({ id: ownReply.id }).update({ buttons: JSON.stringify(otherReply.buttons) });
+  await worker.processOutbox(ownReply.id);
+  assert.equal((await f.repo.outbox(ownReply.id))?.status, "cancelled"); assert.equal(f.sent.length, 0);
 });

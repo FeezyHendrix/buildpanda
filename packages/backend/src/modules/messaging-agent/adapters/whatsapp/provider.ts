@@ -1,6 +1,7 @@
 import type { WhatsAppProviderConfig } from "./types.ts";
 import { z } from "zod";
 import { BadRequestError } from "../../../../lib/errors.ts";
+import { isReviewCommand, validReviewButtons } from "../../reply-buttons.ts";
 import type {
   MessagingDeliveryStatus, MessagingInboundMessage, MessagingMedia,
   MessagingSendInput, MessagingSendResult, MessagingWebhookEvents,
@@ -12,6 +13,10 @@ const messageSchema = z.object({
   id, from: id.optional(), from_user_id: id.optional(), timestamp, type: z.string().max(100),
   text: z.object({ body: z.string().max(8000) }).optional(),
   audio: z.object({ id, mime_type: z.string().max(100).optional() }).optional(),
+  interactive: z.object({
+    type: z.string().max(100),
+    button_reply: z.object({ id: z.string().min(1).max(256) }).optional(),
+  }).optional(),
   context: z.object({ id }).optional(),
 });
 const statusSchema = z.object({ id, recipient_id: id.optional(), recipient_user_id: id.optional(), status: z.string(), timestamp });
@@ -42,10 +47,12 @@ export function parseWhatsAppWebhook(payload: unknown, phoneNumberId: string): M
       const senderId = message.from_user_id ?? message.from;
       const sentAt = new Date(Number(message.timestamp) * 1000);
       if (!senderId || !Number.isFinite(sentAt.getTime())) throw new BadRequestError("Invalid Messaging message identity or timestamp");
-      const type = message.type === "text" && message.text ? "text" : message.type === "audio" && message.audio ? "audio" : "unsupported";
+      const buttonCommand = message.type === "interactive" && message.interactive?.type === "button_reply"
+        && isReviewCommand(message.interactive.button_reply?.id) ? message.interactive.button_reply!.id : null;
+      const type = (message.type === "text" && message.text) || buttonCommand ? "text" : message.type === "audio" && message.audio ? "audio" : "unsupported";
       messages.push({
         channel: "whatsapp", channelAccountId: phoneNumberId, senderId, replyRecipientId: senderId, conversationType: "direct", providerMessageId: message.id, sentAt, type,
-        text: type === "text" ? message.text!.body : null,
+        text: type === "text" ? buttonCommand ?? message.text!.body : null,
         mediaId: type === "audio" ? message.audio!.id : null,
         mediaMimeType: type === "audio" ? message.audio!.mime_type ?? null : null,
         replyToMessageId: message.context?.id ?? null,
@@ -116,13 +123,21 @@ export function whatsappProvider(config: WhatsAppProviderConfig, request: typeof
       if (!/^[A-Za-z0-9_.+-]{1,200}$/.test(input.to) || !input.text.trim() || input.text.length > 4096) {
         throw new BadRequestError("Invalid Messaging recipient or message length");
       }
+      if (input.buttons !== undefined && !validReviewButtons(input.buttons)) throw new BadRequestError("Invalid Messaging review buttons");
+      if (input.buttons && input.text.length > 1024) throw new BadRequestError("Messaging button message exceeds its length limit");
       let response: Response;
       try {
         response = await request(`${base}/${config.apiVersion}/${config.phoneNumberId}/messages`, {
           method: "POST", headers: { ...headers, "Content-Type": "application/json" }, redirect: "error",
           signal: AbortSignal.timeout(timeout),
-          body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: input.to,
-            type: "text", text: { body: input.text, preview_url: false },
+          body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual",
+            ...(/^\+?\d+$/.test(input.to) ? { to: input.to } : { recipient: input.to }),
+            ...(input.buttons ? {
+              type: "interactive", interactive: {
+                type: "button", body: { text: input.text },
+                action: { buttons: input.buttons.map((button) => ({ type: "reply", reply: { id: button.command, title: button.label } })) },
+              },
+            } : { type: "text", text: { body: input.text, preview_url: false } }),
             ...(input.replyToMessageId ? { context: { message_id: input.replyToMessageId } } : {}),
           }),
         });

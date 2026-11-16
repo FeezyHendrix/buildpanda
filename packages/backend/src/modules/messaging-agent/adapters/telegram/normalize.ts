@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { BadRequestError } from "../../../../lib/errors.ts";
-import type { MessagingWebhookEvents } from "../../types.ts";
-import { telegramAudioFormat, telegramMediaId, telegramMessageId, telegramSenderId } from "./identifiers.ts";
-import type { TelegramConfig } from "./types.ts";
+import { isReviewCommand } from "../../reply-buttons.ts";
+import { telegramAudioFormat, telegramCallbackMessageId, telegramMediaId, telegramMessageId, telegramSenderId } from "./identifiers.ts";
+import type { TelegramConfig, TelegramWebhookEvents } from "./types.ts";
 
 const positiveId = z.number().int().positive().safe();
 const audioSchema = z.object({
@@ -18,7 +18,15 @@ const messageSchema = z.object({
   text: z.string().max(8000).optional(), voice: audioSchema.optional(), audio: audioSchema.optional(),
   reply_to_message: z.object({ message_id: positiveId }).optional(),
 });
-const updateSchema = z.object({ update_id: z.number().int().nonnegative().safe(), message: messageSchema.optional() });
+const callbackSchema = z.object({
+  id: z.string().min(1).max(256).regex(/^[^\u0000-\u001f\u007f]+$/),
+  from: z.object({ id: positiveId, is_bot: z.boolean() }),
+  message: messageSchema.optional(), data: z.unknown().optional(),
+  inline_message_id: z.unknown().optional(), game_short_name: z.unknown().optional(),
+});
+const updateSchema = z.object({
+  update_id: z.number().int().nonnegative().safe(), message: messageSchema.optional(), callback_query: callbackSchema.optional(),
+});
 
 function commandText(text: string, username: string): string | null {
   const command = /^\/([A-Za-z0-9_]{1,32})(?:@([A-Za-z0-9_]+))?(?:\s+([\s\S]*))?$/.exec(text.trim());
@@ -30,9 +38,27 @@ function commandText(text: string, username: string): string | null {
   return text;
 }
 
-export function parseTelegramUpdate(payload: unknown, settings: TelegramConfig): MessagingWebhookEvents {
+export function parseTelegramUpdate(payload: unknown, settings: TelegramConfig, now = new Date()): TelegramWebhookEvents {
   const parsed = updateSchema.safeParse(payload);
   if (!parsed.success) throw new BadRequestError("Invalid Telegram update payload");
+  const callback = parsed.data.callback_query;
+  if (callback) {
+    const message = callback.message;
+    if (parsed.data.message || !message || callback.inline_message_id !== undefined || callback.game_short_name !== undefined ||
+      !isReviewCommand(callback.data) || callback.from.is_bot || message.chat.type !== "private" || message.chat.id !== callback.from.id ||
+      message.from?.is_bot !== true || String(message.from.id) !== settings.botId || message.sender_chat !== undefined ||
+      message.business_connection_id !== undefined || message.message_thread_id !== undefined || message.direct_messages_topic !== undefined || message.is_topic_message) {
+      return { messages: [], statuses: [] };
+    }
+    if (!Number.isFinite(now.getTime())) throw new BadRequestError("Invalid Telegram callback timestamp");
+    const senderId = telegramSenderId(message.chat.id, callback.from.id);
+    return { messages: [{
+      channel: "telegram", channelAccountId: settings.botId, senderId, replyRecipientId: senderId, conversationType: "direct",
+      providerMessageId: telegramCallbackMessageId(message.chat.id, message.message_id, callback.id), sentAt: new Date(now.getTime()),
+      type: "text", text: callback.data, mediaId: null, mediaMimeType: null,
+      replyToMessageId: telegramMessageId(message.chat.id, message.message_id),
+    }], statuses: [], callbackQueryId: callback.id };
+  }
   const message = parsed.data.message;
   // The shared conversation has no topic address; accept only ordinary private user messages.
   if (!message || message.chat.type !== "private" || message.from?.is_bot || message.sender_chat !== undefined || message.business_connection_id !== undefined ||

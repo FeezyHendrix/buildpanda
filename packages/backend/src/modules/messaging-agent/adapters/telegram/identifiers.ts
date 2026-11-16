@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { BadRequestError } from "../../../../lib/errors.ts";
 import type { TelegramAudioFormat, TelegramMediaIdentity, TelegramMessageIdentity, TelegramSender } from "./types.ts";
 
@@ -28,8 +29,12 @@ export function telegramMessageId(chatId: number, messageId: number): string {
   return `tg:${positiveId(chatId)}:${positiveId(messageId)}`;
 }
 
+export function telegramCallbackMessageId(chatId: number, messageId: number, callbackId: string): string {
+  return `${telegramMessageId(chatId, messageId)}:callback:${createHash("sha256").update(callbackId).digest("hex")}`;
+}
+
 export function parseTelegramMessageId(value: string): TelegramMessageIdentity {
-  const parts = /^tg:([1-9]\d{0,15}):([1-9]\d{0,15})$/.exec(value);
+  const parts = /^tg:([1-9]\d{0,15}):([1-9]\d{0,15})(?::callback:[a-f0-9]{64})?$/.exec(value);
   if (!parts) throw new BadRequestError("Invalid Telegram message identity");
   return { chatId: positiveId(Number(parts[1])), messageId: positiveId(Number(parts[2])) };
 }

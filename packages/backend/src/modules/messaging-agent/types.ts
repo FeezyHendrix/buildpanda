@@ -190,6 +190,7 @@ export interface MessagingOutboxInput {
   recipientId: string;
   scopeVersion?: number | null;
   idempotencyKey: string;
+  buttons?: MessagingReplyButton[];
 }
 
 export interface MessagingOutboxRow {
@@ -201,6 +202,7 @@ export interface MessagingOutboxRow {
   conversation_id: string | null;
   recipient_id: string;
   body: string;
+  buttons: MessagingReplyButton[] | null;
   scope_version: number | null;
   idempotency_key: string;
   status: MessagingOutboxStatus;
@@ -216,6 +218,24 @@ export interface MessagingSendInput {
   to: string;
   text: string;
   replyToMessageId?: string;
+  buttons?: MessagingReplyButton[];
+}
+
+export interface MessagingReplyButton {
+  label: "Confirm" | "Cancel";
+  command: string;
+}
+
+export interface MessagingReviewButtonCommand {
+  action: "CONFIRM" | "CANCEL";
+  proposalId: string;
+  version: number;
+}
+
+export interface MessagingReviewContext {
+  projectName: string;
+  buildingName: string;
+  voiceNote: boolean;
 }
 
 export type MessagingSendResult =

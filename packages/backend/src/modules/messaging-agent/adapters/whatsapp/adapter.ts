@@ -10,7 +10,7 @@ export function withinWhatsAppServiceWindow(sentAt: Date | string | null, now: D
 
 export function whatsappChannelAdapter(settings: typeof config.whatsapp, provider = whatsappProvider(settings)): MessagingChannelAdapter {
   return {
-    channel: "whatsapp", channelAccountId: settings.phoneNumberId, label: "WhatsApp", maxTextLength: 4096,
+    channel: "whatsapp", channelAccountId: settings.phoneNumberId, label: "WhatsApp", maxTextLength: 4096, maxButtonTextLength: 1024,
     connectUrl: (code) => `https://wa.me/${settings.businessNumber.replace(/^\+/, "")}?text=${encodeURIComponent(`LINK ${code}`)}`,
     canReply: withinWhatsAppServiceWindow,
     sendText: provider.sendText,

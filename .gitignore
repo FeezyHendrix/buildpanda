@@ -216,6 +216,8 @@ branch_structure.json
 !/packages/backend/src/modules/messaging-agent/portability.test.ts
 
 !/packages/backend/src/modules/messaging-agent/channels.test.ts
+!/packages/backend/src/modules/messaging-agent/mappers.test.ts
+!/packages/backend/src/modules/messaging-agent/reply-buttons.test.ts
 !/packages/backend/src/modules/messaging-agent/adapters/telegram/provider.test.ts
 !/packages/backend/src/modules/messaging-agent/adapters/telegram/normalize.test.ts
 !/packages/backend/src/modules/messaging-agent/adapters/telegram/webhook-routes.test.ts

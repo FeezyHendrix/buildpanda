@@ -8,7 +8,7 @@ const env = {
   TELEGRAM_WEBHOOK_SECRET: "unit_test_webhook_secret_1234567890", PUBLIC_API_URL: "https://api.example.test",
 };
 const identity = { id: 10001, is_bot: true, username: "buildpanda_bot" };
-const webhook = { url: "https://api.example.test/telegram/webhook", allowed_updates: ["message"], pending_update_count: 0 };
+const webhook = { url: "https://api.example.test/telegram/webhook", allowed_updates: ["message", "callback_query"], pending_update_count: 0 };
 
 test("check verifies the bot and inspects the webhook without registering it", async () => {
   const calls: string[] = [];
@@ -22,13 +22,13 @@ test("check verifies the bot and inspects the webhook without registering it", a
   assert.deepEqual(result, { registered: false, webhookMatches: true, pendingUpdates: 0, hasRecordedDeliveryError: false });
 });
 
-test("registration verifies identity before setting a secret-protected message-only webhook and preserves pending updates", async () => {
+test("registration verifies identity before setting a secret-protected message/callback webhook and preserves pending updates", async () => {
   const calls: string[] = [];
   const result = await configureTelegramWebhook(env, true, async (input, init) => {
     const method = String(input).split("/").at(-1)!;
     calls.push(method);
     if (method === "setWebhook") assert.deepEqual(JSON.parse(String(init?.body)), {
-      url: webhook.url, secret_token: env.TELEGRAM_WEBHOOK_SECRET, allowed_updates: ["message"], drop_pending_updates: false,
+      url: webhook.url, secret_token: env.TELEGRAM_WEBHOOK_SECRET, allowed_updates: ["message", "callback_query"], drop_pending_updates: false,
     });
     return Response.json({ ok: true, result: method === "getMe" ? identity : method === "setWebhook" ? true : webhook });
   });
@@ -83,7 +83,8 @@ test("provider and transport failures never include credentials or response bodi
 test("check reports a wrong callback, wrong update subscription and historical delivery errors without response details", async () => {
   for (const wrongWebhook of [
     { ...webhook, url: "https://other.example.test/telegram/webhook" },
-    { ...webhook, allowed_updates: ["message", "callback_query"] },
+    { ...webhook, allowed_updates: ["message"] },
+    { ...webhook, allowed_updates: ["message", "callback_query", "edited_message"] },
     { ...webhook, allowed_updates: undefined },
   ]) {
     const result = await configureTelegramWebhook(env, false, async (input) => Response.json({

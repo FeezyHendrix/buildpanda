@@ -1,16 +1,16 @@
-import type { MessagingActionRow, MessagingConversationRow, MessagingProposalRow, MessagingScope } from "./types.ts";
+import type { MessagingActionRow, MessagingConversationRow, MessagingProposalRow, MessagingReplyButton, MessagingReviewContext, MessagingScope } from "./types.ts";
 import { BadRequestError } from "../../lib/errors.ts";
 import { stripHtml } from "../daily-logs/mappers.ts";
 import { hasComplexContent } from "./draft.ts";
 
-function actionDescription(action: MessagingActionRow): string {
+function actionDescription(action: MessagingActionRow, separator = "; "): string {
   const payload = action.payload;
   if (action.kind === "daily_log") return String(payload.bodyText ?? stripHtml(String(payload.bodyHtml ?? "")));
   const labels: Record<string, string> = { weatherCondition: "Weather", temperatureC: "Temperature (°C)",
     precipitationMm: "Precipitation (mm)", windKph: "Wind (km/h)", workersExpected: "Workers expected",
     workersPresent: "Workers present", totalHours: "Total hours", summary: "Summary" };
   return Object.entries(payload).filter(([key]) => !["buildingId", "logDate", "summaryHtml"].includes(key))
-    .map(([key, value]) => `${labels[key] ?? key}: ${value === null ? "clear" : value}`).join("; ");
+    .map(([key, value]) => `${labels[key] ?? key}: ${value === null ? "clear" : value}`).join(separator);
 }
 
 export function conversationScope(conversation: MessagingConversationRow): MessagingScope {
@@ -31,17 +31,51 @@ export function proposalDto(proposal: MessagingProposalRow, actions: MessagingAc
 }
 
 export function proposalReceipt(proposal: MessagingProposalRow, actions: MessagingActionRow[]): string {
-  if (proposal.status === "completed") return `Saved ${actions.length} daily-log action(s). Reference: ${proposal.id}.`;
-  if (proposal.status === "cancelled") return "Review cancelled. No new daily-log records were saved.";
+  if (proposal.status === "completed") return `Saved ${actions.length} daily-log action${actions.length === 1 ? "" : "s"}.\n\nReference: ${proposal.id}`;
+  if (proposal.status === "cancelled") return "Review cancelled.\n\nNo new daily-log records were saved.";
   if (actions.some(hasComplexContent)) throw new BadRequestError("This review contains templates, files or rich content. Review those details in BuildPanda; Messaging confirmation is not enabled for them yet.");
   const receipt = [
-    `Review ${proposal.id} · version ${proposal.version}`,
+    `Review before saving\nReference: ${proposal.id} · version ${proposal.version}`,
     ...actions.map((action, index) => {
       const payload = action.payload;
-      const details = actionDescription(action);
-      return `${index + 1}. ${action.title ?? action.kind} (${payload.logDate}): ${details}`;
+      const details = actionDescription(action, "\n");
+      return `${index + 1}. ${action.title ?? action.kind}\nDate: ${payload.logDate}\n\n${details}`;
     }),
-    `Reply CONFIRM ${proposal.id} ${proposal.version} to save, CANCEL ${proposal.id} ${proposal.version} to cancel, or send a correction.`,
-  ].join("\n");
+    "Use Confirm or Cancel below.\nTo change the details, send a correction.",
+  ].join("\n\n");
   return receipt;
+}
+
+export function proposalButtons(proposal: MessagingProposalRow): MessagingReplyButton[] | undefined {
+  return proposal.status === "draft" ? [
+    { label: "Confirm", command: `CONFIRM ${proposal.id} ${proposal.version}` },
+    { label: "Cancel", command: `CANCEL ${proposal.id} ${proposal.version}` },
+  ] : undefined;
+}
+
+export function proposalMessage(proposal: MessagingProposalRow, actions: MessagingActionRow[], context: MessagingReviewContext): string {
+  return [
+    `Project: ${context.projectName}\nBuilding: ${context.buildingName}`,
+    ...(context.voiceNote ? ["Voice note translated to English for review."] : []),
+    proposalReceipt(proposal, actions),
+  ].join("\n\n");
+}
+
+export const MESSAGING_HELP = [
+  "Panda Agent",
+  "Send a daily site note or daily-log header update by text or voice.",
+  "How it works\n1. Sign in to Panda Agent and select your project and building.\n2. Connect this messaging account.\n3. Send your update and review the details.",
+  "Tap Confirm to save or Cancel to discard the review. To change the details, send a correction before confirming.",
+  "Reply STOP to opt out. Reconnect in Panda Agent to resume.",
+  "Other field actions are not enabled yet.",
+].join("\n\n");
+
+export function connectionReceipt(projectName: string, buildingName: string): string {
+  return [
+    "Connected to Panda.",
+    `Project: ${projectName}\nBuilding: ${buildingName}`,
+    "Send your update by text or voice. Panda will prepare a review before saving.",
+    "Tap Confirm or Cancel on the review. To change the details, send a correction.",
+    "Reply STOP to opt out.",
+  ].join("\n\n");
 }

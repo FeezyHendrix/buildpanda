@@ -1,10 +1,12 @@
 import { generateId } from "../../lib/ids.ts";
 import { ConflictError, NotFoundError } from "../../lib/errors.ts";
+import { validReviewButtons } from "./reply-buttons.ts";
 import type { MessagingDb, MessagingDeliveryStatus, MessagingInboxRow, MessagingOutboxInput, MessagingOutboxRow, MessagingOutboxStatus } from "./types.ts";
 
 export function messagingAgentOutboxRepository(db: MessagingDb) {
   return {
     async enqueueOutbox(input: MessagingOutboxInput): Promise<MessagingOutboxRow> {
+      if (input.buttons !== undefined && !validReviewButtons(input.buttons)) throw new ConflictError("Invalid review buttons");
       const source = await db<MessagingInboxRow>("messaging_agent_inbox").where({ id: input.inboxId }).first();
       if (!source) throw new NotFoundError("Incoming message");
       if (input.recipientId !== source.reply_recipient_id) throw new ConflictError("The reply destination does not match its incoming message");
@@ -13,6 +15,7 @@ export function messagingAgentOutboxRepository(db: MessagingDb) {
         channel: source.channel, channel_account_id: source.channel_account_id,
         conversation_id: input.conversationId ?? null, body: input.body, recipient_id: input.recipientId,
         scope_version: input.scopeVersion ?? null, idempotency_key: input.idempotencyKey,
+        buttons: input.buttons ? db.raw("?::jsonb", [JSON.stringify(input.buttons)]) : null,
       }).onConflict("idempotency_key").ignore().returning("*");
       if (row) return row;
       const existing = (await db<MessagingOutboxRow>("messaging_agent_outbox").where({ idempotency_key: input.idempotencyKey }).first())!;

@@ -1,3 +1,5 @@
+import type { MessagingWebhookEvents } from "../../types.ts";
+
 export interface TelegramConfig {
   enabled: boolean;
   botToken: string;
@@ -15,6 +17,11 @@ export interface TelegramProviderConfig {
 
 export interface TelegramWebhookOptions {
   settings?: TelegramConfig;
+  answerCallbackQuery?: (id: string) => Promise<void>;
+}
+
+export interface TelegramWebhookEvents extends MessagingWebhookEvents {
+  callbackQueryId?: string;
 }
 
 export interface TelegramSender {

@@ -14,6 +14,7 @@ test("WhatsApp owns its reply window and number-based link URL", () => {
   });
   assert.equal(adapter.channel, "whatsapp"); assert.equal(adapter.channelAccountId, "155555500000");
   assert.equal(adapter.maxTextLength, 4096);
+  assert.equal(adapter.maxButtonTextLength, 1024);
   assert.match(adapter.connectUrl("opaque code")!, /^https:\/\/wa\.me\/15555550000\?text=LINK%20opaque%20code$/);
   assert.equal(adapter.canReply(new Date(now.getTime() - 25 * 60 * 60_000), now), false);
 });

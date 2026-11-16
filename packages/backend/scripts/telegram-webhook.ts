@@ -46,7 +46,7 @@ export async function configureTelegramWebhook(env: NodeJS.ProcessEnv, register 
   }
   if (register) {
     const result = await request("setWebhook", {
-      url: webhookUrl, secret_token: secret, allowed_updates: ["message"], drop_pending_updates: false,
+      url: webhookUrl, secret_token: secret, allowed_updates: ["message", "callback_query"], drop_pending_updates: false,
     });
     if (result !== true) throw new Error("Telegram setWebhook did not confirm registration");
   }
@@ -57,7 +57,8 @@ export async function configureTelegramWebhook(env: NodeJS.ProcessEnv, register 
   if (!webhook.success) throw new Error("Telegram getWebhookInfo returned an invalid result; response omitted");
   return {
     registered: register,
-    webhookMatches: webhook.data.url === webhookUrl && webhook.data.allowed_updates?.length === 1 && webhook.data.allowed_updates[0] === "message",
+    webhookMatches: webhook.data.url === webhookUrl && webhook.data.allowed_updates?.length === 2 &&
+      ["message", "callback_query"].every((kind) => webhook.data.allowed_updates!.includes(kind)),
     pendingUpdates: webhook.data.pending_update_count,
     hasRecordedDeliveryError: webhook.data.last_error_date !== undefined,
   };

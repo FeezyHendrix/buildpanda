@@ -2,14 +2,14 @@ import { Readable } from "node:stream";
 import type { Knex } from "knex";
 import { BadRequestError, ConflictError, ForbiddenError } from "../../lib/errors.ts";
 import { messagingAgentAccess } from "./access.ts";
-import { proposalReceipt } from "./mappers.ts";
+import { connectionReceipt, MESSAGING_HELP, proposalButtons, proposalMessage } from "./mappers.ts";
 import { messagingAgentReadRepository } from "./read-repository.ts";
 import { messagingAgentRepository } from "./repository.ts";
 import { messagingAgentReviewService } from "./review-service.ts";
-import type { MessagingInboxRow } from "./types.ts";
-import { MESSAGING_HELP, type MessagingWorkerConnection, type MessagingWorkerDependencies } from "./worker-types.ts";
+import type { MessagingInboxRow, MessagingReplyButton } from "./types.ts";
+import type { MessagingWorkerConnection, MessagingWorkerDependencies } from "./worker-types.ts";
 
-export async function enqueueMessagingReply(db: Knex, inbox: MessagingInboxRow, body: string, maxTextLength: number, connection?: MessagingWorkerConnection, purpose = "reply"): Promise<void> {
+export async function enqueueMessagingReply(db: Knex, inbox: MessagingInboxRow, body: string, maxTextLength: number, connection?: MessagingWorkerConnection, purpose = "reply", buttons?: MessagingReplyButton[]): Promise<void> {
   if (body.length > maxTextLength) throw new BadRequestError("Split the daily log into shorter messages, or review it in the app.");
   if (purpose !== "error") await messagingAgentRepository(db).cancelPendingReplyErrors(inbox.id);
   await messagingAgentRepository(db).enqueueOutbox({
@@ -17,6 +17,7 @@ export async function enqueueMessagingReply(db: Knex, inbox: MessagingInboxRow, 
     conversationId: connection?.conversation.id ?? inbox.conversation_id,
     scopeVersion: connection?.conversation.scope_version ?? inbox.scope_version,
     idempotencyKey: `${inbox.id}:${purpose}`,
+    ...(buttons ? { buttons } : {}),
   });
 }
 
@@ -68,7 +69,7 @@ export async function handleMessagingInbox(db: Knex, inbox: MessagingInboxRow, d
       const building = await messagingAgentAccess(trx).building(access, code.building_id);
       const connected = await store.consumeLinkCode(code.code_hash, sender, deps.now(), new Date(inbox.sent_at));
       if (!connected) throw new BadRequestError("This sender is already connected to another account, or the code is unavailable. Unlink the original connection first.");
-      await enqueueMessagingReply(trx, inbox, `Connected to Panda.\nProject: ${access.project.name}\nBuilding: ${building.name}\n${MESSAGING_HELP}`, adapter.maxTextLength, connected);
+      await enqueueMessagingReply(trx, inbox, connectionReceipt(access.project.name, building.name), adapter.maxTextLength, connected);
     });
     return;
   }
@@ -96,7 +97,7 @@ export async function handleMessagingInbox(db: Knex, inbox: MessagingInboxRow, d
     const access = await messagingAgentAccess(trx).project(identity.user_id, locked.project_id, "create");
     const building = await messagingAgentAccess(trx).building(access, locked.building_id);
     if (access.project.organization_id !== locked.organization_id) throw new ForbiddenError();
-    const scopeLabel = `Project: ${access.project.name}\nBuilding: ${building.name}\n`;
+    const context = { projectName: access.project.name, buildingName: building.name, voiceNote: inbox.message_type === "audio" };
     const content = inbox.message_type === "audio" ? await voiceText(db, inbox, connection, deps) : inbox.source_text ?? "";
     if (/^STOP$/i.test(content.trim())) { await messagingAgentRepository(trx).setOptOut(identity.id, true); return; }
     if (/^HELP$/i.test(content.trim())) { await enqueueMessagingReply(trx, inbox, MESSAGING_HELP, adapter.maxTextLength, connection); return; }
@@ -108,7 +109,8 @@ export async function handleMessagingInbox(db: Knex, inbox: MessagingInboxRow, d
       if (!proposal || proposal.conversation_id !== locked.id || proposal.scope_version !== locked.scope_version || proposal.project_id !== locked.project_id || proposal.building_id !== locked.building_id || proposal.organization_id !== locked.organization_id) throw new ConflictError("Open the latest review in the app before confirming.");
       const actions = await messagingAgentRepository(trx).actionsForProposal(proposal.id, proposal.version);
       if (command[1]!.toUpperCase() === "CONFIRM") {
-        if ((scopeLabel + proposalReceipt(proposal, actions)).length > adapter.maxTextLength) throw new BadRequestError("Split the daily log into shorter messages, or review it in the app.");
+        const limit = proposalButtons(proposal) ? adapter.maxButtonTextLength ?? adapter.maxTextLength : adapter.maxTextLength;
+        if (proposalMessage(proposal, actions, context).length > limit) throw new BadRequestError("Split the daily log into shorter messages, or review it in the app.");
         await review.confirm(identity.user_id, locked.project_id, proposal.id, Number(command[3]));
       } else await review.cancel(identity.user_id, locked.project_id, proposal.id, Number(command[3]));
       proposalId = proposal.id;
@@ -119,8 +121,9 @@ export async function handleMessagingInbox(db: Knex, inbox: MessagingInboxRow, d
     }
     const proposal = (await messagingAgentRepository(trx).proposal(proposalId))!;
     const actions = await messagingAgentRepository(trx).actionsForProposal(proposal.id, proposal.version);
-    const label = inbox.message_type === "audio" ? "Voice note translated to English for review.\n" : "";
-    await enqueueMessagingReply(trx, inbox, scopeLabel + label + proposalReceipt(proposal, actions), adapter.maxTextLength, connection,
-      `proposal:${proposal.id}:${proposal.version}:${proposal.status}`);
+    const buttons = proposalButtons(proposal);
+    const limit = buttons ? adapter.maxButtonTextLength ?? adapter.maxTextLength : adapter.maxTextLength;
+    await enqueueMessagingReply(trx, inbox, proposalMessage(proposal, actions, context), limit, connection,
+      `proposal:${proposal.id}:${proposal.version}:${proposal.status}`, buttons);
   });
 }

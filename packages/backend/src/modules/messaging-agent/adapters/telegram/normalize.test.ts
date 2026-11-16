@@ -2,10 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { BadRequestError } from "../../../../lib/errors.ts";
 import { parseTelegramUpdate } from "./normalize.ts";
+import { parseTelegramMessageId, telegramCallbackMessageId } from "./identifiers.ts";
 
 const settings = { enabled: true, botToken: "123456:token", botId: "123456", botUsername: "buildpanda_bot", webhookSecret: "webhook-secret" };
 const base = { message_id: 10, date: 1794657600, chat: { id: 701, type: "private" }, from: { id: 701, is_bot: false, first_name: "Site" } };
 const parse = (message: Record<string, unknown>) => parseTelegramUpdate({ update_id: 1, message: { ...base, ...message } }, settings);
+const pressedAt = new Date("2026-11-16T15:00:00.000Z");
+const callback = {
+  id: "press-1", from: base.from, data: "CONFIRM proposal_1 2",
+  message: { ...base, from: { id: Number(settings.botId), is_bot: true } },
+};
+const press = (value: Record<string, unknown> = {}) => parseTelegramUpdate({ update_id: 1, callback_query: { ...callback, ...value } }, settings, pressedAt);
 
 test("private text preserves provider actor, chat routing, message identity, timestamp and replies", () => {
   const text = "<p>Site &amp; voice /files/provider-reference/download</p>";
@@ -59,9 +66,41 @@ test("groups, channels, bots, business messages and edited/irrelevant updates ca
   for (const topic of [{ message_thread_id: 2 }, { direct_messages_topic: { topic_id: 2 } }, { is_topic_message: true }]) {
     assert.equal(parse({ ...topic, text: "STOP" }).messages.length, 0);
   }
-  for (const field of ["edited_message", "business_message", "channel_post", "callback_query"]) {
+  for (const field of ["edited_message", "business_message", "channel_post"]) {
     assert.deepEqual(parseTelegramUpdate({ update_id: 1, [field]: { ...base, text: "STOP" } }, settings), { messages: [], statuses: [] });
   }
+});
+
+test("private review callbacks keep actor, bot message and press identity separate", () => {
+  for (const command of ["CONFIRM proposal_1 2", "CANCEL proposal_1 2", "CONFIRM proposal_1 1"]) {
+    const events = press({ data: command });
+    assert.deepEqual(events, { messages: [{
+      channel: "telegram", channelAccountId: settings.botId, senderId: "tg:701:701", replyRecipientId: "tg:701:701",
+      conversationType: "direct", providerMessageId: telegramCallbackMessageId(701, 10, callback.id),
+      sentAt: pressedAt, type: "text", text: command, mediaId: null, mediaMimeType: null, replyToMessageId: "tg:701:10",
+    }], statuses: [], callbackQueryId: callback.id });
+    assert.deepEqual(parseTelegramMessageId(events.messages[0]!.providerMessageId), { chatId: 701, messageId: 10 });
+    assert.notEqual(events.messages[0]!.sentAt.getTime(), base.date * 1000);
+  }
+  assert.equal(press().messages[0]!.providerMessageId, press().messages[0]!.providerMessageId);
+  assert.notEqual(press().messages[0]!.providerMessageId, press({ id: "press-2" }).messages[0]!.providerMessageId);
+});
+
+test("callback data cannot turn unsupported actors, messages or arbitrary commands into a review action", () => {
+  const ignored = { messages: [], statuses: [] };
+  for (const change of [
+    { from: { ...callback.from, is_bot: true } }, { from: { ...callback.from, id: 702 } },
+    { message: undefined }, { message: { ...callback.message, from: undefined } },
+    { message: { ...callback.message, from: { id: Number(settings.botId), is_bot: false } } },
+    { message: { ...callback.message, from: { id: 999, is_bot: true } } },
+    { message: { ...callback.message, chat: { id: -701, type: "group" } } },
+    { inline_message_id: "inline-message" }, { game_short_name: "game" },
+    ...["STOP", "LINK secret", "daily log", "/confirm proposal_1 1", "CONFIRM proposal_1 0", "CONFIRM proposal_1 1\nSTOP", "x".repeat(65), null, {}].map((data) => ({ data })),
+    ...[{ sender_chat: { id: 701 } }, { business_connection_id: "business" }, { message_thread_id: 2 }, { direct_messages_topic: { topic_id: 2 } }, { is_topic_message: true }]
+      .map((message) => ({ message: { ...callback.message, ...message } })),
+  ]) assert.deepEqual(press(change), ignored);
+  assert.deepEqual(parseTelegramUpdate({ update_id: 1, message: { ...base, text: "STOP" }, callback_query: callback }, settings), ignored);
+  for (const id of ["", "x".repeat(257), "has\nnewline"]) assert.throws(() => press({ id }), BadRequestError);
 });
 
 test("malformed update identities, dates and content fail validation without echoing sensitive values", () => {

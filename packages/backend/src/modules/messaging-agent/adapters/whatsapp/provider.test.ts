@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parseWhatsAppWebhook, whatsappProvider } from "./provider.ts";
+import type { MessagingReplyButton, MessagingSendInput } from "../../types.ts";
 
 const config = { accessToken: "test-token", phoneNumberId: "1234", apiVersion: "v27.0", maxMediaBytes: 8 };
 const envelope = (value: object) => ({ object: "whatsapp_business_account", entry: [{ changes: [{ field: "messages", value: {
   metadata: { phone_number_id: "1234" }, ...value,
 } }] }] });
+const buttons: MessagingReplyButton[] = [
+  { label: "Confirm", command: "CONFIRM maproposal_review 1" },
+  { label: "Cancel", command: "CANCEL maproposal_review 1" },
+];
 
 test("text and audio normalize with opaque sender identity and original reply context", () => {
   const events = parseWhatsAppWebhook(envelope({ messages: [
@@ -34,6 +39,36 @@ test("invalid envelopes, missing sender and foreign business numbers fail closed
   assert.throws(() => parseWhatsAppWebhook(envelope({}), "another-number"), /business number/);
 });
 
+test("reply buttons use their command ID and preserve the verified sender and review context", () => {
+  const { messages } = parseWhatsAppWebhook(envelope({ messages: buttons.map((button, index) => ({
+    id: `wamid.button-${index}`, from: "2348000000000", from_user_id: "US.123abc", timestamp: "1700000000", type: "interactive",
+    interactive: { type: "button_reply", button_reply: { id: button.command, title: "An untrusted label" } },
+    context: { id: "wamid.review" },
+    text: { body: "Never use an unrelated text field" },
+  })) }), "1234");
+  assert.deepEqual(messages.map((message) => ({
+    type: message.type, text: message.text, sender: message.senderId, recipient: message.replyRecipientId,
+    replyTo: message.replyToMessageId, conversation: message.conversationType,
+  })), buttons.map((button) => ({ type: "text", text: button.command, sender: "US.123abc", recipient: "US.123abc", replyTo: "wamid.review", conversation: "direct" })));
+});
+
+test("interactive labels, unknown button actions and malformed IDs cannot become review commands", () => {
+  const interactive = [
+    { type: "list_reply", button_reply: { id: buttons[0]!.command } },
+    { type: "button_reply", button_reply: { id: "LINK another-account", title: buttons[0]!.command } },
+    { type: "button_reply", button_reply: { id: "CONFIRM maproposal_review 0", title: "Confirm" } },
+    { type: "button_reply", button_reply: { id: "CANCEL maproposal_review 1\nCONFIRM other 1", title: "Cancel" } },
+    { type: "button_reply" },
+  ];
+  const { messages } = parseWhatsAppWebhook(envelope({ messages: interactive.map((value, index) => ({
+    id: `wamid.unsupported-${index}`, from: "2348000000000", timestamp: "1700000000", type: "interactive", interactive: value,
+  })) }), "1234");
+  assert.ok(messages.every((message) => message.type === "unsupported" && message.text === null));
+  assert.throws(() => parseWhatsAppWebhook(envelope({ messages: [{
+    id: "wamid.no-actor", timestamp: "1700000000", type: "interactive", interactive: { type: "button_reply", button_reply: { id: buttons[0]!.command } },
+  }] }), "1234"), /identity/);
+});
+
 test("delivery statuses retain provider IDs and ignore unsupported future states", () => {
   const { statuses } = parseWhatsAppWebhook(envelope({ statuses: [
     { id: "wamid.result", recipient_user_id: "US.123abc", status: "delivered", timestamp: "1700000000" },
@@ -56,7 +91,8 @@ test("send uses the official API with bearer auth and an explicit reply target",
     assert.ok(init?.signal);
     const body = JSON.parse(String(init?.body));
     assert.equal(body.messaging_product, "whatsapp");
-    assert.equal(body.to, "US.123abc");
+    assert.equal(body.recipient, "US.123abc");
+    assert.equal(body.to, undefined);
     assert.equal(body.text.body, "Saved daily log");
     assert.equal(body.context.message_id, "wamid.input");
     return Response.json({ messages: [{ id: "wamid.output" }] });
@@ -65,6 +101,62 @@ test("send uses the official API with bearer auth and an explicit reply target",
     status: "accepted", messageId: "wamid.output",
   });
   assert.equal(called, true);
+});
+
+test("review sends native buttons with the complete spaced body and original reply target", async () => {
+  const text = "Daily log review\n\nProject: North site\nBuilding: Block A\n\n1. Daily note\nTen workers completed the slab.\n\nChoose an action below.";
+  const provider = whatsappProvider(config, async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    assert.deepEqual(body, {
+      messaging_product: "whatsapp", recipient_type: "individual", recipient: "US.123abc", type: "interactive",
+      interactive: { type: "button", body: { text }, action: {
+        buttons: buttons.map((button) => ({ type: "reply", reply: { id: button.command, title: button.label } })),
+      } },
+      context: { message_id: "wamid.input" },
+    });
+    return Response.json({ messages: [{ id: "wamid.buttons" }] });
+  });
+  assert.deepEqual(await provider.sendText({ to: "US.123abc", text, buttons, replyToMessageId: "wamid.input" }), {
+    status: "accepted", messageId: "wamid.buttons",
+  });
+});
+
+test("button reviews enforce their own length limit and reject altered button pairs before sending", async () => {
+  let calls = 0;
+  const provider = whatsappProvider(config, async (_url, init) => {
+    calls += 1;
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.type === "interactive" ? body.interactive.body.text.length : body.text.body.length, body.type === "interactive" ? 1024 : 4096);
+    return Response.json({ messages: [{ id: `wamid.length-${calls}` }] });
+  });
+  assert.equal((await provider.sendText({ to: "123", text: "x".repeat(1024), buttons })).status, "accepted");
+  assert.equal((await provider.sendText({ to: "123", text: "x".repeat(4096) })).status, "accepted");
+  await assert.rejects(provider.sendText({ to: "123", text: "x".repeat(1025), buttons }), /length/);
+  for (const invalid of [
+    [], buttons.slice(0, 1), [...buttons, buttons[0]],
+    [buttons[0], { ...buttons[1], command: "CANCEL different-proposal 1" }],
+    [buttons[0], { ...buttons[1], command: "CANCEL maproposal_review 2" }],
+    [{ ...buttons[0], label: "Save everything" }, buttons[1]],
+    [{ ...buttons[0], command: "CONFIRM " + "x".repeat(70) + " 1" }, buttons[1]],
+  ]) await assert.rejects(provider.sendText({ to: "123", text: "Review", buttons: invalid } as unknown as MessagingSendInput), /buttons/);
+  assert.equal(calls, 2);
+});
+
+test("phone numbers and business-scoped IDs use distinct recipient fields for plain and button messages", async () => {
+  let calls = 0;
+  for (const to of ["+2348000000000", "US.13491208655302741918"]) for (const reviewButtons of [undefined, buttons]) {
+    const provider = whatsappProvider(config, async (url, init) => {
+      calls += 1;
+      assert.equal(String(url), "https://graph.facebook.com/v27.0/1234/messages");
+      const body = JSON.parse(String(init?.body));
+      assert.equal(body.to, to.startsWith("+") ? to : undefined);
+      assert.equal(body.recipient, to.startsWith("US.") ? to : undefined);
+      assert.equal(body.type, reviewButtons ? "interactive" : "text");
+      return Response.json({ messages: [{ id: `wamid.recipient-${calls}` }] });
+    });
+    assert.equal((await provider.sendText({ to, text: "Review", ...(reviewButtons ? { buttons: reviewButtons } : {}) })).status, "accepted");
+  }
+  assert.equal(calls, 4);
 });
 
 test("timeout, server failure and missing receipt are unknown outcomes, never retry instructions", async () => {

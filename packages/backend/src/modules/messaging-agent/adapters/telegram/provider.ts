@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BadRequestError } from "../../../../lib/errors.ts";
 import type { MessagingMedia, MessagingSendInput, MessagingSendResult } from "../../types.ts";
+import { validReviewButtons } from "../../reply-buttons.ts";
 import { parseTelegramMediaId, parseTelegramMessageId, parseTelegramSenderId, telegramAudioFormat, telegramMessageId } from "./identifiers.ts";
 import type { TelegramProviderConfig } from "./types.ts";
 
@@ -64,19 +65,21 @@ export function telegramProvider(settings: TelegramProviderConfig, request: type
       try {
         chatId = parseTelegramSenderId(input.to).chatId;
         if (!input.text.length || input.text.length > 4096) throw new Error("invalid text");
+        if (input.buttons !== undefined && !validReviewButtons(input.buttons)) throw new Error("invalid buttons");
         if (input.replyToMessageId) {
           const reply = parseTelegramMessageId(input.replyToMessageId);
           if (reply.chatId !== chatId) throw new Error("foreign reply");
           replyId = reply.messageId;
         }
       } catch {
-        return { status: "rejected", reason: "Telegram recipient, text or reply is invalid", retryable: false };
+        return { status: "rejected", reason: "Telegram recipient, text, reply or buttons are invalid", retryable: false };
       }
       try {
         const response = await request(`${base}/sendMessage`, {
           method: "POST", headers: { "Content-Type": "application/json" }, redirect: "error", signal: AbortSignal.timeout(timeout),
           body: JSON.stringify({ chat_id: chatId, text: input.text,
             ...(replyId ? { reply_parameters: { message_id: replyId, allow_sending_without_reply: true } } : {}),
+            ...(input.buttons ? { reply_markup: { inline_keyboard: [input.buttons.map((button) => ({ text: button.label, callback_data: button.command }))] } } : {}),
           }),
         });
         if (response.status >= 500) return { status: "unknown", reason: "Telegram server failed before confirming delivery" };
@@ -95,6 +98,19 @@ export function telegramProvider(settings: TelegramProviderConfig, request: type
       } catch {
         // Telegram embeds the bot token in URLs, so never retain fetch errors or response descriptions.
         return { status: "unknown", reason: "Telegram delivery could not be confirmed" };
+      }
+    },
+
+    async answerCallbackQuery(callbackQueryId: string): Promise<void> {
+      try {
+        if (!callbackQueryId.length || callbackQueryId.length > 256 || /[\u0000-\u001f\u007f]/.test(callbackQueryId)) throw new Error();
+        const response = await request(`${base}/answerCallbackQuery`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, redirect: "error",
+          signal: AbortSignal.timeout(Math.min(timeout, 5_000)), body: JSON.stringify({ callback_query_id: callbackQueryId }),
+        });
+        if (!response.ok || !z.object({ ok: z.literal(true), result: z.literal(true) }).safeParse(await response.json()).success) throw new Error();
+      } catch {
+        throw new BadRequestError("Telegram callback could not be acknowledged");
       }
     },
 

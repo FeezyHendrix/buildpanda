@@ -26,6 +26,8 @@ const suites = [
   "modules/messaging-agent/adapters/whatsapp/adapter.test.ts",
   "modules/messaging-agent/portability.test.ts",
   "modules/messaging-agent/channels.test.ts",
+  "modules/messaging-agent/mappers.test.ts",
+  "modules/messaging-agent/reply-buttons.test.ts",
   "modules/messaging-agent/adapters/telegram/provider.test.ts",
   "modules/messaging-agent/adapters/telegram/normalize.test.ts",
   "modules/messaging-agent/adapters/telegram/webhook-routes.test.ts",

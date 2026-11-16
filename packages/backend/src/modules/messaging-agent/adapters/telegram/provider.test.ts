@@ -2,13 +2,18 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { BadRequestError } from "../../../../lib/errors.ts";
 import { telegramProvider } from "./provider.ts";
+import type { MessagingReplyButton } from "../../types.ts";
 import {
   parseTelegramMediaId, parseTelegramMessageId, parseTelegramSenderId,
-  telegramAudioFormat, telegramMediaId, telegramMessageId, telegramSenderId,
+  telegramAudioFormat, telegramCallbackMessageId, telegramMediaId, telegramMessageId, telegramSenderId,
 } from "./identifiers.ts";
 
 const settings = { botId: "123456", botToken: "123456:fake_token_for_injected_fetch_only", maxMediaBytes: 8 };
 const input = { to: telegramSenderId(42, 42), text: "Saved <daily log> *verbatim*", replyToMessageId: telegramMessageId(42, 7) };
+const buttons: MessagingReplyButton[] = [
+  { label: "Confirm", command: "CONFIRM maproposal_00000000-0000-4000-8000-000000000000 1" },
+  { label: "Cancel", command: "CANCEL maproposal_00000000-0000-4000-8000-000000000000 1" },
+];
 const mediaId = telegramMediaId("file_ABC-123", "audio/ogg");
 const metadata = (fields: object = {}) => Response.json({ ok: true, result: {
   file_id: "file_ABC-123", file_path: "voice/file_1.oga", file_size: 3, ...fields,
@@ -22,6 +27,9 @@ test("identities keep private user, chat and per-chat message ids together", () 
   assert.deepEqual(parseTelegramSenderId("tg:42:42"), { chatId: 42, userId: 42 });
   assert.deepEqual(parseTelegramMessageId(telegramMessageId(42, 7)), { chatId: 42, messageId: 7 });
   assert.notEqual(telegramMessageId(42, 7), telegramMessageId(43, 7));
+  const callback = telegramCallbackMessageId(42, 7, "query-id");
+  assert.deepEqual(parseTelegramMessageId(callback), { chatId: 42, messageId: 7 });
+  assert.notEqual(callback, telegramCallbackMessageId(42, 7, "another-press"));
   for (const id of ["42", "@someone", "tg:-42:42", "tg:42:43", "tg:042:042", "tg:9007199254740992:9007199254740992"]) {
     assert.throws(() => parseTelegramSenderId(id), /Telegram/);
   }
@@ -75,6 +83,66 @@ test("send rejects invalid recipients, oversized text and foreign replies withou
     return accepted();
   });
   assert.equal((await plain.sendText({ to: input.to, text: "x".repeat(4096) })).status, "accepted");
+});
+
+test("review buttons use native inline callbacks and callback replies stay in the same chat", async () => {
+  let calls = 0;
+  const provider = telegramProvider(settings, async (_url, init) => {
+    calls++;
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.parse_mode, undefined);
+    assert.equal(body.text, input.text);
+    assert.deepEqual(body.reply_parameters, { message_id: 7, allow_sending_without_reply: true });
+    assert.deepEqual(body.reply_markup, { inline_keyboard: [[
+      { text: "Confirm", callback_data: buttons[0]!.command },
+      { text: "Cancel", callback_data: buttons[1]!.command },
+    ]] });
+    assert.ok(body.reply_markup.inline_keyboard[0].every((button: { callback_data: string }) => Buffer.byteLength(button.callback_data) <= 64));
+    return accepted();
+  });
+  assert.equal((await provider.sendText({ ...input, buttons, replyToMessageId: telegramCallbackMessageId(42, 7, "press-1") })).status, "accepted");
+  assert.equal((await provider.sendText({ ...input, buttons, replyToMessageId: telegramCallbackMessageId(43, 7, "press-1") })).status, "rejected");
+  assert.equal(calls, 1);
+});
+
+test("malformed, mismatched or oversized review callbacks are rejected before sending", async () => {
+  let calls = 0;
+  const provider = telegramProvider(settings, async () => { calls++; return accepted(); });
+  const invalid: unknown[] = [
+    [], [buttons[0]], [...buttons, buttons[0]],
+    [{ ...buttons[0], command: "STOP" }, buttons[1]],
+    [{ ...buttons[0], command: "CONFIRM proposal 0" }, { ...buttons[1], command: "CANCEL proposal 0" }],
+    [buttons[0], { ...buttons[1], command: "CANCEL another-proposal 1" }],
+    [buttons[0], { ...buttons[1], command: buttons[1]!.command.replace(/ 1$/, " 2") }],
+    [{ label: "Cancel", command: buttons[0]!.command }, buttons[1]],
+    [{ label: "Confirm", command: `CONFIRM ${"x".repeat(70)} 1` }, { label: "Cancel", command: `CANCEL ${"x".repeat(70)} 1` }],
+  ];
+  for (const value of invalid) assert.equal((await provider.sendText({ ...input, buttons: value as MessagingReplyButton[] })).status, "rejected");
+  assert.equal(calls, 0);
+});
+
+test("callback acknowledgement is bounded, sends no user notification and hides transport details", async () => {
+  const provider = telegramProvider(settings, async (url, init) => {
+    assert.equal(String(url), `https://api.telegram.org/bot${settings.botToken}/answerCallbackQuery`);
+    assert.deepEqual(JSON.parse(String(init?.body)), { callback_query_id: "press-1" });
+    assert.equal(init?.redirect, "error");
+    assert.ok(init?.signal);
+    return Response.json({ ok: true, result: true });
+  });
+  await provider.answerCallbackQuery("press-1");
+  for (const fetcher of [
+    async () => { throw new Error(`https://api.telegram.org/bot${settings.botToken}/answerCallbackQuery`); },
+    async () => Response.json({ ok: false, description: settings.botToken }, { status: 400 }),
+    async () => Response.json({ ok: true, result: false }),
+  ]) await assert.rejects(telegramProvider(settings, fetcher).answerCallbackQuery("press-1"), (error: Error) => {
+    assert.equal(error.message, "Telegram callback could not be acknowledged");
+    assert.equal(error.cause, undefined);
+    return true;
+  });
+  let requests = 0;
+  const noFetch = telegramProvider(settings, async () => { requests++; return Response.json({ ok: true, result: true }); });
+  for (const id of ["", "x".repeat(257), "has\nnewline"]) await assert.rejects(noFetch.answerCallbackQuery(id), /could not be acknowledged/);
+  assert.equal(requests, 0);
 });
 
 test("explicit HTTP and Bot API failures are rejected with generic reasons", async () => {

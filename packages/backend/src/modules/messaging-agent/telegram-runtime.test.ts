@@ -26,7 +26,7 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
   const { whatsappProvider } = await import("./adapters/whatsapp/provider.ts");
   const { telegramChannelAdapter } = await import("./adapters/telegram/adapter.ts");
   const { telegramProvider } = await import("./adapters/telegram/provider.ts");
-  const { parseTelegramMessageId, telegramMessageId, telegramSenderId } = await import("./adapters/telegram/identifiers.ts");
+  const { parseTelegramMessageId, telegramCallbackMessageId, telegramMessageId, telegramSenderId } = await import("./adapters/telegram/identifiers.ts");
   const { config } = await import("../../config/index.ts");
   const app = await buildApp(), suffix = randomUUID();
   const userId = `dual-runtime-${suffix}`, organizationId = `dual-runtime-org-${suffix}`;
@@ -37,6 +37,7 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
   const sent: { channel: string; body: Record<string, unknown> }[] = [], inboxIds: string[] = [];
   const storedAudio = new Map<string, { bytes: Buffer; fileName: string; mimeType: string }>();
   const effects = { getFile: 0, downloads: 0, uploads: 0, translations: 0 };
+  const acknowledged: string[] = [], originalFetch = globalThis.fetch;
   let telegramSequence = 0, sentSequence = 9000;
   try {
     await app.ready();
@@ -68,7 +69,7 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
       if (url.hostname === "graph.facebook.com") {
         assert.equal(url.pathname, `/v25.0/${config.whatsapp.phoneNumberId}/messages`);
         const body = JSON.parse(String(init?.body));
-        assert.equal(body.to, senderId); sent.push({ channel: "whatsapp", body });
+        assert.equal(body.recipient, senderId); assert.equal(body.to, undefined); sent.push({ channel: "whatsapp", body });
         return Response.json({ messages: [{ id: `wamid.dual.reply.${++sentSequence}` }] });
       }
       assert.equal(url.hostname, "api.telegram.org");
@@ -88,6 +89,12 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
       assert.equal(url.pathname, `/file/bot${config.telegram.botToken}/voice/runtime.ogg`);
       effects.downloads += 1;
       return new Response(voiceBytes, { headers: { "content-type": "audio/ogg", "content-length": String(voiceBytes.length) } });
+    };
+    globalThis.fetch = async (input, init) => {
+      assert.equal(String(input), `https://api.telegram.org/bot${config.telegram.botToken}/answerCallbackQuery`);
+      const body = JSON.parse(String(init?.body)); assert.equal(typeof body.callback_query_id, "string");
+      acknowledged.push(body.callback_query_id);
+      return Response.json({ ok: true, result: true });
     };
     const worker = messagingAgentWorker(app.db, {
       adapters: messagingAdapterRegistry([
@@ -135,6 +142,17 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
       const inbox = await query(); assert.ok(inbox); inboxIds.push(inbox.id);
       await worker.processInbox(inbox.id); return (await query())!;
     }
+    async function tap(command: string, messageId: number, callbackId = randomUUID()) {
+      const response = await app.inject({ method: "POST", url: "/telegram/webhook",
+        headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": config.telegram.webhookSecret },
+        payload: { update_id: ++telegramSequence, callback_query: { id: callbackId, from: { id: chatId, is_bot: false }, data: command,
+          message: { message_id: messageId, date: Math.floor(Date.now() / 1000) - 86400, chat: { id: chatId, type: "private" }, from: { id: Number(config.telegram.botId), is_bot: true } } } } });
+      assert.equal(response.statusCode, 200, response.body); assert.equal(acknowledged.at(-1), callbackId);
+      const query = () => app.db("messaging_agent_inbox").where({ channel: "telegram", channel_account_id: config.telegram.botId,
+        provider_message_id: telegramCallbackMessageId(chatId, messageId, callbackId) }).first();
+      const inbox = await query(); assert.ok(inbox); inboxIds.push(inbox.id);
+      await worker.processInbox(inbox.id); return (await query())!;
+    }
     const countRecords = async () => Number((await app.db("daily_log_entries").where({ project_id: projectId }).count("* as count").first())!.count);
     async function proposal(inboxId: string) {
       const row = await app.db("messaging_agent_proposals").where({ inbox_id: inboxId }).first(); assert.ok(row); return row;
@@ -145,10 +163,19 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
         await worker.processOutbox(row.id);
         const accepted = await app.db("messaging_agent_outbox").where({ id: row.id }).first();
         assert.equal(accepted.status, "accepted", accepted.last_error);
+        const payload = sent.at(-1)!.body;
+        if (row.channel === "telegram") {
+          assert.equal(payload.text, row.body);
+          assert.deepEqual(payload.reply_markup, row.buttons ? { inline_keyboard: [row.buttons.map((button: { label: string; command: string }) => ({ text: button.label, callback_data: button.command }))] } : undefined);
+        } else if (row.buttons) {
+          assert.deepEqual(payload.interactive, { type: "button", body: { text: row.body }, action: { buttons: row.buttons.map((button: { label: string; command: string }) => ({ type: "reply", reply: { id: button.command, title: button.label } })) } });
+        }
         if (row.channel === "telegram") {
           assert.equal(parseTelegramMessageId(accepted.provider_message_id).chatId, chatId);
           const source = await app.db("messaging_agent_inbox").where({ id: row.inbox_id }).first();
           assert.deepEqual(sent.at(-1)?.body.reply_parameters, { message_id: parseTelegramMessageId(source.provider_message_id).messageId, allow_sending_without_reply: true });
+          if (row.buttons) assert.deepEqual(sent.at(-1)?.body.reply_markup, { inline_keyboard: [row.buttons.map((button: { label: string; command: string }) => ({ text: button.label, callback_data: button.command }))] });
+          else assert.equal(sent.at(-1)?.body.reply_markup, undefined);
         }
       }
     }
@@ -172,6 +199,11 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
     assert.equal(wrongConfirm.status, "failed"); assert.equal(await countRecords(), 0);
     const tgInbox = await telegram({ text: tgText }), tgProposal = await proposal(tgInbox.id);
     assert.equal(await countRecords(), 0);
+    await flushReplies();
+    const tgReview = await app.db("messaging_agent_outbox").where({ inbox_id: tgInbox.id }).first();
+    assert.deepEqual(tgReview.buttons.map((button: { label: string }) => button.label), ["Confirm", "Cancel"]);
+    const foreignTap = await tap(`CONFIRM ${waProposal.id} ${waProposal.version}`, parseTelegramMessageId(tgReview.provider_message_id).messageId);
+    assert.equal(foreignTap.status, "failed"); assert.equal(await countRecords(), 0);
     for (const [connection, ownInbox, otherInbox, ownProposal, otherProposal] of [
       [waConnection, waInbox, tgInbox, waProposal, tgProposal], [tgConnection, tgInbox, waInbox, tgProposal, waProposal],
     ]) {
@@ -187,10 +219,10 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
     const confirmWA = () => app.inject({ method: "POST", url: `/messaging-agent/projects/${projectId}/proposals/${waProposal.id}/confirm`, headers: { cookie }, payload: { version: waProposal.version } });
     const waSaved = await confirmWA(); assert.equal(waSaved.statusCode, 200, waSaved.body); assert.equal(waSaved.json().status, "completed");
     assert.equal((await confirmWA()).json().result.recordId, waSaved.json().result.recordId); assert.equal(await countRecords(), 1);
-    const confirmText = `/confirm ${tgProposal.id} ${tgProposal.version}`;
-    const tgConfirm = await telegram({ text: confirmText }); assert.equal(tgConfirm.status, "processed");
-    await telegram({ text: confirmText }, parseTelegramMessageId(tgConfirm.provider_message_id).messageId);
-    await telegram({ text: confirmText }); assert.equal(await countRecords(), 2);
+    const buttonMessageId = parseTelegramMessageId(tgReview.provider_message_id).messageId, callbackId = randomUUID();
+    const tgConfirm = await tap(tgReview.buttons[0].command, buttonMessageId, callbackId); assert.equal(tgConfirm.status, "processed");
+    await tap(tgReview.buttons[0].command, buttonMessageId, callbackId);
+    await tap(tgReview.buttons[0].command, buttonMessageId); assert.equal(await countRecords(), 2);
     const voiceMessage = { voice: { file_id: "Runtime_Voice-123", mime_type: "audio/ogg", duration: 3 } };
     const voice = await telegram(voiceMessage), voiceProposal = await proposal(voice.id);
     assert.equal(voice.status, "processed"); assert.equal(voice.source_kind, "voice_translation");
@@ -199,10 +231,20 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
     assert.equal(await countRecords(), 2);
     await telegram(voiceMessage, parseTelegramMessageId(voice.provider_message_id).messageId);
     assert.deepEqual(effects, { getFile: 1, downloads: 1, uploads: 1, translations: 1 });
+    await flushReplies();
     assert.equal(Number((await app.db("messaging_agent_inbox").where({ channel: "telegram", sender_id: telegramSender }).whereIn("provider_message_id", [voice.provider_message_id, tgConfirm.provider_message_id]).count("* as count").first())!.count), 2);
     const voiceConfirmed = await telegram({ text: `/confirm ${voiceProposal.id} ${voiceProposal.version}` });
     assert.equal(voiceConfirmed.status, "processed"); assert.equal(await countRecords(), 3);
     assert.deepEqual((await app.db("daily_log_entries").where({ project_id: projectId }).select("body_text")).map((row) => row.body_text).sort(), [waText, tgText, translatedText].sort());
+    await flushReplies();
+    const cancelSource = await telegram({ text: "Do not save this draft." }), toCancel = await proposal(cancelSource.id);
+    await flushReplies();
+    const cancelReview = await app.db("messaging_agent_outbox").where({ inbox_id: cancelSource.id }).first();
+    const cancelled = await tap(cancelReview.buttons[1].command, parseTelegramMessageId(cancelReview.provider_message_id).messageId);
+    assert.equal(cancelled.status, "processed"); assert.equal((await proposal(cancelSource.id)).status, "cancelled");
+    assert.equal(await countRecords(), 3);
+    const confirmCancelled = await tap(`CONFIRM ${toCancel.id} ${toCancel.version}`, parseTelegramMessageId(cancelReview.provider_message_id).messageId);
+    assert.equal(confirmCancelled.status, "failed"); assert.equal(await countRecords(), 3);
     await flushReplies();
     assert.ok(sent.some((message) => message.channel === "whatsapp")); assert.ok(sent.some((message) => message.channel === "telegram"));
     const unlink = await app.inject({ method: "DELETE", url: `/messaging-agent/connections/${tgConnection.id}`, headers: { cookie } });
@@ -215,6 +257,6 @@ test("the production backend keeps WhatsApp and Telegram private while text and 
       await app.db("projects").where({ id: projectId }).delete();
       await app.db("organization").where({ id: organizationId }).delete();
       await app.db("user").where({ id: userId }).delete();
-    } finally { await app.close(); }
+    } finally { globalThis.fetch = originalFetch; await app.close(); }
   }
 });

@@ -4,6 +4,7 @@ import { config } from "../../../../config/index.ts";
 import { AppError, BadRequestError, ForbiddenError, NotFoundError } from "../../../../lib/errors.ts";
 import { messagingAgentIntake } from "../../intake.ts";
 import { parseTelegramUpdate } from "./normalize.ts";
+import { telegramProvider } from "./provider.ts";
 import type { TelegramWebhookOptions } from "./types.ts";
 
 const telegramWebhookRoutes: FastifyPluginAsync<TelegramWebhookOptions> = async (fastify, options) => {
@@ -34,6 +35,15 @@ const telegramWebhookRoutes: FastifyPluginAsync<TelegramWebhookOptions> = async 
     if (!verified.has(request)) throw new ForbiddenError("Invalid Telegram webhook secret.");
     const events = parseTelegramUpdate(request.body, settings);
     await messagingAgentIntake(fastify.db).receive({ channel: "telegram", channelAccountId: settings.botId }, events);
+    if (events.callbackQueryId) {
+      try {
+        const answer = options.answerCallbackQuery ?? ((id: string) => telegramProvider(settings).answerCallbackQuery(id));
+        await answer(events.callbackQueryId);
+      } catch {
+        // Acknowledgement only dismisses Telegram's progress indicator; accepted work stays durable.
+        fastify.log.warn("Telegram callback acknowledgement failed");
+      }
+    }
     return { received: true };
   });
 };

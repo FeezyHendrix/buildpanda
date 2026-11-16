@@ -5,6 +5,7 @@ export interface MessagingChannelAdapter {
   channelAccountId: string;
   label: string;
   maxTextLength: number;
+  maxButtonTextLength?: number;
   connectUrl(code: string): string | null;
   canReply(lastInboundAt: Date | string | null, now: Date): boolean;
   sendText(input: MessagingSendInput): Promise<MessagingSendResult>;
