@@ -144,6 +144,7 @@ export function dailyLogsService(
       // hours from the field should not have to save the day header first, and
       // the activity's own building decides which day the hours belong to.
       const existing = await repository.findOne({ projectId, buildingId, logDate });
+      if (existing?.voided_at) throw new BadRequestError("A voided daily log cannot be edited");
       if (!existing) {
         if (!actor) throw new NotFoundError("Daily log");
         await repository.upsert({ projectId, buildingId, logDate }, {}, actor.id);
@@ -184,13 +185,14 @@ export function dailyLogsService(
       logDate: string,
       reason: string,
       actorId: string | null,
+      explicitBuildingId?: string,
     ): Promise<DailyLog> {
       assertDate(logDate, "logDate");
       const trimmed = reason.trim();
       if (trimmed === "" || stripHtml(trimmed) === "") {
         throw new BadRequestError("A reason is required to void a daily log");
       }
-      const buildingId = await resolveBuildingId(projectId);
+      const buildingId = await resolveBuildingId(projectId, explicitBuildingId);
       const existing = await repository.findOne({ projectId, buildingId, logDate });
       if (!existing) throw new NotFoundError("Daily log");
       if (existing.voided_at) throw new BadRequestError("This daily log has already been voided");
@@ -280,6 +282,7 @@ export function dailyLogsService(
 
       const buildingId = await resolveBuildingId(projectId, input.buildingId ?? null);
       const existing = await repository.findOne({ projectId, buildingId, logDate });
+      if (existing?.voided_at) throw new BadRequestError("A voided daily log cannot be edited");
       if (!existing) {
         await repository.upsert({ projectId, buildingId, logDate }, {}, author.id);
       }

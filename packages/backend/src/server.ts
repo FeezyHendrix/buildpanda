@@ -97,6 +97,7 @@ import lookAheadRoutes from "./modules/look-aheads/routes.ts";
 import transactionRoutes from "./modules/transactions/routes.ts";
 import otaRoutes from "./modules/ota/routes.ts";
 import invitationRoutes from "./modules/invitations/routes.ts";
+import messagingAgentRoutes from "./modules/messaging-agent/routes.ts";
 import { besmmRag } from "./lib/besmm-rag.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -110,6 +111,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         paths: [
           "req.headers.authorization",
           "req.headers.cookie",
+          "req.headers['x-telegram-bot-api-secret-token']",
           "res.headers['set-cookie']",
           "password",
           "token",
@@ -249,6 +251,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(transactionRoutes);
   await app.register(otaRoutes);
   await app.register(invitationRoutes);
+  await app.register(messagingAgentRoutes);
 
   return app;
 }

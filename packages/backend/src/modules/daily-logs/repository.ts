@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import { generateId } from "../../lib/ids.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import type {
   DailyLogActivityRow,
   DailyLogEntryRow,
@@ -42,6 +43,19 @@ function toRowPatch(input: UpsertDailyLogInput): Partial<DailyLogRow> {
 }
 
 export function dailyLogsRepository(db: Knex) {
+  async function withLiveDay<T>(key: DailyLogKey, write: (transaction: Knex) => Promise<T>): Promise<T> {
+    const run = async (transaction: Knex) => {
+      // The lock also serializes HTTP writers with a concurrently voided day.
+      const day = await transaction<DailyLogRow>("daily_logs")
+        .where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate })
+        .forUpdate().first();
+      if (!day) throw new NotFoundError("Daily log");
+      if (day.voided_at) throw new BadRequestError("A voided daily log cannot be edited");
+      return write(transaction);
+    };
+    return db.isTransaction ? run(db) : db.transaction(run);
+  }
+
   return {
     listByProjectInRange(
       projectId: string,
@@ -83,19 +97,6 @@ export function dailyLogsRepository(db: Knex) {
       actorId: string,
     ): Promise<DailyLogRow> {
       const patch = toRowPatch(input);
-      const existing = await db<DailyLogRow>("daily_logs")
-        .where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate })
-        .first();
-
-      if (existing) {
-        const [row] = await db("daily_logs")
-          .where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate })
-          .update({ ...patch, updated_at: new Date() })
-          .returning<DailyLogRow[]>("*");
-        if (!row) throw new Error("Failed to update daily log");
-        return row;
-      }
-
       const [row] = await db("daily_logs")
         .insert({
           project_id: key.projectId,
@@ -104,8 +105,11 @@ export function dailyLogsRepository(db: Knex) {
           ...patch,
           created_by_id: actorId,
         })
+        .onConflict(["project_id", "building_id", "log_date"])
+        .merge({ ...patch, updated_at: db.fn.now() })
+        .whereNull("daily_logs.voided_at")
         .returning<DailyLogRow[]>("*");
-      if (!row) throw new Error("Failed to insert daily log");
+      if (!row) throw new BadRequestError("A voided daily log cannot be edited");
       return row;
     },
 
@@ -114,40 +118,21 @@ export function dailyLogsRepository(db: Knex) {
       activityId: string,
       hoursLogged: number,
     ): Promise<DailyLogActivityRow> {
-      const existing = await db<DailyLogActivityRow>("daily_log_activities")
-        .where({
-          project_id: key.projectId,
-          building_id: key.buildingId,
-          log_date: key.logDate,
-          activity_id: activityId,
-        })
-        .first();
-
-      if (existing) {
-        const [row] = await db("daily_log_activities")
-          .where({
+      return withLiveDay(key, async (transaction) => {
+        const [row] = await transaction("daily_log_activities")
+          .insert({
             project_id: key.projectId,
             building_id: key.buildingId,
             log_date: key.logDate,
             activity_id: activityId,
+            hours_logged: String(hoursLogged),
           })
-          .update({ hours_logged: String(hoursLogged) })
+          .onConflict(["project_id", "building_id", "log_date", "activity_id"])
+          .merge({ hours_logged: String(hoursLogged) })
           .returning<DailyLogActivityRow[]>("*");
-        if (!row) throw new Error("Failed to update daily log activity");
+        if (!row) throw new Error("Failed to save daily log activity");
         return row;
-      }
-
-      const [row] = await db("daily_log_activities")
-        .insert({
-          project_id: key.projectId,
-          building_id: key.buildingId,
-          log_date: key.logDate,
-          activity_id: activityId,
-          hours_logged: String(hoursLogged),
-        })
-        .returning<DailyLogActivityRow[]>("*");
-      if (!row) throw new Error("Failed to insert daily log activity");
-      return row;
+      });
     },
 
     /**
@@ -179,6 +164,7 @@ export function dailyLogsRepository(db: Knex) {
     async voidOne(key: DailyLogKey, reason: string, actorId: string | null): Promise<DailyLogRow> {
       const [row] = await db("daily_logs")
         .where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate })
+        .whereNull("voided_at")
         .update({
           voided_at: new Date(),
           voided_by_id: actorId,
@@ -186,7 +172,11 @@ export function dailyLogsRepository(db: Knex) {
           updated_at: new Date(),
         })
         .returning<DailyLogRow[]>("*");
-      if (!row) throw new Error("Failed to void daily log");
+      if (!row) {
+        const existing = await db("daily_logs").where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate }).first();
+        if (!existing) throw new NotFoundError("Daily log");
+        throw new BadRequestError("This daily log has already been voided");
+      }
       return row;
     },
 
@@ -224,26 +214,28 @@ export function dailyLogsRepository(db: Knex) {
       bodyText: string | null;
       form: FilledEntryForm | null;
     }): Promise<DailyLogEntryRow> {
-      const [row] = await db<DailyLogEntryRow>("daily_log_entries")
-        .insert({
-          id: generateId("dle"),
-          project_id: record.projectId,
-          building_id: record.buildingId,
-          log_date: record.logDate,
-          author_id: record.authorId,
-          author_name: record.authorName,
-          author_role: record.authorRole,
-          body_html: record.bodyHtml,
-          body_text: record.bodyText,
-          template_id: record.form?.templateId ?? null,
-          template_name: record.form?.templateName ?? null,
-          // jsonb: pg would send a JS array as a Postgres array.
-          template_fields: record.form ? JSON.stringify(record.form.fields) : null,
-          responses: record.form ? JSON.stringify(record.form.responses) : null,
-        } as Record<string, unknown>)
-        .returning("*");
-      if (!row) throw new Error("Failed to insert daily log entry");
-      return row;
+      return withLiveDay(record, async (transaction) => {
+        const [row] = await transaction<DailyLogEntryRow>("daily_log_entries")
+          .insert({
+            id: generateId("dle"),
+            project_id: record.projectId,
+            building_id: record.buildingId,
+            log_date: record.logDate,
+            author_id: record.authorId,
+            author_name: record.authorName,
+            author_role: record.authorRole,
+            body_html: record.bodyHtml,
+            body_text: record.bodyText,
+            template_id: record.form?.templateId ?? null,
+            template_name: record.form?.templateName ?? null,
+            // jsonb: pg would send a JS array as a Postgres array.
+            template_fields: record.form ? JSON.stringify(record.form.fields) : null,
+            responses: record.form ? JSON.stringify(record.form.responses) : null,
+          } as Record<string, unknown>)
+          .returning("*");
+        if (!row) throw new Error("Failed to insert daily log entry");
+        return row;
+      });
     },
 
     voidsForEntries(entryIds: string[]): Promise<DailyLogEntryVoidRow[]> {

@@ -17,6 +17,7 @@ import {
 import type { ProjectRow } from "../modules/projects/types.ts";
 import { accessContextRepository } from "../modules/access-context/repository.ts";
 import { resolveAccessContext } from "../modules/access-context/service.ts";
+import { isMessagingWebhook } from "../lib/public-webhooks.ts";
 
 export interface AuthUser {
   id: string;
@@ -186,7 +187,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
     request.projectRoles = new Map<string, string>();
     request.projectSectionPermissions = new Map<string, ProjectSectionPermissions>();
     request.projectGrants = new Map<string, Record<string, readonly string[]>>();
-    if (request.url.startsWith("/api/auth/")) return;
+    if (request.url.startsWith("/api/auth/") || isMessagingWebhook(request)) return;
 
     try {
       const session = await auth.api.getSession({ headers: toHeaders(request.headers) });

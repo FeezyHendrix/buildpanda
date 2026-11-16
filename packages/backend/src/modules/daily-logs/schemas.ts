@@ -29,6 +29,12 @@ export const listQuery = {
   },
 } as const;
 
+export const buildingQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: { buildingId: { type: "string", minLength: 1, maxLength: 100 } },
+} as const;
+
 export const upsertBody = {
   type: "object",
   additionalProperties: false,
@@ -106,6 +112,7 @@ export const reportEmailBody = {
   additionalProperties: false,
   properties: {
     email: { type: "string", format: "email", maxLength: 320 },
+    buildingId: { type: "string", minLength: 1, maxLength: 100 },
   },
 } as const;
 

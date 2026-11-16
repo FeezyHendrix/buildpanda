@@ -22,6 +22,7 @@ import {
   projectIdParams,
   dateParams,
   listQuery,
+  buildingQuery,
   upsertBody,
   linkActivityBody,
   coverageSchema,
@@ -192,26 +193,26 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string; date: string }; Body: { reason: string } }>(
+  fastify.post<{ Params: { id: string; date: string }; Querystring: { buildingId?: string }; Body: { reason: string } }>(
     "/projects/:id/daily-logs/:date/void",
-    { schema: { params: dateParams, body: voidBody } },
+    { schema: { params: dateParams, querystring: buildingQuery, body: voidBody } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "dailyLog", "void");
       const user = request.requireAuth();
-      return service.voidLog(project.id, request.params.date, request.body.reason, user.id);
+      return service.voidLog(project.id, request.params.date, request.body.reason, user.id, request.query.buildingId);
     },
   );
 
-  fastify.get<{ Params: { id: string; date: string } }>(
+  fastify.get<{ Params: { id: string; date: string }; Querystring: { buildingId?: string } }>(
     "/projects/:id/daily-logs/:date/report",
-    { schema: { params: dateParams } },
+    { schema: { params: dateParams, querystring: buildingQuery } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(
         request.params.id,
         "dailyLog",
         "report",
       );
-      const report = await reports.build(project.id, request.params.date);
+      const report = await reports.build(project.id, request.params.date, request.query.buildingId);
       return reply
         .header("content-type", "application/pdf")
         .header("content-disposition", `attachment; filename="${report.fileName}"`)
@@ -221,7 +222,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{
     Params: { id: string; date: string };
-    Body: { email?: string };
+    Body: { email?: string; buildingId?: string };
   }>(
     "/projects/:id/daily-logs/:date/report/email",
     { schema: { params: dateParams, body: reportEmailBody } },
@@ -235,7 +236,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
       const result = await reports.emailTo(project.id, request.params.date, {
         email: request.body.email ?? user.email,
         name: user.name,
-      });
+      }, request.body.buildingId);
       return { sentTo: request.body.email ?? user.email, logDate: result.day.logDate };
     },
   );

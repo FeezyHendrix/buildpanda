@@ -1,0 +1,11 @@
+@import "../../frontend/src/styles/index.css";
+@source "../../frontend/src/components/atoms";
+
+body {
+  margin: 0;
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+button, a, input, select, textarea { touch-action: manipulation; }

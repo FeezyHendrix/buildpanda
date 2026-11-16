@@ -35,6 +35,7 @@ export class QueueManager {
   private readonly queues = new Map<string, Queue>();
   private readonly workers = new Map<string, Worker>();
   private readonly processors = new Map<string, JobProcessor>();
+  private readonly repeatTimers = new Set<ReturnType<typeof setInterval>>();
   private started = false;
 
   readonly mode: QueueMode;
@@ -81,6 +82,7 @@ export class QueueManager {
     if (!this.connection) return;
 
     for (const [queueName, processor] of this.processors) {
+      if (this.workers.has(queueName)) continue;
       const worker = new Worker(
         queueName,
         async (job: Job) => {
@@ -210,12 +212,12 @@ export class QueueManager {
         removeOnFail: 50,
       });
     } else {
-      setInterval(() => {
+      this.repeatTimers.add(setInterval(() => {
         void (processor(data) as Promise<void>).catch((err) => {
           this.logger.error({ err, queue: queueName }, "Inline repeating job failed");
           captureBug(err, { tags: { area: "background_job", queue: queueName, kind: "repeating", mode: "inline" } });
         });
-      }, intervalMs);
+      }, intervalMs));
     }
   }
 
@@ -223,6 +225,8 @@ export class QueueManager {
    * Gracefully drain workers, queues and the Redis connection.
    */
   async close(): Promise<void> {
+    for (const timer of this.repeatTimers) clearInterval(timer);
+    this.repeatTimers.clear();
     await Promise.all(
       [...this.workers.values()].map((worker) => worker.close()),
     );

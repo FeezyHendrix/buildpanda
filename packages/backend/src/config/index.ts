@@ -40,6 +40,10 @@ function optionalBool(name: string, fallback: boolean): boolean {
 const env = optional("NODE_ENV", "development");
 
 const storageEndpoint = optional("AWS_ENDPOINT_URL", optional("S3_ENDPOINT", ""));
+const whatsappEnabled = optionalBool("WHATSAPP_ENABLED", false);
+const whatsappValue = (name: string) => whatsappEnabled ? required(name) : optional(name, "");
+const telegramEnabled = optionalBool("TELEGRAM_ENABLED", false);
+const telegramValue = (name: string) => telegramEnabled ? required(name) : optional(name, "");
 
 export const config = {
   env,
@@ -58,7 +62,7 @@ export const config = {
     // (and www) for the lead forms to work.
     corsOrigins: optional(
       "CORS_ORIGIN",
-      "http://localhost:5173,http://localhost:5174,http://localhost:3002",
+      "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3002",
     )
       .split(",")
       .map((value) => value.trim())
@@ -171,6 +175,24 @@ export const config = {
     url: optional("REDIS_URL", ""),
   },
 
+  whatsapp: {
+    enabled: whatsappEnabled,
+    verifyToken: whatsappValue("WHATSAPP_VERIFY_TOKEN"),
+    appSecret: whatsappValue("WHATSAPP_APP_SECRET"),
+    accessToken: whatsappValue("WHATSAPP_ACCESS_TOKEN"),
+    phoneNumberId: whatsappValue("WHATSAPP_PHONE_NUMBER_ID"),
+    businessNumber: whatsappValue("WHATSAPP_BUSINESS_NUMBER"),
+    apiVersion: whatsappValue("WHATSAPP_API_VERSION"),
+  },
+
+  telegram: {
+    enabled: telegramEnabled,
+    botToken: telegramValue("TELEGRAM_BOT_TOKEN"),
+    botId: telegramValue("TELEGRAM_BOT_ID"),
+    botUsername: telegramValue("TELEGRAM_BOT_USERNAME").replace(/^@/, ""),
+    webhookSecret: telegramValue("TELEGRAM_WEBHOOK_SECRET"),
+  },
+
   rateLimit: {
     enabled: optionalBool("RATE_LIMIT_ENABLED", true),
     global: {
@@ -240,5 +262,18 @@ export const config = {
     tracesSampleRate: optionalNumber("SENTRY_TRACES_SAMPLE_RATE", env === "production" ? 0.1 : 1.0),
   },
 } as const;
+
+if (config.whatsapp.enabled) {
+  if (!/^\+?[1-9]\d{6,14}$/.test(config.whatsapp.businessNumber)) throw new Error("WHATSAPP_BUSINESS_NUMBER must be an international phone number");
+  if (!/^\d+$/.test(config.whatsapp.phoneNumberId)) throw new Error("WHATSAPP_PHONE_NUMBER_ID must be numeric");
+  if (!/^v\d+\.\d+$/.test(config.whatsapp.apiVersion)) throw new Error("WHATSAPP_API_VERSION must be pinned as vNN.N");
+}
+
+if (config.telegram.enabled) {
+  if (!/^[1-9]\d{0,15}$/.test(config.telegram.botId)) throw new Error("TELEGRAM_BOT_ID must be a positive numeric ID");
+  if (!/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(config.telegram.botUsername)) throw new Error("TELEGRAM_BOT_USERNAME must be a valid bot username");
+  if (!new RegExp(`^${config.telegram.botId}:[A-Za-z0-9_-]{20,}$`).test(config.telegram.botToken)) throw new Error("TELEGRAM_BOT_TOKEN must belong to TELEGRAM_BOT_ID");
+  if (!/^[A-Za-z0-9_-]{32,256}$/.test(config.telegram.webhookSecret)) throw new Error("TELEGRAM_WEBHOOK_SECRET must contain 32–256 letters, digits, underscores or hyphens");
+}
 
 export type Config = typeof config;
