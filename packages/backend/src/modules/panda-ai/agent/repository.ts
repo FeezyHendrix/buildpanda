@@ -10,13 +10,13 @@ import { preconstructionAgentRepository } from "./preconstruction-repository.ts"
 import { tasksAgentRepository } from "./tasks-repository.ts";
 import { documentsAgentRepository } from "./documents-repository.ts";
 
-export function agentRepository(db: Knex, scope: AgentRecordScope = NO_RECORD_ACCESS) {
+export function agentRepository(db: Knex, scope: AgentRecordScope = NO_RECORD_ACCESS, sharedRfisOnly = false) {
   return {
     ...takeoffAgentRepository(db),
     ...programmeAgentRepository(db),
     ...expensesAgentRepository(db, scope.expenseReaderId),
     ...contractAgentRepository(db),
-    ...siteAgentRepository(db),
+    ...siteAgentRepository(db, sharedRfisOnly),
     ...materialsAgentRepository(db),
     ...preconstructionAgentRepository(db),
     ...tasksAgentRepository(db, scope.taskReaderId),

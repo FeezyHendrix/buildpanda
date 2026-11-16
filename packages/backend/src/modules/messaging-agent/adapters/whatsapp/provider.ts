@@ -1,3 +1,5 @@
+import { config as appConfig } from "../../../../config/index.ts";
+import { attachmentMediaId, attachmentMime, parseAttachmentMediaId, boundedAttachmentBytes } from "../../attachment-media.ts";
 import type { WhatsAppProviderConfig } from "./types.ts";
 import { z } from "zod";
 import { BadRequestError } from "../../../../lib/errors.ts";
@@ -9,10 +11,12 @@ import type {
 
 const id = z.string().min(1).max(1000);
 const timestamp = z.string().regex(/^\d{1,12}$/);
+const attachmentSchema = z.object({ id, mime_type: z.string().max(100).optional(), filename: z.string().max(255).optional(), caption: z.string().max(8000).optional() });
 const messageSchema = z.object({
   id, from: id.optional(), from_user_id: id.optional(), timestamp, type: z.string().max(100),
   text: z.object({ body: z.string().max(8000) }).optional(),
   audio: z.object({ id, mime_type: z.string().max(100).optional() }).optional(),
+  image: attachmentSchema.optional(), document: attachmentSchema.optional(), video: attachmentSchema.optional(),
   interactive: z.object({
     type: z.string().max(100),
     button_reply: z.object({ id: z.string().min(1).max(256) }).optional(),
@@ -49,12 +53,16 @@ export function parseWhatsAppWebhook(payload: unknown, phoneNumberId: string): M
       if (!senderId || !Number.isFinite(sentAt.getTime())) throw new BadRequestError("Invalid Messaging message identity or timestamp");
       const buttonCommand = message.type === "interactive" && message.interactive?.type === "button_reply"
         && isReviewCommand(message.interactive.button_reply?.id) ? message.interactive.button_reply!.id : null;
-      const type = (message.type === "text" && message.text) || buttonCommand ? "text" : message.type === "audio" && message.audio ? "audio" : "unsupported";
+      const attachment = message.type === "image" ? message.image : message.type === "document" ? message.document : message.type === "video" ? message.video : undefined;
+      const type = (message.type === "text" && message.text) || buttonCommand ? "text" : message.type === "audio" && message.audio ? "audio" : attachment ? "attachment" : "unsupported";
       messages.push({
         channel: "whatsapp", channelAccountId: phoneNumberId, senderId, replyRecipientId: senderId, conversationType: "direct", providerMessageId: message.id, sentAt, type,
-        text: type === "text" ? buttonCommand ?? message.text!.body : null,
-        mediaId: type === "audio" ? message.audio!.id : null,
-        mediaMimeType: type === "audio" ? message.audio!.mime_type ?? null : null,
+        text: type === "text" ? buttonCommand ?? message.text!.body : type === "attachment" ? attachment!.caption ?? null : null,
+        mediaId: type === "audio" ? message.audio!.id : type === "attachment" ? attachmentMediaId("whatsapp", {
+          providerId: attachment!.id, fileName: attachment!.filename ?? (message.type === "image" ? "photo.jpg" : message.type === "video" ? "video.mp4" : "attachment"),
+          ...(attachment!.mime_type ? { mimeType: attachmentMime(attachment!.mime_type) } : {}),
+        }) : null,
+        mediaMimeType: type === "audio" ? message.audio!.mime_type ?? null : type === "attachment" ? attachmentMime(attachment!.mime_type) ?? null : null,
         replyToMessageId: message.context?.id ?? null,
       });
     }
@@ -152,6 +160,27 @@ export function whatsappProvider(config: WhatsAppProviderConfig, request: typeof
       const sent = sentSchema.safeParse(await response.json().catch(() => null));
       return sent.success ? { status: "accepted", messageId: sent.data.messages[0]!.id }
         : { status: "unknown", reason: "Provider response did not include a message identity" };
+    },
+
+    async downloadAttachment(mediaId: string): Promise<MessagingMedia> {
+      const identity = parseAttachmentMediaId("whatsapp", mediaId);
+      const limit = Math.min(config.maxMediaBytes ?? appConfig.uploads.maxFileBytes, appConfig.uploads.maxFileBytes);
+      if (!/^[A-Za-z0-9_-]{1,200}$/.test(identity.providerId)) throw new BadRequestError("Invalid attachment identity.");
+      const response = await request(`${base}/${config.apiVersion}/${encodeURIComponent(identity.providerId)}?phone_number_id=${config.phoneNumberId}`, {
+        headers, redirect: "error", signal: AbortSignal.timeout(timeout),
+      });
+      if (!response.ok) throw new BadRequestError("Attachment metadata could not be loaded.");
+      const parsed = mediaSchema.safeParse(await response.json().catch(() => null));
+      if (!parsed.success || parsed.data.file_size > limit) throw new BadRequestError("The attachment is invalid or exceeds the upload limit.");
+      const metadata = parsed.data, mimeType = attachmentMime(metadata.mime_type)!;
+      if (identity.mimeType && identity.mimeType !== mimeType) throw new BadRequestError("Attachment type does not match its metadata.");
+      const file = await request(checkedMediaUrl(metadata.url), { headers, redirect: "error", signal: AbortSignal.timeout(timeout) });
+      if (!file.ok) throw new BadRequestError("Attachment could not be downloaded.");
+      const actualType = attachmentMime(file.headers.get("content-type") ?? undefined);
+      if (actualType && actualType !== "application/octet-stream" && actualType !== mimeType) throw new BadRequestError("Attachment type does not match its metadata.");
+      const bytes = await boundedAttachmentBytes(file, limit);
+      if (bytes.byteLength !== metadata.file_size) throw new BadRequestError("Attachment size does not match its metadata.");
+      return { bytes, mimeType, fileName: identity.fileName };
     },
 
     async downloadAudio(mediaId: string): Promise<MessagingMedia> {

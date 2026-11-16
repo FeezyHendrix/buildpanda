@@ -1,5 +1,6 @@
 import { BadRequestError, ConflictError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import { validateMaterialQuantity } from "../materials-ledger/quantity.ts";
 import type { MaterialsEquipmentRepository } from "./repository.ts";
 import { acceptedQuantity, num, optionalText } from "./mappers.ts";
 import type {
@@ -86,9 +87,7 @@ export function materialDeliveryService(
           `A ${order.status.toLowerCase()} order cannot receive a delivery`,
         );
       }
-      if (input.deliveredQty <= 0) {
-        throw new BadRequestError("Delivered quantity must be greater than zero");
-      }
+      validateMaterialQuantity(input.deliveredQty);
       const rejected = input.rejected ?? false;
       const rejectedReason = optionalText(input.rejectedReason) ?? null;
       if (rejected && !rejectedReason) {

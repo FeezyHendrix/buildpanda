@@ -1,43 +1,12 @@
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { materialsLedgerRepository } from "./repository.ts";
-import { materialsLedgerService, type LogEntryInput } from "./service.ts";
+import type { FastifyPluginAsync } from "fastify";
+import type { LogEntryInput } from "./types.ts";
+import { buildMaterialsLedgerService } from "./wiring.ts";
+import { requireMaterialLogPermission } from "./permissions.ts";
+import { materialLogBody, voidLedgerBody } from "./schemas.ts";
 import { materialReportService } from "./report.ts";
 import type { ReorderPolicyInput } from "./types.ts";
-import { notificationsRepository } from "../notifications/repository.ts";
-import { notificationsService } from "../notifications/service.ts";
-import { tasksRepository } from "../tasks/repository.ts";
-import { tasksService } from "../tasks/service.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { filesRepository } from "../files/repository.ts";
 import { filesService } from "../files/service.ts";
-import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
-import { materialsEquipmentService } from "../materials-equipment/service.ts";
-import { buildMaterialsServices } from "../materials-equipment/wiring.ts";
-import { sameMaterial } from "./units.ts";
-import { suppliersRepository } from "../suppliers/repository.ts";
-import { ForbiddenError } from "../../lib/errors.ts";
-import { logger } from "../../lib/logger.ts";
-
-const ENTRY_TYPE = ["IN", "USED"] as const;
-
-/** Order statuses that can take goods: approved and not yet closed. */
-const RECEIVABLE: readonly string[] = ["Approved", "Ordered", "PartiallyDelivered", "Delivered"];
-
-/**
- * The crew on site see a delivery arrive, so anyone who can request materials
- * can log one received, and it counts toward stock straight away — there is no
- * approval step. Logging usage still needs `manage`.
- */
-async function requireLogPermission(request: FastifyRequest, projectId: string, entryType: "IN" | "USED") {
-  if (entryType === "IN") {
-    try {
-      return await request.requireProjectPermission(projectId, "materials", "request");
-    } catch (error) {
-      if (!(error instanceof ForbiddenError)) throw error;
-    }
-  }
-  return request.requireProjectPermission(projectId, "materials", "manage");
-}
 
 const projectIdParams = {
   type: "object",
@@ -84,42 +53,12 @@ const listQuery = {
   additionalProperties: false,
   properties: {
     materialId: { type: "string", maxLength: 100 },
-    entryType: { type: "string", enum: ENTRY_TYPE },
+    entryType: { type: "string", enum: materialLogBody.properties.entryType.enum },
     limit: { type: "integer", minimum: 1, maximum: 200 },
     before: { type: "string", maxLength: 40 },
   },
 } as const;
 
-const logBody = {
-  type: "object",
-  required: ["entryType", "materialName", "quantity"],
-  additionalProperties: false,
-  properties: {
-    entryType: { type: "string", enum: ENTRY_TYPE },
-    materialName: { type: "string", minLength: 1, maxLength: 200 },
-    unit: { type: "string", maxLength: 40 },
-    quantity: { type: "number", exclusiveMinimum: 0 },
-    locationKey: { type: ["string", "null"], maxLength: 100 },
-    stageId: { type: ["string", "null"], maxLength: 100 },
-    occurredAt: { type: ["string", "null"], maxLength: 40 },
-    materialOrderId: { type: ["string", "null"], maxLength: 100 },
-    taskId: { type: ["string", "null"], maxLength: 100 },
-    activityId: { type: ["string", "null"], maxLength: 100 },
-    fileIds: { type: "array", items: { type: "string", maxLength: 100 }, maxItems: 10 },
-    reason: { type: ["string", "null"], maxLength: 1000 },
-    notesHtml: { type: ["string", "null"], maxLength: 200000 },
-    idempotencyKey: { type: ["string", "null"], maxLength: 100 },
-    supplier: { type: ["string", "null"], maxLength: 200 },
-    deliveryNote: { type: ["string", "null"], maxLength: 120 },
-  },
-} as const;
-
-const voidBody = {
-  type: "object",
-  required: ["reason"],
-  additionalProperties: false,
-  properties: { reason: { type: "string", minLength: 1, maxLength: 1000 } },
-} as const;
 
 const reportEmailBody = {
   type: "object",
@@ -128,148 +67,7 @@ const reportEmailBody = {
 } as const;
 
 const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
-  const notifications = notificationsService(notificationsRepository(fastify.db), fastify.queue);
-  const tasks = tasksService(tasksRepository(fastify.db), { notifications });
-  const projects = projectsRepository(fastify.db);
-  const orders = materialsEquipmentService(materialsEquipmentRepository(fastify.db));
-  const procurement = buildMaterialsServices(fastify);
-  const suppliers = suppliersRepository(fastify.db);
-
-  const service = materialsLedgerService(materialsLedgerRepository(fastify.db), {
-    onNegativeStock: ({ projectId, materialName, onHandQty, actorId }) => {
-      void (async () => {
-        try {
-          const project = await projects.findById(projectId);
-          const ownerId = project?.owner_id ?? null;
-          if (ownerId) {
-            await notifications.notify(ownerId, "material_negative_stock", {
-              title: "Negative stock detected",
-              body: `${materialName} is at ${onHandQty}. Logged usage exceeds recorded deliveries.`,
-              projectId,
-            });
-          }
-          await tasks.createTask(
-            projectId,
-            {
-              title: `Reconcile negative stock: ${materialName}`,
-              description: `On-hand for ${materialName} is ${onHandQty}. Confirm deliveries were logged or correct the ledger.`,
-              assigneeId: ownerId,
-              sourceType: "material_reconciliation",
-              sourceId: materialName,
-            },
-            actorId,
-          );
-        } catch (error) {
-          logger.error({ err: error, projectId }, "Failed negative-stock side effects");
-        }
-      })();
-    },
-    // Reorder policy: low stock always raises a heads-up notification. When the
-    // material has auto-reorder enabled, we go further and raise a "Requested"
-    // material order against the preferred supplier so procurement can act on
-    // it immediately rather than discovering the shortfall later.
-    receiptOrder: async (projectId, orderId) => {
-      const order = await procurement.service.getMaterialOrder(projectId, orderId).catch(() => null);
-      if (!order) return null;
-      return {
-        materialName: order.materialName,
-        unit: order.unit,
-        stageId: order.phaseId,
-        // Goods count against an order once it is approved; before that there
-        // is nothing agreed to receive them against.
-        receivable: RECEIVABLE.includes(order.status),
-      };
-    },
-    soleOpenOrderFor: async (projectId, materialName) => {
-      const open = (await procurement.service.listMaterialOrders(projectId)).filter(
-        (order) => RECEIVABLE.includes(order.status) && order.status !== "Delivered" && sameMaterial(order.materialName, materialName),
-      );
-      return open.length === 1 ? open[0]!.id : null;
-    },
-    // Accepting the receipt is the moment the goods count; the order learns of
-    // them now, not when the crew claimed them.
-    onReceiptApproved: async ({ projectId, entryId, materialOrderId, quantity, occurredAt, deliveryNote, actorId }) => {
-      // The stock is already accepted; an order that has since been closed
-      // must not undo that, so a failure here is logged, not thrown.
-      try {
-        await procurement.deliveries.record(
-          projectId,
-          materialOrderId,
-          { deliveredQty: quantity, deliveredAt: occurredAt.slice(0, 10), deliveryNote, notes: "Logged on site and approved" },
-          actorId,
-          { ledgerEntryId: entryId },
-        );
-      } catch (error) {
-        logger.warn({ err: error, projectId, entryId, materialOrderId }, "Approved receipt not recorded on its order");
-      }
-    },
-    onLowStock: ({
-      projectId,
-      materialName,
-      unit,
-      onHandQty,
-      lowStockThreshold,
-      reorderQuantity,
-      leadTimeDays,
-      preferredSupplierId,
-      autoReorderEnabled,
-      actorId,
-    }) => {
-      void (async () => {
-        try {
-          const project = await projects.findById(projectId);
-          const ownerId = project?.owner_id ?? null;
-          if (ownerId) {
-            await notifications.notify(ownerId, "material_low_stock", {
-              title: "Material stock is low",
-              body: `${materialName} is at ${onHandQty} ${unit}, at or below the reorder point of ${lowStockThreshold}.`,
-              projectId,
-            });
-          }
-
-          if (!autoReorderEnabled) return;
-
-          // requestedBy: the ledger actor is normally set (the route requires
-          // auth), but fall back to the project owner so an order can still
-          // be raised if this is ever triggered without one.
-          const requestedBy = actorId ?? ownerId;
-          if (!requestedBy) return;
-
-          const supplier = preferredSupplierId ? await suppliers.findById(preferredSupplierId) : undefined;
-          const quantity = reorderQuantity ?? lowStockThreshold * 2;
-          const neededBy = new Date(Date.now() + (leadTimeDays ?? 7) * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .slice(0, 10);
-
-          await orders.createMaterialOrder(
-            projectId,
-            {
-              title: `Auto reorder: ${materialName}`,
-              materialName,
-              quantity,
-              unit,
-              supplier: supplier?.name ?? null,
-              status: "Requested",
-              priority: "High",
-              neededBy,
-              notes: `Auto-generated by reorder policy — stock at ${onHandQty} ${unit}, at or below the reorder point of ${lowStockThreshold}.`,
-            },
-            requestedBy,
-          );
-
-          if (ownerId) {
-            await notifications.notify(ownerId, "material_reorder_created", {
-              title: "Reorder request created",
-              body: `A reorder request for ${quantity} ${unit} of ${materialName} was auto-created${supplier ? ` for ${supplier.name}` : ""}.`,
-              projectId,
-            });
-          }
-        } catch (error) {
-          logger.error({ err: error, projectId }, "Failed low-stock side effects");
-        }
-      })();
-    },
-  });
+  const service = buildMaterialsLedgerService(fastify.db, fastify.queue);
 
   const reports = materialReportService(fastify.db, {
     ledger: service,
@@ -314,9 +112,9 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Params: { id: string }; Body: LogEntryInput }>(
     "/projects/:id/materials/ledger",
-    { schema: { params: projectIdParams, body: logBody } },
+    { schema: { params: projectIdParams, body: materialLogBody } },
     async (request, reply) => {
-      const project = await requireLogPermission(request, request.params.id, request.body.entryType);
+      const project = await requireMaterialLogPermission(request, request.params.id, request.body.entryType);
       const user = request.requireAuth();
       const result = await service.logEntry(project.id, request.body, user.id);
       return reply.status(result.duplicate ? 200 : 201).send(result);
@@ -325,7 +123,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Params: { id: string; entryId: string }; Body: { reason: string } }>(
     "/projects/:id/materials/ledger/:entryId/void",
-    { schema: { params: entryParams, body: voidBody } },
+    { schema: { params: entryParams, body: voidLedgerBody } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "materials", "manage");
       const user = request.requireAuth();

@@ -222,6 +222,11 @@ export function materialsEquipmentRepository(db: Knex) {
       return materialBase().where("mo.id", id).select(...MATERIAL_SELECT).first();
     },
 
+    lockMaterialOrder(projectId: string, orderId: string): Promise<MaterialOrderRow | undefined> {
+      if (!db.isTransaction) throw new Error("Receiving materials requires the caller's transaction");
+      return db<MaterialOrderRow>("material_orders").where({ project_id: projectId, id: orderId }).forUpdate().first();
+    },
+
     async createMaterialOrder(record: NewMaterialOrderRecord): Promise<MaterialOrderRow> {
       await db("material_orders").insert(record);
       const row = await this.findMaterialOrder(record.id);

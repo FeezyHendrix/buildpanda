@@ -61,6 +61,9 @@ test("the full backend authenticates, links, drafts from its signed webhook and 
     assert.equal(status.headers["access-control-allow-credentials"], "true");
     assert.equal(status.json().projects.some((project: { id: string }) => project.id === projectId), true);
 
+    const unknownOverride = await app.inject({ method: "POST", url: "/messaging-agent/link", headers: { cookie }, payload: { channel: "whatsapp", accountId: phoneNumberId, projectId, buildingId, projectOverride: "foreign-project" } });
+    assert.equal(unknownOverride.statusCode, 400);
+
     const linked = await app.inject({ method: "POST", url: "/messaging-agent/link", headers: { cookie }, payload: { channel: "whatsapp", accountId: phoneNumberId, projectId, buildingId } });
     assert.equal(linked.statusCode, 200, linked.body);
     const worker = messagingAgentWorker(app.db, {

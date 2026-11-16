@@ -1,3 +1,4 @@
+import type { NotificationsService } from "../notifications/service.ts";
 export type TaskStatus = "Todo" | "Doing" | "Done";
 
 export interface TaskRecordParams { id?: string; taskId?: string }
@@ -198,4 +199,55 @@ export interface TaskBoardFilters {
   scope?: "all" | "assigned" | "mine";
   buildingId?: string;
   stageId?: string;
+}
+
+export interface CreateTaskInput {
+  title: string;
+  buildingId?: string | null;
+  description?: string | null;
+  descriptionHtml?: string | null;
+  assigneeId?: string | null;
+  assigneeTeamMemberId?: string | null;
+  assignees?: TaskAssigneeInput[];
+  dueDate?: string | null;
+  priority?: TaskPriority;
+  labels?: string[];
+  columnId?: string | null;
+  status?: TaskStatus;
+  sourceType?: string | null;
+  sourceId?: string | null;
+}
+
+export interface UpdateTaskInput {
+  title?: string;
+  description?: string | null;
+  descriptionHtml?: string | null;
+  assigneeId?: string | null;
+  assigneeTeamMemberId?: string | null;
+  assignees?: TaskAssigneeInput[];
+  dueDate?: string | null;
+  priority?: TaskPriority;
+  labels?: string[];
+}
+
+export interface TaskAssigneeInput {
+  kind: "user" | "team";
+  id: string;
+}
+
+export interface MoveTaskInput {
+  columnId: string;
+  position: number;
+}
+
+export interface AssignableUser {
+  kind: "user" | "team";
+  id: string;
+  name: string;
+  email: string | null;
+  isSelf: boolean;
+}
+
+export interface TasksDeps {
+  notifications?: NotificationsService;
 }

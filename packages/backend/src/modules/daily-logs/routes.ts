@@ -1,22 +1,13 @@
+import { buildDailyLogsService } from "./wiring.ts";
 import type { FastifyPluginAsync } from "fastify";
-import { canProjectPermission } from "../../lib/authorization.ts";
+import { dailyLogEntryVoidActor } from "./access.ts";
 import { dailyLogsRepository } from "./repository.ts";
-import { dailyLogsService } from "./service.ts";
 import { dailyLogCoverage, dailyLogCoverageDeps } from "./coverage.ts";
 import { dailyReportService } from "./report.ts";
 import { periodReportService } from "./period-report.ts";
 import type { ReportPeriod } from "../../lib/report-period.ts";
-import { updatesRepository } from "../updates/repository.ts";
-import { updatesService } from "../updates/service.ts";
-import { activitiesRepository } from "../activities/repository.ts";
-import { activitiesService } from "../activities/service.ts";
-import { buildingsService } from "../buildings/service.ts";
-import { buildingsRepository } from "../buildings/repository.ts";
 import { filesRepository } from "../files/repository.ts";
 import { filesService } from "../files/service.ts";
-import { dailyLogTemplatesRepository } from "../daily-log-templates/repository.ts";
-import { dailyLogTemplatesService } from "../daily-log-templates/service.ts";
-import { PROGRESS_RECOMPUTE_QUEUE } from "../activities/progress-job.ts";
 import type { CreateDailyLogEntryInput, LinkActivityInput, UpsertDailyLogInput } from "./types.ts";
 import {
   projectIdParams,
@@ -38,27 +29,7 @@ function todayIso(): string {
 }
 
 const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
-  const buildings = buildingsRepository(fastify.db);
-  const updates = updatesService(updatesRepository(fastify.db));
-  const activitiesRepo = activitiesRepository(fastify.db);
-  const activities = activitiesService(activitiesRepo, (projectId) =>
-    fastify.queue.enqueue(PROGRESS_RECOMPUTE_QUEUE, "recompute", { projectId }),
-    (projectId) => buildings.soleRealBuildingId(projectId),
-  );
-  const templates = dailyLogTemplatesService(dailyLogTemplatesRepository(fastify.db));
-  const service = dailyLogsService(dailyLogsRepository(fastify.db), {
-    assertBuilding: buildingsService(buildings).assertRealBuilding,
-    createUpdate: (projectId, input, actor) => updates.create(projectId, input, actor),
-    fillTemplate: (projectId, templateId, responses) => templates.fill(projectId, templateId, responses),
-    markActivityInProgress: async (projectId, activityId) => {
-      const current = await activitiesRepo.findById(activityId).catch(() => undefined);
-      if (current && current.status === "Planned") {
-        await activities
-          .update(projectId, activityId, { status: "InProgress" })
-          .catch(() => undefined);
-      }
-    },
-  }, (projectId) => buildings.soleRealBuildingId(projectId));
+  const service = buildDailyLogsService(fastify.db, fastify.queue);
 
   const reports = dailyReportService(fastify.db, {
     logs: service,
@@ -130,23 +101,8 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "dailyLog", "create");
       const user = request.requireAuth();
-      const canManage = canProjectPermission(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        {
-          userId: user.id,
-          orgRoles: request.orgRoles,
-          projectRoles: request.projectRoles,
-          orgPermissions: request.orgPermissions,
-          projectSectionPermissions: request.projectSectionPermissions,
-        },
-        "dailyLog",
-        "void",
-      );
-      return service.voidEntry(project.id, request.params.entryId, request.body.reason, {
-        id: user.id,
-        name: user.name,
-        canManage,
-      });
+      return service.voidEntry(project.id, request.params.entryId, request.body.reason,
+        dailyLogEntryVoidActor(request, project, user));
     },
   );
 

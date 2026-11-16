@@ -1,9 +1,13 @@
 import { createHash } from "node:crypto";
 import { generateId } from "../../lib/ids.ts";
 import type { MessagingConversationRow, MessagingDb, MessagingInboundMessage, MessagingInboxRow, MessagingSourceKind } from "./types.ts";
+import type { MessagingReadAccess } from "./management-types.ts";
 
 export function messagingAgentInboxRepository(db: MessagingDb) {
   return {
+    async setReadAccess(id: string, access: MessagingReadAccess): Promise<void> {
+      await db("messaging_agent_inbox").where({ id }).update({ read_access: JSON.stringify(access), updated_at: db.fn.now() });
+    },
     async acceptMessage(message: MessagingInboundMessage): Promise<MessagingInboxRow | null> {
       const link = message.type === "text" ? /^LINK\s+([A-Za-z0-9_-]{24,128})$/i.exec(message.text?.trim() ?? "") : null;
       return db.transaction(async (trx) => {
@@ -21,7 +25,8 @@ export function messagingAgentInboxRepository(db: MessagingDb) {
         building_id: conversation?.building_id ?? null, scope_version: conversation?.scope_version ?? null,
         message_type: message.type, source_text: link ? "LINK [code redacted]" : message.text,
         link_code_hash: link ? createHash("sha256").update(link[1]!).digest("hex") : null,
-        source_kind: message.type === "audio" ? "voice_translation" : "text",
+        source_kind: message.type === "audio" ? "voice_translation" : message.type === "attachment" ? "file_attachment" : "text",
+        source_file_id: message.origin === "web" ? message.sourceFileId ?? null : null,
         media_id: message.mediaId, media_mime_type: message.mediaMimeType,
         reply_to_message_id: message.replyToMessageId, sent_at: message.sentAt,
       }).onConflict(["channel", "channel_account_id", "origin", "provider_message_id"]).ignore().returning("*");
@@ -71,8 +76,13 @@ export function messagingAgentInboxRepository(db: MessagingDb) {
     },
 
     async recoverInbox(staleBefore: Date): Promise<number> {
-      return db("messaging_agent_inbox").where({ status: "processing" }).where("processing_started_at", "<", staleBefore)
+      const interrupted = await db("messaging_agent_inbox").where({ origin: "web" }).where((query) => query
+        .where((processing) => processing.where({ status: "processing" }).where("processing_started_at", "<", staleBefore))
+        .orWhere((received) => received.where({ status: "received" }).where("created_at", "<", staleBefore)))
+        .update({ status: "failed", last_error: "This app draft was interrupted. Send the text again; your original attachment was retained.", processing_started_at: null, updated_at: db.fn.now() });
+      const retryable = await db("messaging_agent_inbox").where({ origin: "provider", status: "processing" }).where("processing_started_at", "<", staleBefore)
         .update({ status: "received", processing_started_at: null, updated_at: db.fn.now() });
+      return interrupted + retryable;
     },
   };
 }

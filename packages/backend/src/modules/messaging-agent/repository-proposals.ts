@@ -5,8 +5,8 @@ import type {
   MessagingProposalRow, MessagingProposalStatus, MessagingProposedActionInput,
 } from "./types.ts";
 
-function actionRows(proposalId: string, version: number, actions: MessagingProposedActionInput[]) {
-  if (actions.length < 1 || actions.length > 20) throw new BadRequestError("Review between 1 and 20 actions at a time");
+function actionRows(proposalId: string, version: number, actions: MessagingProposedActionInput[], clarification?: string | null) {
+  if ((!actions.length && !clarification) || actions.length > 20) throw new BadRequestError("Review between 1 and 20 actions at a time");
   return actions.map((action, position) => ({
     id: generateId("maaction"), proposal_id: proposalId, proposal_version: version, position,
     kind: action.kind, title: action.title ?? null, summary: action.summary ?? null,
@@ -16,6 +16,9 @@ function actionRows(proposalId: string, version: number, actions: MessagingPropo
 
 export function messagingAgentProposalRepository(db: MessagingDb) {
   return {
+    async resetContext(conversationId: string): Promise<void> {
+      await db("messaging_agent_conversations").where({ id: conversationId }).update({ context_reset_at: db.fn.now() });
+    },
     async createProposal(input: MessagingProposalInput): Promise<MessagingProposalRow> {
       return db.transaction(async (trx) => {
         const conversation = await trx<MessagingConversationRow>("messaging_agent_conversations")
@@ -33,15 +36,16 @@ export function messagingAgentProposalRepository(db: MessagingDb) {
           return existing;
         }
         const id = generateId("maproposal");
-        const actions = actionRows(id, 1, input.actions);
+        const actions = actionRows(id, 1, input.actions, input.clarification);
         await trx("messaging_agent_proposals").where({ conversation_id: input.conversationId, status: "draft" })
           .update({ status: "cancelled", updated_at: trx.fn.now() });
         const [proposal] = await trx<MessagingProposalRow>("messaging_agent_proposals").insert({
           id, conversation_id: input.conversationId, inbox_id: input.inboxId, scope_version: input.scopeVersion,
           organization_id: conversation.organization_id, project_id: conversation.project_id, building_id: conversation.building_id,
           source_text: input.sourceText, source_kind: input.sourceKind, source_file_id: input.sourceFileId ?? null,
+          clarification: input.clarification ?? null,
         }).returning("*");
-        await trx("messaging_agent_actions").insert(actions);
+        if (actions.length) await trx("messaging_agent_actions").insert(actions);
         return proposal!;
       });
     },
@@ -60,7 +64,7 @@ export function messagingAgentProposalRepository(db: MessagingDb) {
       return await db<MessagingProposalRow>("messaging_agent_proposals").where({ id }).forUpdate().first() ?? null;
     },
 
-    async updateProposal(id: string, expectedVersion: number, actions: MessagingProposedActionInput[]): Promise<MessagingProposalRow> {
+    async updateProposal(id: string, expectedVersion: number, actions: MessagingProposedActionInput[], clarification?: string | null): Promise<MessagingProposalRow> {
       return db.transaction(async (trx) => {
         const proposal = await trx<MessagingProposalRow>("messaging_agent_proposals").where({ id }).forUpdate().first();
         if (!proposal || proposal.version !== expectedVersion || proposal.status !== "draft") {
@@ -70,6 +74,7 @@ export function messagingAgentProposalRepository(db: MessagingDb) {
         const newActions = actionRows(id, version, actions);
         const [updated] = await trx<MessagingProposalRow>("messaging_agent_proposals").where({ id }).update({
           version, confirmed_at: null, updated_at: trx.fn.now(),
+          ...(clarification !== undefined ? { clarification } : {}),
         }).returning("*");
         await trx("messaging_agent_actions").insert(newActions);
         return updated!;

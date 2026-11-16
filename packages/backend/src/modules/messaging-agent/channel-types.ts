@@ -10,6 +10,7 @@ export interface MessagingChannelAdapter {
   canReply(lastInboundAt: Date | string | null, now: Date): boolean;
   sendText(input: MessagingSendInput): Promise<MessagingSendResult>;
   downloadAudio(mediaId: string): Promise<MessagingMedia>;
+  downloadAttachment?(mediaId: string): Promise<MessagingMedia>;
 }
 
 export interface MessagingAdapterRegistry {

@@ -1,3 +1,5 @@
+import { config } from "../../../../config/index.ts";
+import { parseAttachmentMediaId, boundedAttachmentBytes, attachmentMime } from "../../attachment-media.ts";
 import { z } from "zod";
 import { BadRequestError } from "../../../../lib/errors.ts";
 import type { MessagingMedia, MessagingSendInput, MessagingSendResult } from "../../types.ts";
@@ -112,6 +114,28 @@ export function telegramProvider(settings: TelegramProviderConfig, request: type
       } catch {
         throw new BadRequestError("Telegram callback could not be acknowledged");
       }
+    },
+
+    async downloadAttachment(mediaId: string): Promise<MessagingMedia> {
+      const identity = parseAttachmentMediaId("telegram", mediaId), limit = Math.min(maxBytes, config.uploads.maxFileBytes);
+      if (identity.sizeBytes !== undefined && identity.sizeBytes > limit) throw new BadRequestError("The attachment exceeds Telegram's download limit.");
+      try {
+        const response = await request(`${base}/getFile`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file_id: identity.providerId }),
+          redirect: "error", signal: AbortSignal.timeout(timeout),
+        });
+        if (!response.ok) throw new Error();
+        const parsed = fileSchema.safeParse(await response.json().catch(() => null));
+        if (!parsed.success || (parsed.data.result.file_size !== undefined && parsed.data.result.file_size > limit)) throw new Error();
+        const metadata = parsed.data.result;
+        const responseFile = await request(mediaUrl(botToken, metadata.file_path), { redirect: "error", signal: AbortSignal.timeout(timeout) });
+        if (!responseFile.ok) throw new Error();
+        const actualType = attachmentMime(responseFile.headers.get("content-type") ?? undefined);
+        if (actualType && actualType !== "application/octet-stream" && identity.mimeType && actualType !== identity.mimeType) throw new Error();
+        const bytes = await boundedAttachmentBytes(responseFile, limit);
+        if ((metadata.file_size !== undefined && metadata.file_size !== bytes.byteLength) || (identity.sizeBytes !== undefined && identity.sizeBytes !== bytes.byteLength)) throw new Error();
+        return { bytes, fileName: identity.fileName, mimeType: identity.mimeType ?? actualType ?? "application/octet-stream" };
+      } catch { throw new BadRequestError("Telegram attachment could not be downloaded. Check its type and size."); }
     },
 
     async downloadAudio(mediaId: string): Promise<MessagingMedia> {

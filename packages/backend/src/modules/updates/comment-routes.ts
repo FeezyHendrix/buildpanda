@@ -1,7 +1,8 @@
 import multipart from "@fastify/multipart";
 import type { FastifyInstance } from "fastify";
-import { MAX_VOICE_NOTE_BYTES, MAX_VOICE_NOTE_SECONDS } from "@buildpanda/rich-content";
+import { MAX_VOICE_NOTE_BYTES } from "@buildpanda/rich-content";
 import { BadRequestError } from "../../lib/errors.ts";
+import { updateCommentBody } from "./route-schemas.ts";
 import type { UpdatesService } from "./service.ts";
 import type { AddCommentInput, UpdateCommentParams } from "./types.ts";
 
@@ -13,13 +14,6 @@ const comment = { type: "object", properties: {
   audioDurationSeconds: { type: ["integer", "null"] }, createdAt: { type: "string" },
   author: { type: "object", properties: { id: { type: "string" }, name: { type: "string" } } },
 } } as const;
-const body = { type: "object", additionalProperties: false, properties: {
-  body: { type: "string", maxLength: 2000 }, bodyHtml: { type: ["string", "null"], maxLength: 200000 },
-  audioFileId: { type: ["string", "null"], pattern: "^[a-zA-Z0-9_-]{1,160}$" },
-  audioDurationSeconds: { type: ["integer", "null"], minimum: 1, maximum: MAX_VOICE_NOTE_SECONDS },
-  clientMutationId: { type: "string", pattern: "^[a-zA-Z0-9_-]{1,160}$" },
-} } as const;
-
 export async function registerUpdateComments(app: FastifyInstance, service: UpdatesService) {
   await app.register(async (routes) => {
     await routes.register(multipart, { limits: { fileSize: MAX_VOICE_NOTE_BYTES, files: 1 } });
@@ -30,7 +24,7 @@ export async function registerUpdateComments(app: FastifyInstance, service: Upda
       return service.listComments(request.params.id, request.params.updateId);
     });
     routes.post<{ Params: UpdateCommentParams; Body: AddCommentInput }>("/projects/:id/updates/:updateId/comments", {
-      schema: { params, body, response: { 201: comment } },
+      schema: { params, body: updateCommentBody, response: { 201: comment } },
     }, async (request, reply) => {
       await request.requireProjectPermission(request.params.id, "updates", "view");
       await request.requireProjectPermission(request.params.id, "comments", "post");

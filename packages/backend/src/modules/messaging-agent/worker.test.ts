@@ -127,8 +127,12 @@ dbTest("long reviews never save truncated facts, and web drafts are not stolen b
     { kind: "daily_log", title: "Site note", payload: { logDate: "2026-11-14", buildingId: scope.buildingId, bodyText: "x".repeat(5000) } },
   ], scope);
   await f.worker({ draft }).processInbox(long.id);
-  assert.equal((await f.repo.inbox(long.id))?.status, "failed");
-  assert.match((await f.reply(long.id)).body, /too long|shorter/);
+  assert.equal((await f.repo.inbox(long.id))?.status, "processed");
+  const parts = await f.db("messaging_agent_outbox").where({ inbox_id: long.id }).orderBy("part_index");
+  assert.ok(parts.length > 1);
+  assert.ok(parts.map((part) => part.body).join("").includes("x".repeat(5000)));
+  assert.equal(parts.filter((part) => part.buttons).length, 1);
+  assert.ok(parts.at(-1).buttons);
   assert.equal(Number((await f.db("daily_logs").where({ project_id: f.scope.projectId }).count("*").first())!.count), 0);
   const web = await f.receive("App draft", { providerMessageId: `web:${randomUUID()}`, origin: "web" });
   await worker.processInbox(web.id); assert.equal((await f.repo.inbox(web.id))?.status, "received");
@@ -173,11 +177,13 @@ dbTest("button message limits retain the full source without saving truncated fa
   await f.link(); const text = "Full source: " + "x".repeat(1000);
   const source = await f.receive(text);
   await f.worker({ adapters: messagingAdapterRegistry([{ ...f.adapter, maxButtonTextLength: 1024 }]) }).processInbox(source.id);
-  assert.equal((await f.repo.inbox(source.id))?.status, "failed");
+  assert.equal((await f.repo.inbox(source.id))?.status, "processed");
   assert.equal((await f.repo.inbox(source.id))?.source_text, text);
-  const reply = await f.reply(source.id); assert.match(reply.body, /shorter|review it in the app/); assert.equal(reply.buttons, null);
+  const parts = await f.db("messaging_agent_outbox").where({ inbox_id: source.id }).orderBy("part_index");
+  assert.equal(parts.length, 2); assert.ok(parts[0].body.includes(text)); assert.equal(parts[0].buttons, null);
+  assert.ok(parts[1].buttons); assert.ok(parts[1].body.length <= 1024);
   assert.equal(Number((await f.db("daily_log_entries").where({ project_id: f.scope.projectId }).count("*").first())!.count), 0);
-  assert.equal(Number((await f.db("messaging_agent_proposals").where({ inbox_id: source.id }).count("*").first())!.count), 0);
+  assert.equal(Number((await f.db("messaging_agent_proposals").where({ inbox_id: source.id }).count("*").first())!.count), 1);
 });
 
 dbTest("button metadata cannot deliver another connection's review", async (f) => {

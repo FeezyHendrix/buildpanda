@@ -10,12 +10,15 @@ ENV VITE_BUILDPANDA_APP_URL=$VITE_BUILDPANDA_APP_URL
 
 COPY packages/rich-content/package.json /rich-content/package.json
 COPY packages/rich-content/src /rich-content/src
+COPY packages/rich-text-editor/package.json /rich-text-editor/package.json
+COPY packages/rich-text-editor/src /rich-text-editor/src
 COPY packages/panda-agent/package.json ./package.json
 # Keep registry installation consistent with the existing frontend image.
-RUN node -e "const fs=require('fs');const p=require('./package.json');delete p.dependencies['@buildpanda/rich-content'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
+RUN node -e "const fs=require('fs');const p=require('./package.json');const editor=require('/rich-text-editor/package.json');Object.assign(p.dependencies,editor.dependencies);delete p.dependencies['@buildpanda/rich-content'];delete p.dependencies['@buildpanda/rich-text-editor'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
   && npm install \
   && mkdir -p node_modules/@buildpanda \
-  && cp -R /rich-content node_modules/@buildpanda/rich-content
+  && cp -R /rich-content node_modules/@buildpanda/rich-content \
+  && cp -R /rich-text-editor node_modules/@buildpanda/rich-text-editor
 
 COPY tsconfig.shared.json ./tsconfig.shared.json
 COPY packages/frontend/src ./packages/frontend/src

@@ -80,7 +80,10 @@ test("reply windows and message limits are supplied by each adapter rather than 
   const other = await f.link({ ...f.sender, channel: longer.channel });
   const longText = "x".repeat(5000);
   const shortLimit = await inbound(f, whatsapp, longText); await worker.processInbox(shortLimit.id);
-  assert.equal((await f.repo.inbox(shortLimit.id))!.status, "failed");
+  assert.equal((await f.repo.inbox(shortLimit.id))!.status, "processed");
+  const shortParts = await f.db("messaging_agent_outbox").where({ inbox_id: shortLimit.id }).orderBy("part_index");
+  assert.ok(shortParts.length > 1); assert.ok(shortParts.every((part) => part.body.length <= whatsapp.maxTextLength));
+  assert.ok(shortParts.map((part) => part.body).join("").includes(longText));
   const longLimit = await inbound(f, longer, longText); await worker.processInbox(longLimit.id);
   assert.equal((await f.repo.inbox(longLimit.id))!.status, "processed");
   const review = await f.reply(longLimit.id); assert.ok(review.body.length > 4096); assert.match(review.body, new RegExp(longText));

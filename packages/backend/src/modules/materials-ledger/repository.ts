@@ -65,6 +65,7 @@ const ENTRY_SELECT = [
   "e.activity_id",
   "e.reversal_for_entry_id",
   "e.reason",
+  "e.notes_html",
   "e.supplier",
   "e.delivery_note",
   "e.self_approved",

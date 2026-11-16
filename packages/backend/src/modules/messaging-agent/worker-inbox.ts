@@ -1,3 +1,4 @@
+import { stageMessagingAttachment } from "./attachment-ingress.ts";
 import { Readable } from "node:stream";
 import type { Knex } from "knex";
 import { BadRequestError, ConflictError, ForbiddenError } from "../../lib/errors.ts";
@@ -6,18 +7,21 @@ import { connectionReceipt, MESSAGING_HELP, proposalButtons, proposalMessage } f
 import { messagingAgentReadRepository } from "./read-repository.ts";
 import { messagingAgentRepository } from "./repository.ts";
 import { messagingAgentReviewService } from "./review-service.ts";
-import type { MessagingInboxRow, MessagingReplyButton } from "./types.ts";
+import type { MessagingInboxRow, MessagingReplyButton, MessagingProposalRow } from "./types.ts";
+import { messagingReplyParts } from "./message-parts.ts";
 import type { MessagingWorkerConnection, MessagingWorkerDependencies } from "./worker-types.ts";
 
-export async function enqueueMessagingReply(db: Knex, inbox: MessagingInboxRow, body: string, maxTextLength: number, connection?: MessagingWorkerConnection, purpose = "reply", buttons?: MessagingReplyButton[]): Promise<void> {
-  if (body.length > maxTextLength) throw new BadRequestError("Split the daily log into shorter messages, or review it in the app.");
+export async function enqueueMessagingReply(db: Knex, inbox: MessagingInboxRow, body: string, maxTextLength: number, connection?: MessagingWorkerConnection, purpose = "reply", buttons?: MessagingReplyButton[], maxButtonLength?: number, review?: MessagingProposalRow): Promise<void> {
+  const parts = messagingReplyParts(body, maxTextLength, buttons, maxButtonLength);
   if (purpose !== "error") await messagingAgentRepository(db).cancelPendingReplyErrors(inbox.id);
-  await messagingAgentRepository(db).enqueueOutbox({
-    inboxId: inbox.id, recipientId: inbox.reply_recipient_id, body, identityId: connection?.identity.id ?? inbox.identity_id,
+  for (const [index, part] of parts.entries()) await messagingAgentRepository(db).enqueueOutbox({
+    inboxId: inbox.id, recipientId: inbox.reply_recipient_id, body: part.body, identityId: connection?.identity.id ?? inbox.identity_id,
     conversationId: connection?.conversation.id ?? inbox.conversation_id,
     scopeVersion: connection?.conversation.scope_version ?? inbox.scope_version,
-    idempotencyKey: `${inbox.id}:${purpose}`,
-    ...(buttons ? { buttons } : {}),
+    idempotencyKey: `${inbox.id}:${purpose}${parts.length > 1 ? `:part:${index}` : ""}`,
+    ...(part.buttons ? { buttons: part.buttons } : {}),
+    ...(parts.length > 1 ? { parts: { index, count: parts.length, group: `${inbox.id}:${purpose}` } } : {}),
+    ...(review ? { review: { id: review.id, version: review.version, status: review.status } } : {}),
   });
 }
 
@@ -69,7 +73,7 @@ export async function handleMessagingInbox(db: Knex, inbox: MessagingInboxRow, d
       const building = await messagingAgentAccess(trx).building(access, code.building_id);
       const connected = await store.consumeLinkCode(code.code_hash, sender, deps.now(), new Date(inbox.sent_at));
       if (!connected) throw new BadRequestError("This sender is already connected to another account, or the code is unavailable. Unlink the original connection first.");
-      await enqueueMessagingReply(trx, inbox, connectionReceipt(access.project.name, building.name), adapter.maxTextLength, connected);
+      await enqueueMessagingReply(trx, inbox, connectionReceipt(access.project.name, building?.name), adapter.maxTextLength, connected);
     });
     return;
   }
@@ -83,7 +87,7 @@ export async function handleMessagingInbox(db: Knex, inbox: MessagingInboxRow, d
     return;
   }
   if (identity.opted_out_at) return;
-  if (inbox.message_type === "unsupported") throw new BadRequestError("Send text or a voice note. Other attachment types are not enabled yet.");
+  if (inbox.message_type === "unsupported") throw new BadRequestError("Send text, a voice note, a photo, a video or a document. This message type is unsupported.");
 
   // Serialize one sender's work and recheck current grants after acquiring locks.
   await db.transaction(async (trx) => {
@@ -94,36 +98,37 @@ export async function handleMessagingInbox(db: Knex, inbox: MessagingInboxRow, d
     if (!locked) throw new ForbiddenError();
     const connection = { identity, conversation: locked };
     requireSnapshot(inbox, connection);
-    const access = await messagingAgentAccess(trx).project(identity.user_id, locked.project_id, "create");
+    const access = await messagingAgentAccess(trx).project(identity.user_id, locked.project_id);
     const building = await messagingAgentAccess(trx).building(access, locked.building_id);
     if (access.project.organization_id !== locked.organization_id) throw new ForbiddenError();
-    const context = { projectName: access.project.name, buildingName: building.name, voiceNote: inbox.message_type === "audio" };
-    const content = inbox.message_type === "audio" ? await voiceText(db, inbox, connection, deps) : inbox.source_text ?? "";
+    const context = { projectName: access.project.name, buildingName: building?.name, voiceNote: inbox.message_type === "audio" };
+    const content = inbox.message_type === "audio" ? await voiceText(db, inbox, connection, deps)
+      : inbox.message_type === "attachment" ? await stageMessagingAttachment(db, inbox, connection, deps) : inbox.source_text ?? "";
     if (/^STOP$/i.test(content.trim())) { await messagingAgentRepository(trx).setOptOut(identity.id, true); return; }
     if (/^HELP$/i.test(content.trim())) { await enqueueMessagingReply(trx, inbox, MESSAGING_HELP, adapter.maxTextLength, connection); return; }
     const command = /^(CONFIRM|CANCEL)\s+([A-Za-z0-9_-]+)\s+([1-9]\d{0,5})$/i.exec(content.trim());
-    const review = messagingAgentReviewService(trx, deps.draft);
+    const review = messagingAgentReviewService(trx, deps.draft, deps.queue);
     let proposalId: string;
     if (command) {
       const proposal = await messagingAgentRepository(trx).proposal(command[2]!);
       if (!proposal || proposal.conversation_id !== locked.id || proposal.scope_version !== locked.scope_version || proposal.project_id !== locked.project_id || proposal.building_id !== locked.building_id || proposal.organization_id !== locked.organization_id) throw new ConflictError("Open the latest review in the app before confirming.");
-      const actions = await messagingAgentRepository(trx).actionsForProposal(proposal.id, proposal.version);
       if (command[1]!.toUpperCase() === "CONFIRM") {
-        const limit = proposalButtons(proposal) ? adapter.maxButtonTextLength ?? adapter.maxTextLength : adapter.maxTextLength;
-        if (proposalMessage(proposal, actions, context).length > limit) throw new BadRequestError("Split the daily log into shorter messages, or review it in the app.");
         await review.confirm(identity.user_id, locked.project_id, proposal.id, Number(command[3]));
       } else await review.cancel(identity.user_id, locked.project_id, proposal.id, Number(command[3]));
       proposalId = proposal.id;
     } else {
       if (/^(CONFIRM|CANCEL|LINK)\b/i.test(content.trim())) throw new BadRequestError("Use the exact CONFIRM or CANCEL command shown on the review, including its ID and version.");
       const drafted = await review.draft(inbox, identity, locked, content);
+      if ("answer" in drafted) {
+        await enqueueMessagingReply(trx, inbox, drafted.answer, adapter.maxTextLength, connection, "answer");
+        return;
+      }
       proposalId = drafted.id;
     }
     const proposal = (await messagingAgentRepository(trx).proposal(proposalId))!;
     const actions = await messagingAgentRepository(trx).actionsForProposal(proposal.id, proposal.version);
     const buttons = proposalButtons(proposal);
-    const limit = buttons ? adapter.maxButtonTextLength ?? adapter.maxTextLength : adapter.maxTextLength;
-    await enqueueMessagingReply(trx, inbox, proposalMessage(proposal, actions, context), limit, connection,
-      `proposal:${proposal.id}:${proposal.version}:${proposal.status}`, buttons);
+    await enqueueMessagingReply(trx, inbox, proposalMessage(proposal, actions, context), adapter.maxTextLength, connection,
+      `proposal:${proposal.id}:${proposal.version}:${proposal.status}`, buttons, adapter.maxButtonTextLength, proposal);
   });
 }

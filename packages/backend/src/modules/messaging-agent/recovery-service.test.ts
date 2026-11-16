@@ -107,3 +107,22 @@ dbTest("channel/account mismatches and non-direct conversations cannot retry pro
     await f.db("messaging_agent_inbox").where({ id: f.inbox.id }).update({ channel: f.sender.channel, channel_account_id: f.sender.channelAccountId, conversation_type: "direct" });
   }
 });
+
+dbTest("stale app captures fail visibly with their originals retained while provider work remains retryable", async (f) => {
+  const past = new Date(Date.now() - 60 * 60_000), fileId = f.id("original_file");
+  await f.db("uploaded_files").insert({ id: fileId, owner_id: f.userId, project_id: f.scope.projectId, file_name: "delivery.pdf", mime_type: "application/pdf", size_bytes: 3, storage_path: "fixture/original" });
+  const capture = async () => (await f.repo.acceptMessage({ ...f.sender, origin: "web", replyRecipientId: f.sender.senderId, conversationType: "direct", providerMessageId: randomUUID(), type: "attachment", text: "Delivery evidence", sourceFileId: fileId,
+    sentAt: new Date(), mediaId: null, mediaMimeType: "application/pdf", replyToMessageId: null }))!;
+  const received = await capture(), processing = await capture(), recent = await capture();
+  await f.db("messaging_agent_inbox").where({ id: received.id }).update({ created_at: past });
+  await f.db("messaging_agent_inbox").whereIn("id", [processing.id, f.inbox.id]).update({ status: "processing", processing_started_at: past });
+  assert.equal(await f.repo.recoverInbox(new Date(Date.now() - 15 * 60_000)), 3);
+  for (const original of [received, processing]) {
+    const row = (await f.repo.inbox(original.id))!;
+    assert.equal(row.status, "failed"); assert.equal(row.source_file_id, fileId); assert.match(row.last_error!, /Send the text again.*attachment was retained/);
+  }
+  assert.equal((await f.repo.inbox(recent.id))!.status, "received");
+  assert.equal((await f.repo.inbox(f.inbox.id))!.status, "received");
+  assert.ok(await f.db("uploaded_files").where({ id: fileId }).first());
+  assert.ok((await f.repo.pendingInbox()).every((row) => row.origin === "provider"));
+});

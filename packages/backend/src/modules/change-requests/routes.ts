@@ -1,166 +1,14 @@
+import { buildChangeServices } from "./wiring.ts";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { canProjectPermission } from "../../lib/authorization.ts";
-import { contractsRepository } from "../contracts/repository.ts";
-import { contractsService } from "../contracts/service.ts";
-import { documentsRepository } from "../documents/repository.ts";
-import { financesRepository } from "../finances/repository.ts";
-import { financesService } from "../finances/service.ts";
-import { notificationsRepository } from "../notifications/repository.ts";
-import { notificationsService } from "../notifications/service.ts";
-import { stagesRepository } from "../stages/repository.ts";
-import { stagesService } from "../stages/service.ts";
-import { applyTimeAward } from "../projects/time-award.ts";
-import { changeActions } from "./change-actions.ts";
-import { changeRequestsRepository } from "./repository.ts";
-import { changeRequestsService } from "./service.ts";
 import {
-  CHANGE_ACTIONS,
-  CHANGE_STATUSES as STATUS,
-  CHANGE_TYPES,
   type ChangeAction,
   type ChangeActionInput,
   type ChangeStatus,
   type CreateChangeRequestInput,
   type UpdateChangeRequestInput,
 } from "./types.ts";
-const CURRENCY = ["NGN", "USD"] as const;
-
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
-
-const crParams = {
-  type: "object",
-  required: ["id", "changeId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    changeId: { type: "string", minLength: 1 },
-  },
-} as const;
-
-const listQuery = {
-  type: "object",
-  additionalProperties: false,
-  properties: { status: { type: "string", enum: STATUS } },
-} as const;
-
-const delayIdsField = {
-  type: "array",
-  maxItems: 200,
-  items: { type: "string", minLength: 1, maxLength: 100 },
-} as const;
-
-const createBody = {
-  type: "object",
-  required: ["title"],
-  additionalProperties: false,
-  properties: {
-    title: { type: "string", minLength: 1, maxLength: 200 },
-    description: { type: ["string", "null"], maxLength: 4000 },
-    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
-    reason: { type: ["string", "null"], maxLength: 1000 },
-    reasonHtml: { type: ["string", "null"], maxLength: 200000 },
-    costImpact: { type: "number" },
-    timeImpactDays: { type: "integer" },
-    currency: { type: "string", enum: CURRENCY },
-    assigneeId: { type: ["string", "null"], maxLength: 100 },
-    type: { type: "string", enum: CHANGE_TYPES },
-    stageId: { type: ["string", "null"], maxLength: 100 },
-    rfiId: { type: ["string", "null"], maxLength: 100 },
-    delayIds: delayIdsField,
-  },
-} as const;
-
-const budgetLinksBody = {
-  type: "object",
-  required: ["links"],
-  additionalProperties: false,
-  properties: {
-    links: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["budgetCategoryId", "amount"],
-        additionalProperties: false,
-        properties: {
-          budgetCategoryId: { type: "string", minLength: 1 },
-          amount: { type: "number", minimum: 0 },
-          committed: { type: "boolean" },
-        },
-      },
-    },
-  },
-} as const;
-
-const updateBody = {
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: {
-    title: { type: "string", minLength: 1, maxLength: 200 },
-    description: { type: ["string", "null"], maxLength: 4000 },
-    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
-    reason: { type: ["string", "null"], maxLength: 1000 },
-    reasonHtml: { type: ["string", "null"], maxLength: 200000 },
-    costImpact: { type: "number" },
-    timeImpactDays: { type: "integer" },
-    currency: { type: "string", enum: CURRENCY },
-    assigneeId: { type: ["string", "null"], maxLength: 100 },
-    type: { type: "string", enum: CHANGE_TYPES },
-    stageId: { type: ["string", "null"], maxLength: 100 },
-    rfiId: { type: ["string", "null"], maxLength: 100 },
-    delayIds: delayIdsField,
-  },
-} as const;
-
-const actionParams = {
-  type: "object",
-  required: ["id", "changeId", "action"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    changeId: { type: "string", minLength: 1 },
-    action: { type: "string", enum: CHANGE_ACTIONS },
-  },
-} as const;
-
-const actionBody = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    /** Required on reject; carried into the revision history on resubmit. */
-    reason: { type: "string", minLength: 1, maxLength: 2000 },
-    costImpact: { type: "number" },
-    timeImpactDays: { type: "integer" },
-    /** Days granted when approving a time claim; defaults to the days claimed. */
-    daysAwarded: { type: "integer", minimum: 0, maximum: 3650 },
-  },
-} as const;
-
-const commentBody = {
-  type: "object",
-  required: ["body"],
-  additionalProperties: false,
-  properties: { body: { type: "string", minLength: 1, maxLength: 2000 } },
-} as const;
-
-const summaryResponse = {
-  200: {
-    type: "object",
-    properties: {
-      draft: { type: "integer" },
-      submitted: { type: "integer" },
-      approved: { type: "integer" },
-      executed: { type: "integer" },
-      rejected: { type: "integer" },
-      grossProfit: { type: ["number", "null"] },
-    },
-  },
-} as const;
+import { projectIdParams, crParams, listQuery, createBody, budgetLinksBody, updateBody, actionParams, actionBody, commentBody, summaryResponse } from "./route-schemas.ts";
 
 /**
  * Does this caller hold the separate approval grant? Being able to raise and
@@ -186,50 +34,7 @@ function holdsApproval(
 }
 
 const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
-  const financesRepo = financesRepository(fastify.db);
-  const finances = financesService(financesRepo);
-  const contracts = contractsService(contractsRepository(fastify.db), {
-    finances: financesRepo,
-    stages: stagesRepository(fastify.db),
-    documents: documentsRepository(fastify.db),
-  });
-  const repository = changeRequestsRepository(fastify.db);
-  const stages = stagesService(stagesRepository(fastify.db), async () => undefined);
-  const service = changeRequestsService(repository, {
-    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
-    contracts,
-    recordVariation: async (projectId, input, actor) => {
-      await finances.recordVariation(projectId, { amount: input.amount, description: input.description }, actor);
-    },
-  });
-
-  /**
-   * A decision on a time claim moves the contract: approving an `eot_only`
-   * change awards the days through the projects module, which owns the revised
-   * completion date and the contractual key dates that follow it. Executing any
-   * change shifts the stage it was claimed against, which is a programme move.
-   */
-  const actions = changeActions(repository, {
-    assertExecutable: (row) => service.assertExecutable(row),
-    shiftStageEnd: async (projectId, stageId, days) => {
-      const stage = (await stages.list(projectId)).find((s) => s.id === stageId);
-      if (!stage?.endDate) return;
-      const moved = new Date(`${stage.endDate}T00:00:00Z`);
-      moved.setUTCDate(moved.getUTCDate() + days);
-      await stages.update(projectId, stageId, { endDate: moved.toISOString().slice(0, 10) });
-    },
-    applyTimeAward: async (projectId, days) => {
-      await fastify.db.transaction((trx) => applyTimeAward(projectId, days, trx));
-    },
-    onApproved: (row, actor) => service.onApproved(row, { id: actor.id, name: actor.name }),
-    onDecided: (row, action, reason, actor) => {
-      if (action === "reject") service.notifyDecided(row, "Rejected", actor.id, reason);
-      else if (action === "approve") service.notifyDecided(row, "Approved", actor.id);
-      else if (action === "submit" || action === "resubmit") {
-        service.notifyDecided(row, "Submitted", actor.id);
-      }
-    },
-  });
+  const { service, actions, repository } = buildChangeServices(fastify.db, fastify.queue);
 
   // Declared before the :changeId routes so "summary" is never read as an id.
   fastify.get<{ Params: { id: string } }>(

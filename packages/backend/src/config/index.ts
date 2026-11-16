@@ -107,6 +107,8 @@ export const config = {
     baseUrl: optional("BETTER_AUTH_URL", "http://localhost:3000"),
   },
 
+  messagingAgent: { portalUrl: optional("MESSAGING_AGENT_PORTAL_URL", "") },
+
   consulting: {
     orgId: optional("BUILDPANDA_CONSULTING_ORG_ID", ""),
   },

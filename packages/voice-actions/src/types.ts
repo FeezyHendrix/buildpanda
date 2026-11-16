@@ -8,6 +8,7 @@ export interface VoiceField {
   required?: boolean;
   choices?: readonly string[];
   source?: string;
+  sourceBy?: { field: string; sources: Readonly<Record<string, string>> };
   min?: number;
   max?: number;
   helpText?: string;

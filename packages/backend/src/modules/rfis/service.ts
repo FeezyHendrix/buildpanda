@@ -1,184 +1,13 @@
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import { randomBytes, createHash } from "node:crypto";
 import type { NotificationsService } from "../notifications/service.ts";
 import type { RfisRepository, RfiUpdatePatch } from "./repository.ts";
-import type {
-  Rfi,
-  RfiComment,
-  RfiCommentAttachment,
-  RfiCommentReference,
-  RfiCommentRow,
-  RfiDetail,
-  RfiDistributionMember,
-  RfiDistributionRole,
-  RfiDistributionRow,
-  RfiEvent,
-  RfiEventRow,
-  RfiListFilters,
-  RfiPriority,
-  RfiRow,
-  RfiStatus,
-  RfiVisibility,
-} from "./types.ts";
-
-export function hashReplyToken(raw: string): string {
-  return createHash("sha256").update(raw).digest("hex");
-}
-
-export interface CreateRfiInput {
-  subject: string;
-  question: string;
-  questionHtml?: string | null;
-  priority?: RfiPriority;
-  ballInCourtId?: string | null;
-  ballInCourtName?: string | null;
-  ballInCourtEmail?: string | null;
-  assigneeRole?: string | null;
-  dueDate?: string | null;
-  costImpact?: boolean;
-  scheduleImpact?: boolean;
-  documentId?: string | null;
-  documentVersionId?: string | null;
-  sourceMarkupId?: string | null;
-}
-
-export interface UpdateRfiInput {
-  subject?: string;
-  question?: string;
-  questionHtml?: string | null;
-  priority?: RfiPriority;
-  ballInCourtId?: string | null;
-  ballInCourtName?: string | null;
-  ballInCourtEmail?: string | null;
-  assigneeRole?: string | null;
-  dueDate?: string | null;
-  costImpact?: boolean;
-  scheduleImpact?: boolean;
-}
-
-export interface RespondInput {
-  body: string;
-  official?: boolean;
-  contentHtml?: string | null;
-  attachments?: RfiCommentAttachment[];
-  references?: RfiCommentReference[];
-}
-
-export interface Actor {
-  id: string;
-  name: string;
-}
-
-function toRfi(row: RfiRow, commentCount: number): Rfi {
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    number: row.number,
-    subject: row.subject,
-      question: row.question,
-      questionHtml: row.question_html,
-      status: row.status,
-    priority: row.priority,
-    visibility: row.visibility,
-    ballInCourtId: row.ball_in_court_id,
-    ballInCourtName: row.ball_in_court_name,
-    ballInCourtEmail: row.ball_in_court_email,
-    assigneeRole: row.assignee_role,
-    dueDate: row.due_date,
-      officialResponse: row.official_response,
-      officialResponseHtml: row.official_response_html,
-    officialRespondedById: row.official_responded_by_id,
-    officialRespondedByName: row.official_responded_by_name,
-    officialRespondedAt: row.official_responded_at,
-    costImpact: row.cost_impact,
-    scheduleImpact: row.schedule_impact,
-    changeRequestId: row.change_request_id,
-    reopenedCount: row.reopened_count,
-    createdById: row.created_by_id,
-    commentCount,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function parseJsonArray<T>(value: unknown): T[] {
-  if (Array.isArray(value)) return value as T[];
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? (parsed as T[]) : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-function toComment(row: RfiCommentRow): RfiComment {
-  return {
-    id: row.id,
-    rfiId: row.rfi_id,
-    authorId: row.author_id,
-    authorName: row.author_name,
-    body: row.body,
-    contentHtml: row.content_html,
-    attachments: parseJsonArray<RfiCommentAttachment>(row.attachments),
-    references: parseJsonArray<RfiCommentReference>(row.references),
-    isProposedResponse: row.is_proposed_response,
-    createdAt: row.created_at,
-  };
-}
-
-function toEvent(row: RfiEventRow): RfiEvent {
-  return {
-    id: row.id,
-    rfiId: row.rfi_id,
-    type: row.type,
-    actorId: row.actor_id,
-    actorLabel: row.actor_label,
-    detail: row.detail,
-    createdAt: row.created_at,
-  };
-}
-
-function toDistribution(row: RfiDistributionRow): RfiDistributionMember {
-  return {
-    id: row.id,
-    rfiId: row.rfi_id,
-    userId: row.user_id,
-    email: row.email,
-    name: row.name,
-    role: row.role,
-    external: row.user_id === null,
-    tokenConsumedAt: row.token_consumed_at,
-    createdAt: row.created_at,
-  };
-}
-
-export interface DistributionInput {
-  userId?: string | null;
-  email?: string | null;
-  name?: string | null;
-  role?: RfiDistributionRole;
-}
-
-export interface ExternalReplyResult {
-  ok: boolean;
-  rfiSubject: string;
-  rfiNumber: number;
-  reason?: "not_found" | "expired" | "consumed";
-}
-
-export interface ChangeRequestCreator {
-  create(
-    projectId: string,
-    input: { title: string; description?: string | null; costImpact?: number; timeImpactDays?: number },
-    userId: string,
-  ): Promise<{ id: string }>;
-  /** Linking an RFI to a change the commercial team already raised. */
-  get(projectId: string, changeRequestId: string): Promise<{ id: string }>;
-}
+import type { Rfi, RfiComment, RfiDetail, RfiEvent, RfiListFilters, RfiRow, RfiStatus, RfiVisibility,
+  CreateRfiInput, UpdateRfiInput, RespondInput, Actor, ChangeRequestCreator } from "./types.ts";
+import { toRfi, toComment, toEvent } from "./mappers.ts";
+import { rfiDistribution } from "./distribution.ts";
+export { hashReplyToken } from "./distribution.ts";
+export type { CreateRfiInput, UpdateRfiInput, RespondInput, Actor, DistributionInput, ExternalReplyResult, ChangeRequestCreator } from "./types.ts";
 
 const REOPENABLE: ReadonlySet<RfiStatus> = new Set(["Answered", "Closed"]);
 
@@ -227,6 +56,7 @@ export function rfisService(
   }
 
   return {
+    ...rfiDistribution(repository, loadRow, logEvent),
     async list(
       projectId: string,
       filter: RfiListFilters,
@@ -444,6 +274,7 @@ export function rfisService(
       rfiId: string,
       body: string,
       actor: Actor,
+      content: Pick<RespondInput, "contentHtml" | "attachments" | "references"> = {},
     ): Promise<RfiComment> {
       await loadRow(projectId, rfiId);
       const row = await repository.addComment({
@@ -452,84 +283,13 @@ export function rfisService(
         author_id: actor.id,
         author_name: actor.name,
         body,
+        content_html: content.contentHtml ?? null,
+        attachments: content.attachments,
+        references: content.references,
         is_proposed_response: false,
         created_at: new Date().toISOString(),
       });
       return toComment(row);
-    },
-
-    async listDistribution(projectId: string, rfiId: string): Promise<RfiDistributionMember[]> {
-      await loadRow(projectId, rfiId);
-      const rows = await repository.listDistribution(rfiId);
-      return rows.map(toDistribution);
-    },
-
-    async addDistribution(
-      projectId: string,
-      rfiId: string,
-      input: DistributionInput,
-      actor: Actor,
-      tokenTtlDays: number,
-    ): Promise<{ member: RfiDistributionMember; replyToken: string | null }> {
-      await loadRow(projectId, rfiId);
-      const external = !input.userId && Boolean(input.email);
-      const role: RfiDistributionRole = input.role ?? (external ? "responder" : "viewer");
-
-      let replyToken: string | null = null;
-      let tokenHash: string | null = null;
-      let expiresAt: string | null = null;
-      if (external && role === "responder") {
-        replyToken = randomBytes(32).toString("base64url");
-        tokenHash = hashReplyToken(replyToken);
-        expiresAt = new Date(Date.now() + tokenTtlDays * 24 * 60 * 60 * 1000).toISOString();
-      }
-
-      const row = await repository.addDistribution({
-        id: generateId("rfid"),
-        rfi_id: rfiId,
-        user_id: input.userId ?? null,
-        email: input.email ?? null,
-        name: input.name ?? null,
-        role,
-        reply_token_hash: tokenHash,
-        token_expires_at: expiresAt,
-      });
-      await logEvent(rfiId, "distribution_added", actor, {
-        email: input.email ?? null,
-        userId: input.userId ?? null,
-        role,
-      });
-      return { member: toDistribution(row), replyToken };
-    },
-
-    async replyByToken(rawToken: string, body: string): Promise<ExternalReplyResult> {
-      const member = await repository.distributionByTokenHash(hashReplyToken(rawToken));
-      if (!member) return { ok: false, rfiSubject: "", rfiNumber: 0, reason: "not_found" };
-
-      const rfi = await repository.findById(member.rfi_id);
-      if (!rfi) return { ok: false, rfiSubject: "", rfiNumber: 0, reason: "not_found" };
-
-      if (member.token_consumed_at) {
-        return { ok: false, rfiSubject: rfi.subject, rfiNumber: rfi.number, reason: "consumed" };
-      }
-      if (member.token_expires_at && new Date(member.token_expires_at) < new Date()) {
-        return { ok: false, rfiSubject: rfi.subject, rfiNumber: rfi.number, reason: "expired" };
-      }
-
-      await repository.addComment({
-        id: generateId("rfic"),
-        rfi_id: rfi.id,
-        author_id: member.user_id ?? `external:${member.id}`,
-        author_name: member.name ?? member.email ?? "External responder",
-        body,
-        is_proposed_response: true,
-        created_at: new Date().toISOString(),
-      });
-      await repository.consumeDistributionToken(member.id);
-      await logEvent(rfi.id, "external_response_proposed", null, {
-        email: member.email,
-      });
-      return { ok: true, rfiSubject: rfi.subject, rfiNumber: rfi.number };
     },
 
     async convertToChange(

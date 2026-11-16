@@ -1,8 +1,18 @@
 # Panda Agent
 
-Channel-independent agent review app in the main BuildPanda monorepo. Select a configured messaging app, one of your linked connections, and an authorized project/building. Text and received voice notes enter the same backend proposal, correction and confirmation flow.
+Channel-independent Field Tools app in the main BuildPanda monorepo. WhatsApp and Telegram share the existing backend's planner, review, canonical execution and durable inbox/outbox. Link a configured channel/account, then select an authorized workspace, project and, where required, building. Text and completed voice notes use the same correction and confirmation flow.
 
-WhatsApp and Telegram share the same app and backend workflow; enable each configured adapter independently. The current field-workflow slice supports daily site notes and daily-log headers. The full scope is tracked in [the plan](../../plans/panda-agent/PLAN.md), with backend configuration and verification boundaries in [the implementation notes](../../plans/panda-agent/IMPLEMENTATION.md).
+The backend exposes **53 canonical action kinds**: all 52 shared mobile kinds plus standalone activity delay, and **60 authorized read tools**. This includes daily logs/templates, materials/orders/deliveries/approvals, expenses, tasks, RFIs, changes, look-aheads, activity/stage progress, messages, updates, documents/revisions and drawing markups. Models, request schemas, effective permissions and domain services remain authoritative. See [implementation scope](../../plans/panda-agent/IMPLEMENTATION.md) and [verification evidence](../../plans/panda-agent/VERIFICATION.md).
+
+The expanded release passed **238 backend tests with zero failures/skips across 47 entrypoints**, production builds/typechecks, and the production-browser fixture covering all 53 schemas. A separate configured AI probe passed 8 synthetic text cases plus one actual Whisper-to-planner voice case, without construction-record writes or provider sends. Deploy this release through the existing GitHub/Railway CI path; verify the deployed commit and health after rollout. Earlier Staging deployment evidence is historical; see [Railway status and live checks](../../plans/panda-agent/RAILWAY.md).
+
+Reviews use the canonical schema to render nested objects/arrays, numbers, booleans, choices, dates, templates, assignee types, rich HTML/plain-text mirrors and explicit file pickers. Unknown fields or missing facts block confirmation and produce a clarification. A tanker/sand delivery needs its actual material, quantity and unit; the agent does not invent those facts. Drawing geometry requires an explicit document revision/page/position; optional RFI/material-approval follow-ups link the actual new pin.
+
+Native **Confirm** and **Cancel** buttons carry the exact proposal/version. Long reviews are split into ordered messages without truncating facts; only the final part carries buttons, and an earlier failed/uncertain part prevents later confirmation delivery. Each part, replay and history read rechecks current access and scope. Confirmation commits canonical writes and action receipts together; repeats return the stored result.
+
+Photos/documents/videos and captions can enter through either adapter or app multipart upload. The backend authorizes canonical staging before fetching bytes, retains originals for retry and offers only authorized file IDs. Voice processing begins after the provider delivers the completed recording; original audio and the speech helper's English translation are distinguished. Real camera/microphone behavior, native offline sync, home customization and viewer gestures/calibration remain device or authenticated BuildPanda workflows.
+
+Document open/download results provide an authenticated exact-revision artifact link. The app fetches actual bytes with the session, previews PDF/raster types and downloads a local blob; HTML/SVG/XML are not embedded. Links require sign-in and current access. A readiness receipt does not claim that a messaging provider delivered a file or that the user downloaded it.
 
 Run from the monorepo root:
 
@@ -12,15 +22,11 @@ pnpm --filter @buildpanda/panda-agent typecheck
 pnpm build:agent
 ```
 
-The app runs on port 5175 and proxies `/api` to the existing backend on port 3000. Sign in through the existing BuildPanda app before returning here. `VITE_API_BASE_URL` can select the backend API root; `VITE_BUILDPANDA_APP_URL` selects the existing app, defaulting to `http://localhost:5173`. The backend must allow this app origin when using a separate API origin.
+The app runs on port 5175 and proxies `/api` to the existing backend on port 3000. Sign in directly with an existing BuildPanda email/password. Sign-out clears protected account state before another account can load; verification/recovery link to the existing app. `VITE_API_BASE_URL` selects the API root; `VITE_BUILDPANDA_APP_URL` selects the existing app (locally `http://localhost:5173`). Separate hosted API origins must allow the portal in backend CORS/Better Auth. Set backend `MESSAGING_AGENT_PORTAL_URL` to the public portal origin for authenticated artifact handoffs.
 
-The management API is `/messaging-agent`. Linking includes the selected channel and channel account; disconnect and scope changes target one connection. Queries are isolated by user, channel, account, connection and project. A session response for a different connection is hidden. Records and action permissions remain authoritative in the backend. Missing or denied access blocks protected content and actions.
+The management API is `/messaging-agent`. Linking, disconnect and scope changes target one channel/account/connection. Queries and history are isolated by user, workspace, connection and project. Missing/denied access blocks protected content/actions; the UI uses server capabilities rather than another role matrix. Only configured channels appear; when no connect URL exists, send the displayed `LINK` command in that messaging app. Telegram webhooks subscribe to both `message` and `callback_query`; only private/direct provider ingress is enabled.
 
-Only configured channels appear in the selector. A link code remains usable when an adapter has no connection URL: send the displayed `LINK` command in that messaging app. Voice notes are processed after the selected channel delivers the completed recording.
-
-The UI reuses the existing frontend Button, Input, Badge, Spinner and design tokens. It does not maintain another role matrix.
-
-Build the separate production UI image from the repository root:
+The UI reuses the frontend atoms/design tokens and the shared rich-text editor. Build its separate production image from repository-root context:
 
 ```sh
 docker build -f packages/panda-agent/Dockerfile \
@@ -30,12 +36,12 @@ docker build -f packages/panda-agent/Dockerfile \
 docker run --rm -e PORT=8080 -p 127.0.0.1:8080:8080 buildpanda-panda-agent
 ```
 
-Replace the example public origins before deployment. Both variables are required at build time because Vite embeds them in the browser assets. The image serves the SPA through nginx on the runtime `PORT`; it calls the configured backend directly. Add the final agent origin to backend `CORS_ORIGIN` and verify direct sign-in, sign-out and account switching on the deployed portal. [Railway deployment settings and checks](../../plans/panda-agent/RAILWAY.md).
+Replace example public origins before deploying. Vite embeds both public build arguments; provider secrets belong only in Backend variables. nginx serves the SPA on runtime `PORT`. The portal calls the configured API directly.
 
-With the app running, execute the real-browser fixture check:
+With the production app running, execute the real-browser fixture check:
 
 ```sh
 pnpm --filter @buildpanda/panda-agent test:smoke
 ```
 
-This drives channel/account/connection selection and isolation, code-only linking, connection-specific disconnect, multi-building selection, versioned corrections and confirmation, HTML preservation, safe failed-message retry, cancellation, receipts, account/project changes, denied/read-only access, unconfigured channels and sign-in. It also checks browser errors. Its second channel is a test fixture, not a shipped provider. The check does not verify real authentication, database persistence or live messaging/voice delivery; backend integration tests cover those separately where stated. Install the Playwright Chromium browser locally if it is not already available.
+The fixture checks all 53 schemas, typed/rich nested corrections, uploads/attachment ingress, actual authenticated fixture PDF bytes/preview/download, unsafe-MIME blocking, sign-in/handoff/revocation, material clarification, daily headers, retries/cancellation and account/project/channel isolation, with no browser errors. This is fixture transport and session behavior; it does not establish hosted real-user login, live Telegram/WhatsApp text/voice/media/button delivery, or production-storage downloads. Install Playwright Chromium locally if needed. Remaining rollout checks are in [the Railway runbook](../../plans/panda-agent/RAILWAY.md).

@@ -1,15 +1,22 @@
 import type { Knex } from "knex";
-import { ConflictError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
-import { dailyLogExecutor } from "../field-actions/index.ts";
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../lib/errors.ts";
+import { fieldToolsExecutor } from "../field-actions/tools.ts";
+import type { QueueManager } from "../../lib/queue/index.ts";
+import { MessagingAnswerResult, MessagingClarificationError } from "./draft-errors.ts";
+import { canReadMessagingReviewAction, canWriteMessagingAction, proposalCapabilities, requireMessagingActions } from "./policy.ts";
 import { messagingAgentAccess } from "./access.ts";
-import { draftDailyActions, normalizeReview, reviewCommand } from "./draft.ts";
+import { draftDailyActions, normalizeReview } from "./draft.ts";
+import { messagingToolDiscovery } from "./tool-discovery.ts";
+import { messagingSourceFiles } from "./source-files.ts";
+import { messagingReviewVisibility, requireMessagingReviewTargets } from "./review-access.ts";
+import { mayReadAnswer, messagingReadFingerprint } from "./read-access.ts";
 import { proposalDto } from "./mappers.ts";
 import { messagingAgentReadRepository } from "./read-repository.ts";
 import { messagingAgentRepository } from "./repository.ts";
-import type { MessagingReviewAction } from "./management-types.ts";
+import type { MessagingAccess, MessagingAnswer, MessagingContextMessage, MessagingReviewAction } from "./management-types.ts";
 import type { MessagingConversationRow, MessagingIdentityRow, MessagingInboxRow, MessagingProposalRow } from "./types.ts";
 
-export function messagingAgentReviewService(db: Knex, draft = draftDailyActions) {
+export function messagingAgentReviewService(db: Knex, draft = draftDailyActions, queue?: QueueManager) {
   const repo = messagingAgentRepository(db);
   const reads = messagingAgentReadRepository(db);
 
@@ -20,8 +27,13 @@ export function messagingAgentReviewService(db: Knex, draft = draftDailyActions)
     return proposal;
   }
 
-  async function dto(proposal: MessagingProposalRow) {
-    return proposalDto(proposal, await repo.actionsForProposal(proposal.id, proposal.version));
+  async function dto(proposal: MessagingProposalRow, access?: MessagingAccess) {
+    const actions = await repo.actionsForProposal(proposal.id, proposal.version);
+    const visible = access ? await messagingReviewVisibility(db, access, { projectId: proposal.project_id, organizationId: proposal.organization_id, buildingId: proposal.building_id }, actions) : [];
+    if (!access || actions.some((action, index) => !visible[index] || !(canReadMessagingReviewAction(access, action) || (proposal.status === "draft" && canWriteMessagingAction(access, action))))) {
+      return { ...proposalDto({ ...proposal, source_text: "", clarification: null }, [], { edit: false, confirm: false, cancel: proposal.status === "draft" && Boolean(access) }), title: proposal.status === "completed" ? "Completed request" : proposal.status === "cancelled" ? "Cancelled request" : "Restricted review", summary: "Details are unavailable with your current access." };
+    }
+    return proposalDto(proposal, actions, access ? proposalCapabilities(access, proposal, actions) : undefined);
   }
 
   return {
@@ -33,7 +45,7 @@ export function messagingAgentReviewService(db: Knex, draft = draftDailyActions)
         inbox.channel !== identity.channel || inbox.channel_account_id !== identity.channel_account_id || inbox.sender_id !== identity.sender_id) {
         throw new ForbiddenError("This message belongs to a different Messaging connection or project scope.");
       }
-      const access = await messagingAgentAccess(db).project(identity.user_id, conversation.project_id, "create");
+      const access = await messagingAgentAccess(db).project(identity.user_id, conversation.project_id);
       if (access.project.organization_id !== conversation.organization_id || conversation.paused || identity.revoked_at || identity.opted_out_at) {
         throw new ForbiddenError("Reconnect Messaging to an authorized project before capturing work.");
       }
@@ -42,11 +54,58 @@ export function messagingAgentReviewService(db: Knex, draft = draftDailyActions)
       const previous = pending?.status === "draft"
         ? await repo.actionsForProposal(pending.id, pending.version) : [];
       const scope = { projectId: conversation.project_id, organizationId: conversation.organization_id, buildingId: conversation.building_id,
-        projectName: access.project.name, buildingName: building.name };
-      const actions = await draft(text, scope, previous.map((action) => ({
-        kind: action.kind as MessagingReviewAction["kind"], title: action.title ?? "Daily-log action", payload: action.payload,
-      })));
-      const currentAccess = await messagingAgentAccess(db).project(identity.user_id, conversation.project_id, "create");
+        projectName: access.project.name, buildingName: building?.name, projectCurrency: access.project.currency, messageSentAt: new Date(inbox.sent_at).toISOString() };
+      const discovery = await messagingToolDiscovery(db, access, scope);
+      requireMessagingActions(access, previous);
+      await requireMessagingReviewTargets(db, access, scope, previous);
+      discovery.targets.attachments = await messagingSourceFiles(db, conversation.id, conversation.scope_version, inbox.id);
+      const history = await reads.contextMessages(conversation.id, conversation.scope_version, inbox.id);
+      const recentMessages: MessagingContextMessage[] = [];
+      for (const message of history) {
+        const content = message.source_text ?? "";
+        if (message.status === "processed" && /^(CONFIRM|CANCEL|STOP|LINK)\b/i.test(content.trim())) break;
+        if (!/^(CONFIRM|CANCEL|STOP|LINK|HELP)\b/i.test(content.trim())) recentMessages.unshift({ role: "user", content, sentAt: new Date(message.sent_at).toISOString() });
+      }
+      if (!pending) {
+        const questions = await reads.recentReadSources(conversation.id, conversation.scope_version, inbox.id);
+        if (questions.length) {
+          const fingerprint = await messagingReadFingerprint(db, access, scope);
+          for (const question of questions) if (question.read_access && mayReadAnswer(access, question.read_access, fingerprint)) recentMessages.unshift({ role: "user", content: question.source_text!, sentAt: new Date(question.sent_at).toISOString() });
+        }
+      }
+      if (pending?.clarification) recentMessages.push({ role: "assistant", content: pending.clarification });
+      let actions: MessagingReviewAction[], clarification: string | null = null;
+      let readScope: string | undefined;
+      try {
+        if (recentMessages.length > 20 || recentMessages.reduce((size, message) => size + message.content.length, text.length) > 40_000) {
+          throw new MessagingClarificationError("There is too much pending in this capture. Cancel it and send a smaller batch; your original messages are retained.");
+        }
+        actions = await draft(text, { ...scope, ...discovery, recentMessages, runRead: async (name, args) => {
+          readScope ??= await messagingReadFingerprint(db, access, scope);
+          return discovery.runRead(name, args);
+        } }, previous.map((action) => ({
+          kind: action.kind as MessagingReviewAction["kind"], title: action.title ?? "Field action", payload: action.payload, reviewId: action.id,
+        })));
+        requireMessagingActions(access, actions);
+        const summaries = await requireMessagingReviewTargets(db, access, scope, actions);
+        actions = actions.map((action, index) => ({ ...action, ...(summaries.has(index) ? { summary: summaries.get(index) } : {}) }));
+      } catch (error) {
+        if (error instanceof MessagingAnswerResult) {
+          const linked = await repo.identityForSender({ channel: identity.channel, channelAccountId: identity.channel_account_id, senderId: identity.sender_id });
+          const selected = linked ? await repo.conversation(linked.id) : null;
+          if (linked?.id !== identity.id || linked.opted_out_at || selected?.id !== conversation.id || selected.scope_version !== conversation.scope_version || selected.paused) throw new ConflictError("The messaging connection changed during the lookup. Select the current project and ask again.");
+          const current = await messagingAgentAccess(db).project(identity.user_id, conversation.project_id);
+          const currentScope = await messagingReadFingerprint(db, current, scope);
+          const snapshot = { permissions: access.permissions, workspacePermissions: access.workspacePermissions ?? {}, features: access.features.enabled ?? {}, recordScope: readScope };
+          if (!readScope || !mayReadAnswer(current, snapshot, currentScope)) throw new ConflictError("Access changed during the lookup. Ask the question again to use current records.");
+          await repo.setReadAccess(inbox.id, { permissions: current.permissions, workspacePermissions: current.workspacePermissions ?? {}, features: current.features.enabled ?? {}, recordScope: currentScope });
+          return { kind: "answer", answer: error.answer } satisfies MessagingAnswer;
+        }
+        if (!(error instanceof MessagingClarificationError) && !(error instanceof BadRequestError) && !(error instanceof ValidationError)) throw error;
+        clarification = error.message;
+        actions = previous.map((action) => ({ kind: action.kind as MessagingReviewAction["kind"], title: action.title ?? "Field action", payload: action.payload }));
+      }
+      const currentAccess = await messagingAgentAccess(db).project(identity.user_id, conversation.project_id);
       await messagingAgentAccess(db).building(currentAccess, conversation.building_id);
       const currentIdentity = await repo.identityForSender({ channel: identity.channel, channelAccountId: identity.channel_account_id, senderId: identity.sender_id });
       if (currentIdentity?.id !== identity.id || currentIdentity.opted_out_at) {
@@ -54,17 +113,19 @@ export function messagingAgentReviewService(db: Knex, draft = draftDailyActions)
       }
       const proposal = await repo.createProposal({
         conversationId: conversation.id, inboxId: inbox.id, scopeVersion: conversation.scope_version,
-        actions, sourceText: text, sourceKind: inbox.source_kind, sourceFileId: inbox.source_file_id,
+        actions, sourceText: text, sourceKind: inbox.source_kind, sourceFileId: inbox.source_file_id, clarification,
       });
-      return dto(proposal);
+      return dto(proposal, currentAccess);
     },
     async edit(userId: string, projectId: string, id: string, version: number, actions: unknown) {
       const proposal = await owned(userId, projectId, id);
-      const access = await messagingAgentAccess(db).project(userId, projectId, "create");
+      const access = await messagingAgentAccess(db).project(userId, projectId);
       await messagingAgentAccess(db).building(access, proposal.building_id);
       const scope = { organizationId: proposal.organization_id, projectId: proposal.project_id, buildingId: proposal.building_id };
       const normalized = normalizeReview(actions, scope);
-      return dto(await repo.updateProposal(id, version, normalized));
+      requireMessagingActions(access, normalized);
+      const summaries = await requireMessagingReviewTargets(db, access, scope, normalized);
+      return dto(await repo.updateProposal(id, version, normalized.map((action, index) => ({ ...action, ...(summaries.has(index) ? { summary: summaries.get(index) } : {}) }))), access);
     },
     async confirm(userId: string, projectId: string, id: string, version: number) {
       const initial = await owned(userId, projectId, id);
@@ -76,7 +137,7 @@ export function messagingAgentReviewService(db: Knex, draft = draftDailyActions)
         if (!identity || identity.user_id !== userId || identity.revoked_at || identity.opted_out_at || !conversation || conversation.paused || !proposal) {
           throw new ForbiddenError("This Messaging connection is no longer active.");
         }
-        const access = await messagingAgentAccess(trx).project(userId, projectId, "create");
+        const access = await messagingAgentAccess(trx).project(userId, projectId);
         await messagingAgentAccess(trx).building(access, proposal.building_id);
         if (proposal.version !== version || proposal.scope_version !== conversation.scope_version || proposal.project_id !== projectId) {
           throw new ConflictError("This review or its project changed. Open the latest review before confirming.");
@@ -84,25 +145,36 @@ export function messagingAgentReviewService(db: Knex, draft = draftDailyActions)
         if (proposal.status === "completed") return proposal;
         if (proposal.status !== "draft") throw new ConflictError("This review is no longer awaiting confirmation.");
         const actions = await store.actionsForProposal(id, version);
+        if (proposal.clarification) throw new ConflictError("Answer the missing details before confirming this review.");
         if (!actions.length) throw new ConflictError("This review has no actions.");
+        requireMessagingActions(access, actions);
+        const summaries = await requireMessagingReviewTargets(trx, access, { projectId, organizationId: proposal.organization_id, buildingId: proposal.building_id }, actions);
+        if (actions.some((action, index) => summaries.has(index) && action.summary !== summaries.get(index))) throw new BadRequestError("The daily-log template changed. Review its current questions and answers before confirming.");
         if (!(await store.finishProposal(id, version, "confirmed"))) throw new ConflictError("This review changed.");
         const scope = { organizationId: proposal.organization_id, projectId: proposal.project_id, buildingId: proposal.building_id };
         for (const action of actions) {
-          const command = reviewCommand({ kind: action.kind as MessagingReviewAction["kind"], title: action.title ?? "Daily-log action", payload: action.payload }, scope);
-          const result = await dailyLogExecutor(trx).execute(command, { userId, organizationId: scope.organizationId });
+          const actor = { userId, organizationId: scope.organizationId };
+          const result = await fieldToolsExecutor(trx, queue).execute({ kind: action.kind, projectId, buildingId: scope.buildingId, payload: action.payload, idempotencyKey: action.id }, actor);
           if (!(await store.completeAction(action.id, { ...result }))) throw new ConflictError("This action changed.");
         }
         await store.finishProposal(id, version, "completed");
+        await store.resetContext(proposal.conversation_id);
         return (await store.proposal(id))!;
+      }).catch(async (error: unknown) => {
+        if (!(error instanceof BadRequestError) && !(error instanceof ValidationError)) throw error;
+        const actions = await repo.actionsForProposal(id, version);
+        return repo.updateProposal(id, version, actions.map((action) => ({ kind: action.kind, payload: action.payload, title: action.title ?? undefined, summary: action.summary ?? undefined })), error.message);
       });
-      return dto(completed);
+      return dto(completed, await messagingAgentAccess(db).project(userId, projectId));
     },
     async cancel(userId: string, projectId: string, id: string, version: number) {
       const proposal = await owned(userId, projectId, id);
+      const access = await messagingAgentAccess(db).project(userId, projectId);
       if (proposal.version !== version || !(await repo.finishProposal(id, version, "cancelled"))) {
         throw new ConflictError("This review changed or has already been saved.");
       }
-      return dto((await repo.proposal(id))!);
+      await repo.resetContext(proposal.conversation_id);
+      return dto((await repo.proposal(id))!, access);
     },
   };
 }

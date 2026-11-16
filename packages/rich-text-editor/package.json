@@ -1,0 +1,22 @@
+{
+  "name": "@buildpanda/rich-text-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./styles.css": "./src/styles.css"
+  },
+  "dependencies": {
+    "@buildpanda/rich-content": "file:../rich-content",
+    "@tiptap/extension-image": "^3.26.1",
+    "@tiptap/extension-placeholder": "^3.26.1",
+    "@tiptap/react": "^3.26.1",
+    "@tiptap/starter-kit": "^3.26.1",
+    "lucide-react": "^1.37.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

@@ -160,6 +160,11 @@ export function projectsRepository(db: Knex) {
       return db<ProjectRow>("projects").where({ id }).first();
     },
 
+    currencyForShare(id: string): Promise<Pick<ProjectRow, "id" | "currency"> | undefined> {
+      if (!db.isTransaction) throw new Error("Confirming an expense requires the caller's transaction");
+      return db<ProjectRow>("projects").where({ id }).select("id", "currency").forShare().first();
+    },
+
     /** The contract completion date and where an awarded extension moved it to. */
     dates(projectId: string): Promise<ProjectDatesRow | undefined> {
       return db("projects")

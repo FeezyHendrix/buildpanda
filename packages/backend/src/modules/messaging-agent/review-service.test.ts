@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import knex, { type Knex } from "knex";
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { ConflictError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { draftDailyActions, normalizeReview } from "./draft.ts";
 import { messagingAgentRepository } from "./repository.ts";
 import { messagingAgentReviewService } from "./review-service.ts";
@@ -47,6 +47,7 @@ async function seed(db: Knex) {
     assert.ok(inbox); assert.ok(await repo.claimInbox(inbox.id));
     const review = messagingAgentReviewService(db, draft);
     const proposal = await review.draft(inbox, linked.identity, linked.conversation, text);
+    assert.ok("id" in proposal);
     await repo.completeInbox(inbox.id);
     return { message, inbox, proposal, review };
   }
@@ -98,6 +99,7 @@ dbTest("text drafting and corrections retain raw sources and versions without do
   assert.equal(await f.count("daily_log_entries"), 0); assert.equal(await f.count("daily_logs"), 0);
   assert.equal(await f.repo.acceptMessage(first.message), null);
   const replay = await first.review.draft(first.inbox, linked.identity, linked.conversation, "replayed altered text");
+  assert.ok("id" in replay);
   assert.equal(replay.id, first.proposal.id); assert.equal(replay.sourceText, text);
   assert.equal(await f.count("messaging_agent_proposals"), 1);
   const edited = await first.review.edit(f.id("alice"), f.scope("a").projectId, first.proposal.id, 1, [
@@ -144,16 +146,19 @@ dbTest("concurrent confirms commit each action and receipt once; replay returns 
   assert.equal((await f.repo.proposal(request.proposal.id))!.source_text, "Pour finished");
 });
 
-dbTest("a later invalid action rolls back earlier domain writes and all action receipts", async (_db, f) => {
+dbTest("an invalidated template keeps the whole batch unsaved and asks for correction", async (db, f) => {
+  await db("daily_log_templates").insert({ id: f.id("missing_template"), project_id: f.scope("a").projectId, name: "Crew form", fields: JSON.stringify([{ id: "crew", type: "number", label: "Crew", required: true, unit: null, helpText: null, options: [] }]), created_by_id: f.id("owner") });
   const linked = await f.link(f.id("alice"), f.scope("a"));
   const request = await f.capture(linked, "First note, then missing form", async (_text, scope) => normalizeReview([
     { kind: "daily_log", payload: { logDate, buildingId: scope.buildingId, bodyText: "Must roll back" } },
-    { kind: "daily_log", payload: { logDate, buildingId: scope.buildingId, templateId: f.id("missing_template"), responses: {} } },
+    { kind: "daily_log", payload: { logDate, buildingId: scope.buildingId, templateId: f.id("missing_template"), responses: { crew: 8 } } },
   ], scope));
   const pending = await f.repo.proposal(request.proposal.id); assert.ok(pending);
   const pendingActions = await f.repo.actionsForProposal(pending.id, pending.version);
-  assert.throws(() => proposalReceipt(pending, pendingActions), BadRequestError);
-  await assert.rejects(request.review.confirm(f.id("alice"), f.scope("a").projectId, request.proposal.id, 1), /template/i);
+  assert.match(proposalReceipt(pending, pendingActions), /Crew|template|responses/i);
+  await db("daily_log_templates").where({ id: f.id("missing_template") }).delete();
+  const result = await request.review.confirm(f.id("alice"), f.scope("a").projectId, request.proposal.id, 1);
+  assert.match(result.clarification ?? "", /template/i);
   assert.equal(await f.count("daily_log_entries"), 0); assert.equal(await f.count("daily_logs"), 0);
   const proposal = await f.repo.proposal(request.proposal.id);
   assert.equal(proposal!.status, "draft"); assert.equal(proposal!.confirmed_at, null);

@@ -6,10 +6,11 @@ import { INPUT_BASE_CLASS } from "@field-ui/input";
 import { Spinner } from "@field-ui/spinner";
 import { ApiError } from "./api/client";
 import { authApi } from "./api/auth";
-import { useAgentStatus } from "./hooks/use-agent";
+import { agentKeys, useAgentStatus } from "./hooks/use-agent";
 import { ErrorMessage, Notice } from "./components/notice";
 import { ProjectWorkspace } from "./components/project-workspace";
 import { SignInForm } from "./components/sign-in-form";
+import { DocumentHandoff } from "./components/document-artifact";
 
 const buildPandaUrl = (import.meta.env.VITE_BUILDPANDA_APP_URL || "http://localhost:5173").replace(/\/$/, "");
 const channelKey = (channel: { id: string; accountId: string }) => `${channel.id}:${channel.accountId}`;
@@ -20,6 +21,13 @@ export default function App() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null | undefined>();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  async function refreshAccount() {
+    const previousUser = status.data?.userId;
+    const result = await status.refetch();
+    const protectedQueries = { queryKey: agentKeys.all, predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[1] !== "status" };
+    if (result.isError || result.data?.userId !== previousUser) queryClient.removeQueries(protectedQueries);
+    else await queryClient.invalidateQueries(protectedQueries);
+  }
   const signOut = useMutation({
     mutationFn: authApi.signOut,
     onSuccess: async () => {
@@ -33,7 +41,8 @@ export default function App() {
   const connections = status.data?.connections.filter((item) => item.channel === channel?.id && item.accountId === channel.accountId) ?? [];
   const connection = selectedConnectionId === null ? null
     : connections.find((item) => item.id === selectedConnectionId) ?? connections[0] ?? null;
-  const allowedProject = status.data?.projects.find((project) => project.id === (selectedProjectId ?? connection?.selectedScope?.projectId)) ?? status.data?.projects[0];
+  const linkedProjectId = new URLSearchParams(window.location.search).get("projectId");
+  const allowedProject = status.data?.projects.find((project) => project.id === (selectedProjectId ?? linkedProjectId ?? connection?.selectedScope?.projectId)) ?? status.data?.projects[0];
   const projectId = allowedProject?.id ?? "";
   const unauthorized = status.error instanceof ApiError && status.error.status === 401;
 
@@ -81,6 +90,7 @@ export default function App() {
             </label> : null}
           </div> : null}
         </div>
+        {!signOut.isPending && status.isSuccess && status.data.userId ? <div className="mb-6"><DocumentHandoff userId={status.data.userId} projectIds={status.data.projects.map((project) => project.id)} /></div> : null}
         {signOut.isPending ? <div className="grid min-h-72 place-items-center"><Spinner label="Signing out" /></div> : status.isPending || unauthorized ? (
           <>
             <div hidden={status.isPending}><SignInForm buildPandaUrl={buildPandaUrl} onSignedIn={async () => {
@@ -96,9 +106,9 @@ export default function App() {
         ) : !status.data.enabled || !channel?.enabled ? (
           <Notice title="Messaging capture is not available yet">Your site records remain available in BuildPanda. A messaging app will become available here when its connection has been configured.</Notice>
         ) : !projectId ? (
-          <Notice title="No available field projects">Your account does not currently have an accessible project for daily logs. Ask your workspace administrator to check your project access.</Notice>
+          <Notice title="No available field projects">Your account does not currently have an accessible project for site capture or material logs. Ask your workspace administrator to check your project access.</Notice>
         ) : <ProjectWorkspace key={`${status.data.userId}:${channelKey(channel)}:${connection?.id ?? "new"}:${projectId}`} projectId={projectId} status={status.data} channel={channel} connection={connection} />}
-        <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5 text-xs text-ink-muted"><p>Records follow your current BuildPanda project permissions.</p><Button variant="ghost" size="sm" disabled={status.isFetching} onClick={() => void status.refetch()}>Refresh account</Button></footer>
+        <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5 text-xs text-ink-muted"><p>Records follow your current BuildPanda project permissions.</p><Button variant="ghost" size="sm" disabled={status.isFetching} onClick={() => void refreshAccount()}>Refresh account</Button></footer>
       </div>
     </div>
   );

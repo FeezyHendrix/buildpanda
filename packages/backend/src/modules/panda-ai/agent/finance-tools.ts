@@ -37,7 +37,7 @@ function phasesFor(ctx: ToolContext, contracts: ReturnType<typeof contractsFor>)
       dailyLogs: dailyLogsRepository(ctx.db),
       purchaseOrders: purchaseOrdersRepository(ctx.db),
       transactions: transactionsRepository(ctx.db, agentRecordScope(ctx).expenseReaderId),
-      mainContractId: (projectId) => contracts.mainContractId(projectId),
+      mainContractId: (projectId) => contracts.recordedMainContractId(projectId),
     }),
     contractBelongsToProject: (projectId, contractId) => contracts.belongsToProject(projectId, contractId),
   });
@@ -121,13 +121,13 @@ export function financeTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_contracts", "Get the project's contracts — the main contract (mirrors the contract sum) and one change-order contract per approved change request — each with its status (Draft, Pending, Signed), total, trade, legal entity, whether the signed document is on file and how many build stages sit on it; plus every build stage's estimate vs used figures: scheduled value, expected cost, estimated labour hours, labour and material budgets against labour hours logged in daily logs, material cost committed on purchase orders and total cost (materials + logged expenses). Use for questions about contracts, what is signed or pending, change-order contracts, or how a stage is tracking against its estimate. BuildPanda only LOGS these records; it does not move money."), async (ctx) => {
+    tool(fn("get_contracts", "Get the project's contracts — the main contract (mirrors the contract sum) and one change-order contract per approved change request — each with its status (Draft, Pending, Signed), total, trade, legal entity, whether the signed document is on file and how many build stages sit on it; plus every build stage's estimate vs used figures: scheduled value, expected cost, estimated labour hours, labour and material budgets against labour hours logged in daily logs, material cost committed on purchase orders and total cost (materials + logged expenses). Use for questions about contracts, what is signed or pending, change-order contracts, or how a stage is tracking against its estimate. BuildPanda only LOGS these records; it does not move money. This reads existing contract records; get_finance_position provides the agreed contract sum even when no separate main-contract record exists."), async (ctx) => {
       const contracts = contractsFor(ctx);
       // The contract list is finances:view; the build-stage estimate rollup is
       // served by GET /projects/:id/stages, which takes stages:view.
       const maySeeStages = canRead(ctx, "stages", "view");
       const [contractRows, stages] = await Promise.all([
-        contracts.listByProject(ctx.projectId),
+        contracts.listRecorded(ctx.projectId),
         maySeeStages ? phasesFor(ctx, contracts).list(ctx.projectId) : Promise.resolve([]),
       ]);
       const titleById = new Map(contractRows.map((c) => [c.id, c.title]));

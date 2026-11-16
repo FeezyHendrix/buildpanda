@@ -4,13 +4,7 @@ import { filesRepository } from "../files/repository.ts";
 import { fileAccessRepository } from "../files/access-repository.ts";
 import { requireFileAttachment } from "../files/access.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
-import { stagesRepository } from "../stages/repository.ts";
-import {
-  customCategoriesRepository,
-  transactionsRepository,
-} from "./repository.ts";
-import { transactionsService } from "./service.ts";
-import { expenseReaderId } from "./access.ts";
+import { buildTransactionsService } from "./wiring.ts";
 import type { AuthorizationRequest, AuthorizedProject } from "../../lib/authorization-request.ts";
 import type {
   CreateCustomCategoryInput,
@@ -51,33 +45,7 @@ const listQuery = {
   },
 } as const;
 
-const createTransactionBody = {
-  type: "object",
-  required: ["title", "category", "amount", "transactedAt"],
-  additionalProperties: false,
-  properties: {
-    title: { type: "string", minLength: 1, maxLength: 200 },
-    description: { type: ["string", "null"], maxLength: 2000 },
-    category: { type: "string", minLength: 1, maxLength: 200 },
-    amount: { type: "number", minimum: 0 },
-    transactedAt: { type: "string", minLength: 1, maxLength: 30 },
-    vendor: { type: ["string", "null"], maxLength: 200 },
-    reference: { type: ["string", "null"], maxLength: 200 },
-    receiptFileId: { type: ["string", "null"], maxLength: 200 },
-    stageId: { type: ["string", "null"], maxLength: 200 },
-    /** A refund or credit note against this category rather than an outlay. */
-    credit: { type: "boolean" },
-    /** A refundable outlay — a plant-hire deposit, a bond. */
-    recoverable: { type: "boolean" },
-  },
-} as const;
-
-const editTransactionBody = {
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: createTransactionBody.properties,
-} as const;
+import { createTransactionBody, editTransactionBody } from "./schemas.ts";
 
 const createCategoryBody = {
   type: "object",
@@ -102,15 +70,7 @@ function toFilters(query: Record<string, unknown>): TransactionListFilters {
 const transactionRoutes: FastifyPluginAsync = async (fastify) => {
   const files = filesService(filesRepository(fastify.db));
   const fileAccess = fileAccessRepository(fastify.db);
-  const stages = stagesRepository(fastify.db);
-  const serviceFor = (request: AuthorizationRequest, project: AuthorizedProject) => transactionsService(
-    transactionsRepository(fastify.db, expenseReaderId(request, project)),
-    customCategoriesRepository(fastify.db),
-    {
-      stageBelongsToProject: async (projectId, stageId) =>
-        (await stages.findById(stageId))?.project_id === projectId,
-    },
-  );
+  const serviceFor = (request: AuthorizationRequest, project: AuthorizedProject) => buildTransactionsService(fastify.db, request, project);
 
   fastify.get<{ Params: { id: string }; Querystring: Record<string, unknown> }>(
     "/projects/:id/transactions",

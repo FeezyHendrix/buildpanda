@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
+import type { MessagingReadAccess } from "./management-types.ts";
 
-export type MessagingSourceKind = "text" | "voice_translation";
+export type MessagingSourceKind = "text" | "voice_translation" | "file_attachment";
 export type MessagingConversationType = "direct" | "group";
 export type MessagingMessageOrigin = "provider" | "web";
 export type MessagingInboxStatus = "received" | "processing" | "processed" | "failed";
@@ -17,7 +18,7 @@ export interface MessagingChannelAccount {
 export interface MessagingScope {
   organizationId: string | null;
   projectId: string;
-  buildingId: string;
+  buildingId: string | null;
 }
 
 export interface MessagingIdentityRow {
@@ -38,7 +39,7 @@ export interface MessagingConversationRow {
   identity_id: string;
   organization_id: string | null;
   project_id: string;
-  building_id: string;
+  building_id: string | null;
   scope_version: number;
   paused: boolean;
   created_at: Date | string;
@@ -58,7 +59,7 @@ export interface MessagingLinkCodeRow {
   user_id: string;
   organization_id: string | null;
   project_id: string;
-  building_id: string;
+  building_id: string | null;
   code_hash: string;
   expires_at: Date | string;
   consumed_at: Date | string | null;
@@ -75,7 +76,8 @@ export interface MessagingInboundMessage extends MessagingSender {
   conversationType: MessagingConversationType;
   providerMessageId: string;
   sentAt: Date;
-  type: "text" | "audio" | "unsupported";
+  type: "text" | "audio" | "attachment" | "unsupported";
+  sourceFileId?: string | null;
   text: string | null;
   mediaId: string | null;
   mediaMimeType: string | null;
@@ -109,11 +111,12 @@ export interface MessagingInboxRow {
   project_id: string | null;
   building_id: string | null;
   scope_version: number | null;
-  message_type: "text" | "audio" | "unsupported";
+  message_type: "text" | "audio" | "attachment" | "unsupported";
   source_text: string | null;
   link_code_hash: string | null;
   source_kind: MessagingSourceKind;
   source_file_id: string | null;
+  read_access?: MessagingReadAccess | null;
   media_id: string | null;
   media_mime_type: string | null;
   reply_to_message_id: string | null;
@@ -146,6 +149,7 @@ export interface MessagingProposalInput {
   sourceText: string;
   sourceKind: MessagingSourceKind;
   sourceFileId?: string | null;
+  clarification?: string | null;
 }
 
 export interface MessagingProposalRow {
@@ -154,11 +158,12 @@ export interface MessagingProposalRow {
   inbox_id: string;
   organization_id: string | null;
   project_id: string;
-  building_id: string;
+  building_id: string | null;
   scope_version: number;
   version: number;
   status: MessagingProposalStatus;
   source_text: string;
+  clarification: string | null;
   source_kind: MessagingSourceKind;
   source_file_id: string | null;
   confirmed_at: Date | string | null;
@@ -191,6 +196,8 @@ export interface MessagingOutboxInput {
   scopeVersion?: number | null;
   idempotencyKey: string;
   buttons?: MessagingReplyButton[];
+  parts?: { index: number; count: number; group: string };
+  review?: { id: string; version: number; status: MessagingProposalStatus };
 }
 
 export interface MessagingOutboxRow {
@@ -203,6 +210,12 @@ export interface MessagingOutboxRow {
   recipient_id: string;
   body: string;
   buttons: MessagingReplyButton[] | null;
+  part_index?: number;
+  part_count?: number;
+  reply_group?: string | null;
+  review_id?: string | null;
+  review_version?: number | null;
+  review_status?: MessagingProposalStatus | null;
   scope_version: number | null;
   idempotency_key: string;
   status: MessagingOutboxStatus;
@@ -234,7 +247,7 @@ export interface MessagingReviewButtonCommand {
 
 export interface MessagingReviewContext {
   projectName: string;
-  buildingName: string;
+  buildingName?: string | null;
   voiceNote: boolean;
 }
 

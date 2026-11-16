@@ -1,14 +1,18 @@
 import type { FastifyPluginAsync } from "fastify";
+import AjvCompiler from "@fastify/ajv-compiler";
 import type { MessagingDraftInput, MessagingLinkInput, MessagingReviewInput } from "./management-types.ts";
 import { requireMessagingEnabled, messagingAgentService } from "./service.ts";
 import * as schemas from "./schemas.ts";
 import { configuredMessagingAdapters, messagingAdapterRoutes } from "./adapters/index.ts";
 import { messagingAgentRecoveryService } from "./recovery-service.ts";
+import messagingUploadRoutes from "./upload-routes.ts";
 
 const messagingAgentRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.setValidatorCompiler(AjvCompiler()({}, { customOptions: { strict: false, removeAdditional: false, coerceTypes: false } }));
   const adapters = configuredMessagingAdapters();
-  const service = messagingAgentService(fastify.db, adapters);
+  const service = messagingAgentService(fastify.db, adapters, fastify.queue);
   await fastify.register(messagingAdapterRoutes);
+  await fastify.register(messagingUploadRoutes, { adapters });
 
   fastify.get("/messaging-agent/status", { schema: { response: { 200: schemas.statusResponse } } },
     (request) => service.status(request.requireAuth().id));
@@ -23,6 +27,9 @@ const messagingAgentRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Params: { projectId: string }; Querystring: { connectionId?: string } }>("/messaging-agent/projects/:projectId/session", {
     schema: { params: schemas.projectParams, querystring: schemas.sessionQuery, response: { 200: schemas.sessionResponse } },
   }, (request) => service.session(request.requireAuth().id, request.params.projectId, request.query.connectionId));
+  fastify.get<{ Params: { projectId: string }; Querystring: { connectionId?: string } }>("/messaging-agent/projects/:projectId/tools", {
+    schema: { params: schemas.projectParams, querystring: schemas.sessionQuery, response: { 200: schemas.toolsResponse } },
+  }, (request) => service.tools(request.requireAuth().id, request.params.projectId, request.query.connectionId));
   fastify.patch<{ Params: { projectId: string }; Body: { connectionId: string; buildingId: string | null } }>("/messaging-agent/projects/:projectId/scope", {
     schema: { params: schemas.projectParams, body: schemas.scopeBody },
   }, async (request, reply) => {
@@ -30,7 +37,7 @@ const messagingAgentRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.status(204).send();
   });
   fastify.post<{ Params: { projectId: string }; Body: MessagingDraftInput }>("/messaging-agent/projects/:projectId/proposals", {
-    schema: { params: schemas.projectParams, body: schemas.draftBody, response: { 200: schemas.proposalResponse } },
+    schema: { params: schemas.projectParams, body: schemas.draftBody, response: { 200: schemas.draftResponse } },
     config: { rateLimit: { max: 20, timeWindow: 60_000 } },
   }, (request) => service.propose(request.requireAuth().id, request.params.projectId, request.body.connectionId, request.body.text));
   fastify.post<{ Params: { projectId: string; messageId: string } }>("/messaging-agent/projects/:projectId/messages/:messageId/retry", {

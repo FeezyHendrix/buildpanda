@@ -206,7 +206,7 @@ export function materialApprovalsService(
           activity_id: input.activityId ?? null,
         },
       );
-      notifyApprovalReviewer(deps, row.requested_reviewer_id, projectId, row.title, userId);
+      await notifyApprovalReviewer(deps, row.requested_reviewer_id, projectId, row.title, userId);
       const [created] = await hydrate([row]);
       if (!created) throw new NotFoundError("Material approval");
       return created;
@@ -238,7 +238,7 @@ export function materialApprovalsService(
           input.requestedReviewerId &&
           input.requestedReviewerId !== existing.requested_reviewer_id
         ) {
-          notifyApprovalReviewer(
+          await notifyApprovalReviewer(
             deps,
             input.requestedReviewerId,
             projectId,
@@ -257,7 +257,7 @@ export function materialApprovalsService(
         ) {
           patch.reviewed_at = new Date().toISOString();
           patch.reviewed_by_id = userId;
-          notifyApprovalDecided(
+          await notifyApprovalDecided(
             deps,
             existing.submitted_by_id,
             projectId,
@@ -328,7 +328,7 @@ export function materialApprovalsService(
           activity_id: input.activityId ?? previous.activityId,
         },
       );
-      notifyApprovalReviewer(deps, row.requested_reviewer_id, projectId, row.title, userId);
+      await notifyApprovalReviewer(deps, row.requested_reviewer_id, projectId, row.title, userId);
       const [created] = await hydrate([row]);
       if (!created) throw new NotFoundError("Material approval");
       return created;

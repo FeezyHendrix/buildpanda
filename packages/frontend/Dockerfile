@@ -8,14 +8,16 @@ COPY tsconfig.shared.json /tsconfig.shared.json
 
 FROM base AS dev
 COPY packages/rich-content /rich-content
+COPY packages/rich-text-editor /rich-text-editor
 COPY packages/frontend/package.json ./
 # Railway builds each service in isolation. npm 10 can crash while resolving
 # `file:` workspace packages there, so install registry dependencies first and
 # then place the copied shared source at the package's normal resolution path.
-RUN node -e "const fs=require('fs');const p=require('./package.json');delete p.dependencies['@buildpanda/rich-content'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
+RUN node -e "const fs=require('fs');const p=require('./package.json');delete p.dependencies['@buildpanda/rich-content'];delete p.dependencies['@buildpanda/rich-text-editor'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
   && npm install \
   && mkdir -p node_modules/@buildpanda \
-  && cp -R /rich-content node_modules/@buildpanda/rich-content
+  && cp -R /rich-content node_modules/@buildpanda/rich-content \
+  && cp -R /rich-text-editor node_modules/@buildpanda/rich-text-editor
 COPY packages/frontend ./
 EXPOSE 5173
 CMD ["npx", "vite", "--host", "0.0.0.0"]
@@ -25,11 +27,13 @@ FROM base AS build
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY packages/rich-content /rich-content
+COPY packages/rich-text-editor /rich-text-editor
 COPY packages/frontend/package.json ./
-RUN node -e "const fs=require('fs');const p=require('./package.json');delete p.dependencies['@buildpanda/rich-content'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
+RUN node -e "const fs=require('fs');const p=require('./package.json');delete p.dependencies['@buildpanda/rich-content'];delete p.dependencies['@buildpanda/rich-text-editor'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')" \
   && npm install \
   && mkdir -p node_modules/@buildpanda \
-  && cp -R /rich-content node_modules/@buildpanda/rich-content
+  && cp -R /rich-content node_modules/@buildpanda/rich-content \
+  && cp -R /rich-text-editor node_modules/@buildpanda/rich-text-editor
 COPY packages/frontend ./
 RUN npm run build
 

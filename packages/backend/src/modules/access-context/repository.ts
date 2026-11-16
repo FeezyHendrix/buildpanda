@@ -3,16 +3,25 @@ import { BUILTIN_ROLES } from "../../lib/permissions.ts";
 import type { AccessContextRows } from "../../plugins/access-cache.ts";
 
 export function accessContextRepository(db: Knex) {
-  return {
-    async load(userId: string): Promise<AccessContextRows> {
-      const [memberRows, participantRows] = await Promise.all([
-        db("member").where({ userId }).select<AccessContextRows["memberRows"]>("organizationId", "role"),
-        db("project_participants").where({ user_id: userId, status: "active" }).select<AccessContextRows["participantRows"]>("project_id", "role", "permissions", "grants"),
+  const repository = {
+    async loadMany(userIds: string[]): Promise<Map<string, AccessContextRows>> {
+      const ids = [...new Set(userIds)];
+      if (!ids.length) return new Map();
+      const [members, participants] = await Promise.all([
+        db("member").whereIn("userId", ids).select<(AccessContextRows["memberRows"][number] & { userId: string })[]>("userId", "organizationId", "role"),
+        db("project_participants").whereIn("user_id", ids).where({ status: "active" }).select<(AccessContextRows["participantRows"][number] & { user_id: string })[]>("user_id", "project_id", "role", "permissions", "grants"),
       ]);
-      const orgIds = memberRows.map((row) => row.organizationId);
-      const customRoleRows = orgIds.length && memberRows.some((row) => !BUILTIN_ROLES.has(row.role))
-        ? await db("organizationRole").whereIn("organizationId", orgIds).select<AccessContextRows["customRoleRows"]>("organizationId", "role", "permission") : [];
-      return { memberRows, customRoleRows, participantRows };
+      const orgIds = [...new Set(members.filter((row) => !BUILTIN_ROLES.has(row.role)).map((row) => row.organizationId))];
+      const roles = orgIds.length ? await db("organizationRole").whereIn("organizationId", orgIds).select<AccessContextRows["customRoleRows"]>("organizationId", "role", "permission") : [];
+      return new Map(ids.map((userId) => {
+        const memberRows = members.filter((row) => row.userId === userId).map(({ organizationId, role }) => ({ organizationId, role }));
+        const organizations = new Set(memberRows.filter((row) => !BUILTIN_ROLES.has(row.role)).map((row) => row.organizationId));
+        return [userId, { memberRows, customRoleRows: roles.filter((row) => organizations.has(row.organizationId)),
+          participantRows: participants.filter((row) => row.user_id === userId).map(({ project_id, role, permissions, grants }) => ({ project_id, role, permissions, grants })) }];
+      }));
     },
   };
+  return { ...repository, async load(userId: string): Promise<AccessContextRows> {
+    return (await repository.loadMany([userId])).get(userId)!;
+  } };
 }

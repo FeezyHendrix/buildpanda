@@ -97,3 +97,7 @@ export interface UpdateMaterialApprovalInput {
   dueDate?: string | null;
   requestedReviewerId?: string | null;
 }
+
+export interface MaterialApprovalGuardReader {
+  get(projectId: string, approvalId: string): Promise<Pick<MaterialApproval, "requestedReviewerId" | "status">>;
+}

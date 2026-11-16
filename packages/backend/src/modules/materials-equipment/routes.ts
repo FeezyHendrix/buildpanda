@@ -87,7 +87,8 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: materialBody, response: { 200: materialOrderResponse } } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "materials", "request");
-      assertMaterialsAction(request, project, "request");
+      assertMaterialsAction(request, project,
+        request.body.status && MATERIAL_APPROVAL_STATUSES.has(request.body.status) ? "approve" : "request");
       const user = request.requireAuth();
       return service.createMaterialOrder(request.params.id, request.body, user.id);
     },

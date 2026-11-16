@@ -10,7 +10,7 @@ export function messagingAgentIntake(db: Knex) {
         event.channel !== account.channel || event.channelAccountId !== account.channelAccountId)) {
         throw new BadRequestError("Events must belong to the verified messaging account.");
       }
-      if (events.messages.some((message) => message.origin === "web" || !Number.isFinite(message.sentAt.getTime()))) {
+      if (events.messages.some((message) => message.origin === "web" || message.sourceFileId || !Number.isFinite(message.sentAt.getTime()))) {
         throw new BadRequestError("Invalid provider message origin or timestamp.");
       }
       await db.transaction(async (trx) => {

@@ -10,7 +10,7 @@ export function messagingAgentRecoveryService(db: Knex, adapters: MessagingAdapt
   return {
     async retry(userId: string, projectId: string, messageId: string) {
       return db.transaction(async (trx) => {
-        const access = await messagingAgentAccess(trx).project(userId, projectId, "create");
+        const access = await messagingAgentAccess(trx).project(userId, projectId);
         const row = await messagingAgentRecoveryRepository(trx).ownMessage(userId, projectId, messageId);
         if (!row) throw new NotFoundError("Messaging message");
         const repo = messagingAgentRepository(trx);

@@ -1,3 +1,9 @@
+import type { NotificationsService } from "../notifications/service.ts";
+import type { WorkingCalendar } from "../../lib/working-days.ts";
+
+export interface ActivityActor { id: string; name: string }
+export interface ActivitiesDeps { notifications?: NotificationsService; calendarFor?(projectId: string): Promise<WorkingCalendar> }
+
 export type ActivityStatus = "Planned" | "InProgress" | "Completed" | "Cancelled";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 export type Currency = CurrencyCode;

@@ -11,6 +11,7 @@ export function isReviewCommand(value: unknown): value is string {
 }
 
 export function validReviewButtons(value: unknown): value is MessagingReplyButton[] {
+  if (Array.isArray(value) && value.length === 1) return value[0]?.label === "Cancel" && parseReviewButtonCommand(value[0]?.command)?.action === "CANCEL";
   if (!Array.isArray(value) || value.length !== 2 || value[0]?.label !== "Confirm" || value[1]?.label !== "Cancel") return false;
   const confirm = parseReviewButtonCommand(value[0]?.command), cancel = parseReviewButtonCommand(value[1]?.command);
   return confirm?.action === "CONFIRM" && cancel?.action === "CANCEL"

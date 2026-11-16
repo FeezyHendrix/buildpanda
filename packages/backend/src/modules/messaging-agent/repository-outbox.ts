@@ -5,6 +5,17 @@ import type { MessagingDb, MessagingDeliveryStatus, MessagingInboxRow, Messaging
 
 export function messagingAgentOutboxRepository(db: MessagingDb) {
   return {
+    async previousReplyState(row: MessagingOutboxRow): Promise<"ready" | "waiting" | "failed"> {
+      if (!row.reply_group || !row.part_index) return "ready";
+      const previous = await db<MessagingOutboxRow>("messaging_agent_outbox").where({ reply_group: row.reply_group }).where("part_index", "<", row.part_index).select("status");
+      if (previous.some((part) => ["failed", "unknown", "cancelled"].includes(part.status))) return "failed";
+      return previous.some((part) => ["pending", "sending"].includes(part.status)) ? "waiting" : "ready";
+    },
+    async acknowledgeWebReply(id: string): Promise<void> {
+      await db("messaging_agent_outbox").where({ id, status: "pending" })
+        .whereIn("inbox_id", db("messaging_agent_inbox").where({ origin: "web" }).select("id"))
+        .update({ status: "sent", updated_at: db.fn.now() });
+    },
     async enqueueOutbox(input: MessagingOutboxInput): Promise<MessagingOutboxRow> {
       if (input.buttons !== undefined && !validReviewButtons(input.buttons)) throw new ConflictError("Invalid review buttons");
       const source = await db<MessagingInboxRow>("messaging_agent_inbox").where({ id: input.inboxId }).first();
@@ -16,6 +27,8 @@ export function messagingAgentOutboxRepository(db: MessagingDb) {
         conversation_id: input.conversationId ?? null, body: input.body, recipient_id: input.recipientId,
         scope_version: input.scopeVersion ?? null, idempotency_key: input.idempotencyKey,
         buttons: input.buttons ? db.raw("?::jsonb", [JSON.stringify(input.buttons)]) : null,
+        part_index: input.parts?.index ?? 0, part_count: input.parts?.count ?? 1, reply_group: input.parts?.group ?? null,
+        review_id: input.review?.id ?? null, review_version: input.review?.version ?? null, review_status: input.review?.status ?? null,
       }).onConflict("idempotency_key").ignore().returning("*");
       if (row) return row;
       const existing = (await db<MessagingOutboxRow>("messaging_agent_outbox").where({ idempotency_key: input.idempotencyKey }).first())!;

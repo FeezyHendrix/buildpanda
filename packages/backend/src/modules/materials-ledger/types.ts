@@ -199,3 +199,84 @@ export interface CatalogPolicyPatch {
   preferred_supplier_id?: string | null;
   auto_reorder_enabled?: boolean;
 }
+
+export interface LogEntryInput {
+  entryType: Exclude<LedgerEntryType, "VOID">;
+  materialName: string;
+  unit: string;
+  quantity: number;
+  locationKey?: string | null;
+  stageId?: string | null;
+  occurredAt?: string | null;
+  materialOrderId?: string | null;
+  taskId?: string | null;
+  activityId?: string | null;
+  fileIds?: string[];
+  reason?: string | null;
+  notesHtml?: string | null;
+  idempotencyKey?: string | null;
+  supplier?: string | null;
+  deliveryNote?: string | null;
+  /** Internal workflows can hold a claim Pending; normal site logs default to Approved. */
+  approvalStatus?: "Pending" | "Approved";
+}
+
+export interface LogEntryResult {
+  entry: LedgerEntry;
+  duplicate: boolean;
+  negativeStock: boolean;
+  onHandQty: number;
+}
+
+/** The order a receipt is logged against, as the ledger needs it. */
+export interface ReceiptOrder {
+  materialName: string;
+  unit: string;
+  stageId: string | null;
+  /** Cancelled and rejected orders take no more goods. */
+  receivable: boolean;
+}
+
+export interface LedgerSideEffects {
+  /** Resolves an order a receipt names; null when it is not on the project. */
+  receiptOrder?: (projectId: string, orderId: string) => Promise<ReceiptOrder | null>;
+  /**
+   * The one open order a receipt of this material must be for, when there is
+   * exactly one. With two or more the crew has to say which; none means an
+   * unplanned delivery.
+   */
+  soleOpenOrderFor?: (projectId: string, materialName: string) => Promise<string | null>;
+  /**
+   * A crew receipt against an order has just been accepted: record it on the
+   * order as a delivery (status, cost) without posting the stock twice.
+   */
+  onReceiptApproved?: (info: {
+    projectId: string;
+    entryId: string;
+    materialOrderId: string;
+    quantity: number;
+    occurredAt: string;
+    deliveryNote: string | null;
+    actorId: string;
+  }) => Promise<void>;
+  onNegativeStock?: (info: {
+    projectId: string;
+    materialName: string;
+    onHandQty: number;
+    entryId: string;
+    actorId: string | null;
+  }) => void | Promise<void>;
+  onLowStock?: (info: {
+    projectId: string;
+    materialId: string;
+    materialName: string;
+    unit: string;
+    onHandQty: number;
+    lowStockThreshold: number;
+    reorderQuantity: number | null;
+    leadTimeDays: number | null;
+    preferredSupplierId: string | null;
+    autoReorderEnabled: boolean;
+    actorId: string | null;
+  }) => void | Promise<void>;
+}

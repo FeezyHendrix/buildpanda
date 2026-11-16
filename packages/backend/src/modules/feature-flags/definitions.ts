@@ -68,7 +68,7 @@ export const FEATURE_FLAGS = [
     group: "Project controls",
     description: "Document library, versions, uploads and file shares.",
     enabledByDefault: true,
-    routePrefixes: ["/projects/:id/documents", "/files", "/share"],
+    routePrefixes: ["/projects/:id/documents", "/share"],
   },
   {
     key: "projects.schedule",

@@ -16,15 +16,15 @@ import type {
 
 export type { CreateDocumentInput, EditDocumentInput, AddVersionInput } from "./types.ts";
 
-function notifyDocumentUploaded(
+async function notifyDocumentUploaded(
   deps: DocumentsDeps,
   recipientId: string | null | undefined,
   projectId: string,
   fileName: string,
   actorId: string,
-): void {
+): Promise<void> {
   if (!deps.notifications || !recipientId || recipientId === actorId) return;
-  void deps.notifications
+  await deps.notifications
     .notify(recipientId, "document_uploaded", {
       title: "A document was uploaded",
       body: fileName,
@@ -96,6 +96,11 @@ export function documentsService(
   files: FilesRepository,
   deps: DocumentsDeps = {},
 ) {
+  async function requireSupersededProject(projectId: string, documentId: string | null | undefined) {
+    if (!documentId) return;
+    const document = await repository.findDocumentById(documentId);
+    if (!document || document.project_id !== projectId) throw new NotFoundError("Superseded document in this project");
+  }
   return {
     async listProjectMedia(projectId: string) {
       const rows = await repository.listProjectMediaSources(projectId);
@@ -134,6 +139,7 @@ export function documentsService(
       input: CreateDocumentInput,
       ownerId: string,
     ): Promise<ProjectDocument> {
+      await requireSupersededProject(projectId, input.supersedesId);
       const category = input.categoryId ? await repository.findCategoryById(input.categoryId) : null;
       if (input.categoryId && !category) throw new NotFoundError("Document category");
 
@@ -194,9 +200,10 @@ export function documentsService(
         versionCount = 1;
       }
 
-      const recipientIds = await repository.projectRecipientIds(projectId);
-      for (const recipientId of recipientIds) {
-        notifyDocumentUploaded(deps, recipientId, projectId, row.file_name, ownerId);
+      if (deps.notifications && deps.notificationRecipients) {
+        const candidates = await repository.projectRecipientIds(projectId);
+        const recipients = await deps.notificationRecipients(candidates, projectId);
+        await Promise.all(recipients.map((recipientId) => notifyDocumentUploaded(deps, recipientId, projectId, row.file_name, ownerId)));
       }
 
       return toDocument(row, category ?? null, versionCount);
@@ -211,6 +218,7 @@ export function documentsService(
       if (!existing || existing.project_id !== projectId) {
         throw new NotFoundError("Document");
       }
+      await requireSupersededProject(projectId, input.supersedesId);
 
       const patch: Parameters<typeof repository.update>[1] = {};
       let category: CategoryRow | null = null;

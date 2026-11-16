@@ -1,3 +1,9 @@
+import type { AuthorizationRequest } from "../../lib/authorization-request.ts";
+
+export interface AccessComputationRequest extends AuthorizationRequest {
+  user?: { id: string } | null;
+}
+
 export const PARTICIPANT_STATUSES = ["invited", "active", "revoked"] as const;
 export type ParticipantStatus = (typeof PARTICIPANT_STATUSES)[number];
 

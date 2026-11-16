@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Button } from "@field-ui/button";
 import { Badge } from "@field-ui/badge";
 import type { AgentConnection, AgentSession, ChannelOption, LinkCode } from "../api/agent";
+import type { ToolCatalog } from "../api/tool-types";
 import { agentApi } from "../api/agent";
 import { useAgentMutation } from "../hooks/use-agent";
 import { ErrorMessage } from "./notice";
+import { hasCaptureScope } from "./capture-scope";
 
 function safeConnectUrl(value: string | null): string | null {
   if (!value) return null;
@@ -14,9 +16,10 @@ function safeConnectUrl(value: string | null): string | null {
   } catch { return null; }
 }
 
-export function ConnectionPanel({ channel, connection, session }: { channel: ChannelOption; connection: AgentConnection | null; session: AgentSession }) {
+export function ConnectionPanel({ channel, connection, session, catalog }: { channel: ChannelOption; connection: AgentConnection | null; session: AgentSession; catalog?: ToolCatalog }) {
   const [link, setLink] = useState<LinkCode | null>(null);
   const connect = useAgentMutation(async () => {
+    if (!channel.enabled || (!session.capabilities?.capture && !session.capabilities?.read) || !hasCaptureScope(session, catalog)) return;
     setLink(await agentApi.link(channel, { projectId: session.projectId, buildingId: session.buildingId }));
   });
   const unlink = useAgentMutation(async () => {
@@ -24,8 +27,8 @@ export function ConnectionPanel({ channel, connection, session }: { channel: Cha
     await agentApi.unlink(connection.id);
     setLink(null);
   });
-  const canCreate = session.permissions.dailyLog?.includes("create") === true;
-  const ready = channel.enabled && Boolean(session.buildingId) && canCreate;
+  const canCreate = session.capabilities?.capture === true || session.capabilities?.read === true;
+  const ready = channel.enabled && hasCaptureScope(session, catalog) && canCreate;
   const expired = Boolean(link && new Date(link.expiresAt).getTime() <= Date.now());
   const connectUrl = safeConnectUrl(link?.connectUrl ?? null);
 

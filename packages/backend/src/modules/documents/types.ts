@@ -133,4 +133,5 @@ export interface AddVersionInput {
 
 export interface DocumentsDeps {
   notifications?: NotificationsService;
+  notificationRecipients?: (userIds: string[], projectId: string) => Promise<string[]>;
 }

@@ -7,7 +7,7 @@ import type { MessagingActionRow, MessagingProposalRow } from "./types.ts";
 
 const timestamp = "2026-11-16T10:00:00.000Z";
 const proposal: MessagingProposalRow = {
-  id: "maproposal_review-123", conversation_id: "conversation-a", inbox_id: "inbox-a",
+  clarification: null, id: "maproposal_review-123", conversation_id: "conversation-a", inbox_id: "inbox-a",
   organization_id: "organization-a", project_id: "project-a", building_id: "building-a",
   scope_version: 1, version: 7, status: "draft", source_text: "Original site update",
   source_kind: "text", source_file_id: null, confirmed_at: null, created_at: timestamp, updated_at: timestamp,
@@ -52,7 +52,7 @@ test("saved and cancelled receipts have clear sections without confirmation inst
   assert.equal(proposalReceipt(completed, actions), `Saved 1 daily-log action.\n\nReference: ${proposal.id}`);
   assert.match(proposalReceipt(completed, [...actions, actions[0]!]), /^Saved 2 daily-log actions\./);
   const cancelled = { ...proposal, status: "cancelled" as const };
-  assert.equal(proposalReceipt(cancelled, actions), "Review cancelled.\n\nNo new daily-log records were saved.");
+  assert.equal(proposalReceipt(cancelled, actions), "Review cancelled.\n\nNo new records were saved.");
   for (const terminal of [completed, cancelled]) {
     assert.doesNotMatch(proposalReceipt(terminal, actions), /Use Confirm|CONFIRM |CANCEL |send a correction/);
     assert.equal(proposalButtons(terminal), undefined);
@@ -81,11 +81,12 @@ test("full messages group project scope, optional voice attribution and the revi
 });
 
 test("help and connection replies separate guidance, selected scope and opt-out instructions", () => {
-  assert.ok(MESSAGING_HELP.startsWith("Panda Agent\n\nSend a daily site note"));
+  assert.ok(MESSAGING_HELP.startsWith("Panda Agent\n\nUse Field Tools"));
   assert.match(MESSAGING_HELP, /\n\nHow it works\n1\.[^\n]+\n2\.[^\n]+\n3\./);
   assert.match(MESSAGING_HELP, /\n\nTap Confirm to save or Cancel to discard/);
   assert.match(MESSAGING_HELP, /\n\nReply STOP to opt out\./);
-  assert.ok(MESSAGING_HELP.endsWith("\n\nOther field actions are not enabled yet."));
+  assert.match(MESSAGING_HELP, /current access allows/);
+  assert.match(MESSAGING_HELP, /documents and drawings/);
   const connected = connectionReceipt("Site <A> & B", "Block 2");
   assert.ok(connected.startsWith("Connected to Panda.\n\nProject: Site <A> & B\nBuilding: Block 2\n\n"));
   assert.match(connected, /\n\nTap Confirm or Cancel on the review\./);

@@ -39,9 +39,9 @@ test("Telegram voice and audio preserve downloadable file IDs and supported MIME
     assert.equal(withoutMime.mediaMimeType, null);
     assert.equal(parse({ [kind]: { file_id: "Audio_File-123", mime_type: "video/mp4" } }).messages[0]!.type, "unsupported");
   }
-  const unsupported = parse({ document: { file_id: "pdf" }, caption: "Not a daily log" }).messages[0]!;
-  assert.equal(unsupported.type, "unsupported");
-  assert.equal(unsupported.text, null);
+  const document = parse({ document: { file_id: "pdf" }, caption: "Delivery note" }).messages[0]!;
+  assert.equal(document.type, "attachment");
+  assert.equal(document.text, "Delivery note");
 });
 
 test("Telegram commands reach shared commands, and commands addressed to other bots are ignored", () => {

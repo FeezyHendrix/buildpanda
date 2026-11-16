@@ -124,6 +124,15 @@ export function contractsService(repository: ContractsRepository, deps: Contract
       return decorate(projectId, await repository.listByProject(projectId));
     },
 
+    /** Planning and read-only tools must not create or amend a contractual record. */
+    async listRecorded(projectId: string): Promise<Contract[]> {
+      return decorate(projectId, await repository.listByProject(projectId));
+    },
+
+    async recordedMainContractId(projectId: string): Promise<string | null> {
+      return (await repository.findMain(projectId))?.id ?? null;
+    },
+
     async get(projectId: string, contractId: string): Promise<Contract> {
       const [contract] = await decorate(projectId, [await owned(projectId, contractId)]);
       if (!contract) throw new NotFoundError("Contract");

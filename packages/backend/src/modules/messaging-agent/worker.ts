@@ -15,6 +15,7 @@ export function messagingAgentWorker(db: Knex, options: MessagingWorkerOptions) 
     adapters: options.adapters,
     files: options.files ?? filesService(filesRepository(db)), translate: options.translate ?? translateAudioToEnglish,
     draft: options.draft ?? draftDailyActions, now: options.now ?? (() => new Date()),
+    queue: options.queue,
   };
   const repo = messagingAgentRepository(db);
 
