@@ -4,6 +4,7 @@ import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Spinner } from "@/components/atoms/spinner";
 import { Navbar } from "@/components/organisms/navbar";
 import { UserMenu } from "@/components/molecules/user-menu";
+import { ProductDiscoveryModal } from "@/components/molecules/product-discovery-modal";
 import { LAST_SUITE_KEY, SUITE_CONSTRUCTION } from "@/components/molecules/suite-switcher";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 
@@ -41,6 +42,7 @@ export default function DashboardLayout() {
           <Outlet />
         </ErrorBoundary>
       </main>
+      <ProductDiscoveryModal />
     </div>
   );
 }

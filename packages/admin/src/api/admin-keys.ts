@@ -8,6 +8,7 @@ export const adminKeys = {
   metricsOverview: (range?: DateRangeArgs) => [...adminKeys.all, "metrics", "overview", range] as const,
   metricsGrowth: (range?: DateRangeArgs) => [...adminKeys.all, "metrics", "growth", range] as const,
   metricsSignupJourney: (range?: DateRangeArgs) => [...adminKeys.all, "metrics", "signup-journey", range] as const,
+  productDiscovery: () => [...adminKeys.all, "product-discovery"] as const,
   metricsEngagement: (range?: DateRangeArgs) => [...adminKeys.all, "metrics", "engagement", range] as const,
   metricsAiOps: (range?: DateRangeArgs) => [...adminKeys.all, "metrics", "ai-ops", range] as const,
   auditLog: (args?: { targetId?: string; adminUserId?: string; limit?: number; offset?: number }) => [...adminKeys.all, "audit-log", args] as const,
