@@ -1,3 +1,5 @@
+import { offlineAnswer } from "./product-facts";
+
 export type FaqItem = { id: string; question: string; answer: string };
 
 export const faq = {
@@ -12,7 +14,7 @@ export const faq = {
   },
 } as const;
 
-/** Same questions and answers as the current site (packages/web/lib/faq.ts). */
+/** Public answers; offline access shares the product facts' permission limits. */
 export const faqItems: ReadonlyArray<FaqItem> = [
   {
     id: "cost",
@@ -42,7 +44,7 @@ export const faqItems: ReadonlyArray<FaqItem> = [
     id: "bad-signal",
     question: "Does it work on a phone with bad signal?",
     answer:
-      "The site app holds the day's work on the device and sends it when the signal comes back. Nothing is lost in the meantime.",
+      offlineAnswer,
   },
   {
     id: "bill-of-quantities",

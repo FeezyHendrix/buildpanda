@@ -11,8 +11,10 @@ FROM base AS build
 # service variables of the same name must reach this stage as build args.
 ARG NEXT_PUBLIC_LEADS_ENDPOINT
 ARG NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+ARG NEXT_PUBLIC_BING_SITE_VERIFICATION
 ENV NEXT_PUBLIC_LEADS_ENDPOINT=$NEXT_PUBLIC_LEADS_ENDPOINT
 ENV NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=$NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+ENV NEXT_PUBLIC_BING_SITE_VERIFICATION=$NEXT_PUBLIC_BING_SITE_VERIFICATION
 COPY package.json ./
 # No workspace dependencies, so the package installs standalone and the image
 # does not need the rest of the monorepo.

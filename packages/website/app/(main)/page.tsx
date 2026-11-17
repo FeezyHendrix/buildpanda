@@ -8,6 +8,9 @@ import { Takeoff } from "@/components/sections/takeoff/takeoff";
 import { Workspace } from "@/components/sections/workspace/workspace";
 import { softwareJsonLd } from "@/lib/json-ld";
 import { pageMetadata } from "@/lib/seo";
+import { marketCopy } from "@/content/markets/copy";
+import { ButtonLink } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
 
 // The home page is the contractors' page: the title leads with the phrase
 // they search for, the description with what they do on it.
@@ -16,7 +19,7 @@ export const metadata: Metadata = pageMetadata({
   title: "Construction management software for Africa",
   socialTitle: "BuildPanda: run the entire build from one system",
   description:
-    "Construction management software built for contractors in Nigeria and across Africa: takeoffs and estimates, schedules, site diaries, inspections, materials and payment certificates in one system, online or offline.",
+    "Construction management software for contractors across Africa: takeoffs and estimates, schedules, site diaries, inspections, materials and payment certificates in one system, online or offline.",
 });
 
 export default function HomePage() {
@@ -28,6 +31,13 @@ export default function HomePage() {
       <Takeoff />
       <Site />
       <Workspace />
+      <Section theme="light" className="border-t border-line">
+        <div className="site-container max-w-[64rem] space-y-5 py-12 lg:py-16">
+          <h2 className="text-3xl font-semibold">{marketCopy.en.title}</h2>
+          <p className="max-w-[48rem] leading-relaxed">{marketCopy.en.lead}</p>
+          <ButtonLink variant="outline" href="/africa/">Explore country guides</ButtonLink>
+        </div>
+      </Section>
       <Faq structuredData />
     </main>
   );

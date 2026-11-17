@@ -3,6 +3,7 @@ export type Country = { code: string; name: string; dial: string };
 /**
  * Countries offered in phone fields, from the product's own list. The first is
  * the default; the markets we sell into come first and the rest follow A to Z.
+ * Every African market in ./markets/countries is included.
  */
 export const countries: ReadonlyArray<Country> = [
   { code: "NG", name: "Nigeria", dial: "+234" },
@@ -55,10 +56,12 @@ export const countries: ReadonlyArray<Country> = [
   { code: "KM", name: "Comoros", dial: "+269" },
   { code: "CG", name: "Congo", dial: "+242" },
   { code: "CR", name: "Costa Rica", dial: "+506" },
+  { code: "CI", name: "Côte d’Ivoire", dial: "+225" },
   { code: "HR", name: "Croatia", dial: "+385" },
   { code: "CU", name: "Cuba", dial: "+53" },
   { code: "CY", name: "Cyprus", dial: "+357" },
   { code: "CZ", name: "Czech Republic", dial: "+420" },
+  { code: "CD", name: "Democratic Republic of the Congo", dial: "+243" },
   { code: "DK", name: "Denmark", dial: "+45" },
   { code: "DJ", name: "Djibouti", dial: "+253" },
   { code: "DM", name: "Dominica", dial: "+1-767" },
@@ -69,6 +72,7 @@ export const countries: ReadonlyArray<Country> = [
   { code: "GQ", name: "Equatorial Guinea", dial: "+240" },
   { code: "ER", name: "Eritrea", dial: "+291" },
   { code: "EE", name: "Estonia", dial: "+372" },
+  { code: "SZ", name: "Eswatini", dial: "+268" },
   { code: "ET", name: "Ethiopia", dial: "+251" },
   { code: "FJ", name: "Fiji", dial: "+679" },
   { code: "FI", name: "Finland", dial: "+358" },
@@ -114,6 +118,8 @@ export const countries: ReadonlyArray<Country> = [
   { code: "MV", name: "Maldives", dial: "+960" },
   { code: "ML", name: "Mali", dial: "+223" },
   { code: "MT", name: "Malta", dial: "+356" },
+  { code: "MR", name: "Mauritania", dial: "+222" },
+  { code: "MU", name: "Mauritius", dial: "+230" },
   { code: "MX", name: "Mexico", dial: "+52" },
   { code: "MD", name: "Moldova", dial: "+373" },
   { code: "MC", name: "Monaco", dial: "+377" },
@@ -144,9 +150,12 @@ export const countries: ReadonlyArray<Country> = [
   { code: "RO", name: "Romania", dial: "+40" },
   { code: "RU", name: "Russia", dial: "+7" },
   { code: "RW", name: "Rwanda", dial: "+250" },
+  { code: "ST", name: "São Tomé and Príncipe", dial: "+239" },
   { code: "SA", name: "Saudi Arabia", dial: "+966" },
   { code: "SN", name: "Senegal", dial: "+221" },
   { code: "RS", name: "Serbia", dial: "+381" },
+  { code: "SC", name: "Seychelles", dial: "+248" },
+  { code: "SL", name: "Sierra Leone", dial: "+232" },
   { code: "SG", name: "Singapore", dial: "+65" },
   { code: "SK", name: "Slovakia", dial: "+421" },
   { code: "SI", name: "Slovenia", dial: "+386" },
