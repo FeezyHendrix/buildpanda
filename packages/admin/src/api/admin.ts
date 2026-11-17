@@ -1,4 +1,5 @@
 import api from "./client";
+import type { AdminProductDiscovery } from "./product-discovery";
 
 export interface Paginated<T> {
   rows: T[];
@@ -366,6 +367,7 @@ export const adminApi = {
     api.get<AdminMetricsOverview>("/admin/metrics/overview", { params: args }).then((r) => r.data),
   metricsGrowth: (args?: { from?: string; to?: string }) =>
     api.get<AdminMetricsGrowth>("/admin/metrics/growth", { params: args }).then((r) => r.data),
+  productDiscovery: () => api.get<AdminProductDiscovery>("/admin/product-discovery").then((r) => r.data),
   metricsEngagement: (args?: { from?: string; to?: string }) =>
     api.get<AdminMetricsEngagement>("/admin/metrics/engagement", { params: args }).then((r) => r.data),
   metricsAiOps: (args?: { from?: string; to?: string }) =>

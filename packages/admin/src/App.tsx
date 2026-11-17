@@ -5,6 +5,7 @@ import SignInPage from "@/pages/sign-in";
 import DashboardPage from "@/pages/dashboard";
 import GrowthPage from "@/pages/growth";
 import EngagementPage from "@/pages/engagement";
+import ProductDiscoveryPage from "@/pages/product-discovery";
 import AiOpsPage from "@/pages/ai-ops";
 import UsersPage from "@/pages/users";
 import UserDetailPage from "@/pages/user-detail";
@@ -28,6 +29,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<DashboardPage />} />
             <Route path="growth" element={<GrowthPage />} />
+            <Route path="product-discovery" element={<ProductDiscoveryPage />} />
             <Route path="engagement" element={<EngagementPage />} />
             <Route path="ops" element={<AiOpsPage />} />
             <Route path="users" element={<UsersPage />} />

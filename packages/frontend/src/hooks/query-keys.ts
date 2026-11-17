@@ -397,6 +397,10 @@ export const proposalTemplateKeys = {
 // The take-off surface keeps its keys in one module of its own.
 export * from "./query-keys-precon";
 
+export const productDiscoveryKeys = {
+  status: () => ["product-discovery"] as const,
+};
+
 export const onboardingKeys = {
   all: ["onboarding"] as const,
   // Scoped by org: completion lives on the organization, and the active org is
