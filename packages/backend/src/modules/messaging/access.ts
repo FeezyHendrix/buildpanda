@@ -6,6 +6,8 @@ import { requireConversationPermission } from "./permission.ts";
 import { fileAccessRepository } from "../files/access-repository.ts";
 import { filesRepository } from "../files/repository.ts";
 import { requireProjectFileReferences } from "../files/attachment-access.ts";
+import { requireMessageSend, requireWorkspaceRecipient } from "./send-access.ts";
+import type { SendMessageInput } from "./types.ts";
 export { filterConversations, requireConversationPermission } from "./permission.ts";
 
 export function registerMessagingAccess(fastify: FastifyInstance) {
@@ -17,10 +19,13 @@ export function registerMessagingAccess(fastify: FastifyInstance) {
     const route = request.routeOptions.url ?? "";
     const user = request.requireAuth();
     if (route === "/channels/dm") {
-      await requireConversationPermission(request, { projectId: null, organizationId: null }, "send");
       const targetId = (request.body as { userId: string }).userId;
-      const target = await accessRepository.workspaceMember(targetId, request.activeOrganizationId!);
-      if (!target) throw new ForbiddenError("Direct messages are available to members of this workspace.");
+      await requireWorkspaceRecipient(request, accessRepository, targetId);
+      return;
+    }
+    if (route === "/channels/:id/messages" && request.method === "POST") {
+      const channel = await requireMessageSend(request, repository, (request.params as { id: string }).id, request.body as SendMessageInput);
+      await requireProjectFileReferences(request, channel.project_id ?? undefined, files, fileAccess);
       return;
     }
     let channelId: string | undefined;

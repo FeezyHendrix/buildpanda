@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { adminRepository, type ListParams } from "./repository.ts";
 import { adminAuditRepository } from "./audit-repository.ts";
 import adminMetricsRoutes from "./metrics-routes.ts";
+import { adminProductDiscoveryRoutes } from "../product-discovery/routes.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
 
@@ -89,6 +90,7 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get("/admin/overview", async () => repo.overview());
 
   await fastify.register(adminMetricsRoutes);
+  await fastify.register(adminProductDiscoveryRoutes);
 
   // --- Users ---
   fastify.get<{ Querystring: ListQuery }>(

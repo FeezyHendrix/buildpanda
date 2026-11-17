@@ -1,9 +1,14 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { toIso } from "../../lib/dates.ts";
+import { canonicalUnit } from "./units.ts";
+import { validateMaterialQuantity } from "./quantity.ts";
 import type { CatalogPolicyPatch, MaterialsLedgerRepository } from "./repository.ts";
 import type {
   LedgerEntry,
+  LogEntryInput,
+  LogEntryResult,
+  LedgerSideEffects,
   LedgerEntryFileRow,
   LedgerEntryRow,
   LedgerEntryType,
@@ -16,91 +21,6 @@ import type {
 
 const FUTURE_SKEW_MS = 15 * 60 * 1000;
 const PAST_SKEW_MS = 90 * 24 * 60 * 60 * 1000;
-
-export interface LogEntryInput {
-  entryType: Exclude<LedgerEntryType, "VOID">;
-  materialName: string;
-  unit: string;
-  quantity: number;
-  locationKey?: string | null;
-  stageId?: string | null;
-  occurredAt?: string | null;
-  materialOrderId?: string | null;
-  taskId?: string | null;
-  activityId?: string | null;
-  fileIds?: string[];
-  reason?: string | null;
-  notesHtml?: string | null;
-  idempotencyKey?: string | null;
-  supplier?: string | null;
-  deliveryNote?: string | null;
-  /**
-   * A receipt raised from a signed delivery note is already a fact, so it is
-   * posted Approved. Anything typed straight into the log is a claim and stays
-   * Pending until somebody accepts it.
-   */
-  approvalStatus?: "Pending" | "Approved";
-}
-
-export interface LogEntryResult {
-  entry: LedgerEntry;
-  duplicate: boolean;
-  negativeStock: boolean;
-  onHandQty: number;
-}
-
-/** The order a receipt is logged against, as the ledger needs it. */
-export interface ReceiptOrder {
-  materialName: string;
-  unit: string;
-  stageId: string | null;
-  /** Cancelled and rejected orders take no more goods. */
-  receivable: boolean;
-}
-
-export interface LedgerSideEffects {
-  /** Resolves an order a receipt names; null when it is not on the project. */
-  receiptOrder?: (projectId: string, orderId: string) => Promise<ReceiptOrder | null>;
-  /**
-   * The one open order a receipt of this material must be for, when there is
-   * exactly one. With two or more the crew has to say which; none means an
-   * unplanned delivery.
-   */
-  soleOpenOrderFor?: (projectId: string, materialName: string) => Promise<string | null>;
-  /**
-   * A crew receipt against an order has just been accepted: record it on the
-   * order as a delivery (status, cost) without posting the stock twice.
-   */
-  onReceiptApproved?: (info: {
-    projectId: string;
-    entryId: string;
-    materialOrderId: string;
-    quantity: number;
-    occurredAt: string;
-    deliveryNote: string | null;
-    actorId: string;
-  }) => Promise<void>;
-  onNegativeStock?: (info: {
-    projectId: string;
-    materialName: string;
-    onHandQty: number;
-    entryId: string;
-    actorId: string | null;
-  }) => void;
-  onLowStock?: (info: {
-    projectId: string;
-    materialId: string;
-    materialName: string;
-    unit: string;
-    onHandQty: number;
-    lowStockThreshold: number;
-    reorderQuantity: number | null;
-    leadTimeDays: number | null;
-    preferredSupplierId: string | null;
-    autoReorderEnabled: boolean;
-    actorId: string | null;
-  }) => void;
-}
 
 function fileUrl(fileId: string): string {
   return `/files/${fileId}/download`;
@@ -214,6 +134,9 @@ export function materialsLedgerService(
     if (!sideEffects.receiptOrder) return input;
     if (!order) throw new BadRequestError("That material order is not on this project");
     if (!order.receivable) throw new BadRequestError("That material order is closed and cannot receive goods");
+    if (canonicalUnit(input.unit) !== canonicalUnit(order.unit)) {
+      throw new BadRequestError("The delivered quantity uses a different unit from the order. Confirm the quantity in the existing order's unit; Panda cannot guess a conversion.");
+    }
     return {
       ...input,
       materialName: order.materialName,
@@ -223,6 +146,8 @@ export function materialsLedgerService(
   }
 
   return {
+    getEntry: loadEntry,
+
     async getStock(projectId: string): Promise<StockLevel[]> {
       const rows = await repository.listStock(projectId);
       return rows.map(toStock);
@@ -280,7 +205,7 @@ export function materialsLedgerService(
     },
 
     async logEntry(projectId: string, rawInput: LogEntryInput, actorId: string | null): Promise<LogEntryResult> {
-      if (rawInput.quantity <= 0) throw new BadRequestError("Quantity must be greater than zero");
+      validateMaterialQuantity(rawInput.quantity);
       const input = await againstOrder(projectId, rawInput);
       const unit = (input.unit || "item").trim();
       const catalog = await repository.findOrCreateCatalog(projectId, input.materialName, unit, actorId);
@@ -318,7 +243,7 @@ export function materialsLedgerService(
       });
 
       if (!result.duplicate && result.negativeStock) {
-        sideEffects.onNegativeStock?.({
+        await sideEffects.onNegativeStock?.({
           projectId,
           materialName: catalog.name,
           onHandQty: result.onHandQty,
@@ -329,7 +254,7 @@ export function materialsLedgerService(
 
       const threshold = catalog.low_stock_threshold === null ? null : Number(catalog.low_stock_threshold);
       if (!result.duplicate && threshold !== null && result.onHandQty <= threshold) {
-        sideEffects.onLowStock?.({
+        await sideEffects.onLowStock?.({
           projectId,
           materialId: catalog.id,
           materialName: catalog.name,
@@ -414,3 +339,5 @@ export function materialsLedgerService(
 }
 
 export type MaterialsLedgerService = ReturnType<typeof materialsLedgerService>;
+
+export type { LogEntryInput, LogEntryResult, ReceiptOrder, LedgerSideEffects } from "./types.ts";

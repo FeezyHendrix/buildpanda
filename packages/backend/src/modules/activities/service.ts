@@ -17,20 +17,11 @@ import type {
   CreateActivityInput,
   DelayReasonRow,
   UpdateActivityInput,
+  ActivityActor,
+  ActivitiesDeps,
 } from "./types.ts";
 import type { ActivitiesRepository, ActivityUpdatePatch } from "./repository.ts";
-import type { NotificationsService } from "../notifications/service.ts";
-
-interface Actor {
-  id: string;
-  name: string;
-}
-
-export interface ActivitiesDeps {
-  notifications?: NotificationsService;
-  /** The project's working calendar; durations are working days, not calendar days. */
-  calendarFor?(projectId: string): Promise<WorkingCalendar>;
-}
+export type { ActivitiesDeps } from "./types.ts";
 
 /**
  * Status follows the facts on site, it never lags behind them: an activity with
@@ -235,7 +226,7 @@ export function activitiesService(
     async create(
       projectId: string,
       input: CreateActivityInput,
-      actor: Actor,
+      actor: ActivityActor,
     ): Promise<Activity> {
       assertChronology(input.plannedStartAt, input.plannedEndAt, "Planned");
 

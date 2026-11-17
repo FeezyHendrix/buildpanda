@@ -168,6 +168,12 @@ export interface CreateMarkupInput {
   color?: string;
 }
 
+export interface ProjectDrawingTarget {
+  documentId?: string;
+  documentVersionId?: string;
+  markupId?: string;
+}
+
 /**
  * Body of POST /precon/sessions/:sessionId/markups. Pin geometry on a take-off
  * sheet is in sheet points (the space PreconGeometry.vertices uses), not the

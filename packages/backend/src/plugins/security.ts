@@ -7,6 +7,7 @@ import { config } from "../config/index.ts";
 import { clientIp } from "../lib/client-geo.ts";
 import { TooManyRequestsError } from "../lib/errors.ts";
 import { sanitizeHtmlFields } from "../lib/rich-text.ts";
+import { isMessagingWebhook } from "../lib/public-webhooks.ts";
 
 function rateLimitKey(request: FastifyRequest): string {
   return clientIp(request) ?? request.ip;
@@ -49,6 +50,7 @@ const securityPlugin: FastifyPluginAsync = async (fastify) => {
   // runs in whoever opens the record next. Sanitising here rather than in each
   // service covers every route at once, including ones added later.
   fastify.addHook("preHandler", async (request) => {
+    if (isMessagingWebhook(request)) return;
     if (request.body && typeof request.body === "object") {
       request.body = sanitizeHtmlFields(request.body);
     }

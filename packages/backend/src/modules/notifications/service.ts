@@ -59,7 +59,7 @@ function toNotification(row: NotificationRow): Notification {
 
 export function notificationsService(
   repository: NotificationsRepository,
-  queue?: QueueManager,
+  queue?: Pick<QueueManager, "enqueue">,
 ) {
   return {
     async list(userId: string, filters: ListFilters): Promise<NotificationListResult> {

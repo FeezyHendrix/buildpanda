@@ -82,7 +82,7 @@ function toDay(value: Date | string): string {
  */
 export function voiceReportRepository(db: Knex) {
   return {
-    async snapshot(projectId: string, canView: (resource: string) => boolean, sharedOnly: boolean): Promise<ProjectSnapshot> {
+    async snapshot(projectId: string, canView: (resource: string) => boolean, sharedOnly: boolean, includeMaterialsLedger = true): Promise<ProjectSnapshot> {
       const today = new Date().toISOString().slice(0, 10);
       const [
         rfis,
@@ -126,12 +126,12 @@ export function voiceReportRepository(db: Knex) {
             .limit(20)
             .select("id", "name", "status") : [],
           canView("schedule") ? db<DelayReasonPick>("delay_reasons").limit(30).select("code", "name") : [],
-          canView("materials") ? db<LedgerEntryPick>("material_ledger_entries")
+          canView("materials") && includeMaterialsLedger ? db<LedgerEntryPick>("material_ledger_entries")
             .where({ project_id: projectId, status: "Posted" })
             .orderBy("created_at", "desc")
             .limit(10)
             .select("id", "entry_type", "material_name_snapshot", "quantity", "unit_snapshot") : [],
-          canView("materials") ? db<{ name: string; unit: string }>("materials_catalog")
+          canView("materials") && includeMaterialsLedger ? db<{ name: string; unit: string }>("materials_catalog")
             .where({ project_id: projectId, active: true })
             .orderBy("name", "asc")
             .limit(60)

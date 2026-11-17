@@ -1,7 +1,6 @@
-import type { FastifyRequest } from "fastify";
 import { effectiveParticipantGrants, participantRole } from "../../lib/authorization.ts";
 import { statement } from "../../lib/permissions.ts";
-import type { ParticipantRole } from "./types.ts";
+import type { AccessComputationRequest, ParticipantRole } from "./types.ts";
 import { canSeeFullTaskBoard } from "../tasks/access.ts";
 import { canReadReporting } from "../reporting/access.ts";
 
@@ -12,7 +11,7 @@ import { canReadReporting } from "../reporting/access.ts";
  */
 export function computeAccess(
   project: { id: string; owner_id: string | null; organization_id: string | null },
-  request: FastifyRequest,
+  request: AccessComputationRequest,
 ) {
   const ctx = {
     userId: request.user!.id,
@@ -25,7 +24,7 @@ export function computeAccess(
   const scope = { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id };
   const orgRole = project.organization_id ? request.orgRoles.get(project.organization_id) : undefined;
   const pRole = participantRole(scope, ctx);
-  const sections = request.projectSectionPermissions.get(project.id);
+  const sections = request.projectSectionPermissions?.get(project.id);
 
   let relationship: "company" | ParticipantRole | "none" = "none";
   if (orgRole) relationship = "company";
@@ -76,7 +75,7 @@ export function computeAccess(
     sections: sections ?? null,
     capabilities: {
       canViewInternalRfis: project.owner_id === request.user!.id || !!orgRole,
-      createsSharedRfis: request.projectRoles.get(project.id) === "client",
+      createsSharedRfis: request.projectRoles?.get(project.id) === "client",
       canAccessTaskBoard: allows("tasks", "view"),
       canSeeFullTaskBoard: canSeeFullTaskBoard(request, project),
       canSeeAllExpenses: allows("finances", "viewAllExpenses"),

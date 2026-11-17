@@ -169,3 +169,72 @@ export interface RfiDistributionRow {
   token_consumed_at: string | null;
   created_at: string;
 }
+
+
+export interface CreateRfiInput {
+  subject: string;
+  question: string;
+  questionHtml?: string | null;
+  priority?: RfiPriority;
+  ballInCourtId?: string | null;
+  ballInCourtName?: string | null;
+  ballInCourtEmail?: string | null;
+  assigneeRole?: string | null;
+  dueDate?: string | null;
+  costImpact?: boolean;
+  scheduleImpact?: boolean;
+  documentId?: string | null;
+  documentVersionId?: string | null;
+  sourceMarkupId?: string | null;
+}
+
+export interface UpdateRfiInput {
+  subject?: string;
+  question?: string;
+  questionHtml?: string | null;
+  priority?: RfiPriority;
+  ballInCourtId?: string | null;
+  ballInCourtName?: string | null;
+  ballInCourtEmail?: string | null;
+  assigneeRole?: string | null;
+  dueDate?: string | null;
+  costImpact?: boolean;
+  scheduleImpact?: boolean;
+}
+
+export interface RespondInput {
+  body: string;
+  official?: boolean;
+  contentHtml?: string | null;
+  attachments?: RfiCommentAttachment[];
+  references?: RfiCommentReference[];
+}
+
+export interface Actor {
+  id: string;
+  name: string;
+}
+
+export interface DistributionInput {
+  userId?: string | null;
+  email?: string | null;
+  name?: string | null;
+  role?: RfiDistributionRole;
+}
+
+export interface ExternalReplyResult {
+  ok: boolean;
+  rfiSubject: string;
+  rfiNumber: number;
+  reason?: "not_found" | "expired" | "consumed";
+}
+
+export interface ChangeRequestCreator {
+  create(
+    projectId: string,
+    input: { title: string; description?: string | null; costImpact?: number; timeImpactDays?: number },
+    userId: string,
+  ): Promise<{ id: string }>;
+  /** Linking an RFI to a change the commercial team already raised. */
+  get(projectId: string, changeRequestId: string): Promise<{ id: string }>;
+}

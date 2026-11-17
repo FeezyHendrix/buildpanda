@@ -140,7 +140,7 @@ export const commentBody = {
   type: "object",
   required: ["body"],
   additionalProperties: false,
-  properties: { body: { type: "string", minLength: 1, maxLength: 4000 } },
+  properties: { body: { type: "string", minLength: 1, maxLength: 4000 }, contentHtml: respondBody.properties.contentHtml, attachments: respondBody.properties.attachments, references: respondBody.properties.references },
 } as const;
 
 export const distributionBody = {

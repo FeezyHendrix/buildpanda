@@ -4,92 +4,20 @@ import { filesRepository } from "../files/repository.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { documentsRepository } from "./repository.ts";
+import { documentNotificationAccess } from "./notification-access.ts";
 import {
   documentsService,
   type AddVersionInput,
   type CreateDocumentInput,
   type EditDocumentInput,
 } from "./service.ts";
-import { DOCUMENT_VISIBILITIES } from "./types.ts";
-
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
-
-const documentParams = {
-  type: "object",
-  required: ["id", "documentId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    documentId: { type: "string", minLength: 1 },
-  },
-} as const;
-
-const registerFields = {
-  title: { type: ["string", "null"], maxLength: 300 },
-  revision: { type: ["string", "null"], maxLength: 50 },
-  supersedesId: { type: ["string", "null"], maxLength: 100 },
-  visibility: { type: "string", enum: [...DOCUMENT_VISIBILITIES] },
-  documentDate: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-} as const;
-
-const createDocumentBody = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    categoryId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
-    fileId: { type: "string", minLength: 1, maxLength: 100 },
-    fileName: { type: "string", minLength: 1, maxLength: 255 },
-    size: { type: "string", minLength: 1, maxLength: 50 },
-    uploadedAt: { type: "string", minLength: 1, maxLength: 100 },
-    status: { type: "string", enum: ["Verified", "Pending", "Expired"] },
-    ...registerFields,
-  },
-} as const;
-
-const editDocumentBody = {
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: {
-    categoryId: { type: "string", minLength: 1, maxLength: 100 },
-    fileName: { type: "string", minLength: 1, maxLength: 255 },
-    status: { type: "string", enum: ["Verified", "Pending", "Expired"] },
-    ...registerFields,
-  },
-} as const;
-
-const versionViewParams = {
-  type: "object",
-  required: ["id", "documentId", "versionId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    documentId: { type: "string", minLength: 1 },
-    versionId: { type: "string", minLength: 1 },
-  },
-} as const;
-
-const addVersionBody = {
-  type: "object",
-  required: ["fileId"],
-  additionalProperties: false,
-  properties: {
-    fileId: { type: "string", minLength: 1, maxLength: 100 },
-    revisionLabel: { type: "string", minLength: 1, maxLength: 50 },
-    notes: { type: "string", maxLength: 1000 },
-  },
-} as const;
+import { projectIdParams, documentParams, versionViewParams, createDocumentBody, editDocumentBody, addVersionBody } from "./route-schemas.ts";
 
 const documentRoutes: FastifyPluginAsync = async (fastify) => {
   const service = documentsService(
     documentsRepository(fastify.db),
     filesRepository(fastify.db),
-    { notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue) },
+    { notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue), notificationRecipients: documentNotificationAccess(fastify.db) },
   );
 
   fastify.get<{ Params: { id: string } }>(
@@ -190,10 +118,13 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
         request.params.versionId,
       );
       const stream = await openStoredFile(file.storagePath);
+      const inline = /^(application\/pdf|image\/(jpeg|png|gif|webp|avif))$/i.test(file.mimeType);
       reply.header("Content-Type", file.mimeType);
+      reply.header("X-Content-Type-Options", "nosniff");
+      if (!inline) reply.header("Content-Security-Policy", "sandbox");
       reply.header(
         "Content-Disposition",
-        `inline; filename="${encodeURIComponent(file.fileName)}"`,
+        `${inline ? "inline" : "attachment"}; filename="${encodeURIComponent(file.fileName)}"`,
       );
       return reply.send(stream);
     },

@@ -7,6 +7,7 @@ import {
 import { ForbiddenError } from "../../../lib/errors.ts";
 import type { AgentTool, ToolPermission } from "./tool-helpers.ts";
 import type { ToolContext } from "./tools.ts";
+import { fieldReadToolPermissions } from "../../field-actions/read-tools-policy.ts";
 
 /**
  * Which resource/action every agent tool needs, mirroring the HTTP route that
@@ -20,12 +21,14 @@ import type { ToolContext } from "./tools.ts";
  * through the API or through Panda AI.
  *
  * `null` means the tool reads no project data of its own: `navigate` returns a
- * path, and the two sweep tools gate each domain they touch individually (see
+ * path, sweep tools gate each domain they touch individually, and conversation
+ * reads enforce the target's project/workspace grants and membership (see
  * sectionsFor callers in tools.ts). Every other tool MUST have an entry —
  * `permissionFor` denies an unknown name, so a tool added without a policy is
  * withheld rather than silently readable by anyone.
  */
 export const TOOL_PERMISSIONS: Record<string, ToolPermission | null> = {
+  ...fieldReadToolPermissions,
   // Composite sweeps — gated per domain inside the tool.
   find_work_records: null,
   get_open_items: null,
@@ -113,6 +116,7 @@ export function callerAccessContext(ctx: ToolContext): EnrichedAccessContext {
 
 /** May the caller read this resource/action on this project? */
 export function canRead(ctx: ToolContext, resource: string, action: string): boolean {
+  if (ctx.readableResource && !ctx.readableResource(resource)) return false;
   return canProjectPermission(ctx.caller.project, callerAccessContext(ctx), resource, action);
 }
 
@@ -138,6 +142,7 @@ export function toolsForCaller(tools: AgentTool[], ctx: ToolContext): AgentTool[
       // async so a refusal is always a rejected promise, never a synchronous
       // throw the caller has to guard separately.
       run: async (runCtx, args) => {
+        if (runCtx.readableResource && !runCtx.readableResource(permission.resource)) throw new ForbiddenError("This record feature is disabled.");
         assertProjectPermission(
           runCtx.caller.project,
           callerAccessContext(runCtx),

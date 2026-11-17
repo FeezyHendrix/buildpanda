@@ -70,8 +70,8 @@ export function dailyReportService(db: Knex, deps: DailyReportDeps) {
   );
   const resolveImage = makeReportImageResolver(deps.files);
 
-  async function build(projectId: string, logDate: string): Promise<DailyReportResult> {
-    const day = await deps.logs.getDay(projectId, logDate);
+  async function build(projectId: string, logDate: string, buildingId?: string): Promise<DailyReportResult> {
+    const day = await deps.logs.getDay(projectId, logDate, buildingId);
     const project = await projects.findById(projectId);
     if (!project) throw new NotFoundError("Project");
 
@@ -191,8 +191,9 @@ export function dailyReportService(db: Knex, deps: DailyReportDeps) {
     projectId: string,
     logDate: string,
     recipient: { email: string; name: string },
+    buildingId?: string,
   ): Promise<DailyReportResult> {
-    const report = await build(projectId, logDate);
+    const report = await build(projectId, logDate, buildingId);
     const projectUrl = `${config.mail.appUrl.replace(/\/+$/, "")}/project/${projectId}/daily-log`;
 
     const rows = [

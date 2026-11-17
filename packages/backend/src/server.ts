@@ -22,6 +22,7 @@ import assetRoutes from "./modules/assets/routes.ts";
 import healthRoutes from "./modules/health/routes.ts";
 import permissionsRoutes from "./modules/permissions/routes.ts";
 import leadRoutes from "./modules/leads/routes.ts";
+import productDiscoveryRoutes from "./modules/product-discovery/routes.ts";
 import rateLibraryRoutes from "./modules/rate-library/routes.ts";
 import complianceDocsRoutes from "./modules/compliance-docs/routes.ts";
 import proposalTemplateRoutes from "./modules/proposals/templates-routes.ts";
@@ -97,6 +98,7 @@ import lookAheadRoutes from "./modules/look-aheads/routes.ts";
 import transactionRoutes from "./modules/transactions/routes.ts";
 import otaRoutes from "./modules/ota/routes.ts";
 import invitationRoutes from "./modules/invitations/routes.ts";
+import messagingAgentRoutes from "./modules/messaging-agent/routes.ts";
 import { besmmRag } from "./lib/besmm-rag.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -110,6 +112,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         paths: [
           "req.headers.authorization",
           "req.headers.cookie",
+          "req.headers['x-telegram-bot-api-secret-token']",
           "res.headers['set-cookie']",
           "password",
           "token",
@@ -174,6 +177,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(permissionsRoutes);
   await app.register(leadRoutes);
+  await app.register(productDiscoveryRoutes);
   await app.register(rateLibraryRoutes);
   await app.register(complianceDocsRoutes);
   await app.register(proposalTemplateRoutes);
@@ -249,6 +253,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(transactionRoutes);
   await app.register(otaRoutes);
   await app.register(invitationRoutes);
+  await app.register(messagingAgentRoutes);
 
   return app;
 }

@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
+import type { OpenRfiRow } from "./site-types.ts";
 
-export function siteAgentRepository(db: Knex) {
+export function siteAgentRepository(db: Knex, sharedRfisOnly = false) {
   return {
     risks(projectId: string) {
       return db("risk_factors")
@@ -70,10 +71,11 @@ export function siteAgentRepository(db: Knex) {
     rfisOpen(projectId: string) {
       return db("rfis as r")
         .where("r.project_id", projectId)
+        .modify((query) => { if (sharedRfisOnly) query.where("r.visibility", "shared"); })
         .whereNotIn("r.status", ["Answered", "Closed", "Void"])
         .orderBy("r.due_date", "asc")
         .limit(50)
-        .select("r.id", "r.subject as title", "r.status", "r.priority", "r.due_date");
+        .select<OpenRfiRow[]>("r.id", "r.subject as title", "r.status", "r.priority", "r.due_date");
     },
 
     approvalsOpen(projectId: string) {

@@ -1,4 +1,4 @@
-import type { FastifyRequest } from "fastify";
+import type { AuthorizationRequest, AuthorizedProject } from "../../lib/authorization-request.ts";
 import { canProjectPermission } from "../../lib/authorization.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
 
@@ -21,14 +21,14 @@ export const EQUIPMENT_APPROVAL_STATUSES: ReadonlySet<string> = new Set([
   "Rejected",
 ]);
 
-export interface MaterialsProjectScope {
-  id: string;
-  owner_id: string | null;
-  organization_id: string | null;
+export type MaterialsProjectScope = AuthorizedProject;
+
+export function materialsPermissionActions(action: "request" | "approve"): readonly ("request" | "approve" | "manage")[] {
+  return [action, "manage"];
 }
 
 export function assertMaterialsAction(
-  request: FastifyRequest,
+  request: AuthorizationRequest,
   project: MaterialsProjectScope,
   action: "request" | "approve",
 ): void {
@@ -42,8 +42,7 @@ export function assertMaterialsAction(
     projectSectionPermissions: request.projectSectionPermissions,
             projectGrants: request.projectGrants,
   };
-  if (canProjectPermission(scope, ctx, "materials", action)) return;
-  if (canProjectPermission(scope, ctx, "materials", "manage")) return;
+  if (materialsPermissionActions(action).some((allowed) => canProjectPermission(scope, ctx, "materials", allowed))) return;
   throw new ForbiddenError(
     action === "approve"
       ? "Your role does not allow you to approve material or equipment requests"

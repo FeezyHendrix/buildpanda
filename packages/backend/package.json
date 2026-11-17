@@ -17,7 +17,10 @@
     "lint": "eslint src/",
     "test:stage-filter": "tsx --test src/lib/stage-filter.test.ts src/modules/panda-ai/agent/tool-permissions-gate.test.ts ../frontend/src/hooks/stage-scope-cache.test.ts",
     "test:takeoff-editor": "tsx scripts/takeoff-suites.ts",
-    "test:user-deletion": "tsx --test src/modules/admin/user-deletion.test.ts"
+    "test:user-deletion": "tsx --test src/modules/admin/user-deletion.test.ts",
+    "test:messaging-agent": "tsx scripts/messaging-agent-suites.ts",
+    "telegram:webhook:check": "tsx scripts/telegram-webhook.ts --check",
+    "telegram:webhook:register": "tsx scripts/telegram-webhook.ts --register"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1057.0",

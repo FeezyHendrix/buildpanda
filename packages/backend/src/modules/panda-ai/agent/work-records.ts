@@ -20,7 +20,7 @@ export interface WorkRecordHit {
   [column: string]: unknown;
 }
 
-export function workRecordsRepository(db: Knex) {
+export function workRecordsRepository(db: Knex, sharedRfisOnly = false) {
   return {
     /**
      * The per-domain reads behind workRecords, exposed so the SQL can be
@@ -79,6 +79,7 @@ export function workRecordsRepository(db: Knex) {
           query: matchAll(
             db("rfis")
               .where({ project_id: projectId })
+              .modify((query) => { if (sharedRfisOnly) query.where("visibility", "shared"); })
               .limit(25)
               .select(
                 "id",
@@ -174,7 +175,7 @@ export function workRecordsRepository(db: Knex) {
     ): Promise<WorkRecordHit[]> {
       if (terms.length === 0) return [];
       const allowed = kinds ? new Set<string>(kinds) : null;
-      const reads = workRecordsRepository(db)
+      const reads = workRecordsRepository(db, sharedRfisOnly)
         .workRecordQueries(projectId, terms)
         .filter((read) => allowed === null || allowed.has(read.kind));
       if (reads.length === 0) return [];

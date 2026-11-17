@@ -3,12 +3,14 @@ import fp from "fastify-plugin";
 import { requireProjectFileReferences } from "../modules/files/attachment-access.ts";
 import { filesRepository } from "../modules/files/repository.ts";
 import { fileAccessRepository } from "../modules/files/access-repository.ts";
+import { isMessagingWebhook } from "../lib/public-webhooks.ts";
 
 /** All project record writers share the same attachment boundary. */
 const fileReferenceAccess: FastifyPluginAsync = async (app) => {
   const files = filesRepository(app.db);
   const access = fileAccessRepository(app.db);
   app.addHook("preHandler", async (request) => {
+    if (isMessagingWebhook(request)) return;
     if (!["POST", "PATCH", "PUT"].includes(request.method)) return;
     const route = request.routeOptions.url ?? '';
     // These handlers resolve their own conversation/share-link scope and run

@@ -1,5 +1,4 @@
 import type { AuthorizationRequest } from "../../lib/authorization-request.ts";
-import type { FastifyRequest } from "fastify";
 import { assertOrganizationPermission } from "../../lib/authorization.ts";
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import type { Channel } from "./types.ts";
@@ -18,7 +17,7 @@ export async function requireConversationPermission(request: AuthorizationReques
 }
 
 /** Lists and direct IDs use the same guard; membership remains a second boundary. */
-export async function filterConversations(request: FastifyRequest, channels: Channel[]) {
+export async function filterConversations(request: AuthorizationRequest, channels: Channel[]) {
   const results = await Promise.all(channels.map(async (channel) => {
     try { await requireConversationPermission(request, channel, "view"); return channel; }
     catch (error) { if (error instanceof ForbiddenError || error instanceof NotFoundError) return null; throw error; }

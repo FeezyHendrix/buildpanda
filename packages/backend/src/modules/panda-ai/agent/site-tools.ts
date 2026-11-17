@@ -30,7 +30,9 @@ export function siteTools(): AgentTool[] {
     tool(fn("find_work_records", "Find every record on the project whose text names a particular piece of work — a structure, a location, a chainage or an element such as 'culvert 1', 'ch 0+420', 'the retaining wall', 'kerbing'. It sweeps the records that DESCRIBE WORK in one call: activities, the delays logged against them, RFIs, change requests, risks, inspections and material orders, returning each match with its status, dates and notes. ALWAYS use this FIRST for 'what changed on X', 'what is the story on X', 'what happened with X', 'is there anything open on X', or any question that names a piece of work rather than a whole domain. Drawing markups are NOT where the history of a piece of work lives — do not answer these questions from get_drawing_markups. If this returns nothing, try a shorter or differently spelled term before telling the user there is no information.", {
       term: { type: "string", description: "The thing the user named, e.g. 'culvert 1', 'ch 0+420', 'asphalt', 'retaining wall'." },
     }, ["term"]), async (ctx, args) => {
-      const repo = workRecordsRepository(ctx.db);
+      const internal = ctx.caller.project.ownerId === ctx.caller.user.id ||
+        !!(ctx.caller.project.organizationId && ctx.caller.orgRoles.has(ctx.caller.project.organizationId));
+      const repo = workRecordsRepository(ctx.db, !internal);
       const term = requiredString(args.term, 120, "term");
       // Only the domains this caller could fetch through the API are swept, so
       // the sweep can never be a side door onto records they may not read.
@@ -79,7 +81,9 @@ export function siteTools(): AgentTool[] {
     }),
 
     tool(fn("get_open_items", "Get the open items needing attention across RFIs, client approvals and material approval requests — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', 'what is pending sign-off', or 'which materials are awaiting approval'."), async (ctx) => {
-      const repo = agentRepository(ctx.db);
+      const internal = ctx.caller.project.ownerId === ctx.caller.user.id ||
+        !!(ctx.caller.project.organizationId && ctx.caller.orgRoles.has(ctx.caller.project.organizationId));
+      const repo = agentRepository(ctx.db, undefined, !internal);
       const now = Date.now();
       const overdue = (d: unknown): boolean => Boolean(d) && new Date(d as string).getTime() < now;
       // Three registers behind three different permissions; the caller gets

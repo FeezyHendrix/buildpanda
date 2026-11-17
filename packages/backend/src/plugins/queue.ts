@@ -26,6 +26,7 @@ import { registerProgressRecomputeWorker } from "../modules/activities/progress-
 import { registerWeatherImpactWorker } from "../modules/weather/impact-job.ts";
 import { registerWeeklyUpdateDraftWorker } from "../modules/updates/weekly-draft-job.ts";
 import { registerDailyDigestWorker } from "../modules/updates/daily-digest-job.ts";
+import { registerMessagingWorker } from "../modules/messaging-agent/jobs.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -64,6 +65,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerWeatherImpactWorker(fastify.db, manager, fastify.log);
     registerWeeklyUpdateDraftWorker(fastify.db, manager, fastify.log);
     registerDailyDigestWorker(fastify.db, manager, fastify.log);
+    registerMessagingWorker(fastify.db, manager, fastify.log);
     manager.startWorkers();
   }
 

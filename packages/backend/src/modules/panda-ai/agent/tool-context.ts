@@ -23,4 +23,5 @@ export interface ToolContext {
   projectId: string;
   caller: AgentCaller;
   queue?: QueueManager;
+  readableResource?: (resource: string) => boolean;
 }

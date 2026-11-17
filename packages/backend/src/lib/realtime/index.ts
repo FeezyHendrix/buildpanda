@@ -58,7 +58,9 @@ export class RealtimeHub {
       this.subscriber = new IORedis(redisUrl, { maxRetriesPerRequest: null });
       this.subscriber.on("error", (err) => this.logger.error({ err }, "Realtime subscriber error"));
       this.publisher.on("error", (err) => this.logger.error({ err }, "Realtime publisher error"));
-      void this.subscriber.subscribe(REDIS_CHANNEL);
+      void this.subscriber.subscribe(REDIS_CHANNEL).catch((err) => {
+        this.logger.error({ err }, "Realtime subscribe failed");
+      });
       this.subscriber.on("message", (_channel, raw) => {
         try {
           this.deliverLocal(JSON.parse(raw) as RealtimePayload);

@@ -14,8 +14,8 @@ test("metrics routes sit behind the admin gate", async () => {
   });
   await app.register(adminRoutes);
   await app.ready();
-  for (const path of ["overview", "growth", "signup-journey", "engagement", "ai-ops"]) {
-    const res = await app.inject({ method: "GET", url: `/admin/metrics/${path}` });
+  for (const path of ["metrics/overview", "metrics/growth", "metrics/signup-journey", "metrics/engagement", "metrics/ai-ops", "product-discovery"]) {
+    const res = await app.inject({ method: "GET", url: `/admin/${path}` });
     assert.equal(res.statusCode, 403, path);
   }
   await app.close();

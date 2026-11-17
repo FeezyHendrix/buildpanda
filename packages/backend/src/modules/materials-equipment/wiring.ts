@@ -17,7 +17,7 @@ import { materialsEquipmentService } from "./service.ts";
  * on the register — all of that is wired here, through the other modules'
  * services, so the services themselves stay free of cross-module plumbing.
  */
-export function buildMaterialsServices(app: FastifyInstance) {
+export function buildMaterialsServices(app: Pick<FastifyInstance, "db">) {
   const repository = materialsEquipmentRepository(app.db);
   const projects = projectsRepository(app.db);
   const suppliers = suppliersService(suppliersRepository(app.db));

@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { adminApi } from "@/api/admin";
 import type { AdminSignupJourney } from "@/api/signup-journey";
 import { adminKeys } from "@/api/admin-keys";
 import { Card, Loading, ErrorState, PageHeader } from "@/components/ui";
+import { BarList, Section, pct } from "@/components/bar-list";
 import { DateRangePicker, AsOf } from "@/components/chart-components";
 import { DataTable, type Column } from "@/components/data-table";
 import { PageContainer } from "@/components/page-container";
@@ -12,49 +13,11 @@ import { cn, formatDate } from "@/lib/utils";
 type StalledUser = AdminSignupJourney["stalled"][number];
 type Segment = AdminSignupJourney["segments"][number];
 
-const pct = (value: number, total: number) => (total > 0 ? `${Math.round((value / total) * 100)}%` : "—");
-
 function formatHours(hours: number | null): string {
   if (hours === null) return "—";
   if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`;
   if (hours < 48) return `${Math.round(hours)} hr`;
   return `${Math.round(hours / 24)} days`;
-}
-
-function Section({ title, hint, className, children }: { title: string; hint: string; className?: string; children: ReactNode }) {
-  return (
-    <Card className={cn("flex flex-col gap-4 p-5", className)}>
-      <div>
-        <h2 className="text-sm font-semibold text-ink">{title}</h2>
-        <p className="mt-1 text-xs text-muted">{hint}</p>
-      </div>
-      {children}
-    </Card>
-  );
-}
-
-function BarList({ rows, total }: { rows: { label: string; value: number; note?: string }[]; total: number }) {
-  return (
-    <ul className="flex flex-col gap-3">
-      {rows.map((r) => (
-        <li key={r.label}>
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="text-ink">{r.label}</span>
-            <span className="whitespace-nowrap text-muted">
-              {r.note ? `${r.note} · ` : ""}
-              <span className="font-semibold text-ink">{r.value.toLocaleString()}</span> · {pct(r.value, total)}
-            </span>
-          </div>
-          <div className="mt-1.5 h-2 rounded-full bg-surface-muted">
-            <div
-              className="h-full rounded-full bg-brand"
-              style={{ width: total > 0 ? `${(r.value / total) * 100}%` : 0 }}
-            />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 const th = "py-2 text-xs font-semibold uppercase tracking-wide text-muted";

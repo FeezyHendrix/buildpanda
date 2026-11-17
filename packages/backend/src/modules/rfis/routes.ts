@@ -1,42 +1,25 @@
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+import { buildRfiServices } from "./wiring.ts";
+import { isCompanyCaller } from "./access.ts";
+import type { FastifyPluginAsync } from "fastify";
 import { canProjectPermission } from "../../lib/authorization.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { rfiDistributionEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
 import { sendEmail } from "../../lib/mail.ts";
-import { rfiBallInCourtEmail, rfiDistributionEmail } from "../../lib/email-templates.ts";
-import { changeRequestsRepository } from "../change-requests/repository.ts";
-import { changeRequestsService } from "../change-requests/service.ts";
-import { notificationsRepository } from "../notifications/repository.ts";
-import { notificationsService } from "../notifications/service.ts";
-import { rfisRepository } from "./repository.ts";
 import {
-  rfisService,
   type CreateRfiInput,
   type DistributionInput,
   type RespondInput,
   type UpdateRfiInput,
 } from "./service.ts";
 import {
-  type Rfi,
   type RfiListQuery,
 } from "./types.ts";
 
 import { TRANSITION_TARGETS, EXTERNAL_REPLY_TTL_DAYS, rfiParams, listQuery, createBody, updateBody, respondBody, transitionBody, convertBody, eventsResponse, commentBody, distributionBody } from "./route-schemas.ts";
 
 const rfiRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = rfisService(rfisRepository(fastify.db), {
-    changeRequests: changeRequestsService(changeRequestsRepository(fastify.db)),
-    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
-  });
-
-  function isCompanyCaller(
-    request: FastifyRequest,
-    project: { owner_id: string | null; organization_id: string | null },
-  ): boolean {
-    const user = request.requireAuth();
-    if (project.owner_id === user.id) return true;
-    return Boolean(project.organization_id && request.orgRoles.has(project.organization_id));
-  }
+  const { service, sendBallInCourtEmail } = buildRfiServices(fastify.db, fastify.queue);
 
   // Every record route, including writes and event reads, preserves visibility.
   fastify.addHook("preHandler", async (request) => {
@@ -45,27 +28,6 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     const project = await request.requireProjectPermission(id, "rfis", "view");
     await service.get(id, rfiId, !isCompanyCaller(request, project));
   });
-
-  async function sendBallInCourtEmail(rfi: Rfi, projectName: string, actorEmail: string): Promise<void> {
-    if (!rfi.ballInCourtEmail) return;
-    if (rfi.ballInCourtEmail.toLowerCase() === actorEmail.toLowerCase()) return;
-
-    const url = `${config.mail.appUrl.replace(/\/+$/, "")}/project/${rfi.projectId}/rfis`;
-    const { subject, html } = rfiBallInCourtEmail({
-      recipientName: rfi.ballInCourtName ?? rfi.ballInCourtEmail,
-      projectName,
-      rfiNumber: rfi.number,
-      rfiSubject: rfi.subject,
-      question: rfi.question,
-      url,
-    });
-    await sendEmail({
-      to: rfi.ballInCourtEmail,
-      toName: rfi.ballInCourtName ?? undefined,
-      subject,
-      html,
-    }).catch(() => undefined);
-  }
 
   fastify.get<{ Params: { id: string }; Querystring: RfiListQuery }>(
     "/projects/:id/rfis",
@@ -174,7 +136,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string; rfiId: string }; Body: { body: string } }>(
+  fastify.post<{ Params: { id: string; rfiId: string }; Body: RespondInput }>(
     "/projects/:id/rfis/:rfiId/comments",
     { schema: { params: rfiParams, body: commentBody } },
     async (request, reply) => {
@@ -183,7 +145,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
       const comment = await service.addComment(project.id, request.params.rfiId, request.body.body, {
         id: user.id,
         name: user.name,
-      });
+      }, request.body);
       return reply.status(201).send(comment);
     },
   );

@@ -1,5 +1,4 @@
 import type { FastifyPluginAsync } from "fastify";
-import type { Knex } from "knex";
 import { BadRequestError } from "../../lib/errors.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
@@ -16,14 +15,7 @@ import type { MessageAttachment, MessageMention, MessageReference } from "./type
 
 import { channelIdParams, messageIdParams, listMessagesQuery, sendMessageBody, editMessageBody, createChannelBody, membershipBody, addMembersBody } from "./route-schemas.ts";
 import { filterConversations, registerMessagingAccess, requireConversationPermission } from "./access.ts";
-
-async function projectMemberIds(db: Knex, projectId: string): Promise<string[]> {
-  const rows = await db("project_participants")
-    .where({ project_id: projectId, status: "active" })
-    .whereNotNull("user_id")
-    .pluck<string[]>("user_id");
-  return rows;
-}
+import { ensureProjectGeneral } from "./general-wiring.ts";
 
 const messagingRoutes: FastifyPluginAsync = async (fastify) => {
   registerMessagingAccess(fastify);
@@ -85,9 +77,7 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "messages", "view");
       const user = request.requireAuth();
-      const members = await projectMemberIds(fastify.db, project.id);
-      if (project.owner_id) members.push(project.owner_id);
-      await service.ensureProjectGeneral(project.id, members, user.id);
+      await ensureProjectGeneral(fastify.db, project.id, user.id);
       return service.listProjectChannels(project.id, user.id);
     },
   );

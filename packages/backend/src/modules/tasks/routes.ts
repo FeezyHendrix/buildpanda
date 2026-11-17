@@ -1,178 +1,20 @@
+import { filterTaskEntityAccess, requireTaskEntityTargetRead } from "./entity-access.ts";
+import { taskEntityAccessRepository } from "./entity-access-repository.ts";
+import { buildTasksServices } from "./wiring.ts";
 import { registerTaskBoardRoutes } from "./board-routes.ts";
 import { canSeeFullTaskBoard, assertTaskBoardAccess } from "./access.ts";
-import { taskVisibilityRepository } from "./visibility-repository.ts";
-import { taskVisibilityService } from "./visibility-service.ts";
 import type { FastifyPluginAsync } from "fastify";
-import { buildingsRepository } from "../buildings/repository.ts";
-import { tasksRepository } from "./repository.ts";
 import {
-  tasksService,
   type CreateTaskInput,
   type MoveTaskInput,
   type UpdateTaskInput,
 } from "./service.ts";
-import { notificationsRepository } from "../notifications/repository.ts";
-import { notificationsService } from "../notifications/service.ts";
 import type { TaskEntityType, TaskRecordParams } from "./types.ts";
 
-const STATUS = ["Todo", "Doing", "Done"] as const;
-const PRIORITY = ["Low", "Medium", "High"] as const;
-
-const assigneesSchema = {
-  type: "array",
-  maxItems: 20,
-  items: {
-    type: "object",
-    required: ["kind", "id"],
-    additionalProperties: false,
-    properties: {
-      kind: { type: "string", enum: ["user", "team"] },
-      id: { type: "string", minLength: 1, maxLength: 100 },
-    },
-  },
-} as const;
-
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
-
-const taskParams = {
-  type: "object",
-  required: ["id", "taskId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    taskId: { type: "string", minLength: 1 },
-  },
-} as const;
-
-const createBody = {
-  type: "object",
-  required: ["title"],
-  additionalProperties: false,
-  properties: {
-    title: { type: "string", minLength: 1, maxLength: 200 },
-    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
-    description: { type: ["string", "null"], maxLength: 50000 },
-    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
-    assigneeId: { type: ["string", "null"], maxLength: 100 },
-    assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
-    assignees: assigneesSchema,
-    dueDate: { type: ["string", "null"], maxLength: 40 },
-    priority: { type: "string", enum: PRIORITY },
-    labels: { type: "array", maxItems: 20, items: { type: "string", maxLength: 40 } },
-    columnId: { type: ["string", "null"], maxLength: 100 },
-    status: { type: "string", enum: STATUS },
-  },
-} as const;
-
-const updateBody = {
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: {
-    title: { type: "string", minLength: 1, maxLength: 200 },
-    description: { type: ["string", "null"], maxLength: 50000 },
-    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
-    assigneeId: { type: ["string", "null"], maxLength: 100 },
-    assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
-    assignees: assigneesSchema,
-    dueDate: { type: ["string", "null"], maxLength: 40 },
-    priority: { type: "string", enum: PRIORITY },
-    labels: { type: "array", maxItems: 20, items: { type: "string", maxLength: 40 } },
-  },
-} as const;
-
-const moveBody = {
-  type: "object",
-  required: ["columnId", "position"],
-  additionalProperties: false,
-  properties: {
-    columnId: { type: "string", minLength: 1, maxLength: 100 },
-    position: { type: "number" },
-  },
-} as const;
-
-const commentBody = {
-  type: "object",
-  required: ["body"],
-  additionalProperties: false,
-  properties: { body: { type: "string", minLength: 1, maxLength: 2000 } },
-} as const;
-
-const subtaskParams = {
-  type: "object",
-  required: ["id", "taskId", "subtaskId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    taskId: { type: "string", minLength: 1 },
-    subtaskId: { type: "string", minLength: 1 },
-  },
-} as const;
-
-const createSubtaskBody = {
-  type: "object",
-  required: ["title"],
-  additionalProperties: false,
-  properties: { title: { type: "string", minLength: 1, maxLength: 300 } },
-} as const;
-
-const updateSubtaskBody = {
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: {
-    title: { type: "string", minLength: 1, maxLength: 300 },
-    done: { type: "boolean" },
-  },
-} as const;
-
-const createLinkBody = {
-  type: "object",
-  required: ["targetTaskId"],
-  additionalProperties: false,
-  properties: {
-    targetTaskId: { type: "string", minLength: 1, maxLength: 100 },
-    linkType: { type: "string", enum: ["relates_to", "blocks", "blocked_by", "duplicates"] },
-  },
-} as const;
-
-const createEntityLinkBody = {
-  type: "object",
-  required: ["entityType", "entityId"],
-  additionalProperties: false,
-  properties: {
-    entityType: {
-      type: "string",
-      enum: ["rfi", "change_request", "material", "invoice", "milestone_payment"],
-    },
-    entityId: { type: "string", minLength: 1, maxLength: 100 },
-  },
-} as const;
-
-const linkParams = {
-  type: "object",
-  required: ["id", "taskId", "linkId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    taskId: { type: "string", minLength: 1 },
-    linkId: { type: "string", minLength: 1 },
-  },
-} as const;
+import { projectIdParams, taskParams, createBody, updateBody, moveBody, commentBody, subtaskParams, createSubtaskBody, updateSubtaskBody, createLinkBody, createEntityLinkBody, linkParams } from "./route-schemas.ts";
 
 const taskRoutes: FastifyPluginAsync = async (fastify) => {
-  const buildings = buildingsRepository(fastify.db);
-  const service = tasksService(tasksRepository(fastify.db), {
-    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
-  }, async (projectId) =>
-    (await buildings.soleRealBuildingId(projectId)) ?? (await buildings.firstRealBuildingId(projectId)));
-
-  const visibility = taskVisibilityService(taskVisibilityRepository(fastify.db));
+  const { service, visibility } = buildTasksServices(fastify.db, fastify.queue);
   // Every child route (comments, subtasks and links included) inherits record visibility.
   fastify.addHook("preHandler", async (request) => {
     const { id, taskId } = request.params as TaskRecordParams;
@@ -236,8 +78,9 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
       assertTaskBoardAccess(request, project);
-      return visibility.detail(await service.getTaskDetail(project.id, request.params.taskId),
+      const detail = await visibility.detail(await service.getTaskDetail(project.id, request.params.taskId),
         canSeeFullTaskBoard(request, project) ? undefined : request.requireAuth().id);
+      return filterTaskEntityAccess(request, project, detail, taskEntityAccessRepository(fastify.db));
     },
   );
 
@@ -304,6 +147,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       const user = request.requireAuth();
+      await requireTaskEntityTargetRead(request, project, request.body.entityType, request.body.entityId, taskEntityAccessRepository(fastify.db));
       const link = await service.addEntityLink(
         project.id,
         request.params.taskId,

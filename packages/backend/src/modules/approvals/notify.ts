@@ -4,7 +4,7 @@ export interface ApprovalsDeps {
   notifications?: Pick<NotificationsService, "notify">;
 }
 
-export function notifyApprovalDecided(
+export async function notifyApprovalDecided(
   deps: ApprovalsDeps,
   submitterId: string | null | undefined,
   projectId: string,
@@ -12,9 +12,9 @@ export function notifyApprovalDecided(
   status: string,
   actorId: string,
   approvalId?: string,
-): void {
+): Promise<void> {
   if (!deps.notifications || !submitterId || submitterId === actorId) return;
-  void deps.notifications
+  await deps.notifications
     .notify(submitterId, "approval_decided", {
       title: status === "Approved" ? "Approval Request approved" : `Approval ${status.toLowerCase()}`,
       body: title,
@@ -24,16 +24,16 @@ export function notifyApprovalDecided(
     .catch(() => undefined);
 }
 
-export function notifyApprovalReviewer(
+export async function notifyApprovalReviewer(
   deps: ApprovalsDeps,
   reviewerId: string | null | undefined,
   projectId: string,
   title: string,
   actorId: string,
   approvalId?: string,
-): void {
+): Promise<void> {
   if (!deps.notifications || !reviewerId || reviewerId === actorId) return;
-  void deps.notifications
+  await deps.notifications
     .notify(reviewerId, "approval_requested", {
       title: "An approval needs your decision",
       body: title,

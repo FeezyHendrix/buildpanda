@@ -108,6 +108,14 @@ export function filesService(repository: FilesRepository) {
       return repository.findById(id);
     },
 
+    async projectRows(projectId: string, ids: string[]): Promise<UploadedFileRow[]> {
+      const unique = [...new Set(ids)];
+      const rows = await repository.findByIds(unique);
+      if (rows.length !== unique.length) throw new NotFoundError("Uploaded file");
+      if (rows.some((row) => row.project_id !== projectId)) throw new ForbiddenError("The uploaded file must belong to this project.");
+      return rows;
+    },
+
     async presignViewUrl(row: UploadedFileRow): Promise<string> {
       return throughStorage(() => getDownloadUrl(row.storage_path));
     },

@@ -45,6 +45,13 @@ function assertGeometryMatchesKind(kind: MarkupKind, geometry: MarkupGeometry): 
     (geometry.kind === MARKUP_KIND.PEN && geometry.points.length < 2) ||
     (geometry.kind === MARKUP_KIND.CLOUD && (geometry.rect.w <= 0 || geometry.rect.h <= 0));
   if (invalid) throw new BadRequestError(`Incomplete geometry for a ${kind} markup`);
+  const points = geometry.kind === "pin" ? [geometry.at] : geometry.kind === "pen" ? geometry.points
+    : geometry.kind === "measure" ? [geometry.a, geometry.b]
+    : [{ x: geometry.rect.x, y: geometry.rect.y }, { x: geometry.rect.x + geometry.rect.w, y: geometry.rect.y + geometry.rect.h }];
+  if (points.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))) throw new BadRequestError("Drawing coordinates must be finite numbers");
+  if ((geometry.space ?? "percent") === "percent" && points.some((point) => point.x < 0 || point.x > 100 || point.y < 0 || point.y > 100)) {
+    throw new BadRequestError("Drawing positions must be between 0 and 100 percent of the page");
+  }
 }
 
 function nonNull(values: (string | null)[]): string[] {

@@ -1,174 +1,15 @@
+import { buildStagesService } from "./wiring.ts";
 import { expenseReaderId } from "../transactions/access.ts";
 import type { FastifyPluginAsync } from "fastify";
-import { activitiesRepository } from "../activities/repository.ts";
-import { buildingsRepository } from "../buildings/repository.ts";
-import { contractsRepository } from "../contracts/repository.ts";
-import { contractsService } from "../contracts/service.ts";
-import { dailyLogsRepository } from "../daily-logs/repository.ts";
-import { documentsRepository } from "../documents/repository.ts";
-import { claimChain } from "../finances/claim-chain.ts";
-import { financesRepository } from "../finances/repository.ts";
-import { purchaseOrdersRepository } from "../purchase-orders/repository.ts";
-import { transactionsRepository } from "../transactions/repository.ts";
 import { invoiceCertificateRepository } from "../invoices/certificate-repository.ts";
 import { periodLock, withForecastFlags } from "./period-lock.ts";
-import { phaseRollup } from "./phase-rollup.ts";
-import { stagesRepository } from "./repository.ts";
 import {
-  stagesService,
   type CreateStageInput,
   type ScheduleOfValueLineInput,
 } from "./service.ts";
 import type { UpdateScheduleProgressBody, UpdateStageInput } from "./types.ts";
 
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
-
-const stageParams = {
-  type: "object",
-  required: ["id", "stageId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    stageId: { type: "string", minLength: 1 },
-  },
-} as const;
-
-const buildingQuery = {
-  type: "object",
-  additionalProperties: false,
-  properties: { buildingId: { type: "string", minLength: 1 } },
-} as const;
-
-const STATUS = ["Done", "InProgress", "Pending"] as const;
-
-const createStageBody = {
-  type: "object",
-  required: ["name"],
-  additionalProperties: false,
-  properties: {
-    name: { type: "string", minLength: 1, maxLength: 120 },
-    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
-    status: { type: "string", enum: STATUS },
-    startDate: { type: ["string", "null"], maxLength: 40 },
-    endDate: { type: ["string", "null"], maxLength: 40 },
-    progressPercent: { type: "integer", minimum: 0, maximum: 100 },
-    value: { type: "number", minimum: 0 },
-  },
-} as const;
-
-const updateStageBody = {
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: {
-    name: { type: "string", minLength: 1, maxLength: 120 },
-    status: { type: "string", enum: STATUS },
-    startDate: { type: ["string", "null"], maxLength: 40 },
-    endDate: { type: ["string", "null"], maxLength: 40 },
-    progressPercent: { type: "integer", minimum: 0, maximum: 100 },
-    value: { type: "number", minimum: 0 },
-    contractId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
-    expectedCost: { type: "number", minimum: 0 },
-    estimatedLaborHours: { type: "number", minimum: 0 },
-    laborBudget: { type: "number", minimum: 0 },
-    materialBudget: { type: "number", minimum: 0 },
-  },
-} as const;
-
-const reorderBody = {
-  type: "object",
-  required: ["stageIds"],
-  additionalProperties: false,
-  properties: {
-    stageIds: {
-      type: "array",
-      items: { type: "string", minLength: 1 },
-      maxItems: 200,
-    },
-  },
-} as const;
-
-const scheduleOfValuesBody = {
-  type: "object",
-  required: ["lines"],
-  additionalProperties: false,
-  properties: {
-    lines: {
-      type: "array",
-      maxItems: 240,
-      items: {
-        type: "object",
-        required: ["period", "percent"],
-        additionalProperties: false,
-        properties: {
-          period: { type: "string", pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" },
-          percent: { type: "number", minimum: 0, maximum: 100 },
-          billed: { type: "boolean" },
-        },
-      },
-    },
-  },
-} as const;
-
-const periodParams = {
-  type: "object",
-  required: ["id", "stageId", "period"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    stageId: { type: "string", minLength: 1 },
-    period: { type: "string", pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" },
-  },
-} as const;
-
-const scheduleProgressBody = {
-  type: "object",
-  required: ["percentComplete"],
-  additionalProperties: false,
-  properties: {
-    percentComplete: { type: ["number", "null"], minimum: 0, maximum: 100 },
-    /** A month later than the current one is a projection, never a claim. */
-    forecast: { type: "boolean" },
-  },
-} as const;
-
-const scheduleOfValueSchema = {
-  type: "object",
-  properties: {
-    id: { type: "string" },
-    stageId: { type: "string" },
-    period: { type: "string" },
-    percent: { type: "number" },
-    amount: { type: "number" },
-    billed: { type: "boolean" },
-    sortOrder: { type: "integer" },
-    percentComplete: { type: ["number", "null"] },
-    periodPercent: { type: "number" },
-    periodAmount: { type: "number" },
-    toDateAmount: { type: "number" },
-    forecast: { type: "boolean" },
-    claimable: { type: "boolean" },
-  },
-} as const;
-
-const scheduleOfValuesResponse = {
-  200: { type: "array", items: scheduleOfValueSchema },
-} as const;
-
-const valueSummarySchema = {
-  type: "object",
-  properties: {
-    valueTotal: { type: "number" },
-    contractSum: { type: "number" },
-    unallocated: { type: "number" },
-    allocatedPercent: { type: "number" },
-  },
-} as const;
+import { projectIdParams, stageParams, buildingQuery, createStageBody, updateStageBody, reorderBody, scheduleOfValuesBody, periodParams, scheduleProgressBody, scheduleOfValuesResponse, valueSummarySchema } from "./route-schemas.ts";
 
 const stageRoutes: FastifyPluginAsync = async (fastify) => {
   const certificates = invoiceCertificateRepository(fastify.db);
@@ -177,35 +18,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
   const lock = periodLock({
     certificateForPeriod: (projectId, period) => certificates.certificateForPeriod(projectId, period),
   });
-  const buildings = buildingsRepository(fastify.db);
-  const finances = financesRepository(fastify.db);
-  const stages = stagesRepository(fastify.db);
-  const contracts = contractsService(contractsRepository(fastify.db), {
-    finances,
-    stages,
-    documents: documentsRepository(fastify.db),
-  });
-  const service = (readerId: string | undefined) => stagesService(
-    stages,
-    (projectId) => buildings.soleRealBuildingId(projectId),
-    async (projectId) => {
-      const summary = await finances.findSummary(projectId);
-      return summary ? Number(summary.contract_sum) : 0;
-    },
-    async (projectId, stage) => {
-      await claimChain(finances).markStageMilestonesClaimable(projectId, stage, null);
-    },
-    {
-      rollup: phaseRollup({
-        dailyLogs: dailyLogsRepository(fastify.db),
-        purchaseOrders: purchaseOrdersRepository(fastify.db),
-        transactions: transactionsRepository(fastify.db, readerId),
-        mainContractId: (projectId) => contracts.mainContractId(projectId),
-      }),
-      contractBelongsToProject: (projectId, contractId) => contracts.belongsToProject(projectId, contractId),
-    },
-    (stageId) => activitiesRepository(fastify.db).countByPhase(stageId),
-  );
+  const service = (readerId: string | undefined) => buildStagesService(fastify.db, readerId);
 
   fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
     "/projects/:id/stages",

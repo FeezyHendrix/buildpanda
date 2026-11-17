@@ -394,5 +394,9 @@ export const proposalTemplateKeys = {
   list: () => [...proposalTemplateKeys.all, "list"] as const,
 };
 
+export const productDiscoveryKeys = {
+  status: () => ["product-discovery"] as const,
+};
+
 // The take-off surface keeps its keys in one module of its own.
 export * from "./query-keys-precon";

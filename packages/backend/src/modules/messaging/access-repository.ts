@@ -16,3 +16,5 @@ export function messagingAccessRepository(db: Knex) {
       }).pluck<string[]>("id"),
   };
 }
+
+export type MessagingAccessRepository = ReturnType<typeof messagingAccessRepository>;
