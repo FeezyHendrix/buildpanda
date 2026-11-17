@@ -41,7 +41,10 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
   },
-  icons: { icon: "/favicon.ico", apple: "/logo.png" },
+  icons: {
+    icon: { url: "/favicon.png", type: "image/png", sizes: "192x192" },
+    apple: { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+  },
   // Public ownership tokens, supplied at build time for each verified account.
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
