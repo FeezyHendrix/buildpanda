@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { ComponentType } from "react";
 import { Logo } from "@/components/ui/logo";
+import { ConsentReset } from "@/components/consent";
 import { FacebookIcon, InstagramIcon, TwitterIcon } from "@/components/ui/social-icons";
 import { footer, type SocialId } from "@/content/footer";
 import { FooterLinks } from "./footer-links";
@@ -46,6 +47,7 @@ export function Footer() {
       <div className="relative border-t border-white/14">
         <div className="site-container flex flex-col-reverse items-center gap-2 py-5 sm:min-h-18 sm:flex-row sm:justify-between sm:py-0">
           <p className="text-[0.9375rem]">{footer.copyright(year)}</p>
+          <ConsentReset />
           <ul className="-mx-2.5 flex">
             {footer.socials.map((social) => {
               const Icon = socialIcons[social.id];

@@ -21,6 +21,8 @@ export const footer = {
       links: [
         { label: "About Us", href: "/about/" },
         { label: "Guides", href: "/blog/" },
+        { label: "Across Africa", href: "/africa/" },
+        { label: "Product facts", href: "/product-facts/" },
         { label: "Terms of Service", href: "/terms-of-service/" },
         { label: "Privacy Policy", href: "/privacy/" },
         { label: "Data Policy", href: "/data-policy/" },
