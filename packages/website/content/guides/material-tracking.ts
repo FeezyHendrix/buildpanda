@@ -3,6 +3,7 @@ import type { Guide } from "./types";
 export const materialTracking: Guide = {
   slug: "construction-material-tracking-stop-losses-on-site",
   title: "Construction material tracking: how to stop materials going missing on site",
+  seoTitle: "Construction material tracking: prevent site losses",
   description:
     "How contractors can track construction materials from approval to delivery to use: delivery notes, matching deliveries to orders, approving receipts and keeping stock on hand honest.",
   audience: "Site teams",

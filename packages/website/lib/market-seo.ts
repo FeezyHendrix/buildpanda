@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { site } from "@/content/site";
 import { marketCopy } from "@/content/markets/copy";
 import { marketGuides, marketName, marketPath } from "@/content/markets";
 import type { Market } from "@/content/markets/countries";
@@ -16,7 +17,11 @@ export function marketMetadata(language: Language, market?: Market): Metadata {
   const copy = marketCopy[language];
   const title = market ? `${copy.countryTitle} ${marketName(market, language)}` : copy.title;
   const description = market ? marketGuides[language][market.code].description : copy.description;
-  const metadata = pageMetadata({ path: marketPath(language, market), title, description });
+  const socialTitle = `${title} | ${site.name}`;
+  const seoTitle = market && [...socialTitle].length >= 70
+    ? `${copy.countryShortTitle} ${marketName(market, language)}`
+    : title;
+  const metadata = pageMetadata({ path: marketPath(language, market), title: seoTitle, description, socialTitle });
   return {
     ...metadata,
     alternates: { canonical: canonicalUrl(marketPath(language, market)), languages: marketAlternates(market) },

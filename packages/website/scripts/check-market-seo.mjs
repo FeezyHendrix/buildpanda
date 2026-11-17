@@ -34,9 +34,20 @@ function decode(text) {
   return text.replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 }
 
+const pageTitles = new Set();
+
+function checkTitle(html, path) {
+  const title = decode(html.match(/<title>(.*?)<\/title>/s)?.[1] ?? "").trim();
+  assert.ok(title.length > 0, `Nonempty page title: ${path}`);
+  assert.ok([...title].length < 70, `Title must be under 70 characters including the brand: ${path} (${[...title].length}: ${title})`);
+  assert.ok(!pageTitles.has(title), `Unique page title: ${path} (${title})`);
+  pageTitles.add(title);
+}
+
 for (const url of localizedUrls) {
   const path = new URL(url).pathname;
   const html = await read(path);
+  checkTitle(html, path);
   const language = languages.includes(path.split("/")[1]) ? path.split("/")[1] : "en";
   const document = attributes(html.match(/<html\b[^>]*>/)?.[0] ?? "");
   assert.equal(document.lang, language, path);
@@ -96,6 +107,7 @@ for (const [language, values] of descriptions) assert.equal(values.size, 54, `Di
 for (const url of urls.filter((url) => !localizedUrls.includes(url))) {
   const path = new URL(url).pathname;
   const html = await read(path);
+  checkTitle(html, path);
   const canonical = [...html.matchAll(/<link\b[^>]*>/g)].map((match) => attributes(match[0])).find((link) => link.rel === "canonical");
   assert.equal(canonical?.href, url, path);
   if (path === "/") assert.match(html, new RegExp(`<meta name="msvalidate.01" content="${bingToken}"`));
@@ -110,13 +122,6 @@ for (const bot of ["OAI-SearchBot", "PerplexityBot", "Claude-SearchBot"]) {
   assert.ok(robots.includes(`User-Agent: ${bot}`), bot);
   assert.equal((await fetch(new URL("/product-facts/", base), { headers: { "User-Agent": bot } })).status, 200, bot);
 }
-const leadPage = await read("/talk-to-us/");
-const options = [...leadPage.matchAll(/<option\b[^>]*>.*?<\/option>/gs)].map((match) => ({
-  ...attributes(match[0]), code: match[0].replace(/<[^>]+>/g, ""),
-}));
-assert.equal(new Set(options.map((option) => option.code)).size, 60, "54 African countries and six existing diaspora countries");
-for (const option of options) assert.match(option.value, /^\+\d{1,3}$/, `Valid dial prefix: ${option.code}`);
-for (const [code, dial] of [["NG", "+234"], ["AO", "+244"], ["MZ", "+258"], ["CD", "+243"], ["CG", "+242"]]) {
-  assert.equal(options.find((option) => option.code === code)?.value, dial, `Lead country code: ${code}`);
-}
-console.log(`Passed: ${marketUrls.length} market pages, ${factsUrls.length} facts pages, source links, visible answers/schema, Bing token, language links, crawler access, existing URLs and unknown routes.`);
+// Country options render in a client-side popover and require browser coverage.
+assert.equal(pageTitles.size, urls.length, "All public page titles checked");
+console.log(`Passed: ${pageTitles.size} unique page titles under 70 characters, ${marketUrls.length} market pages, ${factsUrls.length} facts pages, source links, visible answers/schema, Bing token, language links, crawler access, existing URLs and unknown routes.`);

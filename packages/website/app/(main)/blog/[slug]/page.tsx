@@ -8,6 +8,7 @@ import { Section } from "@/components/ui/section";
 import { guideBySlug, guides } from "@/content/guides";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/json-ld";
 import { pageMetadata } from "@/lib/seo";
+import { site } from "@/content/site";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -20,7 +21,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const guide = guideBySlug((await params).slug);
   if (!guide) return {};
-  const metadata = pageMetadata({ path: `blog/${guide.slug}`, title: guide.title, description: guide.description });
+  const metadata = pageMetadata({ path: `blog/${guide.slug}`, title: guide.seoTitle, description: guide.description, socialTitle: `${guide.title} | ${site.name}` });
   return {
     ...metadata,
     openGraph: { ...metadata.openGraph, type: "article", publishedTime: guide.published, modifiedTime: guide.updated ?? guide.published },

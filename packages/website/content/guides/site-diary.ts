@@ -3,6 +3,7 @@ import type { Guide } from "./types";
 export const siteDiary: Guide = {
   slug: "how-to-write-a-construction-site-diary",
   title: "How to write a construction site diary that holds up in a dispute",
+  seoTitle: "How to write a construction site diary",
   description:
     "What to record in a construction site diary (daily log) every day, with a ready-to-use template: labour, plant, deliveries, weather, progress, delays, instructions, visitors and incidents.",
   audience: "Site teams",

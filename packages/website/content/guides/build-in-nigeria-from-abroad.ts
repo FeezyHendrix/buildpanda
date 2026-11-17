@@ -3,6 +3,7 @@ import type { Guide } from "./types";
 export const buildInNigeriaFromAbroad: Guide = {
   slug: "build-a-house-in-nigeria-from-abroad",
   title: "How to build a house in Nigeria from abroad without losing control",
+  seoTitle: "How to build a house in Nigeria from abroad",
   description:
     "A step-by-step guide for Nigerians in the diaspora building at home: verifying land, permits, budgets, choosing a contractor, paying against progress and getting independent inspections.",
   audience: "Owners",
