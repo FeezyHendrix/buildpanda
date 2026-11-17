@@ -165,19 +165,23 @@ export function ProductDiscoveryModal() {
           </header>
 
           <div className="flex flex-col gap-6 overflow-y-auto px-6 py-5">
-            {current ? (
-              current.fields.map((field) => (
-                <OptionField
-                  key={field.key}
-                  field={field}
-                  options={data.questions[field.key] ?? []}
-                  selected={answers[field.key]}
-                  onChange={(value) => setAnswers((prev) => ({ ...prev, [field.key]: value }))}
-                />
-              ))
-            ) : (
+            {current
+              ? current.fields.map((field) => (
+                  <OptionField
+                    key={field.key}
+                    field={field}
+                    options={data.questions[field.key] ?? []}
+                    selected={answers[field.key]}
+                    onChange={(value) => setAnswers((prev) => ({ ...prev, [field.key]: value }))}
+                  />
+                ))
+              : null}
+            {/* Mounted from the first step so the calendar is ready when the user reaches it. It sits
+                transparent inside the popup rather than hidden: browsers do not render a hidden or
+                off-screen cross-origin frame, so Calendly would only start drawing once shown. */}
+            <div className={current ? "pointer-events-none absolute inset-x-6 top-0 opacity-0" : undefined} inert={Boolean(current)}>
               <CalendlyEmbed />
-            )}
+            </div>
           </div>
 
           {save.error ? (
