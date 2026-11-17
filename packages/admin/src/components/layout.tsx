@@ -12,6 +12,7 @@ import {
   JobsIcon,
   GrowthIcon,
   EngagementIcon,
+  DiscoveryIcon,
   AiOpsIcon,
   MaintenanceIcon,
   FlagIcon,
@@ -22,6 +23,7 @@ import {
 const nav = [
   { to: "/", label: "Overview", icon: DashboardIcon, end: true },
   { to: "/growth", label: "Growth", icon: GrowthIcon, end: false },
+  { to: "/product-discovery", label: "Product discovery", icon: DiscoveryIcon, end: false },
   { to: "/engagement", label: "Engagement", icon: EngagementIcon, end: false },
   { to: "/ops", label: "AI Operations", icon: AiOpsIcon, end: false },
   { to: "/users", label: "Users", icon: UsersIcon, end: false },
