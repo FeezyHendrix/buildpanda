@@ -3,6 +3,7 @@ import type { Guide } from "./types";
 export const constructionSoftwareForContractors: Guide = {
   slug: "construction-management-software-for-contractors-in-nigeria",
   title: "Construction management software for contractors in Nigeria: what you actually need",
+  seoTitle: "Construction software for contractors in Nigeria",
   description:
     "A practical checklist for Nigerian and African contractors choosing construction management software: estimates and takeoffs, programme, site diary, materials, inspections, variations, payments and offline use.",
   audience: "Contractors",
