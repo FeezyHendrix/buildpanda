@@ -3,6 +3,8 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useCallback, useEffect, useState } from "react";
+import { consentCopy } from "@/content/consent";
+import type { Language } from "@/content/markets/types";
 
 const STORAGE_KEY = "buildpanda-consent";
 const CHANGED_EVENT = "buildpanda-consent-changed";
@@ -82,7 +84,8 @@ export function Analytics({ measurementId }: { measurementId: string }) {
  * Sits above the sticky call to action and hides it while a choice is pending,
  * so the foot of the page never carries two bars at once.
  */
-export function ConsentBanner() {
+export function ConsentBanner({ language = "en" }: { language?: Language }) {
+  const copy = consentCopy[language];
   const { consent, ready, choose } = useConsent();
   const open = ready && consent === null;
 
@@ -97,19 +100,15 @@ export function ConsentBanner() {
   return (
     <div
       role="region"
-      aria-label="Cookies and data"
+      aria-label={copy.title}
       className="fixed inset-x-0 bottom-0 z-[60] border-t border-line bg-white/95 backdrop-blur"
     >
       <div className="site-container flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
         <p className="max-w-3xl text-sm leading-relaxed text-ink-soft">
-          We use cookies that are needed to run the site, and, only if you agree,
-          analytics that tell us which pages people read. You can change your
-          mind at any time from the footer. See our{" "}
-          <ConsentLink href="/privacy/">Privacy Policy</ConsentLink>,{" "}
-          <ConsentLink href="/data-policy/">Data Policy</ConsentLink> and{" "}
-          <ConsentLink href="/terms-of-service/">Terms</ConsentLink>. We handle
-          personal data under the Nigeria Data Protection Regulation and, where
-          it applies to you, the UK and EU GDPR.
+          {copy.body}{" "}
+          <ConsentLink href="/privacy/">{copy.privacy}</ConsentLink>,{" "}
+          <ConsentLink href="/data-policy/">{copy.data}</ConsentLink>,{" "}
+          <ConsentLink href="/terms-of-service/">{copy.terms}</ConsentLink>. {copy.law}
         </p>
 
         <div className="flex flex-shrink-0 flex-wrap items-center gap-3">
@@ -118,14 +117,14 @@ export function ConsentBanner() {
             onClick={() => choose("essential")}
             className="inline-flex h-10 items-center justify-center rounded-full border border-line px-4 text-sm font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
           >
-            Essential only
+            {copy.essential}
           </button>
           <button
             type="button"
             onClick={() => choose("analytics")}
             className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-4 text-sm font-semibold text-white transition-colors hover:opacity-90"
           >
-            Accept analytics
+            {copy.analytics}
           </button>
         </div>
       </div>
@@ -142,7 +141,7 @@ function ConsentLink({ href, children }: { href: string; children: React.ReactNo
 }
 
 /** Footer control: clears the stored choice so the banner comes back. */
-export function ConsentReset() {
+export function ConsentReset({ language = "en", className = "text-sm text-white/70 underline-offset-2 hover:text-white hover:underline" }: { language?: Language; className?: string }) {
   const { consent, ready, choose } = useConsent();
   if (!ready || consent === null) return null;
 
@@ -150,9 +149,9 @@ export function ConsentReset() {
     <button
       type="button"
       onClick={() => choose(null)}
-      className="text-sm text-white/70 underline-offset-2 hover:text-white hover:underline"
+      className={className}
     >
-      Cookie settings
+      {consentCopy[language].settings}
     </button>
   );
 }
