@@ -1,6 +1,11 @@
 import type { MetadataRoute } from "next";
 import { guides } from "@/content/guides";
 import { canonicalUrl } from "@/lib/seo";
+import { marketPath, publishedMarkets } from "@/content/markets";
+import { languages } from "@/content/markets/types";
+import { marketAlternates } from "@/lib/market-seo";
+import { productFactsDate, productFactsPath } from "@/content/product-facts";
+import { productFactsAlternates } from "@/lib/product-facts-seo";
 
 export const dynamic = "force-static";
 
@@ -21,6 +26,19 @@ const pages = [
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     ...pages.map(({ path, priority, changeFrequency }) => ({ url: canonicalUrl(path), changeFrequency, priority })),
+    ...languages.map((language) => ({
+      url: canonicalUrl(productFactsPath(language)),
+      lastModified: productFactsDate,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+      alternates: { languages: productFactsAlternates() },
+    })),
+    ...languages.flatMap((language) => [undefined, ...publishedMarkets].map((market) => ({
+      url: canonicalUrl(marketPath(language, market)),
+      changeFrequency: "monthly" as const,
+      priority: market ? 0.7 : 0.8,
+      alternates: { languages: marketAlternates(market) },
+    }))),
     ...guides.map((guide) => ({
       url: canonicalUrl(`blog/${guide.slug}`),
       lastModified: guide.updated ?? guide.published,

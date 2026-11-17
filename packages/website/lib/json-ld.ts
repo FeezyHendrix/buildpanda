@@ -1,5 +1,7 @@
 import { site } from "@/content/site";
+import { languages } from "@/content/markets/types";
 import { canonicalUrl } from "./seo";
+import { productFacts } from "@/content/product-facts";
 
 const organization = {
   "@type": "Organization",
@@ -32,7 +34,7 @@ export const websiteJsonLd = {
   url: `${site.url}/`,
   description: site.description,
   publisher: { "@id": `${site.url}/#organization` },
-  inLanguage: "en",
+  inLanguage: languages,
 };
 
 /**
@@ -44,15 +46,15 @@ export const websiteJsonLd = {
 export const softwareJsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
+  "@id": `${site.url}/#software`,
   name: site.name,
   applicationCategory: "BusinessApplication",
   applicationSubCategory: "Construction management software",
   operatingSystem: "Web, iOS, Android",
-  areaServed: ["Nigeria", "Ghana", "Kenya", "South Africa", "Africa"],
+  areaServed: "Africa",
   url: `${site.url}/`,
   publisher: { "@id": `${site.url}/#organization` },
-  description:
-    "Construction management software covering estimates and proposals, programme and delays, site diaries, inspections, variations, and payment certificates that trace to work that was signed off.",
+  description: productFacts.en.summary,
   featureList: [
     "Estimates, bills of quantities and drawing takeoffs",
     "Programme, look-aheads and delay records",
