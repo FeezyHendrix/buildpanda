@@ -22,6 +22,7 @@ import assetRoutes from "./modules/assets/routes.ts";
 import healthRoutes from "./modules/health/routes.ts";
 import permissionsRoutes from "./modules/permissions/routes.ts";
 import leadRoutes from "./modules/leads/routes.ts";
+import productDiscoveryRoutes from "./modules/product-discovery/routes.ts";
 import rateLibraryRoutes from "./modules/rate-library/routes.ts";
 import complianceDocsRoutes from "./modules/compliance-docs/routes.ts";
 import proposalTemplateRoutes from "./modules/proposals/templates-routes.ts";
@@ -176,6 +177,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(permissionsRoutes);
   await app.register(leadRoutes);
+  await app.register(productDiscoveryRoutes);
   await app.register(rateLibraryRoutes);
   await app.register(complianceDocsRoutes);
   await app.register(proposalTemplateRoutes);
