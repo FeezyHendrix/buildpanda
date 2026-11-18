@@ -1,6 +1,6 @@
 import { features } from "@/lib/feature-access";
 import { canAccess } from "@/lib/project-access-store";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { useEffect, useMemo } from "react";
 import { expensesApi, type ExpenseCategory } from "@/api/expenses";
 import type { Db } from "@/db/client";

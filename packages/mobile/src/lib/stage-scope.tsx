@@ -2,12 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { stagesApi, type Stage } from "@/api/stages";
 import { activitiesApi, type Activity } from "@/api/activities";
 import { features } from "./feature-access";
-import { useProjectAccess } from "./project-access-provider";
+import { useProjectAccess } from "@/lib/project-access-provider";
 import { activityKeys, stageKeys } from "@/hooks/query-keys";
 import { useProjectBuilding } from "@/hooks/use-project-building";
 import { useFieldSession } from "./field-session";
 import { usePersistentQuery } from "./persistent-query";
-import { storage } from "./storage";
+import { storage } from "@/lib/storage";
 import { stageStorageKey, validStageId } from "./stage-filter";
 
 interface StageScope {

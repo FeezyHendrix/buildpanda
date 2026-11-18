@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { queryStorage } from "./query-storage";
+import { queryStorage } from "@/lib/query-storage";
 import type { AccessRequirement } from "./access-requirement";
-import { useProjectAccess } from "./project-access-provider";
+import { useProjectAccess } from "@/lib/project-access-provider";
 import { projectAccess, requireAccess, requireCurrentAccess } from "./project-access-store";
 import { useFieldSession } from "./field-session";
 

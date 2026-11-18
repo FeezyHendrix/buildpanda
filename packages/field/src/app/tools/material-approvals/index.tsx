@@ -1,0 +1,116 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
+import { goBack } from "@/lib/navigation";
+import Ionicons from "@/components/atoms/icon";
+import { router } from "@/navigation";
+import { useMemo, useState } from "react";
+import type { ApprovalStatus } from "@/api/material-approvals";
+import { PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_FAINT, ICON_MUTED } from "@/constants/colors";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
+import { MaterialApprovalStatusBadge } from "@/components/molecules/material-approval-status";
+import { Page } from "@/components/molecules/page";
+import { SearchableList } from "@/components/molecules/searchable-list";
+import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
+import type { Db } from "@/db/client";
+import type { LocalMaterialApproval } from "@/db/material-approvals-repository";
+import { useLocalDb } from "@/db/provider";
+import { useLocalMaterialApprovals } from "@/hooks/use-material-approvals";
+import { formatShortDate } from "@/lib/dates";
+import { useFieldSession } from "@/lib/field-session";
+type Filter = "all" | ApprovalStatus;
+const FILTERS: readonly SegmentedTab<Filter>[] = [
+    { key: "all", label: "All" },
+    { key: "Pending", label: "Pending" },
+    { key: "Resubmit", label: "Resubmit" },
+    { key: "Approved", label: "Approved" },
+    { key: "Rejected", label: "Rejected" },
+] as const;
+/** Each tab says what it would hold, so an empty one is a fact rather than a puzzle. */
+const EMPTY_COPY: Record<Filter, {
+    title: string;
+    body: string;
+}> = {
+    all: {
+        title: "No material approval requests yet",
+        body: "Raise one to get a material and its specification signed off before it is ordered.",
+    },
+    Pending: {
+        title: "Nothing is waiting for a decision",
+        body: "Every request on this project has been decided. New requests appear here until a reviewer acts on them.",
+    },
+    Resubmit: {
+        title: "Nothing has been sent back",
+        body: "Requests a reviewer asked to be changed and resubmitted appear here.",
+    },
+    Approved: {
+        title: "Nothing has been approved yet",
+        body: "Requests appear here once a reviewer signs them off.",
+    },
+    Rejected: {
+        title: "Nothing has been rejected",
+        body: "Requests a reviewer turned down appear here.",
+    },
+};
+function facts(approval: LocalMaterialApproval): string {
+    const neededBy = formatShortDate(approval.neededBy);
+    return [
+        `${approval.quantity} ${approval.unit}`,
+        approval.supplier,
+        neededBy ? `needed ${neededBy}` : null,
+        approval.phaseName,
+    ]
+        .filter(Boolean)
+        .join(" · ");
+}
+function ApprovalRow({ approval }: {
+    approval: LocalMaterialApproval;
+}) {
+    return (<button onClick={() => router.push({ pathname: '/tools/material-approvals/[id]', params: { id: approval.id } })} role="button" className="min-h-16 gap-1.5 border-b border-hairline px-4 py-3 active:bg-surface-alt" type="button">
+      <div className="field-stack flex-row items-center gap-3">
+        <Text weight="semibold" className="min-w-0 flex-1 text-[15px]" numberOfLines={1}>
+          {approval.title}
+        </Text>
+        {approval.isPendingSync ? (<PendingBadge />) : (<MaterialApprovalStatusBadge status={approval.status}/>)}
+        <Ionicons name="chevron-forward" size={18} color={ICON_FAINT}/>
+      </div>
+      <Text weight="medium" tone="secondary" className="text-[13px]" numberOfLines={1}>
+        {approval.materialName}
+      </Text>
+      <div className="field-stack flex-row items-center gap-2">
+        <Text tone="muted" className="min-w-0 flex-1 text-xs" numberOfLines={1}>
+          {facts(approval)}
+        </Text>
+        {approval.commentCount > 0 ? (<div className="field-stack flex-row items-center gap-1">
+            <Ionicons name="chatbubble-outline" size={11} color={ICON_MUTED}/>
+            <Text tone="muted" className="text-xs">
+              {approval.commentCount}
+            </Text>
+          </div>) : null}
+      </div>
+    </button>);
+}
+function ApprovalList({ db, projectId, filter }: {
+    db: Db;
+    projectId: string;
+    filter: Filter;
+}) {
+    const { data, isPending } = useLocalMaterialApprovals(db, projectId);
+    const rows = useMemo(() => (filter === "all" ? data : data.filter((row) => row.status === filter)), [data, filter]);
+    return (<SearchableList data={rows} loading={isPending} fields={(row) => [row.title, row.materialName, row.supplier, row.phaseName, row.status]} placeholder="Search material approvals" emptyTitle={EMPTY_COPY[filter].title} emptyBody={EMPTY_COPY[filter].body} renderItem={(approval) => <ApprovalRow approval={approval}/>}/>);
+}
+function MaterialApprovals() {
+    const { projectId } = useFieldSession();
+    const { db, ready } = useLocalDb();
+    const [filter, setFilter] = useState<Filter>("all");
+    return (<Page stageScope scroll={false} title="Material approvals" onBack={() => goBack()} rightButtons={<HeaderIconButton permission={features.materialApprovals.actions.create} icon="add" label="New approval request" onPress={() => router.push('/tools/material-approvals/new')}/>}>
+      <div className="field-stack pb-3">
+        <SegmentedTabs tabs={FILTERS} active={filter} onChange={setFilter}/>
+      </div>
+
+      {ready && db && projectId ? (<ApprovalList key={projectId} db={db} projectId={projectId} filter={filter}/>) : (<div className="field-stack items-center py-12">
+          <Spinner size="md"/>
+        </div>)}
+    </Page>);
+}
+export default withProjectPermission(MaterialApprovals, "/tools/material-approvals");

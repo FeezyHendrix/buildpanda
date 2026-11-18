@@ -1,7 +1,7 @@
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { remapQueuedRecord } from "./sync-write-state";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   changeCurrency,
@@ -10,7 +10,7 @@ import {
   type UpsertChangeRequestInput,
 } from "@/api/change-requests";
 import { CHANGE_REQUEST_COMMENTS_RESOURCE } from "./change-request-comments-repository";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { enqueueDelete, enqueueUpdate } from "./enqueue-update";
 import { changeRequestComments, changeRequests, outbox, type ChangeRequestRow } from "./schema";
 

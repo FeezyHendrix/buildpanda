@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export const TEMPLATE_FIELD_TYPES = ["section", "short_text", "long_text", "number", "select", "yes_no"] as const;
 export type TemplateFieldType = (typeof TEMPLATE_FIELD_TYPES)[number];

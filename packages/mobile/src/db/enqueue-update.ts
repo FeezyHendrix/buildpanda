@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { outbox } from "./schema";
 import { isOutboxItemSending } from "./sync-write-state";
 
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 
 // Expo SQLite transactions are synchronous; helpers must finish before commit.
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];

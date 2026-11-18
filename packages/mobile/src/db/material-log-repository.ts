@@ -1,9 +1,9 @@
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { and, asc, desc, eq, notInArray } from "drizzle-orm";
 import type { LogMaterialEntryInput, MaterialLedgerEntry, MaterialStockLevel } from "@/api/materials-ledger";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { materialLedgerEntries, materialOrders, materialStock, outbox } from "./schema";
 
 const access = repositoryAccess(features.materialLog);

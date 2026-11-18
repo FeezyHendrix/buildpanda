@@ -1,8 +1,8 @@
 import { outboxReadWhere, requireOutboxAccess } from "./outbox-access";
 import { AccessDeniedError, projectAccess, refreshProjectAccess, requireCurrentAccess } from "@/lib/project-access-store";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
-import { getDbOwner, type Db } from "./client";
-import NetInfo from "@react-native-community/netinfo";
+import { getDbOwner, type Db } from "@/db/client";
+import NetInfo from "@/lib/connectivity";
 import { readCachedUser } from "@/lib/session-cache";
 import { pushChangeRequestCommentOutboxItem } from "./outbox-change-request-comments";
 import { pushChangeRequestOutboxItem } from "./outbox-change-requests";
@@ -22,7 +22,7 @@ import { discardPendingMedia } from "@/lib/pending-media";
 import { pushUpdateOutboxItem, UPDATES_RESOURCE } from "./outbox-updates";
 import { OUTBOX_TABLES } from "./outbox-tables";
 import { documents, drawingMarkupComments, expenses, outbox, projectUpdateMedia, updateComments, type OutboxRow } from "./schema";
-import { discardStagedMedia } from "../lib/stage-media";
+import { discardStagedMedia } from "@/lib/stage-media";
 
 import { startSending, finishSending } from "./sync-write-state";
 

@@ -1,4 +1,4 @@
-import { getRandomBytes } from "expo-crypto";
+import { getRandomBytes } from "@/lib/crypto";
 import { API_BASE_URL } from "./api-base-url";
 import { createSession, type PayloadSession } from "./payload-crypto";
 

@@ -1,12 +1,12 @@
 import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { hasRichContent, MAX_VOICE_NOTE_BYTES, voiceNoteError } from "@buildpanda/rich-content";
 import type { UpdateComment } from "@/api/updates";
 import { features } from "@/lib/feature-access";
 import { htmlToText } from "@/lib/html";
 import { discardPendingMedia, stagePendingMedia } from "@/lib/pending-media";
 import { requireCurrentAccess } from "@/lib/project-access-store";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { repositoryAccess } from "./permissions";
 import { outbox, projectUpdates, updateComments, type UpdateCommentRow } from "./schema";
 

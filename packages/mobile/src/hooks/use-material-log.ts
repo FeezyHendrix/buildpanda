@@ -1,4 +1,4 @@
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { useEffect, useMemo } from "react";
 import { materialsLedgerApi } from "@/api/materials-ledger";
 import type { Db } from "@/db/client";

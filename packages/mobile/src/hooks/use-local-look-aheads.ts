@@ -3,7 +3,7 @@ import { missingBuilding, useProjectBuilding } from "./use-project-building";
 import { projectAccess } from "@/lib/project-access-store";
 import { filterBuildingRows } from "@/lib/building-scope";
 import { useSyncState } from "@/lib/sync-provider";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { useEffect, useMemo } from "react";
 import { lookAheadsApi, type CreateLookAheadInput } from "@/api/look-aheads";
 import type { Db } from "@/db/client";

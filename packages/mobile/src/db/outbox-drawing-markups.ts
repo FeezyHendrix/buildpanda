@@ -4,7 +4,7 @@ import { drawingMarkupApi } from "@/api/drawing-markup";
 import { uploadProjectFile } from "@/api/files";
 import { loadStagedUploadUri } from "@/lib/stage-media";
 import type { MarkupGeometry } from "@/components/plan-review/markup-types";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { drawingMarkupsRepository } from "./drawing-markups-repository";
 import { done, PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { drawingMarkups, type OutboxRow } from "./schema";

@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export type UpdateCategory = "Progress" | "Material Delivery" | "Inspections" | "Issues";
 

@@ -1,7 +1,7 @@
 import { projectAccess, requireAccess } from "./project-access-store";
 import { features } from "./feature-access";
 import type { SheetScale } from "@/components/plan-review/markup-types";
-import { storage } from "./storage";
+import { storage } from "@/lib/storage";
 
 /**
  * A sheet's calibrated scale, per document revision, on this device.

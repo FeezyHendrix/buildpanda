@@ -1,7 +1,7 @@
 import { channelRequirement } from "@/lib/messaging-access";
 import { features, messagingAccess } from "@/lib/feature-access";
 import { projectAccess, requireAccess, requireCurrentAccess } from "@/lib/project-access-store";
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export interface Channel {
   id: string;

@@ -1,10 +1,10 @@
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { isWeatherCondition } from "@/lib/daily-log-weather";
 import type { DailyLogDay, UpsertDailyLogInput } from "@/api/daily-logs";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { localIsoDate } from "@/lib/dates";
 import { reviveOrQueue } from "./enqueue-update";
 import { isOutboxItemSending } from "./sync-write-state";

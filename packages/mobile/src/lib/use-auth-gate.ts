@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSession } from "./auth-client";
+import { useSession } from "@/lib/auth-client";
 import { readCachedUser, subscribeCachedUser, writeCachedUser, type CachedUser } from "./session-cache";
 
 interface AuthGate {

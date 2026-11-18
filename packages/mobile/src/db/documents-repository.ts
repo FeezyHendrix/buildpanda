@@ -2,10 +2,10 @@ import { requireCurrentAccess } from "@/lib/project-access-store";
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { and, asc, desc, eq, gt, inArray } from "drizzle-orm";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import type { DocumentGroup, ProjectDocument } from "@/api/documents";
 import { discardStagedMedia, stageMedia } from "@/lib/stage-media";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { documentCategories, documents, outbox, type DocumentCategoryRow, type DocumentRow } from "./schema";
 
 const access = repositoryAccess(features.documents);
@@ -263,7 +263,7 @@ export const documentsRepository = {
     let localUri = local?.stagedUri ?? null;
     if (localUri && server.currentVersionId) {
       try {
-        localUri = (await import("@/lib/download-file")).cachePickedVersion(ticket, localUri, server.currentVersionId, server.fileName);
+        localUri = await (await import("@/lib/download-file")).cachePickedVersion(ticket, localUri, server.currentVersionId, server.fileName);
       } catch {
         // The upload already succeeded. Keep its durable staged bytes if a
         // second copy cannot fit; retrying creation would duplicate the file.

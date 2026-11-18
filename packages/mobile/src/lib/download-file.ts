@@ -1,15 +1,15 @@
-import { clearContentImages } from "./content-image-storage";
+import { clearContentImages } from "@/lib/content-image-storage";
 import { cacheVersionBytes, cachedVersionUri, clearCachedDocuments } from "./document-bytes";
 import { isReviewableFile } from "./reviewable-file";
 import { Directory, File, Paths } from "expo-file-system";
 import { Platform } from "react-native";
-import NetInfo from "@react-native-community/netinfo";
+import NetInfo from "@/lib/connectivity";
 import { verifyMessageAttachment } from "@/api/files";
 import { documentsApi } from "@/api/documents";
 import { documentsRepository } from "@/db/documents-repository";
 import type { Db } from "@/db/client";
 import type { AccessScope } from "./access-policy";
-import { API_BASE_URL, authClient } from "./auth-client";
+import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import { downloadError } from "./download-error";
 import { features, messagingAccess } from "./feature-access";
 import { AccessDeniedError, projectAccess, requireAccess, requireCurrentAccess, revokeProjectAccess, type AccessState } from "./project-access-store";

@@ -1,0 +1,172 @@
+import { ContentText, RichContent } from "@/components/rich-text/rich-content";
+import { ImageTextInput } from "@/components/rich-text/image-text-input";
+import { useProjectAccess } from "@/lib/project-access-provider";
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
+import { goBack } from "@/lib/navigation";
+import Ionicons from "@/components/atoms/icon";
+import { router, useLocalSearchParams } from "@/navigation";
+import { useState } from "react";
+import { Alert } from "@/platform/browser";
+import { CHANGE_STATUS_LABELS, type ChangeStatus } from "@/api/change-requests";
+import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_INVERSE, ICON_SUBTLE } from "@/constants/colors";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
+import { Page } from "@/components/molecules/page";
+import type { Db } from "@/db/client";
+import { useLocalDb } from "@/db/provider";
+import { useAddChangeRequestComment, useChangeRequestComments } from "@/hooks/use-change-request-comments";
+import { useDeleteChangeRequest, useLocalChangeRequest } from "@/hooks/use-local-change-requests";
+import { formatDateTime } from "@/lib/dates";
+import { useFieldSession } from "@/lib/field-session";
+import { useSession } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
+const STATUS_TONE: Record<ChangeStatus, {
+    bg: string;
+    text: string;
+}> = {
+    Draft: { bg: "bg-grey-50", text: "text-grey-500" },
+    Submitted: { bg: "bg-primary-50", text: "text-primary-700" },
+    Approved: { bg: "bg-success-50", text: "text-success-700" },
+    Rejected: { bg: "bg-error-50", text: "text-error-600" },
+};
+function CommentThread({ db, projectId, changeId }: {
+    db: Db;
+    projectId: string;
+    changeId: string;
+}) {
+    const { data, isPending } = useChangeRequestComments(db, projectId, changeId);
+    if (isPending) {
+        return (<div className="field-stack items-center py-6">
+        <Spinner size="md"/>
+      </div>);
+    }
+    if (data.length === 0) {
+        return (<Text tone="secondary" className="px-6 py-4 text-center text-[13px]">
+        No comments yet. Add one below — it is saved on your device and uploads when you have signal.
+      </Text>);
+    }
+    return (<Card>
+      {data.map((c) => (<div key={c.id} className="field-stack border-b border-hairline px-4 py-3">
+          <div className="field-stack flex-row items-center gap-2">
+            <Text weight="semibold" className="flex-1 text-[13px]" numberOfLines={1}>
+              {c.authorName || "You"}
+            </Text>
+            {c.isPendingSync ? (<PendingBadge />) : (<Text tone="muted" className="text-[11px]">
+                {formatDateTime(c.createdAt)}
+              </Text>)}
+          </div>
+          <ContentText className="pt-1 text-[15px]" value={c.body}/>
+        </div>))}
+    </Card>);
+}
+function CRDetailContent({ db, projectId, changeId }: {
+    db: Db;
+    projectId: string;
+    changeId: string;
+}) {
+    const { data: cr } = useLocalChangeRequest(db, changeId);
+    if (!cr) {
+        return (<div className="field-stack items-center py-12">
+        <Text tone="secondary" className="text-[13px]">This change request may not have synced yet.</Text>
+      </div>);
+    }
+    const tone = STATUS_TONE[cr.status] ?? STATUS_TONE.Draft;
+    return (<div className="field-stack gap-5">
+      <div className="field-stack flex-row flex-wrap items-center gap-2">
+        <div className={"field-stack " + (cn("rounded-full px-2.5 py-1", tone.bg))}>
+          <Text weight="semibold" className={cn("text-[11px] uppercase", tone.text)}>
+            {CHANGE_STATUS_LABELS[cr.status]}
+          </Text>
+        </div>
+        {cr.isPendingSync ? <PendingBadge /> : null}
+      </div>
+
+      <Text weight="bold" className="text-lg">{cr.title}</Text>
+      {cr.description || cr.descriptionHtml ? <RichContent html={cr.descriptionHtml} text={cr.description}/> : null}
+
+      <div className="field-stack flex-row gap-4">
+        {cr.costImpact ? (<div className="field-stack">
+            <Text weight="semibold" tone="muted" className="text-[10px] uppercase tracking-wide">Cost impact</Text>
+            <Text weight="bold" className="text-base">{cr.currency} {cr.costImpact.toLocaleString()}</Text>
+          </div>) : null}
+        {cr.timeImpactDays ? (<div className="field-stack">
+            <Text weight="semibold" tone="muted" className="text-[10px] uppercase tracking-wide">Time impact</Text>
+            <Text weight="bold" className="text-base">{cr.timeImpactDays} days</Text>
+          </div>) : null}
+      </div>
+
+      <div className="field-stack">
+        <Text weight="bold" className="pb-2 text-base">Comments</Text>
+        <CommentThread db={db} projectId={projectId} changeId={changeId}/>
+      </div>
+    </div>);
+}
+function ChangeRequestDetail() {
+    const { id } = useLocalSearchParams<{
+        id: string;
+    }>();
+    const { projectId } = useFieldSession();
+    const { db, ready } = useLocalDb();
+    const removeRecord = useDeleteChangeRequest(db, projectId);
+    const addComment = useAddChangeRequestComment(db, projectId);
+    const { data: session } = useSession();
+    // Native confirm: deleting a site record is destructive and the app has no
+    // undo, so it must not happen on a single stray tap.
+    function confirmDelete() {
+        if (!id)
+            return;
+        Alert.alert("Delete this change request?", "This cannot be undone.", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: () => {
+                    void removeRecord(id).then(() => goBack()).catch((error: unknown) => {
+                        Alert.alert("Could not delete this record", error instanceof Error ? error.message : "Please try again.");
+                    });
+                },
+            },
+        ]);
+    }
+    const [body, setBody] = useState("");
+    const [sending, setSending] = useState(false);
+    const [sendError, setSendError] = useState<string | null>(null);
+    const { allows } = useProjectAccess();
+    const canSend = body.trim().length > 0 && !sending;
+    // The comment is written to SQLite and queued; no signal needed. A failure
+    // here is a local write failing, so what was typed stays in the box.
+    async function handleSend() {
+        if (!canSend || !id)
+            return;
+        setSending(true);
+        setSendError(null);
+        try {
+            await addComment(id, body.trim(), session?.user.name ?? "You");
+            setBody("");
+        }
+        catch (err) {
+            setSendError(err instanceof Error ? err.message : "Could not save that comment.");
+        }
+        finally {
+            setSending(false);
+        }
+    }
+    return (<Page title="Change request" onBack={() => goBack()} rightButtons={id ? (<>
+            <HeaderIconButton permission={features.changeRequests.actions.edit} icon="create-outline" label="Edit change request" onPress={() => router.push(`/tools/change-requests/edit/${id}` as never)}/>
+            <HeaderIconButton permission={features.changeRequests.actions.remove} icon="trash-outline" label="Delete change request" onPress={confirmDelete}/>
+          </>) : null} scroll footer={id && allows(features.changeRequests.actions.comment) ? (<div className="field-stack gap-2">
+            {sendError ? (<Text tone="danger" className="px-1 text-xs">
+                {sendError}
+              </Text>) : null}
+            <div className="field-stack flex-row items-end gap-2">
+              <ImageTextInput value={body} onChangeText={setBody} placeholder="Add a comment" placeholderTextColor={ICON_SUBTLE} multiline className="max-h-28 min-h-14 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-inter text-base text-black-500"/>
+              <button onClick={handleSend} disabled={!canSend} role="button" aria-label="Send comment" aria-disabled={!canSend} aria-busy={sending} className={cn("h-14 w-14 items-center justify-center rounded-xl bg-primary-500", !canSend && "opacity-50")} type="button">
+                {sending ? <Spinner size="xs" tone="current"/> : <Ionicons name="arrow-up" size={20} color={ICON_INVERSE}/>}
+              </button>
+            </div>
+          </div>) : undefined}>
+      {ready && db && projectId && id ? (<CRDetailContent db={db} projectId={projectId} changeId={id}/>) : (<div className="field-stack items-center py-12"><Spinner size="md"/></div>)}
+    </Page>);
+}
+export default withProjectPermission(ChangeRequestDetail, "/tools/change-requests/[id]");

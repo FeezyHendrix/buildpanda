@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 
 /** Mirrors MATERIAL_ORDER_STATUSES in the backend's materials-equipment types. */
 export const MATERIAL_ORDER_STATUSES = [

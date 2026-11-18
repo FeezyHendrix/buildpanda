@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export const RFI_STATUSES = ["Draft", "Open", "InReview", "Answered", "Closed", "Void"] as const;
 export type RfiStatus = (typeof RFI_STATUSES)[number];

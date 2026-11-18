@@ -1,7 +1,7 @@
 import { documentsApi } from "@/api/documents";
 import type { Db } from "@/db/client";
 import { documentsRepository } from "@/db/documents-repository";
-import { cacheDocument } from "./download-file";
+import { cacheDocument } from "@/lib/download-file";
 import { isReviewableFile } from "./reviewable-file";
 
 export interface PlanDownloadProgress {

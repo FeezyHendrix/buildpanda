@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 import type { TemplateResponses } from "./daily-log-templates";
 import type { WeatherCondition } from "@/lib/daily-log-weather";
 

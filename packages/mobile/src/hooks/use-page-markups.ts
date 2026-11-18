@@ -2,7 +2,7 @@ import { projectAccess } from "@/lib/project-access-store";
 import { useCallback, useMemo, useState } from "react";
 import { AppState } from "react-native";
 import { useFocusEffect } from "expo-router";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { drawingMarkupApi, type DrawingMarkupComment } from "@/api/drawing-markup";
 import type { Db } from "@/db/client";
 import { drawingMarkupsRepository, toMarkup, toComment } from "@/db/drawing-markups-repository";

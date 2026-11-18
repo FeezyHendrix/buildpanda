@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "@/lib/auth-client";
-import { uploadProjectFile } from "./files";
-import { request } from "./client";
+import { uploadProjectFile } from "@/api/files";
+import { request } from "@/api/client";
 
 /** The backend's CategoryGroup. Media has its own library on the web; it is never filed under Documents. */
 export type DocumentGroup = "plan" | "document" | "media";

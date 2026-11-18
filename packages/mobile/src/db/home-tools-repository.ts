@@ -1,6 +1,6 @@
 import { eq, isNotNull } from "drizzle-orm";
 import { decayedScore } from "@/lib/home-tools";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { homeToolUsage } from "./schema";
 
 export const homeToolsRepository = {

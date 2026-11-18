@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { expensesApi, type Expense } from "@/api/expenses";
 import { uploadProjectFile } from "@/api/files";
 import { discardStagedMedia, loadStagedUploadUri } from "@/lib/stage-media";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { expensesRepository } from "./expenses-repository";
 import { done, skipped, type OutboxHandlerResult, dropItem } from "./outbox-handler";
 import { outbox, type ExpenseRow, type OutboxRow } from "./schema";

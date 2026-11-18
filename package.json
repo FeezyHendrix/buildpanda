@@ -25,7 +25,9 @@
     "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build",
     "version:patch": "node scripts/version.mjs patch",
     "version:minor": "node scripts/version.mjs minor",
-    "version:major": "node scripts/version.mjs major"
+    "version:major": "node scripts/version.mjs major",
+    "dev:field": "pnpm --filter @buildpanda/field dev",
+    "build:field": "pnpm --filter @buildpanda/field build"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

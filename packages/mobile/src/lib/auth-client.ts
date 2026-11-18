@@ -2,7 +2,7 @@ import { createAuthClient } from "better-auth/react";
 import { expoClient } from "@better-auth/expo/client";
 import { organizationClient } from "better-auth/client/plugins";
 import { payloadFetch } from "./payload-fetch";
-import { storage } from "./storage";
+import { storage } from "@/lib/storage";
 
 /**
  * Same backend, same `/api/auth/*` routes as the web app. The Expo plugin

@@ -6,12 +6,12 @@ import { projectAccessApi } from "@/api/project-access";
 import { clearProjectServerCache } from "@/db/access-cleanup";
 import { useLocalDb } from "@/db/provider";
 import { eligibleSnapshot, sameScope, OFFLINE_ACCESS_MS, type AccessScope, type AccessSnapshot } from "./access-policy";
-import { clearDocumentCache } from "./download-file";
+import { clearDocumentCache } from "@/lib/download-file";
 import { useFieldSession } from "./field-session";
 import { canAccess, configureAccessLifecycle, projectAccess } from "./project-access-store";
 import type { AccessRequirement } from "./access-requirement";
-import { queryStorage } from "./query-storage";
-import { storage } from "./storage";
+import { queryStorage } from "@/lib/query-storage";
+import { storage } from "@/lib/storage";
 
 import { createAccessSession } from "./access-session";
 import { SNAPSHOT_KEY } from "./access-storage";

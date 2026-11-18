@@ -1,0 +1,46 @@
+{
+  "name": "@buildpanda/field",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build && node scripts/finish-build.mjs",
+    "typecheck": "tsc -p tsconfig.check.json --noEmit",
+    "preview": "vite preview --host 0.0.0.0",
+    "test:browser": "node --test scripts/browser.test.mjs",
+    "test:offline": "node --test scripts/offline.test.mjs",
+    "start": "node web-server.mjs",
+    "test:server": "node --test scripts/server.test.mjs"
+  },
+  "dependencies": {
+    "@buildpanda/rich-content": "file:../rich-content",
+    "@buildpanda/voice-actions": "file:../voice-actions",
+    "@tanstack/react-query": "^5.95.2",
+    "better-auth": "1.6.22",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "expo-sqlite": "~57.0.2",
+    "htmlparser2": "10.0.0",
+    "pdfjs-dist": "^6.0.227",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-router-dom": "^7.1.5",
+    "tailwind-merge": "^3.5.0",
+    "@noble/ciphers": "1.3.0",
+    "@noble/curves": "1.9.1",
+    "@noble/hashes": "1.8.0",
+    "@buildpanda/rich-text-editor": "file:../rich-text-editor",
+    "@sentry/react": "^11.8.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~6.0.3",
+    "vite": "^6.4.4",
+    "playwright": "1.61.1"
+  }
+}

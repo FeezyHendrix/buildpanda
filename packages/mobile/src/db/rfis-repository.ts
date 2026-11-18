@@ -4,10 +4,10 @@ import { requireDrawingReference } from "./record-permissions";
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { remapQueuedRecord } from "./sync-write-state";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { desc, eq, isNull } from "drizzle-orm";
 import type { Rfi, RfiStatusTransition, UpsertRfiInput } from "@/api/rfis";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { enqueueUpdate, reviveOrQueue } from "./enqueue-update";
 import { outbox, rfiComments, rfis, type RfiRow } from "./schema";
 

@@ -1,0 +1,108 @@
+import { StageField } from "@/components/molecules/stage-field";
+import { DateField } from "@/components/molecules/date-field";
+import { useStageScope } from "@/lib/stage-scope";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
+import { goBack } from "@/lib/navigation";
+import { useLocalSearchParams } from "@/navigation";
+import { useState } from "react";
+import { Button, Field, Text } from "@/components/atoms";
+import { Page } from "@/components/molecules/page";
+import { useLocalDb } from "@/db/provider";
+import { useCreateMaterialOrder } from "@/hooks/use-local-materials";
+import { useFieldSession } from "@/lib/field-session";
+import { isIsoDate } from "@/lib/dates";
+import { useSyncState } from "@/lib/sync-provider";
+type FromApproval = {
+    approvalId?: string;
+    approvalTitle?: string;
+    materialName?: string;
+    quantity?: string;
+    unit?: string;
+    supplier?: string;
+    neededBy?: string;
+    stageId?: string;
+};
+function NewMaterialOrder() {
+    const { projectId } = useFieldSession();
+    const scope = useStageScope();
+    // "Order this material" on an approved request opens this page filled in
+    // from it; the order is linked to the approval when it is created.
+    const from = useLocalSearchParams<FromApproval>();
+    const [stageId, setStageId] = useState<string | null>(from.stageId || scope.stageId || null);
+    const { db } = useLocalDb();
+    const create = useCreateMaterialOrder(db, projectId);
+    const { isOnline } = useSyncState();
+    const [title, setTitle] = useState(from.materialName ?? "");
+    const [materialName, setMaterialName] = useState(from.materialName ?? "");
+    const [quantity, setQuantity] = useState(from.quantity ?? "");
+    const [unit, setUnit] = useState(from.unit ?? "");
+    const [supplier, setSupplier] = useState(from.supplier ?? "");
+    const [neededBy, setNeededBy] = useState(from.neededBy ?? "");
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    // The API rejects an order with no quantity or no needed-by date, so the
+    // form refuses them too instead of queuing a write that can never land.
+    const quantityValue = Number(quantity.trim());
+    const isQuantityValid = Number.isFinite(quantityValue) && quantityValue > 0;
+    const isNeededByValid = isIsoDate(neededBy.trim());
+    const canSubmit = title.trim().length > 0 &&
+        materialName.trim().length > 0 &&
+        unit.trim().length > 0 &&
+        isQuantityValid &&
+        isNeededByValid &&
+        !saving;
+    async function submit() {
+        if (!canSubmit)
+            return;
+        setSaving(true);
+        setError(null);
+        try {
+            await create({
+                title: title.trim(),
+                phaseId: stageId,
+                materialName: materialName.trim(),
+                quantity: quantityValue,
+                unit: unit.trim(),
+                neededBy: neededBy.trim(),
+                supplier: supplier.trim() || null,
+                approvalId: from.approvalId ?? null,
+            });
+            goBack();
+        }
+        catch (err) {
+            setSaving(false);
+            setError(err instanceof Error ? err.message : "Could not save this order.");
+        }
+    }
+    return (<Page title="New material order" onBack={() => goBack()} footer={<Button onPress={submit} disabled={!canSubmit} loading={saving}>
+          Raise order
+        </Button>}>
+      {error ? (<div className="field-stack mb-4 rounded-xl bg-error-50 px-4 py-3">
+          <Text tone="danger" className="text-sm">
+            {error}
+          </Text>
+        </div>) : null}
+
+      {!isOnline ? (<div className="field-stack mb-4 rounded-xl bg-surface-alt px-4 py-3">
+          <Text tone="secondary" className="text-[13px]">
+            You&apos;re offline. This is saved on your device and uploads when you get signal.
+          </Text>
+        </div>) : null}
+
+      <div className="field-stack gap-5">
+        {from.approvalTitle ? (<div className="field-stack rounded-xl bg-surface-alt px-4 py-3">
+            <Text tone="secondary" className="text-[13px]">Placed against the approved request “{from.approvalTitle}”.</Text>
+          </div>) : null}
+        <StageField value={stageId} onChange={setStageId}/>
+        <Field label="Title" value={title} onChangeText={setTitle} placeholder="What is this for?" autoFocus/>
+        <Field label="Material" value={materialName} onChangeText={setMaterialName} placeholder="e.g. Cement"/>
+        <div className="field-stack flex-row gap-3">
+          <Field label="Quantity" value={quantity} onChangeText={setQuantity} keyboardType="numeric" className="flex-1"/>
+          <Field label="Unit" value={unit} onChangeText={setUnit} placeholder="bags" className="flex-1"/>
+        </div>
+        <Field label="Supplier" value={supplier} onChangeText={setSupplier} placeholder="Optional"/>
+        <DateField label="Needed by" value={neededBy} onChange={setNeededBy} placeholder="When it must be on site" minimumDate={new Date()}/>
+      </div>
+    </Page>);
+}
+export default withProjectPermission(NewMaterialOrder, "/tools/materials/new");

@@ -1,7 +1,7 @@
 import { and, eq, inArray, type SQL } from "drizzle-orm";
 import { AccessDeniedError, projectAccess } from "@/lib/project-access-store";
 import { features } from "@/lib/feature-access";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { repositoryAccess } from "./permissions";
 import { rfiComments, rfis } from "./schema";
 

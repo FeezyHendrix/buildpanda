@@ -1,12 +1,12 @@
 import type { AccessRequirement } from "@/lib/access-requirement";
 import { messagingAccess, uploadAccess } from "@/lib/feature-access";
 import { projectAccess, requireAccess, requireCurrentAccess, revokeProjectAccess } from "@/lib/project-access-store";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { Directory, File, Paths } from "expo-file-system";
 import { FileSystemUploadType, uploadAsync } from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
-import { ApiError, request } from "./client";
+import { ApiError, request } from "@/api/client";
 import { isAccessRejection, responseError } from "./error";
 
 export interface UploadedFile {

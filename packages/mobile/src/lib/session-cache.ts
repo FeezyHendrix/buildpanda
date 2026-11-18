@@ -1,4 +1,4 @@
-import { storage } from "./storage";
+import { storage } from "@/lib/storage";
 
 /**
  * Last known-good identity, so the app boots signed-in with no network.

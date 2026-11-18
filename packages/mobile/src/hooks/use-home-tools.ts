@@ -1,4 +1,4 @@
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { usePathname } from "expo-router";
 import { useEffect, useMemo, useRef } from "react";
 import { getDbOwner, type Db } from "@/db/client";

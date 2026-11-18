@@ -1,6 +1,6 @@
 import { outboxReadWhere } from "./outbox-access";
 import { and, eq, getTableColumns, sql } from "drizzle-orm";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { outbox, rfis, changeRequests, documents, materialOrders, materialApprovals, lookAheads, materialLedgerEntries, tasks, expenses } from "./schema";
 
 export function outboxContextQuery(db: Db) {

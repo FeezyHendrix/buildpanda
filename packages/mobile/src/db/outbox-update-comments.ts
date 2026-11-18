@@ -3,7 +3,7 @@ import { uploadProjectFile } from "@/api/files";
 import { features } from "@/lib/feature-access";
 import { loadPendingMedia } from "@/lib/pending-media";
 import { requireCurrentAccess } from "@/lib/project-access-store";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { requireOutboxAccess } from "./outbox-access";
 import { done, dropItem, finishItem, PermanentOutboxError, skipped } from "./outbox-handler";
 import type { OutboxRow } from "./schema";

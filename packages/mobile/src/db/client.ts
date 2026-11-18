@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/expo-sqlite";
+import { drizzle } from "@/db/driver";
 import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 import * as schema from "./schema";
 import { setDbOwner } from "./ownership";

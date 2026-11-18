@@ -1,5 +1,5 @@
 import { materialsLedgerApi } from "@/api/materials-ledger";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { materialLogRepository } from "./material-log-repository";
 import { skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { type OutboxRow } from "./schema";

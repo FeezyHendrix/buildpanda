@@ -8,7 +8,7 @@ import {
   type RfiPriority,
   type RfiStatusTransition,
 } from "@/api/rfis";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { done, PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { rfiComments, rfis, type OutboxRow } from "./schema";
 import { rfiCommentsRepository } from "./rfi-comments-repository";

@@ -1,11 +1,11 @@
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import type { ProjectUpdate, UpdateCategory } from "@/api/updates";
 import { discardPendingMedia, stagePendingMedia } from "@/lib/pending-media";
 import { requireCurrentAccess } from "@/lib/project-access-store";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { reviveOrQueue } from "./enqueue-update";
 import {
   projectUpdateMedia,

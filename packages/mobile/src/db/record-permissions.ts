@@ -1,4 +1,4 @@
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { requireDbPermission, requireLocalRecord } from "./permissions";
 import { projectAccess } from "@/lib/project-access-store";
 import { documents, drawingMarkups } from "./schema";

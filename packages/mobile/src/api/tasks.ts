@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export type TaskPriority = "Low" | "Medium" | "High";
 export const TASK_PRIORITIES: readonly TaskPriority[] = ["Low", "Medium", "High"];

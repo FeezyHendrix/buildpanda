@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": [
+        "./src/*",
+        "../mobile/src/*"
+      ],
+      "@/assets/*": [
+        "../mobile/assets/*"
+      ]
+    },
+    "types": [
+      "vite/client"
+    ],
+    "rootDirs": [
+      "./src",
+      "../mobile/src"
+    ],
+    "allowJs": true
+  },
+  "include": [
+    "src"
+  ]
+}

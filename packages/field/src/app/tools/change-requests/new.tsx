@@ -1,0 +1,80 @@
+import { StageField } from "@/components/molecules/stage-field";
+import { useStageScope } from "@/lib/stage-scope";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
+import { goBack } from "@/lib/navigation";
+import { useState } from "react";
+import { Button, Field, FieldLabel, Text } from "@/components/atoms";
+import { Page } from "@/components/molecules/page";
+import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
+import { useLocalDb } from "@/db/provider";
+import { useCreateChangeRequest } from "@/hooks/use-local-change-requests";
+import { useFieldSession } from "@/lib/field-session";
+import { useSyncState } from "@/lib/sync-provider";
+import { htmlToText } from "@/lib/html";
+function NewChangeRequest() {
+    const { projectId } = useFieldSession();
+    const scope = useStageScope();
+    const [stageId, setStageId] = useState<string | null>(scope.stageId ?? null);
+    const { db } = useLocalDb();
+    const create = useCreateChangeRequest(db, projectId);
+    const { isOnline } = useSyncState();
+    const [title, setTitle] = useState("");
+    const [descriptionHtml, setDescriptionHtml] = useState("");
+    const [cost, setCost] = useState("");
+    const [days, setDays] = useState("");
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const costNumber = cost.trim() ? Number(cost) : 0;
+    const daysNumber = days.trim() ? Number(days) : 0;
+    const canSubmit = title.trim().length > 0 && Number.isFinite(costNumber) && Number.isInteger(daysNumber) && !saving;
+    async function submit() {
+        if (!canSubmit)
+            return;
+        setSaving(true);
+        setError(null);
+        try {
+            await create({
+                title: title.trim(),
+                stageId: stageId,
+                description: htmlToText(descriptionHtml) || null,
+                descriptionHtml: descriptionHtml || null,
+                costImpact: costNumber,
+                timeImpactDays: daysNumber,
+            });
+            goBack();
+        }
+        catch (err) {
+            setSaving(false);
+            setError(err instanceof Error ? err.message : "Could not save this change request.");
+        }
+    }
+    return (<Page title="New change request" onBack={() => goBack()} footer={<Button onPress={submit} disabled={!canSubmit} loading={saving}>
+          Raise change request
+        </Button>}>
+      {error ? (<div className="field-stack mb-4 rounded-xl bg-error-50 px-4 py-3">
+          <Text tone="danger" className="text-sm">
+            {error}
+          </Text>
+        </div>) : null}
+
+      {!isOnline ? (<div className="field-stack mb-4 rounded-xl bg-surface-alt px-4 py-3">
+          <Text tone="secondary" className="text-[13px]">
+            You&apos;re offline. This is saved on your device and uploads when you get signal.
+          </Text>
+        </div>) : null}
+
+      <div className="field-stack gap-5">
+        <StageField value={stageId} onChange={setStageId}/>
+        <Field label="Title" value={title} onChangeText={setTitle} placeholder="What is changing?" autoFocus/>
+        <div className="field-stack gap-2">
+          <FieldLabel>Description</FieldLabel>
+          <RichTextEditor value={descriptionHtml} onChange={setDescriptionHtml} placeholder="Why is it needed?" projectId={projectId}/>
+        </div>
+        <div className="field-stack flex-row gap-3">
+          <Field label="Cost impact" value={cost} onChangeText={setCost} keyboardType="numeric" className="flex-1"/>
+          <Field label="Days" value={days} onChangeText={setDays} keyboardType="number-pad" className="flex-1"/>
+        </div>
+      </div>
+    </Page>);
+}
+export default withProjectPermission(NewChangeRequest, "/tools/change-requests/new");

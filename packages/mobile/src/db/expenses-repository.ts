@@ -1,10 +1,10 @@
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { and, desc, eq, notInArray } from "drizzle-orm";
 import type { Expense } from "@/api/expenses";
 import { stageMedia } from "@/lib/stage-media";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { expenses, outbox, type ExpenseRow } from "./schema";
 import { expenseReadWhere } from "./record-visibility";
 

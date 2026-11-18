@@ -1,9 +1,9 @@
 import { repositoryAccess, requireDbPermission } from "./permissions";
 import { features } from "@/lib/feature-access";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { asc, eq } from "drizzle-orm";
 import type { ApprovalComment } from "@/api/material-approvals";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { materialApprovals, materialApprovalComments, outbox, type MaterialApprovalCommentRow } from "./schema";
 
 const access = repositoryAccess(features.materialApprovals);

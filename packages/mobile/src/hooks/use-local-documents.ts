@@ -1,4 +1,4 @@
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { useMemo } from "react";
 import type { Db } from "@/db/client";
 import { documentsRepository, toDocument, type DocumentGroup } from "@/db/documents-repository";
