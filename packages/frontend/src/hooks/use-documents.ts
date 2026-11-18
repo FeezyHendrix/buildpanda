@@ -39,6 +39,18 @@ export function useProjectDocumentCategories(projectId: string | undefined) {
   });
 }
 
+export function useCreateDocumentCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, ...body }: { projectId: string; name: string; group: "document" | "plan" }) =>
+      documentsApi.createCategory(projectId, body),
+    // returned so the caller's await ends once the new category is in the list
+    onSuccess: (_data, { projectId }) =>
+      queryClient.invalidateQueries({ queryKey: documentKeys.categories(projectId) }),
+  });
+}
+
 export function useCreateDocument() {
   const queryClient = useQueryClient();
 

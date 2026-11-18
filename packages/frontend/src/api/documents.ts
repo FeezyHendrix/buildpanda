@@ -58,6 +58,9 @@ export const documentsApi = {
   categories: (projectId: string) =>
     api.get<DocumentCategory[]>(`/projects/${projectId}/documents/categories`).then((r) => r.data),
 
+  createCategory: (projectId: string, body: { name: string; group: "document" | "plan" }) =>
+    api.post<DocumentCategory>(`/projects/${projectId}/documents/categories`, body).then((r) => r.data),
+
   create: (projectId: string, body: DocumentRegisterInput & { categoryId: string; fileId: string }) =>
     api.post<ProjectDocument>(`/projects/${projectId}/documents`, body).then((r) => r.data),
 

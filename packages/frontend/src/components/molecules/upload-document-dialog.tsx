@@ -5,6 +5,7 @@ import { ProgressBar } from "@/components/atoms/progress-bar";
 import { Spinner } from "@/components/atoms/spinner";
 import { FormDrawer } from "./form-drawer";
 import { MediaDropzone } from "./media-dropzone";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { DocumentCategory, DocumentVisibility, ProjectDocument } from "@/lib/project-types";
 
 /** What a submit hands back. The v2 dialog asks only for the file and its category; the rest is null. */
@@ -25,7 +26,8 @@ interface UploadDocumentDialogProps {
   /** Accepted for the shared upload pages; the v2 dialog does not name a superseded document. */
   documents?: ProjectDocument[];
   onSubmit: (input: UploadDocumentInput) => void;
-  onCreateCategory?: (name: string) => string;
+  /** Persists the category and resolves its id; a rejection is shown in the panel. */
+  onCreateCategory?: (name: string) => Promise<string>;
   isSubmitting?: boolean;
   progress?: number | null;
   error?: string | null;
@@ -69,6 +71,8 @@ function UploadDocumentDialog({
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -77,6 +81,7 @@ function UploadDocumentDialog({
       setFile(null);
       setFileError(null);
       setNewCategoryName("");
+      setCategoryError(null);
     }
   }, [open]);
 
@@ -104,13 +109,20 @@ function UploadDocumentDialog({
     onSubmit({ categoryId, file, title: null, revision: null, supersedesId: null, visibility: "internal", documentDate: null });
   }
 
-  function handleCreateCategory(): void {
+  async function handleCreateCategory(): Promise<void> {
     const name = newCategoryName.trim();
     if (!name || !onCreateCategory) return;
-    const id = onCreateCategory(name);
-    setCategoryId(id);
-    setNewCategoryName("");
-    setView("form");
+    setSavingCategory(true);
+    setCategoryError(null);
+    try {
+      setCategoryId(await onCreateCategory(name));
+      setNewCategoryName("");
+      setView("form");
+    } catch (err) {
+      setCategoryError(getApiErrorMessage(err));
+    } finally {
+      setSavingCategory(false);
+    }
   }
 
   if (view === "addCategory") {
@@ -122,10 +134,12 @@ function UploadDocumentDialog({
         description=""
         submitLabel="Save"
         submitDisabled={!newCategoryName.trim()}
+        submitting={savingCategory}
+        error={categoryError}
         onSubmit={handleCreateCategory}
         footerVariant="stacked"
       >
-        <GoBackButton onClick={() => setView("form")} />
+        <GoBackButton onClick={() => { setCategoryError(null); setView("form"); }} />
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] font-medium text-[#1E1E1E]">
             Category
@@ -133,6 +147,7 @@ function UploadDocumentDialog({
           <TextInput
             value={newCategoryName}
             onChange={setNewCategoryName}
+            maxLength={60}
             placeholder="Legal"
             autoFocus
           />

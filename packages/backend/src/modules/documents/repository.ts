@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import type {
   CategoryAggregateRow,
   CategoryRow,
+  CreatableCategoryGroup,
   DocumentRow,
   DocumentStatus,
   DocumentVersionRow,
@@ -52,6 +53,15 @@ export interface NewVersionRecord {
   size_bytes: number | null;
   notes: string | null;
   uploaded_by_id: string | null;
+}
+
+export interface NewCategoryRecord {
+  id: string;
+  name: string;
+  tone: "brand";
+  group: CreatableCategoryGroup;
+  project_id: string;
+  created_by: string;
 }
 
 export interface VersionWithFile extends DocumentVersionRow {
@@ -107,6 +117,7 @@ export function documentsRepository(db: Knex) {
         .orderBy("name", "asc");
     },
 
+    /** Global categories plus this project's own; never another project's. */
     categoryCountsForProject(projectId: string): Promise<CategoryAggregateRow[]> {
       return db("document_categories as c")
         .leftJoin("project_documents as d", function () {
@@ -114,6 +125,7 @@ export function documentsRepository(db: Knex) {
             db.raw("d.project_id = ?", [projectId]),
           );
         })
+        .where((q) => q.whereNull("c.project_id").orWhere("c.project_id", projectId))
         .select(
           "c.id",
           "c.name",
@@ -123,12 +135,38 @@ export function documentsRepository(db: Knex) {
           // the folder's real total, not the newest file's size
           db.raw("COALESCE(SUM(d.size_bytes), 0)::text as total_bytes"),
         )
-        .groupBy("c.id", "c.name", "c.tone", "c.group")
-        .orderBy("c.name", "asc");
+        .groupBy("c.id", "c.name", "c.tone", "c.group", "c.project_id", "c.created_at")
+        // global first, then the project's own in the order they were added
+        .orderByRaw("c.project_id IS NOT NULL, c.created_at, c.name");
     },
 
-    findCategoryById(id: string): Promise<CategoryRow | undefined> {
-      return db<CategoryRow>("document_categories").where({ id }).first();
+    /** A category this project may file under: a global one or its own. */
+    findCategoryById(id: string, projectId: string): Promise<CategoryRow | undefined> {
+      return db<CategoryRow>("document_categories")
+        .where({ id })
+        .where((q) => q.whereNull("project_id").orWhere("project_id", projectId))
+        .first();
+    },
+
+    /** Case-insensitive match among the categories this project sees in a group. */
+    findVisibleCategoryByName(
+      projectId: string,
+      group: CreatableCategoryGroup,
+      name: string,
+    ): Promise<CategoryRow | undefined> {
+      return db<CategoryRow>("document_categories")
+        .where({ group })
+        .whereRaw("lower(name) = lower(?)", [name])
+        .where((q) => q.whereNull("project_id").orWhere("project_id", projectId))
+        .first();
+    },
+
+    async insertCategory(record: NewCategoryRecord): Promise<CategoryRow> {
+      const [row] = await db("document_categories")
+        .insert(record)
+        .returning(["id", "name", "tone", "group"]);
+      if (!row) throw new Error("Failed to insert document category");
+      return row as CategoryRow;
     },
 
     /** Display names for a set of documents in one query (for cross-module DTOs). */

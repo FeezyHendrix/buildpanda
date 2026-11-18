@@ -9,6 +9,15 @@ export type DocumentVisibility = (typeof DOCUMENT_VISIBILITIES)[number];
 
 export type CategoryGroup = "document" | "plan" | "media";
 
+/** Groups a project member can add a category to; media folders stay seeded. */
+export const CREATABLE_CATEGORY_GROUPS = ["document", "plan"] as const;
+export type CreatableCategoryGroup = (typeof CREATABLE_CATEGORY_GROUPS)[number];
+
+export interface CreateCategoryInput {
+  name: string;
+  group: CreatableCategoryGroup;
+}
+
 export interface DocumentCategory {
   id: string;
   name: string;

@@ -5,6 +5,7 @@ import { useProjectContext } from "@/layouts/project-layout";
 import { useSetPageTitle } from "@/contexts/page-title-context";
 import {
   useCreateDocument,
+  useCreateDocumentCategory,
   useProjectDocumentCategories,
   useProjectDocuments,
 } from "@/hooks/use-documents";
@@ -13,7 +14,6 @@ import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { canResourceAction } from "@/lib/project-types";
-import type { CategoryGroup } from "@/lib/project-types";
 import { CategoryMetricsCard } from "./documents/category-metrics-card";
 import { DocumentsTable } from "./documents/documents-table";
 import { Upload } from "lucide-react";
@@ -24,23 +24,17 @@ export default function ProjectDocuments() {
   const { data: categories = [] } = useProjectDocumentCategories(project.id);
   const { data: documents = [] } = useProjectDocuments(project.id);
 
-  const [tab, setTab] = useState<CategoryGroup>("document");
+  const [tab, setTab] = useState<"document" | "plan">("document");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const uploadFile = useUploadFile();
   const createDocument = useCreateDocument();
 
-  // Frontend-only category mock until POST /document-categories lands
-  // (see docs/documents-add-category-backend.md). Locally added categories
-  // aren't persisted and reset on reload.
-  const [localCategories, setLocalCategories] = useState<
-    Array<{ id: string; name: string; group: CategoryGroup }>
-  >([]);
+  const createCategory = useCreateDocumentCategory();
 
-  function handleCreateCategory(name: string): string {
-    const id = `local-${Date.now()}`;
-    setLocalCategories((prev) => [...prev, { id, name, group: tab }]);
-    return id;
+  async function handleCreateCategory(name: string): Promise<string> {
+    const created = await createCategory.mutateAsync({ projectId: project.id, name, group: tab });
+    return created.id;
   }
 
   const isPlans = tab === "plan";
@@ -52,12 +46,7 @@ export default function ProjectDocuments() {
       : "Secure, centralized management for project compliance.",
   );
 
-  const visibleCategories = [
-    ...categories.filter((c) => c.group === tab),
-    ...localCategories
-      .filter((c) => c.group === tab)
-      .map((c) => ({ id: c.id, name: c.name, fileCount: 0, totalSize: "0 MB", tone: "brand" as const, group: c.group })),
-  ];
+  const visibleCategories = categories.filter((c) => c.group === tab);
   const visibleDocuments = documents.filter((d) => d.group === tab);
   const isUploading = uploadFile.isPending || createDocument.isPending;
   const uploadError = uploadFile.error
@@ -154,7 +143,7 @@ export default function ProjectDocuments() {
         progress={uploadProgress}
         error={uploadError}
         onSubmit={handleUpload}
-        onCreateCategory={handleCreateCategory}
+        onCreateCategory={canManage ? handleCreateCategory : undefined}
       />
 
       <section className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

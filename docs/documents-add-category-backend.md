@@ -1,5 +1,11 @@
 # Documents — Add Category Backend Changes
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: categories are project-scoped and attributed
+> (`20261118_document_categories_project`), the list returns the global ones plus the project's
+> own, and `POST /projects/:id/documents/categories` creates one (needs `documents: upload`; a
+> name already visible in that group is refused with 409). The Documents page saves through it;
+> the browser-only mock is gone. Not built: renaming or deleting a category.
+
 > Required to support the new Figma: **Add Category** panel inside the **Upload Document** drawer (`+ Add Category` link → inline "Go Back" form, same pattern as Build Stages' **Add Building Phase** — see `docs/build-stages-phases-backend.md`).
 
 ## 1. Summary
