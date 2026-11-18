@@ -1,4 +1,3 @@
-import { toast } from "@/lib/toast";
 import { useCallback, useRef, useState } from "react";
 import { api } from "@/api/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -35,7 +34,13 @@ function toIso(value: unknown): string | undefined {
   return undefined;
 }
 
-export function useScheduleEditor(projectId: string, activities: Activity[]) {
+/** The row the chart's "+" was pressed on, and whether the new row goes under it or beside it. */
+export interface AddRowTarget {
+  target?: string | number;
+  mode?: string;
+}
+
+export function useScheduleEditor(projectId: string, activities: Activity[], onAddRow: (target: AddRowTarget) => void) {
   const qc = useQueryClient();
   const pending = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const past = useRef<DateEdit[]>([]);
@@ -44,6 +49,8 @@ export function useScheduleEditor(projectId: string, activities: Activity[]) {
 
   const activitiesRef = useRef(activities);
   activitiesRef.current = activities;
+  const onAddRowRef = useRef(onAddRow);
+  onAddRowRef.current = onAddRow;
 
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: activityKeys.all(projectId) });
@@ -100,10 +107,10 @@ export function useScheduleEditor(projectId: string, activities: Activity[]) {
       ganttApi.on("update-task", handler);
       ganttApi.on("drag-task", handler);
 
-      // A row added from the chart would exist only in the browser: work items are
-      // created from Site activity, so say so rather than draw one that is never saved.
-      ganttApi.intercept?.("add-task", () => {
-        toast("Add work items from Site activity. They appear here once they are scheduled.", "info");
+      // The chart's own new row would exist only in the browser, so stop it and
+      // open the real form instead; the row appears once the server has saved it.
+      ganttApi.intercept?.("add-task", (raw) => {
+        onAddRowRef.current(raw as AddRowTarget);
         return false;
       });
 

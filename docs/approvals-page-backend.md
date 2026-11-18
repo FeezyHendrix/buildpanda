@@ -1,5 +1,10 @@
 # Approvals page — what the backend needs to provide
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: attachments in the list and detail, the server-side list with counts,
+> `viewerCanDecide`, the decision history with `/resubmit`, the note required on reject and
+> resubmit, and the lock on decided approvals. Still open: the submitted-date filter uses the
+> server-wide timezone (`PROJECT_TIMEZONE`), because projects do not store their own.
+
 Frontend: `packages/frontend/src/pages/project/approvals.tsx` (+ `approvals/`).
 Backend module: `packages/backend/src/modules/approvals` (client approvals share the
 `approvals` table with material approvals, discriminated by `kind = 'client'`).

@@ -15,7 +15,7 @@ import { useBuildingScope } from "@/contexts/building-scope-context";
 import { activitiesApi } from "@/api/activities";
 import { errorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
-import { useScheduleEditor } from "./use-schedule-editor";
+import { useScheduleEditor, type AddRowTarget } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
@@ -24,6 +24,7 @@ import { canResourceAction } from "@/lib/project-types";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
 
 import { buildReport } from "./schedule/schedule-utils";
+import { ScheduleAddRow } from "./schedule/schedule-add-row";
 import { ScheduleChart } from "./schedule/schedule-chart";
 import { buildGanttData } from "./schedule/schedule-gantt-data";
 import { ScheduleReportPanel } from "./schedule/schedule-report-panel";
@@ -51,7 +52,8 @@ export default function ProjectSchedule() {
   const [importOpen, setImportOpen] = useState(false);
   const canEdit = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const isProgrammeImportEnabled = useFeatureFlag("ai.programmeImport");
-  const { attach, undo, redo, canUndo, canRedo } = useScheduleEditor(project.id, activities);
+  const [addRow, setAddRow] = useState<AddRowTarget | null>(null);
+  const { attach, undo, redo, canUndo, canRedo } = useScheduleEditor(project.id, activities, setAddRow);
 
   const { tasks, links, rangeStart, rangeEnd, delays, criticalCount } = useMemo(
     () => buildGanttData(activities, project.timeline, stages, keyDates),
@@ -177,6 +179,9 @@ export default function ProjectSchedule() {
             />
           </div>
         </>
+      )}
+      {canEdit && (
+        <ScheduleAddRow projectId={project.id} phases={project.timeline} activities={activities} target={addRow} onClose={() => setAddRow(null)} />
       )}
       <ImportProgrammeDialog open={importOpen} onOpenChange={setImportOpen} projectId={project.id} />
     </div>

@@ -1,9 +1,10 @@
-export const ATTENTION_KINDS = ["rfi", "approval", "change_request", "task", "inspection", "permit", "key_date"] as const;
+export const ATTENTION_KINDS = ["rfi", "approval", "change_request", "task", "payment", "inspection", "permit", "key_date"] as const;
 export type AttentionKind = (typeof ATTENTION_KINDS)[number];
 
 /**
  * blocking — work cannot proceed until it is decided or fixed (overdue RFI,
- *            failed inspection, expired permit, missed key date, overdue task).
+ *            failed inspection, expired permit, missed key date, overdue task,
+ *            invoice past its due date).
  * due_soon — a date inside the look-ahead window.
  * review   — waiting on someone's decision.
  */

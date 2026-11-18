@@ -35,6 +35,9 @@ export interface AssigneeOption {
 export interface ActivityPrefill {
   name: string;
   activityType: string;
+  phaseId?: string | null;
+  plannedStartAt?: string;
+  plannedEndAt?: string;
 }
 
 interface CreateActivityDialogProps {
@@ -105,14 +108,12 @@ function CreateActivityDialog({
     if (!open) return;
     setName(initial?.name ?? prefill?.name ?? "");
     setActivityType(initial?.activityType ?? prefill?.activityType ?? "");
-    setPhaseId(initial?.phaseId ?? "");
+    setPhaseId(initial?.phaseId ?? prefill?.phaseId ?? "");
     setLocation(initial?.location ?? "");
-    setPlannedStartAt(
-      initial ? toLocalInput(new Date(initial.plannedStartAt)) : toLocalInput(defaultStart()),
-    );
-    setPlannedEndAt(
-      initial ? toLocalInput(new Date(initial.plannedEndAt)) : toLocalInput(defaultEnd()),
-    );
+    const start = initial?.plannedStartAt ?? prefill?.plannedStartAt;
+    const end = initial?.plannedEndAt ?? prefill?.plannedEndAt;
+    setPlannedStartAt(toLocalInput(start ? new Date(start) : defaultStart()));
+    setPlannedEndAt(toLocalInput(end ? new Date(end) : defaultEnd()));
     setActualStartAt(initial?.actualStartAt ? toLocalInput(new Date(initial.actualStartAt)) : "");
     setActualEndAt(initial?.actualEndAt ? toLocalInput(new Date(initial.actualEndAt)) : "");
     setWorkerCountPlanned(String(initial?.workerCountPlanned ?? 8));

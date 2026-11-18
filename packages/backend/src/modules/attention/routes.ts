@@ -12,6 +12,7 @@ const RESOURCE: Record<AttentionKind, string> = {
   approval: "approvals",
   change_request: "change-requests",
   task: "tasks",
+  payment: "finances",
   inspection: "inspections",
   permit: "permits",
   key_date: "key-dates",

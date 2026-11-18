@@ -116,6 +116,10 @@ export function activitiesRepository(db: Knex) {
         .select("activities.*", "asg.name as assignee_name");
     },
 
+    async recordExport(record: { id: string; project_id: string; building_id: string | null; format: string; activity_count: number; exported_by_id: string }): Promise<void> {
+      await db("programme_exports").insert(record);
+    },
+
     findById(id: string): Promise<ActivityRow | undefined> {
       return db<ActivityRow>("activities")
         .leftJoin("user as asg", "asg.id", "activities.assignee_id")

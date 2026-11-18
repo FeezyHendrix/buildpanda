@@ -10,6 +10,7 @@ const PAGE: Record<AttentionKind, string> = {
   approval: "approvals",
   change_request: "change-requests",
   task: "tasks",
+  payment: "finances/budget-invoices",
   inspection: "inspections",
   permit: "permits",
   key_date: "key-dates",
@@ -35,6 +36,11 @@ export function tagFor(row: AttentionRow, today: string): AttentionTag | null {
       return row.status === "Submitted" ? "review" : "blocking";
     case "task":
       return late ? "blocking" : soon ? "due_soon" : null;
+    case "payment":
+      // An invoice record that is still open: nothing is charged here, the date is what matters.
+      if (late) return "blocking";
+      if (row.status === "Queried") return "review";
+      return soon ? "due_soon" : null;
     case "inspection":
       return "blocking";
     case "permit":
@@ -48,8 +54,7 @@ export function tagFor(row: AttentionRow, today: string): AttentionTag | null {
 
 export function attentionService(repository: AttentionRepository) {
   return {
-    async feed(projectId: string, kinds: AttentionKind[], sharedOnly: boolean, limit: number): Promise<AttentionFeed> {
-      const today = localToday();
+    async feed(projectId: string, kinds: AttentionKind[], sharedOnly: boolean, limit: number, today = localToday()): Promise<AttentionFeed> {
       const items: (AttentionItem & { days: number })[] = [];
       for (const row of await repository.candidates(projectId, kinds, sharedOnly)) {
         const tag = tagFor(row, today);

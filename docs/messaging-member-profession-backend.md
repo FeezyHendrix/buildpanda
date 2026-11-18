@@ -1,5 +1,8 @@
 # Messaging — `profession` is missing from the channel members response
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: channel members carry `profession` and the DM header shows it. The
+> optional profession in the channel list payload was not added.
+
 **Status: the backend does not return it. Please confirm against the design before changing it.**
 
 ## What the design needs

@@ -1,5 +1,13 @@
 # Programme of work — what the backend still needs to provide
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: the export in sections 1 (each export is stored in
+> `programme_exports` with who took it), the figures in section 2, the editing rules in section 6
+> and Panda AI in section 7. The "+" in section 5 opens the work item form and saves the row under
+> the row it was pressed on (`parentActivityId` on create). Still open, and product decisions:
+> a stored row order for reordering (rows are ordered by start date), undo for an added row,
+> deleting a row from the chart, the zero-length delay in section 3, the blue-bar rule in
+> section 4, and a critical path worked out on the server (the chart works it out today).
+
 Frontend: `packages/frontend/src/pages/project/schedule.tsx` (+ `schedule/`).
 Backend: `modules/activities`, `modules/stages`, `modules/key-dates`, `modules/daily-logs`,
 `modules/reporting` (the snapshot the figures read).

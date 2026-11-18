@@ -1,5 +1,11 @@
 # RFI page — what the backend needs to provide
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: the server-side list with counts, `isOverdue` / `overdueDays`,
+> `responseCount`, `createdByName` and the Panda AI filters. The detail drawer now reads
+> `isOverdue` and `createdByName` from the server as well. Still open, and product decisions:
+> comments on a closed RFI are refused (section 12), priority is stored as "Normal" and shown as
+> Medium, and "overdue" uses the server-wide timezone because projects do not store their own.
+
 Frontend: `packages/frontend/src/pages/project/rfis.tsx` (+ `rfis/`).
 Backend module: `packages/backend/src/modules/rfis` (`GET /projects/:id/rfis`).
 

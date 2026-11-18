@@ -51,6 +51,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
   const isClosed = rfi?.status === "Closed" || rfi?.status === "Void";
   const creator = rfi?.createdById ? participants.find((p) => p.userId === rfi.createdById) : undefined;
   const creatorName =
+    rfi?.createdByName ??
     (creator ? (creator.name ?? creator.email) : null) ?? events.find((e) => e.type === "created")?.actorLabel ?? null;
 
   return (
