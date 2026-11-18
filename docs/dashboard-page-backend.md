@@ -1,24 +1,22 @@
 # Dashboard (project list) — backend notes
 
-The redesigned dashboard (`pages/dashboard`) works against `GET /projects` as it is today. It
-loads the whole list and does the rest in the browser, which is what the backend should take over.
+The redesigned dashboard (`pages/dashboard`) asks `GET /projects` to search, filter, sort and
+page. Nothing is filtered in the browser.
 
-## Done on the client today
+## Query parameters
 
-- **Search** — matches project `name` and `address` (the box says "Search stages" in the design;
-  it searches projects, so the placeholder should be confirmed).
-- **Date range** — keeps projects whose `createdAt` day falls between From and To, inclusive.
-  The design does not say which date it filters; creation date is the one that pairs with the
-  "Date (Newest / Oldest First)" sort.
-- **Sort** — Recently Updated (`updatedAt` desc), Name A–Z, Name Z–A, Date newest, Date oldest.
-- **Pagination** — 12 per page over the filtered list. The design's "Showing 1 to 10 of 20" is
-  sample copy.
+- `q` matches project `name` and `address`, case-insensitive (the box says "Search stages" in the
+  design; it searches projects, so the placeholder should be confirmed).
+- `createdFrom`, `createdTo` (`yyyy-mm-dd`) keep projects whose `createdAt` day falls between
+  them, inclusive, in the server time zone. The design does not say which date it filters;
+  creation date is the one that pairs with the "Date (Newest / Oldest First)" sort.
+- `sort` is one of `recent` (`updatedAt` desc, the default), `name_asc`, `name_desc`, `newest`,
+  `oldest`. Ties are broken by `id` so pages never repeat or drop a project.
+- `page`, `pageSize` (max 100). The dashboard uses 12 per page; the design's "Showing 1 to 10 of
+  20" is sample copy.
 
-## Recommended
-
-Add to `GET /projects`: `q`, `createdFrom`, `createdTo`, `sort`
-(`recent | name_asc | name_desc | newest | oldest`), `page`, `pageSize`, returning
-`{ items, total }`. Until then a workspace with hundreds of projects ships them all on load.
+With any parameter the response is `{ items, total, page, pageSize }`. With none it is still the
+plain array, which the other callers of the list rely on.
 
 ## Views removed
 

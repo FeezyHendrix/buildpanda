@@ -173,7 +173,11 @@ export function projectsRepository(db: Knex) {
         oldest: ["created_at", "asc"],
       };
       const [column, direction] = order[query.sort ?? "recent"];
-      const rows = await visible.orderBy(column, direction).limit(pageSize).offset((page - 1) * pageSize);
+      // id breaks ties, so equal names or timestamps cannot repeat or vanish across pages.
+      const rows = await visible
+        .orderBy([{ column, order: direction }, { column: "id", order: "asc" }])
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
       return { rows, total: Number(counted[0]?.count ?? 0) };
     },
 
