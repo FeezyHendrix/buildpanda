@@ -38,6 +38,7 @@ export const TOOL_PERMISSIONS: Record<string, ToolPermission | null> = {
   get_buildings: { resource: "buildings", action: "view" },
   get_key_dates: { resource: "key-dates", action: "view" },
   get_schedule_of_values: { resource: "stages", action: "view" },
+  get_building_phases: { resource: "stages", action: "view" },
 
   // Money the employer sees: the certified contract position.
   get_finances: { resource: "finances", action: "view" },

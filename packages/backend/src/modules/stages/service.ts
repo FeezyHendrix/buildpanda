@@ -10,6 +10,7 @@ import { recordedAfter, recordedBefore, toScheduleOfValues } from "./sov-mapper.
 import type { PhaseRollupService } from "./phase-rollup.ts";
 import { clampPercent, deriveDateRange, toStage } from "./stage-mapper.ts";
 import type {
+  BuildingPhaseScope,
   Stage,
   StageRow,
   StageScheduleOfValue,
@@ -20,6 +21,7 @@ import type {
 export interface CreateStageInput {
   name: string;
   buildingId?: string | null;
+  buildingPhaseId?: string | null;
   status?: StageStatus;
   startDate?: string | null;
   endDate?: string | null;
@@ -64,7 +66,18 @@ export function stagesService(
   // Activities live in their own module; the stage only needs the count that
   // decides whether it can be deleted.
   activityCountForStage?: (stageId: string) => Promise<number>,
+  // Building phases live in their own module; a caller that does not wire the
+  // lookup cannot assign one.
+  buildingPhaseById?: (phaseId: string) => Promise<BuildingPhaseScope | undefined>,
 ) {
+  /** A stage may only sit in a phase of its own project and building. */
+  async function assertPhaseInScope(projectId: string, buildingId: string, phaseId: string): Promise<void> {
+    const phase = buildingPhaseById ? await buildingPhaseById(phaseId) : undefined;
+    if (!phase || phase.project_id !== projectId || phase.building_id !== buildingId) {
+      throw new BadRequestError("Building phase does not belong to this project and building");
+    }
+  }
+
   async function decorate(projectId: string, rows: StageRow[]): Promise<Stage[]> {
     if (!phases) return rows.map((row) => toStage(row));
     const rollup = await phases.rollup.forProject(projectId);
@@ -101,8 +114,8 @@ export function stagesService(
   }
 
   return {
-    async list(projectId: string, buildingId?: string): Promise<Stage[]> {
-      const rows = await repository.listByProject(projectId, buildingId);
+    async list(projectId: string, buildingId?: string, buildingPhaseId?: string): Promise<Stage[]> {
+      const rows = await repository.listByProject(projectId, buildingId, buildingPhaseId);
       return decorate(projectId, rows);
     },
 
@@ -110,6 +123,7 @@ export function stagesService(
       const startDate = input.startDate ?? null;
       const endDate = input.endDate ?? null;
       const buildingId = await resolveBuildingId(projectId, input.buildingId);
+      if (input.buildingPhaseId) await assertPhaseInScope(projectId, buildingId, input.buildingPhaseId);
       if (input.value !== undefined) {
         await assertValuesWithinContract(projectId, null, input.value);
       }
@@ -118,6 +132,7 @@ export function stagesService(
         id: generateId("stage"),
         project_id: projectId,
         building_id: buildingId,
+        building_phase_id: input.buildingPhaseId ?? null,
         name: input.name,
         status: input.status ?? "Pending",
         date_range: deriveDateRange(startDate, endDate),
@@ -140,6 +155,12 @@ export function stagesService(
       if (!existing || existing.project_id !== projectId) throw new NotFoundError("Stage");
 
       const patch: StageUpdatePatch = {};
+      if (input.buildingPhaseId !== undefined) {
+        if (input.buildingPhaseId !== null) {
+          await assertPhaseInScope(projectId, existing.building_id, input.buildingPhaseId);
+        }
+        patch.building_phase_id = input.buildingPhaseId;
+      }
       if (input.name !== undefined) patch.name = input.name;
       if (input.status !== undefined) patch.status = input.status;
       if (input.progressPercent !== undefined) {
@@ -216,8 +237,28 @@ export function stagesService(
       };
     },
 
-    async reorder(projectId: string, orderedIds: string[]): Promise<Stage[]> {
-      await repository.reorder(projectId, orderedIds);
+    /**
+     * Without a phase this is the flat project order. With one, `orderedIds` is
+     * that phase's new order: the listed stages move into the phase and trade
+     * places only among the slots they already hold, so every other stage keeps
+     * its position in the project-wide order the programme and the sheet read.
+     */
+    async reorder(projectId: string, orderedIds: string[], buildingPhaseId?: string): Promise<Stage[]> {
+      if (!buildingPhaseId) {
+        await repository.reorder(projectId, orderedIds);
+      } else if (orderedIds.length > 0) {
+        const current = await repository.listByProject(projectId);
+        const byId = new Map(current.map((row) => [row.id, row]));
+        const moving = new Set(orderedIds);
+        if (moving.size !== orderedIds.length || orderedIds.some((id) => !byId.has(id))) {
+          throw new BadRequestError("stageIds must be distinct stages of this project");
+        }
+        const buildingIds = new Set(orderedIds.map((id) => (byId.get(id) as StageRow).building_id));
+        for (const buildingId of buildingIds) await assertPhaseInScope(projectId, buildingId, buildingPhaseId);
+        const queue = [...orderedIds];
+        const order = current.map((row) => (moving.has(row.id) ? (queue.shift() as string) : row.id));
+        await repository.reorder(projectId, order, { buildingPhaseId, stageIds: orderedIds });
+      }
       const rows = await repository.listByProject(projectId);
       return decorate(projectId, rows);
     },

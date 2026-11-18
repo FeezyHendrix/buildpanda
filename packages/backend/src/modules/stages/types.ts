@@ -4,6 +4,8 @@ export type StageStatus = PhaseStatus; // "Done" | "InProgress" | "Pending"
 
 export interface Stage {
   buildingId: string;
+  /** The building phase (`building_phases`) the stage is grouped under; null until assigned. */
+  buildingPhaseId: string | null;
   id: string;
   projectId: string;
   name: string;
@@ -31,6 +33,7 @@ export interface StageRow {
   id: string;
   project_id: string;
   building_id: string;
+  building_phase_id: string | null;
   name: string;
   status: StageStatus;
   date_range: string | null;
@@ -59,7 +62,20 @@ export interface StageContractCountRow {
   count: string;
 }
 
+/** What the stage service needs to know about a building phase to accept it. */
+export interface BuildingPhaseScope {
+  project_id: string;
+  building_id: string;
+}
+
+export interface ReorderStagesBody {
+  stageIds: string[];
+  /** Given: `stageIds` is that phase's new order, and every listed stage moves into it. */
+  buildingPhaseId?: string;
+}
+
 export interface UpdateStageInput {
+  buildingPhaseId?: string | null;
   name?: string;
   status?: StageStatus;
   startDate?: string | null;

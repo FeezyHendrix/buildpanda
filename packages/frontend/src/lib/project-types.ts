@@ -644,28 +644,7 @@ export interface MyProjectCard {
   updated_at: string;
 }
 
-export interface Stage {
-  id: string;
-  projectId: string;
-  name: string;
-  status: StageStatus;
-  startDate: string | null;
-  endDate: string | null;
-  dateRange: string | null;
-  progressPercent: number;
-  value: number;
-  sortOrder: number;
-  /** Contract (main or change order) that prices this phase; null until assigned. */
-  contractId?: string | null;
-  /** Estimated figures a PM types on the Phases tab; costs are read from expenses and POs. */
-  expectedCost?: number | null;
-  estimatedLaborHours?: number | null;
-  laborBudget?: number | null;
-  materialBudget?: number | null;
-  usedLaborHours?: number | null;
-  usedMaterialCost?: number | null;
-  totalCost?: number | null;
-}
+export type { Stage } from "./stage-types";
 
 export interface Project {
   id: string;

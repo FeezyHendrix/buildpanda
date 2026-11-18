@@ -10,6 +10,7 @@ export interface NewStageRecord {
   id: string;
   project_id: string;
   building_id: string;
+  building_phase_id?: string | null;
   name: string;
   status: StageStatus;
   date_range: string | null;
@@ -22,6 +23,7 @@ export interface NewStageRecord {
 }
 
 export interface StageUpdatePatch {
+  building_phase_id?: string | null;
   name?: string;
   status?: StageStatus;
   date_range?: string | null;
@@ -61,6 +63,7 @@ const COLUMNS = [
   "id",
   "project_id",
   "building_id",
+  "building_phase_id",
   "name",
   "status",
   "date_range",
@@ -78,9 +81,10 @@ const COLUMNS = [
 
 export function stagesRepository(db: Knex) {
   return {
-    listByProject(projectId: string, buildingId?: string): Promise<StageRow[]> {
+    listByProject(projectId: string, buildingId?: string, buildingPhaseId?: string): Promise<StageRow[]> {
       const where: Record<string, string> = { project_id: projectId };
       if (buildingId) where.building_id = buildingId;
+      if (buildingPhaseId) where.building_phase_id = buildingPhaseId;
       return db<StageRow>("project_phases")
         .where(where)
         .select(...COLUMNS)
@@ -126,9 +130,22 @@ export function stagesRepository(db: Knex) {
         .count<StageContractCountRow[]>("id as count");
     },
 
-    /** Persists a new ordering; sort_order = index in the provided id list. */
-    async reorder(projectId: string, orderedIds: string[]): Promise<void> {
+    /**
+     * Persists a new ordering; sort_order = index in the provided id list. With
+     * `phase`, the listed stages also move into that building phase.
+     */
+    async reorder(
+      projectId: string,
+      orderedIds: string[],
+      phase?: { buildingPhaseId: string; stageIds: string[] },
+    ): Promise<void> {
       await db.transaction(async (trx) => {
+        if (phase) {
+          await trx("project_phases")
+            .where({ project_id: projectId })
+            .whereIn("id", phase.stageIds)
+            .update({ building_phase_id: phase.buildingPhaseId });
+        }
         for (let i = 0; i < orderedIds.length; i += 1) {
           await trx("project_phases")
             .where({ id: orderedIds[i], project_id: projectId })

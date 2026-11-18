@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { activitiesRepository } from "../activities/repository.ts";
+import { buildingPhasesRepository } from "../building-phases/repository.ts";
 import { buildingsRepository } from "../buildings/repository.ts";
 import { contractsRepository } from "../contracts/repository.ts";
 import { contractsService } from "../contracts/service.ts";
@@ -18,7 +19,7 @@ import {
   type CreateStageInput,
   type ScheduleOfValueLineInput,
 } from "./service.ts";
-import type { UpdateScheduleProgressBody, UpdateStageInput } from "./types.ts";
+import type { ReorderStagesBody, UpdateScheduleProgressBody, UpdateStageInput } from "./types.ts";
 
 const projectIdParams = {
   type: "object",
@@ -40,8 +41,13 @@ const stageParams = {
 const buildingQuery = {
   type: "object",
   additionalProperties: false,
-  properties: { buildingId: { type: "string", minLength: 1 } },
+  properties: {
+    buildingId: { type: "string", minLength: 1 },
+    buildingPhaseId: { type: "string", minLength: 1 },
+  },
 } as const;
+
+const buildingPhaseIdField = { type: ["string", "null"], minLength: 1, maxLength: 100 } as const;
 
 const STATUS = ["Done", "InProgress", "Pending"] as const;
 
@@ -52,6 +58,7 @@ const createStageBody = {
   properties: {
     name: { type: "string", minLength: 1, maxLength: 120 },
     buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
+    buildingPhaseId: buildingPhaseIdField,
     status: { type: "string", enum: STATUS },
     startDate: { type: ["string", "null"], maxLength: 40 },
     endDate: { type: ["string", "null"], maxLength: 40 },
@@ -65,6 +72,7 @@ const updateStageBody = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
+    buildingPhaseId: buildingPhaseIdField,
     name: { type: "string", minLength: 1, maxLength: 120 },
     status: { type: "string", enum: STATUS },
     startDate: { type: ["string", "null"], maxLength: 40 },
@@ -89,6 +97,7 @@ const reorderBody = {
       items: { type: "string", minLength: 1 },
       maxItems: 200,
     },
+    buildingPhaseId: { type: "string", minLength: 1, maxLength: 100 },
   },
 } as const;
 
@@ -204,14 +213,15 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       contractBelongsToProject: (projectId, contractId) => contracts.belongsToProject(projectId, contractId),
     },
     (stageId) => activitiesRepository(fastify.db).countByPhase(stageId),
+    (phaseId) => buildingPhasesRepository(fastify.db).findById(phaseId),
   );
 
-  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string; buildingPhaseId?: string } }>(
     "/projects/:id/stages",
     { schema: { params: projectIdParams, querystring: buildingQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "view");
-      return service.list(project.id, request.query.buildingId);
+      return service.list(project.id, request.query.buildingId, request.query.buildingPhaseId);
     },
   );
 
@@ -235,12 +245,12 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.patch<{ Params: { id: string }; Body: { stageIds: string[] } }>(
+  fastify.patch<{ Params: { id: string }; Body: ReorderStagesBody }>(
     "/projects/:id/stages/reorder",
     { schema: { params: projectIdParams, body: reorderBody } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
-      return service.reorder(project.id, request.body.stageIds);
+      return service.reorder(project.id, request.body.stageIds, request.body.buildingPhaseId);
     },
   );
 

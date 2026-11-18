@@ -166,18 +166,7 @@ export const activityKeys = {
     [...activityKeys.all(projectId), "events", activityId] as const,
 };
 
-export const stageKeys = {
-  all: (projectId: string) => ["projects", projectId, "stages"] as const,
-  list: (projectId: string, buildingId?: string) => [...stageKeys.all(projectId), "list", buildingId ?? "all"] as const,
-  scheduleOfValues: (projectId: string, stageId?: string) =>
-    [...stageKeys.all(projectId), "schedule-of-values", stageId ?? "__none__"] as const,
-  // Its own key: sharing one with a disabled per-stage query let that query's
-  // fn (stage "undefined") answer a project-wide refetch with an empty list.
-  valueSummary: (projectId: string) =>
-    [...stageKeys.all(projectId), "value-summary"] as const,
-  projectScheduleOfValues: (projectId: string) =>
-    [...stageKeys.all(projectId), "schedule-of-values", "project"] as const,
-};
+export { stageKeys } from "./stage-keys";
 
 export const contractKeys = {
   all: (projectId: string) => ["projects", projectId, "contracts"] as const,
