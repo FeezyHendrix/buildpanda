@@ -1,5 +1,10 @@
 # New approval request form — what the backend needs to provide
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: attachments on create (type checked from the bytes, 10 MB, max 5, one
+> transaction), the approvers and categories endpoints, per-field errors, notifications and the
+> Panda AI fields. Still open, and a product decision: a per-project "allow self-approval" switch.
+> Today a user who cannot decide may not name themselves the approver.
+
 Frontend: `components/molecules/upsert-approval-dialog.tsx`,
 `components/molecules/approval-attachments-field.tsx`, opened from the **New approval
 request** button on `pages/project/approvals.tsx`.

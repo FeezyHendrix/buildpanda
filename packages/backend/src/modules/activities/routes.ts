@@ -78,6 +78,8 @@ const createActivityBody = {
     activityType: { type: "string", minLength: 1, maxLength: 100 },
     buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     phaseId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
+    // A row added from the programme chart sits under the row it was added to.
+    parentActivityId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     // Optional means optional: an empty box arrives as "" and is stored as null.
     location: { type: "string", maxLength: 200 },
     plannedStartAt: isoString,

@@ -1,5 +1,9 @@
 # Project overview — backend notes
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: `GET /projects/:id/attention-areas` (every kind in the list below,
+> including `payment` for open invoices by due date) and `startDate` / `endDate` on each timeline
+> phase.
+
 The redesigned overview (`pages/project/overview`) reads the existing reporting snapshot and the
 RFI, key-date, change-request-summary, finance-summary and weather endpoints. Nothing breaks
 without backend work, but two parts of the design need data that does not exist yet.

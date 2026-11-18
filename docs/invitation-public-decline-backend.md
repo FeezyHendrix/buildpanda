@@ -1,5 +1,8 @@
 # Invitation pre-signup endpoints needed (read + decline)
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: both endpoints exist, the frontend calls them and the development
+> mock is gone. Rate limits are 20 a minute to read and 10 a minute to decline, per client IP.
+
 The "Join the team" screen (`packages/frontend/src/pages/accept-invitation.tsx`)
 lets a person who was invited to an org but has **no account yet** view the
 invitation and either accept (by signing up) or decline it, without signing in

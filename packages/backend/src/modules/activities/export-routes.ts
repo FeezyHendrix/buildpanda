@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { generateId } from "../../lib/ids.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { programmeToMspdiXml } from "./programme-export.ts";
 import { programmeToPdf, programmeToXlsx } from "./programme-files.ts";
@@ -30,7 +31,8 @@ const CONTENT_TYPE: Record<Format, string> = {
  */
 const programmeExportRoutes: FastifyPluginAsync = async (fastify) => {
   // Read-only: no recompute, no notifications.
-  const service = activitiesService(activitiesRepository(fastify.db));
+  const repository = activitiesRepository(fastify.db);
+  const service = activitiesService(repository);
 
   fastify.get<{ Params: { id: string }; Querystring: { format?: Format; buildingId?: string } }>(
     "/projects/:id/programme/export",
@@ -46,7 +48,14 @@ const programmeExportRoutes: FastifyPluginAsync = async (fastify) => {
         : await programmeToXlsx(project.name, activities);
       const fileName = `${project.name.replace(/[^a-z0-9]+/gi, "-").slice(0, 60)}-programme.${format}`;
       // Who exported what, when: the export is a copy of a contractual record.
-      request.log.info({ projectId: project.id, userId: user.id, format, activities: activities.length }, "programme exported");
+      await repository.recordExport({
+        id: generateId("pex"),
+        project_id: project.id,
+        building_id: request.query.buildingId ?? null,
+        format,
+        activity_count: activities.length,
+        exported_by_id: user.id,
+      });
       return reply
         .header("content-type", CONTENT_TYPE[format])
         .header("content-disposition", `attachment; filename="${fileName}"`)

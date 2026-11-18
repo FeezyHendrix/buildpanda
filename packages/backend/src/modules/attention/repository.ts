@@ -51,6 +51,23 @@ export function attentionRepository(db: Knex) {
           .whereNot("col.status", "Done")
           .whereNotNull("t.due_date"),
       ).select("t.id", "t.title", "col.status", "t.due_date", "t.assignee_id", "u.name as assignee_name", "u.profession as assignee_profession"),
+    payment: (projectId) =>
+      shape(
+        "payment",
+        db("project_invoices as inv")
+          .where("inv.project_id", projectId)
+          .whereNull("inv.voided_at")
+          // Stored statuses only: "Sent", "Overdue" and "PartiallyPaid" are worked out for display.
+          .whereIn("inv.status", ["Submitted", "Queried", "Approved"]),
+      ).select(
+        "inv.id",
+        db.raw("('Invoice ' || COALESCE(inv.number || ' ', '') || COALESCE(inv.counterparty, inv.vendor_name)) as title"),
+        "inv.status",
+        "inv.due_date",
+        db.raw("NULL as assignee_id"),
+        db.raw("COALESCE(inv.counterparty, inv.vendor_name) as assignee_name"),
+        db.raw("NULL as assignee_profession"),
+      ),
     inspection: (projectId) =>
       shape(
         "inspection",

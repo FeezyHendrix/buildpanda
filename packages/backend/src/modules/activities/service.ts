@@ -243,6 +243,8 @@ export function activitiesService(
       assertChronology(input.plannedStartAt, input.plannedEndAt, "Planned");
 
       const buildingId = await resolveCreateBuildingId(projectId, input);
+      // Already checked to be in this project above; read again for its outline level.
+      const parent = input.parentActivityId ? await repository.findById(input.parentActivityId) : undefined;
 
       const row = await repository.create({
         id: generateId("act"),
@@ -261,8 +263,8 @@ export function activitiesService(
         assignee_id: input.assigneeId ?? null,
         notes: input.notes ?? null,
         wbs_code: input.wbsCode ?? null,
-        outline_level: input.outlineLevel ?? null,
-        parent_activity_id: input.parentActivityId ?? null,
+        outline_level: input.outlineLevel ?? (parent ? (parent.outline_level ?? 1) + 1 : null),
+        parent_activity_id: parent?.id ?? null,
         predecessors: JSON.stringify(input.predecessors ?? []),
         percent_complete: input.percentComplete ?? 0,
         duration_days: input.durationDays ?? null,

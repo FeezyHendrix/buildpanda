@@ -25,6 +25,10 @@ test("tags: blocking when late, due soon inside a week, review when waiting on s
   assert.equal(tagFor(row({ kind: "permit", status: "Applied" }), today), "review");
   assert.equal(tagFor(row({ kind: "key_date", status: "Missed", due_date: "2026-11-01" }), today), "blocking");
   assert.equal(tagFor(row({ kind: "inspection", status: "Action Required" }), today), "blocking");
+  assert.equal(tagFor(row({ kind: "payment", status: "Submitted", due_date: "2026-11-01" }), today), "blocking");
+  assert.equal(tagFor(row({ kind: "payment", status: "Approved", due_date: "2026-11-09" }), today), "due_soon");
+  assert.equal(tagFor(row({ kind: "payment", status: "Queried" }), today), "review");
+  assert.equal(tagFor(row({ kind: "payment", status: "Submitted", due_date: "2027-01-01" }), today), null);
 });
 
 test("feed orders blocking first, then nearest date, respects limit and reports the total", async () => {
@@ -35,10 +39,10 @@ test("feed orders blocking first, then nearest date, respects limit and reports 
     row({ id: "d", kind: "task", due_date: "2027-01-01" }),
   ];
   const service = attentionService({ candidates: async () => rows });
-  const feed = await service.feed("prj", ["rfi", "approval", "task"], false, 2);
+  const feed = await service.feed("prj", ["rfi", "approval", "task"], false, 2, today);
   assert.deepEqual(feed.items.map((i) => [i.id, i.tag]), [["c", "blocking"], ["b", "due_soon"]]);
   assert.equal(feed.total, 3);
-  const all = await service.feed("prj", ["rfi", "approval", "task"], false, 10);
+  const all = await service.feed("prj", ["rfi", "approval", "task"], false, 10, today);
   const approval = all.items.find((i) => i.id === "a")!;
   assert.deepEqual(approval.assignee, { id: "u1", name: "Eng. Kanayo", profession: "MEP Engineer" });
   assert.equal(approval.href, "/project/prj/approvals?approval=a");

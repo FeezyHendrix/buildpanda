@@ -1,9 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { formatShortDate } from "@/lib/formatters";
 import {
-  isRfiOverdue,
   overdueLabel,
-  rfiOverdueDays,
   RFI_PILL_BASE,
   RFI_PRIORITY_LABEL,
   RFI_PRIORITY_PILL,
@@ -43,7 +41,8 @@ export function RfiSummary({
   assigning: boolean;
   onAssign: (ballInCourtId: string | null) => void;
 }) {
-  const overdue = isRfiOverdue(rfi);
+  // The server decides overdue, so the drawer and the register never disagree.
+  const overdue = rfi.isOverdue;
 
   return (
     <>
@@ -51,7 +50,7 @@ export function RfiSummary({
         <span className="text-[12px] font-medium text-[#737373]">RFI-{rfi.number}</span>
         <span className={cn(RFI_PILL_BASE, "h-[22px]", RFI_STATUS_PILL[rfi.status])}>{RFI_STATUS_META[rfi.status].label}</span>
         {overdue ? (
-          <span className={cn(RFI_PILL_BASE, "h-[22px]", RFI_STATUS_PILL.Void)}>⚠ {overdueLabel(rfiOverdueDays(rfi))}</span>
+          <span className={cn(RFI_PILL_BASE, "h-[22px]", RFI_STATUS_PILL.Void)}>⚠ {overdueLabel(rfi.overdueDays)}</span>
         ) : null}
         {rfi.reopenedCount > 0 ? (
           <span className={cn(RFI_PILL_BASE, "h-[22px]", RFI_STATUS_PILL.InReview)}>↻ Reopened ×{rfi.reopenedCount}</span>

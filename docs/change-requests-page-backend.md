@@ -1,5 +1,10 @@
 # Change Requests page — backend notes
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: the server-side list (`q`, `type`, `currency`, cost range, paging),
+> `submit: true` on create, and `createdById` / `createdByName`. Create-and-submit is one request
+> that deletes the draft if the submit fails, not one database transaction. Left as they are on
+> purpose: there is no separate "revision requested" status, and `reasonHtml` is kept.
+
 The redesigned register (`pages/project/change-requests`) works against the existing
 `/projects/:id/change-requests` endpoints. Everything below is what the backend does **not**
 yet give it, so the page does it on the client today.

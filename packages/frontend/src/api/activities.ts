@@ -14,6 +14,7 @@ export interface CreateActivityInput {
   name: string;
   activityType: string;
   phaseId?: string | null;
+  parentActivityId?: string | null;
   location?: string;
   plannedStartAt: string;
   plannedEndAt: string;

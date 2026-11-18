@@ -35,7 +35,7 @@ const invitationRoutes: FastifyPluginAsync = async (fastify) => {
     "/v2/invitations/:id",
     {
       schema: { params: idParams, response: publicInvitationResponse },
-      config: { rateLimit: publicTokenRateLimit },
+      config: { rateLimit: { ...publicTokenRateLimit, max: 20 } },
     },
     async (request) => service.getPublic(request.params.id),
   );
@@ -47,7 +47,8 @@ const invitationRoutes: FastifyPluginAsync = async (fastify) => {
         params: idParams,
         response: { 200: { type: "object", properties: { ok: { type: "boolean" } } } },
       },
-      config: { rateLimit: publicTokenRateLimit },
+      // Declining writes, so it gets the tighter cap.
+      config: { rateLimit: { ...publicTokenRateLimit, max: 10 } },
     },
     async (request) => service.decline(request.params.id),
   );
