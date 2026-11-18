@@ -1,6 +1,6 @@
 import { settleOutboxItem } from "./sync-write-state";
 import { lookAheadsApi } from "@/api/look-aheads";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { lookAheadsRepository, parseActivityIds } from "./look-aheads-repository";
 import { done, skipped, PermanentOutboxError, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { type OutboxRow } from "./schema";

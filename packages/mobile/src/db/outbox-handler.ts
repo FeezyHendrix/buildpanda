@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { outbox, type OutboxRow } from "./schema";
 
 export interface OutboxHandlerResult {

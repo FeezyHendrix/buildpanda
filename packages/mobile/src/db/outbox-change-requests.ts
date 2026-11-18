@@ -1,7 +1,7 @@
 import { settleOutboxItem } from "./sync-write-state";
 import { eq } from "drizzle-orm";
 import { changeCurrency, changeRequestsApi, changeStatus } from "@/api/change-requests";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { changeRequestsRepository } from "./change-requests-repository";
 import { done, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { outbox, type OutboxRow } from "./schema";

@@ -1,10 +1,10 @@
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { remapQueuedRecord, isRecordSending } from "./sync-write-state";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { desc, eq } from "drizzle-orm";
 import type { CreateLookAheadInput, LookAhead, UpdateLookAheadInput } from "@/api/look-aheads";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { enqueueDelete, enqueueUpdate, reviveOrQueue } from "./enqueue-update";
 import { lookAheads, outbox, type LookAheadRow } from "./schema";
 

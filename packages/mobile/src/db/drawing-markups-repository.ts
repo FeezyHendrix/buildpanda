@@ -2,13 +2,13 @@ import { requireDrawingReference } from "./record-permissions";
 import { repositoryAccess, localReadScope } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { projectAccess } from "@/lib/project-access-store";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { discardStagedMedia } from "@/lib/stage-media";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { DrawingMarkup, DrawingMarkupComment, MarkupKind } from "@/api/drawing-markup";
 import type { MarkupGeometry } from "@/components/plan-review/markup-types";
 import { palette } from "@/constants/colors";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { enqueueDelete, reviveOrQueue } from "./enqueue-update";
 import {
   drawingMarkupComments,

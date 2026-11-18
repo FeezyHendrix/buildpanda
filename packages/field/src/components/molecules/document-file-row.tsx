@@ -1,0 +1,95 @@
+import Ionicons from "@/components/atoms/icon";
+import { router } from "@/navigation";
+import { useState } from "react";
+import { PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_FAINT, ICON_SUCCESS } from "@/constants/colors";
+import type { LocalDocument } from "@/db/documents-repository";
+import { isReviewableFile } from "@/lib/reviewable-file";
+import { cn } from "@/lib/utils";
+function iconFor(fileName: string): React.ComponentProps<typeof Ionicons>["name"] {
+    if (/\.pdf$/i.test(fileName))
+        return "document-outline";
+    if (/\.(xlsx?|csv)$/i.test(fileName))
+        return "grid-outline";
+    if (/\.(png|jpe?g|gif|webp|heic)$/i.test(fileName))
+        return "image-outline";
+    return "document-text-outline";
+}
+/**
+ * One file in a folder or the recent list.
+ *
+ * A row still waiting to upload opens the copy staged on this device; there
+ * is no server record to review or version yet, so it goes to the viewer
+ * rather than the plan or document screen.
+ */
+export function DocumentFileRow({ doc, onOpen, }: {
+    doc: LocalDocument;
+    onOpen: (id: string) => Promise<void>;
+}) {
+    const [busy, setBusy] = useState(false);
+    const missingFile = !doc.currentVersionId && !doc.isPendingSync;
+    async function handlePress() {
+        if (doc.isPendingSync) {
+            // On web a staged uri is an IndexedDB key the native viewer cannot read;
+            // the file opens from its own tab once the upload lands.
+            if (!doc.stagedUri || "web" === "web")
+                return;
+            router.push(`/tools/documents/view?uri=${encodeURIComponent(doc.stagedUri)}&name=${encodeURIComponent(doc.fileName)}` as never);
+            return;
+        }
+        setBusy(true);
+        try {
+            await onOpen(doc.id);
+        }
+        catch {
+            return; // The browser shows the download error beside the file list.
+        }
+        finally {
+            setBusy(false);
+        }
+        {
+            // Reviewable files were cached for the annotation canvas; anything else
+            // already opened in its own browser tab inside onOpen.
+            if (isReviewableFile(doc.fileName))
+                router.push(`/tools/plan-review?documentId=${doc.id}` as never);
+            return;
+        }
+    }
+    return (<button onClick={handlePress} disabled={busy || missingFile} role="button" className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt" type="button">
+      <div className="field-stack h-10 w-10 items-center justify-center rounded-xl bg-primary-50">
+        <Ionicons name={iconFor(doc.fileName)} size={18} color={ICON_BRAND}/>
+      </div>
+      <div className="field-stack min-w-0 flex-1">
+        <Text weight="semibold" className="text-[15px]" numberOfLines={1}>
+          {doc.fileName}
+        </Text>
+        <div className="field-stack flex-row items-center gap-2 pt-0.5">
+          <Text tone="secondary" className="text-xs">
+            {[doc.size, doc.versionNo > 0 ? `v${doc.versionNo}` : null].filter(Boolean).join(" · ")}
+          </Text>
+          {doc.status ? (<div className={"field-stack " + (cn("rounded-full px-1.5 py-0.5", doc.status === "Verified"
+            ? "bg-success-50"
+            : doc.status === "Expired"
+                ? "bg-error-50"
+                : "bg-surface-alt"))}>
+              <Text weight="semibold" tone={doc.status === "Verified"
+                ? "brand"
+                : doc.status === "Expired"
+                    ? "danger"
+                    : "secondary"} className="text-[9px] uppercase">
+                {doc.status}
+              </Text>
+            </div>) : null}
+        </div>
+        <Text tone="secondary" className="pt-1 text-xs">
+          {missingFile
+            ? "No file attached"
+            : doc.isAvailableOffline || doc.stagedUri
+                ? "Available offline"
+                : "Not downloaded yet"}
+        </Text>
+      </div>
+      {missingFile ? null : doc.isPendingSync ? (<PendingBadge />) : busy ? (<Spinner size="xs"/>) : doc.isAvailableOffline ? (<Ionicons name="cloud-done-outline" size={18} color={ICON_SUCCESS}/>) : (<Ionicons name="cloud-download-outline" size={18} color={ICON_FAINT}/>)}
+    </button>);
+}
+DocumentFileRow.displayName = "DocumentFileRow";

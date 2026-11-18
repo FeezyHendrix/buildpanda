@@ -2,7 +2,7 @@ import { useStageScope } from "@/lib/stage-scope";
 import { matchesStage } from "@/lib/stage-filter";
 import { projectAccess } from "@/lib/project-access-store";
 import { useSyncState } from "@/lib/sync-provider";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { useEffect, useMemo } from "react";
 import { changeRequestsApi, type UpsertChangeRequestInput } from "@/api/change-requests";
 import type { Db } from "@/db/client";

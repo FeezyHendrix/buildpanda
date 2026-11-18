@@ -5,7 +5,7 @@ import { features } from '@/lib/feature-access';
 import type { FeatureAccess } from '@/lib/access-requirement';
 import { canAccess } from '@/lib/project-access-store';
 import { expenseReadWhere, taskReadWhere } from './record-visibility';
-import type { Db } from './client';
+import type { Db } from '@/db/client';
 import { repositoryAccess } from './permissions';
 import { rfiReadWhere, rfiCommentReadWhere } from './rfi-access';
 import * as tables from './schema';

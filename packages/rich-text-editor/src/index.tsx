@@ -1,3 +1,4 @@
+import { contentWork } from "@buildpanda/rich-content/pending";
 import { useCallback, useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -146,6 +147,7 @@ export function RichTextEditorCore({ value, onChange, onAttach, upload, resolveF
   const insertImage = useCallback(
     async (file: File) => {
       if (!editor || disabled || !upload.canUpload || upload.pending) return;
+      const finish = contentWork.begin();
       try {
         let count = 0;
         editor.state.doc.descendants((node) => { if (node.type.name === 'image') count += 1; });
@@ -165,7 +167,7 @@ export function RichTextEditorCore({ value, onChange, onAttach, upload, resolveF
         onAttach?.({ fileId: uploaded.fileId, url, name: uploaded.name });
       } catch (error) {
         onUploadError?.(error instanceof Error ? error.message : "Could not upload image");
-      }
+      } finally { finish(); }
     },
     [editor, onAttach, disabled, upload, onUploadError],
   );

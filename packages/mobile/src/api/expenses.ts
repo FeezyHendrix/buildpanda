@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 
 /** One expense on the project's cost log: a record of money spent elsewhere. */
 export interface Expense {

@@ -3,7 +3,7 @@ import { projectAccess } from "@/lib/project-access-store";
 import { filterBuildingRows } from "@/lib/building-scope";
 import { useSyncState } from "@/lib/sync-provider";
 import { useStageScope } from "@/lib/stage-scope";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { useEffect, useMemo } from "react";
 import { dailyLogsApi, type UpsertDailyLogInput } from "@/api/daily-logs";
 import type { Db } from "@/db/client";

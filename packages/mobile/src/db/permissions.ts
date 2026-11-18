@@ -1,6 +1,6 @@
 import { and, eq, sql, type SQL } from "drizzle-orm";
 import type { AnySQLiteColumn, SQLiteTable } from "drizzle-orm/sqlite-core";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { getDbOwner } from "./ownership";
 import { AccessDeniedError, projectAccess, requirePermission } from "@/lib/project-access-store";
 import { canAccess, requireAccess, requireCurrentAccess } from "@/lib/project-access-store";

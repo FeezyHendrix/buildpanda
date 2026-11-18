@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Linking } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
+import NetInfo from '@/lib/connectivity';
 import { request } from '@/api/client';
 import { useFieldSession } from '@/lib/field-session';
 import { VERIFIED } from '@/lib/access-requirement';

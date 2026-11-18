@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export const CHANGE_STATUSES = ["Draft", "Submitted", "Approved", "Rejected"] as const;
 export type ChangeStatus = (typeof CHANGE_STATUSES)[number];

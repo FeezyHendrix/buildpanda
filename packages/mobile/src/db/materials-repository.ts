@@ -4,10 +4,10 @@ import { canRecordDelivery } from "@/api/materials";
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { remapQueuedRecord } from "./sync-write-state";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { desc, eq } from "drizzle-orm";
 import type { CreateMaterialOrderInput, MaterialOrder } from "@/api/materials";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { enqueueDelete, enqueueUpdate, reviveOrQueue } from "./enqueue-update";
 import { materialOrders, outbox, type MaterialOrderRow } from "./schema";
 

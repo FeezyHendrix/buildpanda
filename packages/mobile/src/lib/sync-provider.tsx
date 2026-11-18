@@ -1,4 +1,4 @@
-import { useProjectAccess } from "./project-access-provider";
+import { useProjectAccess } from "@/lib/project-access-provider";
 import NetInfo, { useNetInfo } from "@react-native-community/netinfo";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { focusManager, onlineManager } from "@tanstack/react-query";

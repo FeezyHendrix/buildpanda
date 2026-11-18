@@ -1,4 +1,4 @@
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 
 const owners = new WeakMap<Db, string>();
 export const setDbOwner = (db: Db, ownerId: string) => { owners.set(db, ownerId); };

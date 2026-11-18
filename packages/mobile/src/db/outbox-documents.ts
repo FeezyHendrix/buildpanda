@@ -2,7 +2,7 @@ import { features } from "@/lib/feature-access";
 import { loadStagedUploadUri, stagedMediaExists } from "@/lib/stage-media";
 import { documentsApi } from "@/api/documents";
 import { uploadProjectFile } from "@/api/files";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { DOCUMENTS_RESOURCE, documentsRepository } from "./documents-repository";
 import { PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { type OutboxRow } from "./schema";

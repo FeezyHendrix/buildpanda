@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { OUTBOX_TABLES } from "./outbox-tables";
 import { outbox, type OutboxRow } from "./schema";
 

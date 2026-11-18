@@ -1,6 +1,6 @@
-import { queryStorage } from "./query-storage";
+import { queryStorage } from "@/lib/query-storage";
 import { projectAccess } from "./project-access-store";
-import { storage } from "./storage";
+import { storage } from "@/lib/storage";
 
 export const SNAPSHOT_KEY = "buildpanda_project_access_v1";
 export function clearSavedProjectAccess() {

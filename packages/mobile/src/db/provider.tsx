@@ -4,7 +4,7 @@ import { Platform, View } from "react-native";
 import migrations from "../../drizzle/migrations";
 import { Button, Spinner, Text } from "@/components/atoms";
 import { useFieldSession } from "@/lib/field-session";
-import { openDb, resetDb, type Db } from "./client";
+import { openDb, resetDb, type Db } from "@/db/client";
 
 interface LocalDb {
   db: Db | null;

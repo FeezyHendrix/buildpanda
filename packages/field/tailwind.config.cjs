@@ -1,0 +1,2 @@
+const {colors}=require('../mobile/src/constants/design-tokens.json');
+module.exports={content:['./src/**/*.{ts,tsx}','../mobile/src/**/*.{ts,tsx}'],theme:{extend:{colors,fontFamily:{inter:['Inter','sans-serif'],'inter-medium':['Inter','sans-serif'],'inter-semibold':['Inter','sans-serif'],'inter-bold':['Inter','sans-serif'],'inter-extrabold':['Inter','sans-serif'],'heading-semibold':['Archivo','sans-serif'],'heading-bold':['Archivo','sans-serif']}}},plugins:[]};

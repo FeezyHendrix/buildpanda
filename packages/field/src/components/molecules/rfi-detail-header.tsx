@@ -1,0 +1,105 @@
+import { RichContent } from "@/components/rich-text/rich-content";
+import Ionicons from "@/components/atoms/icon";
+import { RFI_STATUS_LABELS, type RfiPriority, type RfiStatus } from "@/api/rfis";
+import { PendingBadge, Text } from "@/components/atoms";
+import { ICON_MUTED } from "@/constants/colors";
+import { formatDate, formatDateTime } from "@/lib/dates";
+import { cn } from "@/lib/utils";
+const STATUS_TONE: Record<RfiStatus, {
+    bg: string;
+    text: string;
+}> = {
+    Draft: { bg: "bg-grey-50", text: "text-grey-500" },
+    Open: { bg: "bg-primary-50", text: "text-primary-700" },
+    InReview: { bg: "bg-amber-50", text: "text-amber-700" },
+    Answered: { bg: "bg-success-50", text: "text-success-700" },
+    Closed: { bg: "bg-grey-50", text: "text-grey-500" },
+    Void: { bg: "bg-error-50", text: "text-error-600" },
+};
+export function RfiStatusBadge({ status }: {
+    status: RfiStatus;
+}) {
+    const tone = STATUS_TONE[status] ?? STATUS_TONE.Draft;
+    return (<div className={"field-stack " + (cn("rounded-full px-2.5 py-1", tone.bg))}>
+      <Text weight="semibold" className={cn("text-[11px] uppercase", tone.text)}>
+        {RFI_STATUS_LABELS[status] ?? status}
+      </Text>
+    </div>);
+}
+function Chip({ children, tone }: {
+    children: string;
+    tone: "danger" | "neutral";
+}) {
+    return (<div className={"field-stack " + (cn("rounded-full px-2.5 py-1", tone === "danger" ? "bg-error-50" : "bg-surface-alt"))}>
+      <Text weight="semibold" tone={tone === "danger" ? "danger" : "secondary"} className="text-[11px] uppercase">
+        {children}
+      </Text>
+    </div>);
+}
+function MetaLine({ icon, children }: {
+    icon: "person-outline" | "calendar-outline";
+    children: string;
+}) {
+    return (<div className="field-stack flex-row items-center gap-1.5">
+      <Ionicons name={icon} size={14} color={ICON_MUTED}/>
+      <Text tone="secondary" className="text-xs">
+        {children}
+      </Text>
+    </div>);
+}
+interface RfiDetailHeaderProps {
+    number: number;
+    subject: string;
+    question: string;
+    questionHtml?: string | null;
+    status: RfiStatus;
+    priority: RfiPriority;
+    ballInCourtName: string | null;
+    dueDate: string | null;
+    costImpact: boolean;
+    scheduleImpact: boolean;
+    officialResponse: string | null;
+    officialResponseHtml?: string | null;
+    officialRespondedByName: string | null;
+    officialRespondedAt: number | string | null;
+    /** True while the official response is still queued on this device. */
+    officialResponsePending: boolean;
+}
+export function RfiDetailHeader({ number, subject, question, questionHtml, status, priority, ballInCourtName, dueDate, costImpact, scheduleImpact, officialResponse, officialResponseHtml, officialRespondedByName, officialRespondedAt, officialResponsePending, }: RfiDetailHeaderProps) {
+    return (<div className="field-stack gap-3">
+      <div className="field-stack flex-row flex-wrap items-center gap-2">
+        <Text weight="semibold" tone="muted" className="text-xs">
+          {number > 0 ? `RFI-${number}` : "RFI · not yet numbered"}
+        </Text>
+        <RfiStatusBadge status={status}/>
+        {priority === "High" ? <Chip tone="danger">High priority</Chip> : null}
+        {costImpact ? <Chip tone="neutral">Cost impact</Chip> : null}
+        {scheduleImpact ? <Chip tone="neutral">Schedule impact</Chip> : null}
+      </div>
+
+      <Text weight="bold" className="text-lg">
+        {subject}
+      </Text>
+      <RichContent html={questionHtml} text={question}/>
+
+      <MetaLine icon="person-outline">
+        {ballInCourtName ? `Ball in court: ${ballInCourtName}` : "Ball in court: unassigned"}
+      </MetaLine>
+      {dueDate ? <MetaLine icon="calendar-outline">{`Due ${formatDate(dueDate) || dueDate}`}</MetaLine> : null}
+
+      {officialResponse || officialResponseHtml ? (<div className="field-stack rounded-xl bg-primary-50 p-3">
+          <div className="field-stack flex-row items-center gap-2">
+            <Text weight="semibold" tone="muted" className="flex-1 text-[10px] uppercase tracking-wide">
+              Official response
+            </Text>
+            {officialResponsePending ? <PendingBadge /> : null}
+          </div>
+          <RichContent html={officialResponseHtml} text={officialResponse}/>
+          {officialRespondedByName ? (<Text tone="muted" className="pt-1 text-xs">
+              {officialRespondedByName}
+              {officialRespondedAt ? ` · ${formatDateTime(officialRespondedAt)}` : ""}
+            </Text>) : null}
+        </div>) : null}
+    </div>);
+}
+RfiDetailHeader.displayName = "RfiDetailHeader";

@@ -3,7 +3,7 @@ import { features } from '@/lib/feature-access';
 import { repositoryAccess } from './permissions';
 import { taskReadWhere } from './record-visibility';
 import type { TaskRow } from './schema';
-import type { Db } from './client';
+import type { Db } from '@/db/client';
 import { documents, drawingMarkups, drawingMarkupComments, projectUpdates, projectUpdateMedia, tasks } from './schema';
 
 /** Reflect confirmed online writes without scheduling a second mutation. */

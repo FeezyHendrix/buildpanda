@@ -248,3 +248,8 @@ branch_structure.json
 !/packages/backend/src/modules/messaging-agent/artifacts.test.ts
 
 !/packages/panda-agent/scripts/review-schema.test.ts
+
+# React Field PWA browser, offline and production host regression tests.
+!/packages/field/scripts/browser.test.mjs
+!/packages/field/scripts/offline.test.mjs
+!/packages/field/scripts/server.test.mjs

@@ -1,11 +1,11 @@
 import { features } from "./feature-access";
-import { useProjectAccess } from "./project-access-provider";
+import { useProjectAccess } from "@/lib/project-access-provider";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { AppState } from "react-native";
 import { useLocalDb } from "@/db/provider";
 import { useFieldSession } from "./field-session";
 import { syncProjectDocuments, type PlanDownloadProgress } from "./project-documents-sync";
-import { useSyncState } from "./sync-provider";
+import { useSyncState } from "@/lib/sync-provider";
 
 const INITIAL_PROGRESS: PlanDownloadProgress = { completed: 0, total: 0, failed: 0, error: null };
 const OfflinePlansContext = createContext({ ...INITIAL_PROGRESS, syncing: false, retry: () => {} });

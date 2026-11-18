@@ -1,10 +1,10 @@
 import { AccessDeniedError } from "@/lib/project-access-store";
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { and, asc, eq, notInArray } from "drizzle-orm";
 import type { CreateTaskInput, Task, TaskAssignee, TaskBoard } from "@/api/tasks";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { enqueueUpdate } from "./enqueue-update";
 import { taskColumns, tasks, outbox, type TaskRow } from "./schema";
 import { remapQueuedRecord } from "./sync-write-state";

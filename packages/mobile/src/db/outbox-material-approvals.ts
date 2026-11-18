@@ -1,7 +1,7 @@
 import { htmlFromText } from "@buildpanda/rich-content";
 import { settleOutboxItem } from "./sync-write-state";
 import { isApprovalStatus, materialApprovalsApi } from "@/api/material-approvals";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import {
   materialApprovalCommentsRepository,
   MATERIAL_APPROVAL_COMMENTS_RESOURCE,

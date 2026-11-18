@@ -1,6 +1,6 @@
 import { tasksApi } from "@/api/tasks";
 import { readCachedUser } from "@/lib/session-cache";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { done, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { type OutboxRow } from "./schema";
 import { settleOutboxItem } from "./sync-write-state";

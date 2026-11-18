@@ -5,7 +5,7 @@ import type {
   MarkupRect,
   MediaKind,
 } from "@/components/plan-review/markup-types";
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export type { MarkupGeometry, MarkupKind, MarkupPoint, MarkupRect, MediaKind };
 

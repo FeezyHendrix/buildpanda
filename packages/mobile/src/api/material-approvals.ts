@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 import type { ApprovalStatus, MaterialApproval, MaterialApprovalDetail, MaterialApprovalCreateInput, MaterialApprovalUpdateInput, ApprovalComment } from "./material-approval-types";
 export * from "./material-approval-types";
 

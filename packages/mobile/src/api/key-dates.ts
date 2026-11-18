@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export interface KeyDate {
   linkedActivityId?: string | null;

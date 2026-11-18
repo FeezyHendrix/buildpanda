@@ -4,7 +4,7 @@ import {
   CHANGE_REQUEST_COMMENTS_RESOURCE,
   changeRequestCommentsRepository,
 } from "./change-request-comments-repository";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { done, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { changeRequestComments, type OutboxRow } from "./schema";
 

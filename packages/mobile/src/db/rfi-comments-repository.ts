@@ -1,10 +1,10 @@
 import { rfiCommentReadWhere, requireRfiRead } from "./rfi-access";
 import { repositoryAccess, requireDbPermission } from "./permissions";
 import { features } from "@/lib/feature-access";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { asc, eq } from "drizzle-orm";
 import type { RfiComment } from "@/api/rfis";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { outbox, rfiComments, rfis, type RfiCommentRow } from "./schema";
 
 const access = repositoryAccess(features.rfis);

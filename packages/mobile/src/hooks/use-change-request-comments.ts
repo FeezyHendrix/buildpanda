@@ -1,6 +1,6 @@
 import { projectAccess } from "@/lib/project-access-store";
 import { useSyncState } from "@/lib/sync-provider";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { useEffect, useMemo } from "react";
 import { changeRequestsApi } from "@/api/change-requests";
 import type { Db } from "@/db/client";

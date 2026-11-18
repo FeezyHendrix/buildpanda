@@ -1,6 +1,6 @@
 import { features } from "@/lib/feature-access";
 import { projectAccess } from "@/lib/project-access-store";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { useEffect, useMemo } from "react";
 import { rfisApi, type RfiStatusTransition, type UpsertRfiInput } from "@/api/rfis";
 import type { Db } from "@/db/client";

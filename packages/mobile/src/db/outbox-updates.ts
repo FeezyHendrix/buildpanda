@@ -3,7 +3,7 @@ import { loadPendingMedia } from "@/lib/pending-media";
 import { uploadProjectFile } from "@/api/files";
 import { updatesApi, type CreateUpdateMediaInput, type UpdateCategory } from "@/api/updates";
 import { API_BASE_URL } from "@/lib/auth-client";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { dropItem, finishItem, PermanentOutboxError, skipped, type OutboxHandlerResult } from "./outbox-handler";
 import { type OutboxRow } from "./schema";
 import { UPDATES_RESOURCE, updatesRepository } from "./updates-repository";

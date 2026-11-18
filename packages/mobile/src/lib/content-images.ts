@@ -1,7 +1,7 @@
 import type { Db } from "@/db/client";
 import { canReadCachedContentFile } from "@/db/content-file-access";
-import { randomUUID } from 'expo-crypto';
-import NetInfo from '@react-native-community/netinfo';
+import { randomUUID } from '@/lib/crypto';
+import NetInfo from '@/lib/connectivity';
 import { imageError, referencedFileIds } from '@buildpanda/rich-content';
 import { uploadProjectFile } from '@/api/files';
 import { request, ApiError } from '@/api/client';
@@ -10,7 +10,7 @@ import { VERIFIED } from './access-requirement';
 import { uploadAccess } from './feature-access';
 import { requireAccess, requireCurrentAccess, revokeProjectAccess } from './project-access-store';
 import { accessFingerprint, OFFLINE_ACCESS_MS } from './access-policy';
-import { savePickedContentImage, loadContentImage, rememberContentUpload, cacheContentImage, clearContentImages, verifyCachedContentImage } from './content-image-storage';
+import { savePickedContentImage, loadContentImage, rememberContentUpload, cacheContentImage, clearContentImages, verifyCachedContentImage } from '@/lib/content-image-storage';
 import type { PickedContentImage } from './content-image-types';
 
 export async function stageContentImage(projectId: string, picked: PickedContentImage) {

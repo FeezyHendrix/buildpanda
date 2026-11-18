@@ -2,7 +2,7 @@ import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { asc, eq } from "drizzle-orm";
 import type { DailyLogTemplate, TemplateField } from "@/api/daily-log-templates";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { dailyLogTemplates, type DailyLogTemplateRow } from "./schema";
 
 const access = repositoryAccess(features.dailyLog);

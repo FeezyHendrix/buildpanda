@@ -1,7 +1,7 @@
 import { requireAccess } from "@/lib/project-access-store";
 import { features } from "@/lib/feature-access";
 import { useState } from "react";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import type { DrawingMarkup } from "@/api/drawing-markup";
 import { FOLLOW_UP, type PinCommentDraft } from "@/components/plan-review/comment-composer";
 import { MEDIA_KIND, MARKUP_KIND, type MarkupPoint } from "@/components/plan-review/markup-types";

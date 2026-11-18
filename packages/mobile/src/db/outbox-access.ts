@@ -3,7 +3,7 @@ import { allOf, DENY, type AccessRequirement, type FeatureAccess } from "@/lib/a
 import { approvalTierStatus } from "@/lib/api-access";
 import { features } from "@/lib/feature-access";
 import { AccessDeniedError, canAccess, projectAccess, requireAccess } from "@/lib/project-access-store";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { getDbOwner } from "./ownership";
 import { OUTBOX_TABLES } from "./outbox-tables";
 import { outbox, rfis, rfiComments, tasks, expenses, projectUpdates, type OutboxRow } from "./schema";

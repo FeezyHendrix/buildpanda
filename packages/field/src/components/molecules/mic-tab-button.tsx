@@ -1,0 +1,17 @@
+import Ionicons from "@/components/atoms/icon";
+import { ICON_BRAND, ICON_INVERSE } from "@/constants/colors";
+/**
+ * The raised centre action on the tab bar — BuildPanda's take on Ernest's "+".
+ * Tapping it starts a voice note that Panda AI turns into reviewable field
+ * records. Rendered as a `Tabs.Screen` `tabBarButton`, so it holds the centre
+ * slot but pushes to `/capture` rather than navigating to a route of its own.
+ */
+export function MicTabButton({ onPress }: {
+    onPress: () => void;
+}) {
+    return (<div className="field-stack flex-1 items-center justify-start" style={{ top: -8 }}>
+      <button onClick={onPress} role="button" aria-label="Record a field update" className="h-14 w-14 items-center justify-center rounded-2xl bg-primary-500 active:bg-primary-600" style={{}} type="button">
+        <Ionicons name="mic" size={26} color={ICON_INVERSE}/>
+      </button>
+    </div>);
+}

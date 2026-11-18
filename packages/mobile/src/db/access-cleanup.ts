@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 
 /** Keep authored, unsent records quarantined; remove server data after denial. */
 export function clearProjectServerCache(db: Db, projectId: string): void {

@@ -1,0 +1,44 @@
+import { features } from "@/lib/feature-access";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
+import { goBack } from "@/lib/navigation";
+import Ionicons from "@/components/atoms/icon";
+import { router } from "@/navigation";
+import { PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_FAINT } from "@/constants/colors";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
+import { Page } from "@/components/molecules/page";
+import { SearchableList } from "@/components/molecules/searchable-list";
+import type { Db } from "@/db/client";
+import { useLocalDb } from "@/db/provider";
+import { useLocalLookAheads } from "@/hooks/use-local-look-aheads";
+import { formatDateRange } from "@/lib/dates";
+import { useFieldSession } from "@/lib/field-session";
+function List({ db, projectId }: {
+    db: Db;
+    projectId: string;
+}) {
+    const { data, isPending } = useLocalLookAheads(db, projectId);
+    return (<SearchableList data={data} loading={isPending} fields={(row) => [row.name, row.status, formatDateRange(row.startDate, row.endDate)]} placeholder="Search look-aheads" emptyTitle="No look aheads yet" emptyBody="Create one to plan the next window of work with the crew." renderItem={(row) => (<button key={row.id} onClick={() => router.push(`/tools/look-aheads/${row.id}`)} role="button" className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt" type="button">
+          <div className="field-stack min-w-0 flex-1">
+            <Text weight="semibold" className="text-[15px]" numberOfLines={1}>
+              {row.name}
+            </Text>
+            <Text tone="secondary" className="pt-0.5 text-xs" numberOfLines={1}>
+              {row.status} · {formatDateRange(row.startDate, row.endDate)}
+              {row.totalWorkers ? ` · ${row.totalWorkers} crew` : ""}
+            </Text>
+          </div>
+          {row.isPendingSync ? <PendingBadge /> : null}
+          <Ionicons name="chevron-forward" size={18} color={ICON_FAINT}/>
+        </button>)}/>);
+}
+function LookAheads() {
+    const { projectId } = useFieldSession();
+    const { db, ready } = useLocalDb();
+    return (<Page stageScope scroll={false} buildingScope title="Look aheads" onBack={() => goBack()} rightButtons={<HeaderIconButton permission={features.schedule.actions.create} icon="add" label="New look ahead" onPress={() => router.push("/tools/look-aheads/new")}/>}>
+      {ready && db && projectId ? (<List key={projectId} db={db} projectId={projectId}/>) : (<div className="field-stack items-center py-12">
+          <Spinner size="md"/>
+        </div>)}
+    </Page>);
+}
+export default withProjectPermission(LookAheads, "/tools/look-aheads");

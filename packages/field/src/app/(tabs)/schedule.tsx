@@ -1,0 +1,209 @@
+import { features } from "@/lib/feature-access";
+import { PermissionGate, withProjectPermission } from "@/components/molecules/permission-gate";
+import Ionicons from "@/components/atoms/icon";
+import { router } from "@/navigation";
+import type { ReactNode } from "react";
+import type { Activity } from "@/api/activities";
+import type { KeyDate } from "@/api/key-dates";
+import type { Stage } from "@/api/stages";
+import { Card, Spinner, Text } from "@/components/atoms";
+import { Page } from "@/components/molecules/page";
+import { StaleBanner } from "@/components/molecules/stale-banner";
+import { ActivityRow, KeyDateRow, LookAheadRow } from "@/components/molecules/schedule/rows";
+import { ICON_BRAND, ICON_MUTED } from "@/constants/colors";
+import type { Db } from "@/db/client";
+import { useLocalDb } from "@/db/provider";
+import { useActivities } from "@/hooks/use-activities";
+import { useKeyDates } from "@/hooks/use-key-dates";
+import { useLocalLookAheads } from "@/hooks/use-local-look-aheads";
+import { useProject } from "@/hooks/use-projects";
+import { useStages } from "@/hooks/use-stages";
+import { useFieldSession } from "@/lib/field-session";
+const MS_PER_DAY = 86400000;
+const PREVIEW_COUNT = 3;
+function startOfDay(date: Date): number {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+function daysFromToday(iso: string): number {
+    return Math.round((startOfDay(new Date(iso)) - startOfDay(new Date())) / MS_PER_DAY);
+}
+function currentStage(stages: Stage[]): Stage | null {
+    const ordered = [...stages].sort((a, b) => a.sortOrder - b.sortOrder);
+    return ordered.find((s) => s.progressPercent < 100) ?? ordered[ordered.length - 1] ?? null;
+}
+function nextKeyDate(keyDates: KeyDate[]): KeyDate | null {
+    const upcoming = keyDates
+        .filter((k) => !k.actualDate && k.targetDate)
+        .sort((a, b) => (a.targetDate ?? "").localeCompare(b.targetDate ?? ""));
+    return upcoming[0] ?? null;
+}
+function activityPreview(activities: Activity[]): Activity[] {
+    const now = Date.now();
+    const live = activities.filter((a) => new Date(a.plannedStartAt).getTime() <= now && now <= new Date(a.plannedEndAt).getTime());
+    const upcoming = activities
+        .filter((a) => new Date(a.plannedStartAt).getTime() > now)
+        .sort((a, b) => a.plannedStartAt.localeCompare(b.plannedStartAt));
+    const rest = activities.filter((a) => !live.includes(a) && !upcoming.includes(a));
+    return [...live, ...upcoming, ...rest].slice(0, PREVIEW_COUNT);
+}
+function keyDatePreview(keyDates: KeyDate[]): KeyDate[] {
+    const pending = keyDates.filter((k) => !k.actualDate);
+    const met = keyDates.filter((k) => k.actualDate);
+    return [...pending, ...met].slice(0, PREVIEW_COUNT);
+}
+function SectionHeader({ title, onSeeAll }: {
+    title: string;
+    onSeeAll?: () => void;
+}) {
+    return (<div className="field-stack flex-row items-center justify-between pb-2 pt-5">
+      <Text weight="bold" className="text-base">
+        {title}
+      </Text>
+      {onSeeAll ? (<button onClick={onSeeAll} role="button" className="h-11 flex-row items-center gap-0.5 rounded-full px-2 active:bg-surface-alt" type="button">
+          <Text weight="semibold" tone="brand" className="text-[13px]">
+            See all
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={ICON_BRAND}/>
+        </button>) : null}
+    </div>);
+}
+function ProgressBar({ percent }: {
+    percent: number;
+}) {
+    return (<div className="field-stack h-2 flex-1 overflow-hidden rounded-full bg-surface-alt">
+      <div className="field-stack h-2 rounded-full bg-primary-500" style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}/>
+    </div>);
+}
+function EmptyNote({ text }: {
+    text: string;
+}) {
+    return (<div className="field-stack items-center py-6">
+      <Text tone="secondary" className="text-[13px]">
+        {text}
+      </Text>
+    </div>);
+}
+function HeroCard({ stages, keyDates }: {
+    stages: Stage[];
+    keyDates: KeyDate[];
+}) {
+    const stage = currentStage(stages);
+    const upcoming = nextKeyDate(keyDates);
+    const stageIndex = stage ? stages.filter((s) => s.sortOrder <= stage.sortOrder).length : 0;
+    if (!stage && !upcoming)
+        return null;
+    return (<Card className="px-4 py-4">
+      {stage ? (<>
+          <Text tone="secondary" className="text-[11px] uppercase">
+            Current stage · {stageIndex} of {stages.length}
+          </Text>
+          <Text weight="bold" className="pt-1 text-lg" numberOfLines={1}>
+            {stage.name}
+          </Text>
+          <div className="field-stack flex-row items-center gap-3 pt-2.5">
+            <ProgressBar percent={stage.progressPercent}/>
+            <Text weight="semibold" tone="brand" className="text-[13px]">
+              {stage.progressPercent}%
+            </Text>
+          </div>
+          {stage.dateRange ? (<Text tone="secondary" className="pt-1.5 text-xs">
+              {stage.dateRange}
+            </Text>) : null}
+        </>) : null}
+
+      {upcoming?.targetDate ? (<div className={"field-stack " + (`flex-row items-center gap-2 ${stage ? "mt-3 border-t border-hairline pt-3" : ""}`)}>
+          <Ionicons name="flag-outline" size={16} color={ICON_BRAND}/>
+          <Text weight="semibold" className="min-w-0 flex-1 text-[13px]" numberOfLines={1}>
+            {upcoming.label}
+          </Text>
+          {(() => {
+                const days = daysFromToday(upcoming.targetDate);
+                const late = days < 0;
+                return (<div className={"field-stack " + (`rounded-full px-2 py-1 ${late ? "bg-error-50" : "bg-primary-50"}`)}>
+                <Text weight="semibold" tone={late ? "danger" : "brand"} className="text-[10px] uppercase">
+                  {late ? `${-days}d late` : days === 0 ? "Today" : `In ${days}d`}
+                </Text>
+              </div>);
+            })()}
+        </div>) : null}
+
+      <div className="field-stack mt-3 flex-row gap-2">
+        <PermissionGate permission={features.stages.read}><button onClick={() => router.push("/tools/schedule/stages" as never)} role="button" className="h-11 flex-1 flex-row items-center justify-center gap-1 rounded-xl bg-surface-alt active:bg-hairline" type="button">
+          <Text weight="semibold" tone="secondary" className="text-[13px]">
+            All build stages
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={ICON_MUTED}/>
+        </button></PermissionGate>
+        <PermissionGate permission={features.schedule.read}><button onClick={() => router.push("/tools/schedule/chart" as never)} role="button" className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-primary-50 active:bg-primary-100" type="button">
+          <Ionicons name="stats-chart-outline" size={15} color={ICON_BRAND}/>
+          <Text weight="semibold" tone="brand" className="text-[13px]">
+            Project chart
+          </Text>
+        </button></PermissionGate>
+      </div>
+    </Card>);
+}
+function LookAheadsSection({ db, projectId }: {
+    db: Db;
+    projectId: string;
+}) {
+    const { data, isPending } = useLocalLookAheads(db, projectId);
+    return (<div className="field-stack">
+      <SectionHeader title="Look aheads" onSeeAll={() => router.push("/tools/look-aheads" as never)}/>
+      {isPending ? (<div className="field-stack items-center py-6">
+          <Spinner size="md"/>
+        </div>) : data.length === 0 ? (<Card>
+          <EmptyNote text="Plan the next stretch of work so the crew knows what's coming."/>
+        </Card>) : (<Card>
+          {data.slice(0, PREVIEW_COUNT).map((lookAhead) => (<LookAheadRow key={lookAhead.id} lookAhead={lookAhead} onPress={() => router.push(`/tools/look-aheads/${lookAhead.id}` as never)}/>))}
+        </Card>)}
+      <PermissionGate permission={features.schedule.actions.create}><button onClick={() => router.push("/tools/look-aheads/new")} role="button" className="mt-2 min-h-14 flex-row items-center justify-center gap-1.5 self-start rounded-full bg-primary-50 px-5 active:bg-primary-100" type="button">
+        <Ionicons name="add" size={18} color={ICON_BRAND}/>
+        <Text weight="semibold" tone="brand" className="text-[13px]">
+          New look ahead
+        </Text>
+      </button></PermissionGate>
+    </div>);
+}
+function Section({ title, onSeeAll, isEmpty, emptyText, children, }: {
+    title: string;
+    onSeeAll: () => void;
+    isEmpty: boolean;
+    emptyText: string;
+    children: ReactNode;
+}) {
+    return (<div className="field-stack">
+      <SectionHeader title={title} onSeeAll={onSeeAll}/>
+      <Card>{isEmpty ? <EmptyNote text={emptyText}/> : children}</Card>
+    </div>);
+}
+function Schedule() {
+    const { projectId } = useFieldSession();
+    const { db, ready } = useLocalDb();
+    const { data: project } = useProject(projectId);
+    const activities = useActivities(projectId);
+    const stages = useStages(projectId);
+    const keyDates = useKeyDates(projectId);
+    const isPending = activities.isPending && stages.isPending && keyDates.isPending;
+    const isStale = activities.isStale || stages.isStale || keyDates.isStale;
+    return (<Page stageScope buildingScope title="Schedule" projectName={project?.name} projectPending={Boolean(projectId) && !project} onPressProject={() => router.push("/select-project")}>
+      {isPending ? (<div className="field-stack items-center py-12">
+          <Spinner size="md"/>
+        </div>) : (<div className="field-stack pb-6">
+          {isStale ? <StaleBanner what="schedule"/> : null}
+
+          <HeroCard stages={stages.data ?? []} keyDates={keyDates.data ?? []}/>
+
+          <PermissionGate permission={features.schedule.read}><Section title="Site activity" onSeeAll={() => router.push("/tools/schedule/activities" as never)} isEmpty={(activities.data ?? []).length === 0} emptyText="Site activities for this project will appear here.">
+            {activityPreview(activities.data ?? []).map((activity) => (<ActivityRow key={activity.id} activity={activity}/>))}
+          </Section></PermissionGate>
+
+          {ready && db && projectId ? <PermissionGate permission={features.schedule.read}><LookAheadsSection db={db} projectId={projectId}/></PermissionGate> : null}
+
+          <PermissionGate permission={features.keyDates.read}><Section title="Key dates" onSeeAll={() => router.push("/tools/schedule/key-dates" as never)} isEmpty={(keyDates.data ?? []).length === 0} emptyText="Milestone and compliance dates will appear here.">
+            {keyDatePreview(keyDates.data ?? []).map((keyDate) => (<KeyDateRow key={keyDate.id} keyDate={keyDate}/>))}
+          </Section></PermissionGate>
+        </div>)}
+    </Page>);
+}
+export default withProjectPermission(Schedule, "/(tabs)/schedule");

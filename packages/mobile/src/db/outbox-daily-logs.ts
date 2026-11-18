@@ -6,7 +6,7 @@ import { isWeatherCondition } from "@/lib/daily-log-weather";
 import { ApiError } from "@/api/client";
 import type { TemplateResponses } from "@/api/daily-log-templates";
 import { htmlToText, textToParagraphHtml } from "@/lib/html";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { done, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { dailyLogActivities, dailyLogEntries, dailyLogs, type DailyLogEntryRow, type OutboxRow } from "./schema";
 

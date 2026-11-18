@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "@/db/driver";
 import { updatesApi } from "@/api/updates";
 import type { Db } from "@/db/client";
 import { flushOutbox } from "@/db/outbox";

@@ -1,6 +1,6 @@
 import { settleOutboxItem } from "./sync-write-state";
 import { MATERIAL_ORDER_STATUSES, materialsApi, type MaterialOrderStatus } from "@/api/materials";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { materialsRepository } from "./materials-repository";
 import { done, PermanentOutboxError, skipped, type OutboxHandlerResult, dropItem, finishItem } from "./outbox-handler";
 import { type OutboxRow } from "./schema";

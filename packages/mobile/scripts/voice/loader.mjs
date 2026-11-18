@@ -12,7 +12,7 @@ registerHooks({ resolve(specifier, context, next) {
   if (/\/src\/lib\/auth-client(?:\.ts)?$/.test(path)) return code('export const API_BASE_URL="http://fixture"; export const authClient={getCookie:()=>"fixture"};');
   if (path.endsWith('.json')) return code(`const data = ${readFileSync(path, 'utf8')}; export default data; export const colors = data.colors;`);
   if (specifier === 'react-native') return code('export const Platform={OS:"ios"};');
-  if (specifier === '@react-native-community/netinfo') return code('export default {fetch:async()=>({isConnected:true,isInternetReachable:true})};');
+  if (specifier === '@react-native-community/netinfo') return code('export const useNetInfo=()=>({isConnected:true,isInternetReachable:true}); export default {fetch:async()=>useNetInfo()};');
   if (specifier === 'expo-file-system') return { url: new URL('./filesystem.mjs', import.meta.url).href, shortCircuit: true };
   if (specifier === 'expo-file-system/legacy') return code('export const FileSystemUploadType={MULTIPART:1}; export const uploadAsync=async()=>({status:201,body:JSON.stringify({id:"file-uploaded"})}); export const EncodingType={Base64:"base64",UTF8:"utf8"}; export const readAsStringAsync=async()=>{throw new Error("file reads are not part of voice fixtures")};');
   return next(specifier, context);

@@ -1,6 +1,6 @@
 import { projectAccess } from "./project-access-store";
 import { clearSavedProjectAccess } from "./access-storage";
-import { clearDocumentCache } from "./download-file";
+import { clearDocumentCache } from "@/lib/download-file";
 import {
   createContext,
   useCallback,
@@ -10,8 +10,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { storage } from "./storage";
-import { authClient, useSession } from "./auth-client";
+import { storage } from "@/lib/storage";
+import { authClient, useSession } from "@/lib/auth-client";
 import { writeCachedUser } from "./session-cache";
 import { useAuthGate } from "./use-auth-gate";
 

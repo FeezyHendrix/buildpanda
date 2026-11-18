@@ -1,8 +1,8 @@
 import { repositoryAccess } from "./permissions";
 import { features } from "@/lib/feature-access";
 import { and, eq, isNull } from "drizzle-orm";
-import { randomUUID } from "expo-crypto";
-import type { Db } from "./client";
+import { randomUUID } from "@/lib/crypto";
+import type { Db } from "@/db/client";
 import { dayKey } from "./daily-logs-repository";
 import { reviveOrQueue } from "./enqueue-update";
 import { dailyLogs, dailyLogEntries, outbox } from "./schema";

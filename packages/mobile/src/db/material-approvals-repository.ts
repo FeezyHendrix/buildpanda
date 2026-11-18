@@ -3,10 +3,10 @@ import { repositoryAccess, requireDbPermission, requireLocalRecord } from "./per
 import { features } from "@/lib/feature-access";
 import { projectAccess } from "@/lib/project-access-store";
 import { remapQueuedRecord } from "./sync-write-state";
-import { randomUUID } from "expo-crypto";
+import { randomUUID } from "@/lib/crypto";
 import { and, desc, eq } from "drizzle-orm";
 import type { MaterialApproval, MaterialApprovalCreateInput } from "@/api/material-approvals";
-import type { Db } from "./client";
+import type { Db } from "@/db/client";
 import { enqueueDelete, enqueueUpdate } from "./enqueue-update";
 import { MATERIAL_APPROVAL_COMMENTS_RESOURCE } from "./material-approval-comments-repository";
 import {

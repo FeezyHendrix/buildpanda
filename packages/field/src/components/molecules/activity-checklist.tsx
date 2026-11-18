@@ -1,0 +1,62 @@
+import Ionicons from "@/components/atoms/icon";
+import { memo, useMemo, useState } from "react";
+import type { Activity } from "@/api/activities";
+import { Card, Field, Spinner, Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_SUBTLE } from "@/constants/colors";
+interface ActivityChecklistProps {
+    activities: readonly Activity[];
+    selectedIds: readonly string[];
+    onToggle: (activityId: string) => void;
+    isLoading?: boolean;
+}
+/**
+ * Multi-select of programme activities, mirroring the web's look-ahead
+ * dialog: a count in the label, a search box, one checkbox row per activity.
+ * Rows are 44px so a gloved thumb can toggle them.
+ */
+function ActivityChecklistInner({ activities, selectedIds, onToggle, isLoading = false }: ActivityChecklistProps) {
+    const [filter, setFilter] = useState("");
+    const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
+    const visible = useMemo(() => {
+        const term = filter.trim().toLowerCase();
+        if (!term)
+            return activities;
+        return activities.filter((activity) => activity.name.toLowerCase().includes(term));
+    }, [activities, filter]);
+    return (<div className="field-stack gap-2">
+      <Text weight="semibold" className="text-[13px]">
+        Activities ({selected.size} selected)
+      </Text>
+
+      {isLoading && activities.length === 0 ? (<div className="field-stack items-center py-6">
+          <Spinner size="md"/>
+        </div>) : activities.length === 0 ? (<div className="field-stack rounded-xl bg-surface-alt px-4 py-3">
+          <Text tone="secondary" className="text-[13px]">
+            No activities on the project chart yet. Ask your project manager to add one.
+          </Text>
+        </div>) : (<>
+          <Field label="Search" value={filter} onChangeText={setFilter} placeholder="Search activities…" autoCapitalize="none" autoCorrect={false}/>
+          {visible.length === 0 ? (<div className="field-stack rounded-xl bg-surface-alt px-4 py-3">
+              <Text tone="secondary" className="text-[13px]">
+                No activity matches that search.
+              </Text>
+            </div>) : (<Card>
+              {visible.map((activity) => {
+                    const checked = selected.has(activity.id);
+                    return (<button key={activity.id} onClick={() => onToggle(activity.id)} role="checkbox" aria-checked={checked} className="min-h-14 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt" type="button">
+                    <Ionicons name={checked ? "checkbox" : "square-outline"} size={22} color={checked ? ICON_BRAND : ICON_SUBTLE}/>
+                    <div className="field-stack min-w-0 flex-1">
+                      <Text weight="semibold" className="text-[15px]" numberOfLines={1}>
+                        {activity.name}
+                      </Text>
+                      {activity.phaseName || activity.location ? (<Text tone="secondary" className="pt-0.5 text-xs" numberOfLines={1}>
+                          {[activity.phaseName, activity.location].filter(Boolean).join(" · ")}
+                        </Text>) : null}
+                    </div>
+                  </button>);
+                })}
+            </Card>)}
+        </>)}
+    </div>);
+}
+export const ActivityChecklist = memo(ActivityChecklistInner);

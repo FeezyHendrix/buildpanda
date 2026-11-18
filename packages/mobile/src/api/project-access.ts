@@ -1,5 +1,5 @@
 import type { AccessScope, PermissionMap } from "@/lib/access-policy";
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export interface ProjectAccessResponse extends AccessScope {
   permissions: PermissionMap;

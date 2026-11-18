@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request } from "@/api/client";
 
 export const LOOK_AHEAD_STATUSES = ["Draft", "UnderReview", "Approved"] as const;
 export type LookAheadStatus = (typeof LOOK_AHEAD_STATUSES)[number];

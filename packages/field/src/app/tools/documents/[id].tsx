@@ -1,0 +1,167 @@
+import { ContentText } from "@/components/rich-text/rich-content";
+import { withProjectPermission } from "@/components/molecules/permission-gate";
+import { goBack } from "@/lib/navigation";
+import Ionicons from "@/components/atoms/icon";
+import { router, useLocalSearchParams } from "@/navigation";
+import { useEffect, useState } from "react";
+import { documentsApi, type DocumentVersion } from "@/api/documents";
+import { Button, Card, Spinner, Text } from "@/components/atoms";
+import { documentsRepository } from "@/db/documents-repository";
+import { ICON_BRAND } from "@/constants/colors";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
+import { Page } from "@/components/molecules/page";
+import { useLocalDb } from "@/db/provider";
+import { cacheDocument, cacheVersionFile } from "@/lib/download-file";
+import { formatDate } from "@/lib/dates";
+import { useFieldSession } from "@/lib/field-session";
+import { useSyncState } from "@/lib/sync-provider";
+function VersionRow({ version, projectId, documentId, onError, }: {
+    version: DocumentVersion;
+    projectId: string;
+    documentId: string;
+    onError: (message: string) => void;
+}) {
+    const [busy, setBusy] = useState(false);
+    async function handleView() {
+        setBusy(true);
+        try {
+            const uri = await cacheVersionFile(projectId, documentId, version.id, version.fileName);
+            if (!uri)
+                return;
+            router.push(`/tools/documents/view?uri=${encodeURIComponent(uri)}&name=${encodeURIComponent(version.fileName)}` as never);
+        }
+        catch (err) {
+            console.error("version download failed", err);
+            onError(err instanceof Error && err.message
+                ? `Couldn't open this version: ${err.message}`
+                : "Couldn't open this version. Try again when you have signal.");
+        }
+        finally {
+            setBusy(false);
+        }
+    }
+    return (<button onClick={handleView} disabled={busy} role="button" className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt" type="button">
+      <div className="field-stack min-w-0 flex-1">
+        <div className="field-stack flex-row items-center gap-2">
+          <Text weight="semibold" className="text-[15px]">
+            v{version.versionNo}
+            {version.revisionLabel ? ` · ${version.revisionLabel}` : ""}
+          </Text>
+          {version.isCurrent ? (<div className="field-stack rounded-full bg-success-50 px-2 py-0.5">
+              <Text weight="semibold" tone="brand" className="text-[9px] uppercase">Current</Text>
+            </div>) : null}
+        </div>
+        <Text tone="secondary" className="pt-0.5 text-xs">
+          {version.fileName} · {version.size} · {formatDate(version.createdAt)}
+        </Text>
+        {version.notes ? (<ContentText tone="secondary" className="pt-1 text-xs" value={version.notes}/>) : null}
+      </div>
+      {busy ? <Spinner size="xs"/> : <Ionicons name="open-outline" size={18} color={ICON_BRAND}/>}
+    </button>);
+}
+function DocumentDetail() {
+    const { id } = useLocalSearchParams<{
+        id: string;
+    }>();
+    const { projectId } = useFieldSession();
+    const { db } = useLocalDb();
+    const { isOnline } = useSyncState();
+    const [versions, setVersions] = useState<DocumentVersion[]>([]);
+    const [loading, setLoading] = useState(true);
+    // Version history is read from the server; there is no local copy of it yet.
+    // Losing signal is the normal case here, so it gets a sentence, not silence.
+    const [historyUnavailable, setHistoryUnavailable] = useState(false);
+    const [caching, setCaching] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [savedCopy, setSavedCopy] = useState<{
+        uri: string;
+        name: string;
+    } | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+        setSavedCopy(null);
+        if (db && id)
+            void documentsRepository.findById(db, id).then((row) => {
+                if (!cancelled && row?.localUri)
+                    setSavedCopy({ uri: row.localUri, name: row.fileName });
+            }).catch(() => undefined);
+        return () => { cancelled = true; };
+    }, [db, id, caching]);
+    useEffect(() => {
+        if (!projectId || !id)
+            return;
+        let cancelled = false;
+        setVersions([]);
+        setLoading(true);
+        setHistoryUnavailable(false);
+        documentsApi
+            .versions(projectId, id)
+            .then((v) => {
+            if (!cancelled)
+                setVersions(v);
+        })
+            .catch(() => {
+            if (!cancelled)
+                setHistoryUnavailable(true);
+        })
+            .finally(() => {
+            if (!cancelled)
+                setLoading(false);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [projectId, id, isOnline]);
+    async function handleCacheForOffline() {
+        if (!db || !projectId || !id)
+            return;
+        setCaching(true);
+        setError(null);
+        try {
+            await cacheDocument(db, projectId, id);
+            const { documentsRepository } = await import("@/db/documents-repository");
+            await documentsRepository.trackAccess(db, id);
+        }
+        catch (err) {
+            console.error("offline cache failed", err);
+            setError(err instanceof Error && err.message ? err.message : "Couldn't save this document for offline.");
+        }
+        finally {
+            setCaching(false);
+        }
+    }
+    return (<Page title="Document" onBack={() => goBack()} rightButtons={<HeaderIconButton icon="cloud-download-outline" label="Save for offline" onPress={handleCacheForOffline} busy={caching}/>}>
+      {savedCopy ? (<div className="field-stack pb-4">
+          <Button variant="secondary" onPress={() => router.push(`/tools/documents/view?uri=${encodeURIComponent(savedCopy.uri)}&name=${encodeURIComponent(savedCopy.name)}` as never)}>
+            Open saved copy
+          </Button>
+        </div>) : null}
+      {error ? (<div className="field-stack mb-4 rounded-xl bg-error-50 px-4 py-3">
+          <Text tone="danger" className="text-sm">{error}</Text>
+        </div>) : null}
+
+      {loading ? (<div className="field-stack items-center py-12"><Spinner size="md"/></div>) : historyUnavailable ? (<div className="field-stack items-center py-12">
+          <Text weight="semibold" className="text-center text-base">
+            Version history needs signal
+          </Text>
+          <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
+            {isOnline
+                ? "Couldn't load this document's versions. Pull back to the list and try again."
+                : "You're offline. The versions load on their own once you're back online; a copy saved for offline still opens from the list."}
+          </Text>
+        </div>) : versions.length === 0 ? (<div className="field-stack items-center py-12">
+          <Text weight="semibold" className="text-center text-base">
+            No versions yet
+          </Text>
+          <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
+            Versions appear here each time this document is re-uploaded.
+          </Text>
+        </div>) : (<div className="field-stack gap-3">
+          <Text weight="bold" className="text-base">Version history</Text>
+          <Card>
+            {versions.map((v) => (<VersionRow key={v.id} version={v} projectId={projectId!} documentId={id!} onError={setError}/>))}
+          </Card>
+        </div>)}
+    </Page>);
+}
+export default withProjectPermission(DocumentDetail, "/tools/documents/[id]");
