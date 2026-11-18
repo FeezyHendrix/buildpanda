@@ -4,6 +4,7 @@ import type { Stage, StageStatus } from "@/lib/project-types";
 export interface StageInput {
   name: string;
   buildingId?: string;
+  buildingPhaseId?: string | null;
   status?: StageStatus;
   startDate?: string | null;
   endDate?: string | null;
@@ -78,8 +79,11 @@ export const stagesApi = {
   remove: (projectId: string, stageId: string) =>
     api.delete(`/projects/${projectId}/stages/${stageId}`).then((r) => r.data),
 
-  reorder: (projectId: string, stageIds: string[]) =>
-    api.patch<Stage[]>(`/projects/${projectId}/stages/reorder`, { stageIds }).then((r) => r.data),
+  /** With `buildingPhaseId`, `stageIds` is that phase's new order and the listed stages move into it. */
+  reorder: (projectId: string, stageIds: string[], buildingPhaseId?: string) =>
+    api
+      .patch<Stage[]>(`/projects/${projectId}/stages/reorder`, { stageIds, buildingPhaseId })
+      .then((r) => r.data),
 
   scheduleOfValues: (projectId: string, stageId: string) =>
     api

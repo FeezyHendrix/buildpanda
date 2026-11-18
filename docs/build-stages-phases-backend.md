@@ -1,5 +1,13 @@
 # Build Stages — Building Phases Backend Changes
 
+> **Status (18 Nov 2026).** Built on `buildpanda-v2`: the `building_phases` table and
+> `project_phases.building_phase_id` (`20261119_building_phases`, existing stages backfilled into a
+> "General" phase per building), `GET/POST/PATCH/DELETE /projects/:id/building-phases` with the
+> derived count, progress and status, and `buildingPhaseId` on stage create, update, list and
+> reorder. The Stages page reads and writes through them; the mock is gone. Permissions follow the
+> stage routes (`stages: view` / `stages: manage`). Open decisions: the backfill name, whether a
+> stage may have no phase (shown as "Unassigned"), and a delete-phase control in the UI.
+
 > Required to support the new Figma: phase-grouped stages, phase-level progress, inline phase editing, and the **Add New Stage** / **Add Building Phase** drawers.
 
 ## 1. Summary

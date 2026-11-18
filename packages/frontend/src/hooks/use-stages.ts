@@ -74,8 +74,15 @@ export function useDeleteStage() {
 export function useReorderStages() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, stageIds }: { projectId: string; stageIds: string[] }) =>
-      stagesApi.reorder(projectId, stageIds),
+    mutationFn: ({
+      projectId,
+      stageIds,
+      buildingPhaseId,
+    }: {
+      projectId: string;
+      stageIds: string[];
+      buildingPhaseId?: string;
+    }) => stagesApi.reorder(projectId, stageIds, buildingPhaseId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
     },
