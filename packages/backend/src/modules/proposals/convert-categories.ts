@@ -10,8 +10,9 @@ import { CONVERSION_DOCUMENT_CATEGORIES } from "./convert-mappers.ts";
 export async function resolveConversionCategories(trx: Knex.Transaction): Promise<Map<string, string>> {
   const wanted = [...CONVERSION_DOCUMENT_CATEGORIES];
   const rows = await trx("document_categories")
-    .whereIn("id", wanted.map((c) => c.id))
-    .orWhereIn("name", wanted.map((c) => c.name))
+    // global rows only: a project's own category may share one of these names
+    .whereNull("project_id")
+    .where((q) => q.whereIn("id", wanted.map((c) => c.id)).orWhereIn("name", wanted.map((c) => c.name)))
     .select<{ id: string; name: string }[]>("id", "name");
   const byId = new Map(rows.map((r) => [r.id, r.id]));
   const byName = new Map(rows.map((r) => [r.name.toLowerCase(), r.id]));

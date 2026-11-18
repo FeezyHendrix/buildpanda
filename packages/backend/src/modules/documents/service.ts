@@ -1,4 +1,4 @@
-import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { formatBytes, getDownloadUrl } from "../../lib/file-storage.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { FilesRepository } from "../files/repository.ts";
@@ -7,6 +7,7 @@ import type {
   CreateDocumentInput, EditDocumentInput, AddVersionInput, DocumentsDeps,
   CategoryAggregateRow,
   CategoryRow,
+  CreateCategoryInput,
   DocumentCategory,
   DocumentRow,
   DocumentVersion,
@@ -88,8 +89,7 @@ function toCategory(row: CategoryAggregateRow): DocumentCategory {
   };
 }
 
-
-
+const DUPLICATE_CATEGORY = "A category with this name already exists";
 
 export function documentsService(
   repository: DocumentsRepository,
@@ -129,12 +129,43 @@ export function documentsService(
       return rows.map(toCategory);
     },
 
+    async createCategory(
+      projectId: string,
+      input: CreateCategoryInput,
+      actorId: string,
+    ): Promise<DocumentCategory> {
+      const name = input.name.trim();
+      if (!name) throw new BadRequestError("Category name is required");
+      // Checked against everything the project sees, so nobody adds a second
+      // "Legal" beside a global one and then files under the wrong folder.
+      if (await repository.findVisibleCategoryByName(projectId, input.group, name)) {
+        throw new ConflictError(DUPLICATE_CATEGORY);
+      }
+      try {
+        const row = await repository.insertCategory({
+          id: generateId("cat"),
+          name,
+          tone: "brand",
+          group: input.group,
+          project_id: projectId,
+          created_by: actorId,
+        });
+        return toCategory({ ...row, file_count: "0", total_bytes: "0" });
+      } catch (err) {
+        // two members saving the same name at once: the unique index decides
+        if ((err as { code?: string }).code === "23505") throw new ConflictError(DUPLICATE_CATEGORY);
+        throw err;
+      }
+    },
+
     async create(
       projectId: string,
       input: CreateDocumentInput,
       ownerId: string,
     ): Promise<ProjectDocument> {
-      const category = input.categoryId ? await repository.findCategoryById(input.categoryId) : null;
+      const category = input.categoryId
+        ? await repository.findCategoryById(input.categoryId, projectId)
+        : null;
       if (input.categoryId && !category) throw new NotFoundError("Document category");
 
       let fileId: string | null = null;
@@ -215,7 +246,7 @@ export function documentsService(
       const patch: Parameters<typeof repository.update>[1] = {};
       let category: CategoryRow | null = null;
       if (input.categoryId !== undefined) {
-        category = (await repository.findCategoryById(input.categoryId)) ?? null;
+        category = (await repository.findCategoryById(input.categoryId, projectId)) ?? null;
         if (!category) throw new NotFoundError("Document category");
         patch.category_id = category.id;
       }
@@ -231,7 +262,7 @@ export function documentsService(
       if (!updated) throw new NotFoundError("Document");
 
       if (!category && updated.category_id) {
-        category = (await repository.findCategoryById(updated.category_id)) ?? null;
+        category = (await repository.findCategoryById(updated.category_id, projectId)) ?? null;
       }
       const versionCount =
         (await repository.versionCountsForProject(projectId)).get(documentId) ?? 0;

@@ -27,11 +27,13 @@ async function resolveCategoryId(
   db: Knex,
   preferredName: string,
 ): Promise<string | null> {
-  const byName = await db("document_categories").where({ name: preferredName }).first<{ id: string }>("id");
+  // Global categories only: a name can now also belong to another project's own category.
+  const global = () => db("document_categories").whereNull("project_id");
+  const byName = await global().where({ name: preferredName }).first<{ id: string }>("id");
   if (byName) return byName.id;
-  const anyDoc = await db("document_categories").where({ group: "document" }).first<{ id: string }>("id");
+  const anyDoc = await global().where({ group: "document" }).first<{ id: string }>("id");
   if (anyDoc) return anyDoc.id;
-  const anyCat = await db("document_categories").first<{ id: string }>("id");
+  const anyCat = await global().first<{ id: string }>("id");
   return anyCat?.id ?? null;
 }
 

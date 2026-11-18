@@ -10,7 +10,7 @@ import {
   type CreateDocumentInput,
   type EditDocumentInput,
 } from "./service.ts";
-import { DOCUMENT_VISIBILITIES } from "./types.ts";
+import { CREATABLE_CATEGORY_GROUPS, DOCUMENT_VISIBILITIES, type CreateCategoryInput } from "./types.ts";
 
 const projectIdParams = {
   type: "object",
@@ -63,6 +63,29 @@ const editDocumentBody = {
   },
 } as const;
 
+const createCategoryBody = {
+  type: "object",
+  required: ["name", "group"],
+  additionalProperties: false,
+  properties: {
+    // the pattern refuses a name that is only whitespace
+    name: { type: "string", minLength: 1, maxLength: 60, pattern: "\\S" },
+    group: { type: "string", enum: [...CREATABLE_CATEGORY_GROUPS] },
+  },
+} as const;
+
+const categoryResponse = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    name: { type: "string" },
+    fileCount: { type: "number" },
+    totalSize: { type: "string" },
+    tone: { type: "string" },
+    group: { type: "string" },
+  },
+} as const;
+
 const versionViewParams = {
   type: "object",
   required: ["id", "documentId", "versionId"],
@@ -107,6 +130,17 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "documents", "view");
       return service.categoriesForProject(project.id);
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: CreateCategoryInput }>(
+    "/projects/:id/documents/categories",
+    { schema: { params: projectIdParams, body: createCategoryBody, response: { 201: categoryResponse } } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "documents", "upload");
+      const user = request.requireAuth();
+      const category = await service.createCategory(project.id, request.body, user.id);
+      return reply.status(201).send(category);
     },
   );
 
