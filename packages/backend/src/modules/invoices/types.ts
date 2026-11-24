@@ -47,6 +47,7 @@ export interface InvoiceParty {
 }
 
 export interface InvoicePayment {
+  sourceFileId?: string | null;
   id: string;
   amount: number;
   method: PaymentMethod;
@@ -210,6 +211,7 @@ export interface InvoiceLineItemRow {
 }
 
 export interface InvoicePaymentRow {
+  source_file_id?: string | null;
   id: string;
   invoice_id: string;
   amount: string;
@@ -362,6 +364,7 @@ export interface EditInvoiceInput {
 }
 
 export interface AddPaymentInput {
+  sourceFileId?: string;
   amount: number;
   method?: PaymentMethod;
   paidAt?: string;

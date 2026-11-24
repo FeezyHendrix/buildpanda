@@ -13,6 +13,11 @@ export function messagingReviewAccessRepository(db: Knex) {
         rfiId: () => db("rfis").where({ project_id: projectId }).whereIn("id", targets.rfiId ?? []).modify((query) => { if (!scope.internalRfis) query.where("visibility", "shared"); }).select("id"),
         expenseId: () => db("project_transactions").where({ project_id: projectId }).whereIn("id", targets.expenseId ?? []).modify((query) => applyExpenseVisibility(query, scope.fullExpenses ? undefined : userId)).select("id"),
       };
+      rules.purchaseOrderId = () => db("purchase_orders").where({ project_id: projectId }).whereIn("id", targets.purchaseOrderId ?? []).modify((query) => { if (!scope.financialCosts) query.whereRaw("false"); }).select("id");
+      rules.invoiceId = () => db("project_invoices").where({ project_id: projectId }).whereIn("id", targets.invoiceId ?? []).modify((query) => {
+        if (!scope.financialView) query.whereRaw("false");
+        if (!scope.financialCosts) query.where("direction", "receivable");
+      }).select("id");
       const tables: Record<string, string> = { orderId: "material_orders", approvalId: "approvals", changeRequestId: "change_requests", lookAheadId: "look_aheads", activityId: "activities", stageId: "project_phases", documentId: "project_documents", buildingId: "buildings", dailyEntryId: "daily_log_entries", ledgerEntryId: "material_ledger_entries" };
       for (const [key, table] of Object.entries(tables)) rules[key] = () => db(table).where({ project_id: projectId }).whereIn("id", targets[key] ?? []).modify((query) => {
         if (key === "approvalId") query.where("kind", "material");

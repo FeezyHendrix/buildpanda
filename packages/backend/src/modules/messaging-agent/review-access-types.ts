@@ -1,4 +1,6 @@
 export interface MessagingReviewTargetScope {
+  financialCosts?: boolean;
+  financialView?: boolean;
   projectId: string;
   organizationId: string | null;
   userId: string;

@@ -28,3 +28,17 @@ export async function messagingSourceFiles(db: Knex, conversationId: string, sco
   }
   return permitted;
 }
+
+/** Recheck originals before disclosing saved classifications or clarification text. */
+export async function messagingSourceVisibility(db: Knex, access: import("./management-types.ts").MessagingAccess, ids: string[]) {
+  const unique = [...new Set(ids)], visible = new Set<string>();
+  if (!unique.length) return visible;
+  const context = await fieldToolContext(db, { kind: "read", projectId: access.project.id, buildingId: null, payload: {}, idempotencyKey: "source-visibility" },
+    { userId: access.user.id, organizationId: access.project.organization_id });
+  for (const file of await filesRepository(db).findByIds(unique)) {
+    if (file.project_id !== access.project.id) continue;
+    try { await requireFileRead(context.request, file, fileAccessRepository(db)); visible.add(file.id); }
+    catch (error) { if (!(error instanceof ForbiddenError)) throw error; }
+  }
+  return visible;
+}

@@ -172,6 +172,7 @@ export function purchaseOrdersService(
           id,
           project_id: projectId,
           po_number: await resolveNumber(projectId, input.poNumber),
+          source_file_id: optional(input.sourceFileId) ?? null,
           vendor_name: input.vendorName.trim(),
           supplier_id: optional(input.supplierId) ?? null,
           material_order_id: null,
@@ -242,6 +243,7 @@ export function purchaseOrdersService(
           patch.po_number = await resolveNumber(projectId, trimmed);
         }
       }
+      if (input.sourceFileId !== undefined) patch.source_file_id = optional(input.sourceFileId) ?? null;
       if (input.vendorName !== undefined) patch.vendor_name = input.vendorName.trim();
       if (input.supplierId !== undefined) patch.supplier_id = optional(input.supplierId) ?? null;
       if (input.orderDate !== undefined) patch.order_date = optional(input.orderDate) ?? null;
@@ -291,6 +293,7 @@ export function purchaseOrdersService(
     ): Promise<PurchaseOrder> {
       const current = await getOwnedPurchaseOrder(projectId, purchaseOrderId);
       assertAction(current.status, ["Issued", "PartiallyReceived"], "received against");
+      if (input.sourceFileId && await repository.hasReceiptFile(purchaseOrderId, input.sourceFileId)) throw new ConflictError("This delivery evidence is already attached to the purchase order. Review its current received quantities.");
       if (input.lines.length === 0) throw new BadRequestError("Record what was received on at least one line");
 
       const items = await repository.listItemsForPurchaseOrders([purchaseOrderId]);
@@ -315,6 +318,7 @@ export function purchaseOrdersService(
         ...(input.note ? { notes: [current.notes, input.note.trim()].filter(Boolean).join("\n") } : {}),
       });
       if (!row) throw new NotFoundError("Purchase order");
+      if (input.sourceFileId) await repository.attachReceiptFile(purchaseOrderId, input.sourceFileId, actorId);
       // Received quantities are running totals; only what is new this time
       // arrived now. A correction downwards is the PO's own record, not a
       // delivery, so it does not reach the order.

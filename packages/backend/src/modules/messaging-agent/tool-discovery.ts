@@ -1,4 +1,6 @@
 import type { Knex } from "knex";
+import { expenseReaderId } from "../transactions/access.ts";
+import { messagingFinancialTargetRepository } from "./financial-target-repository.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
 import { validateFieldPayload } from "../field-actions/tool-schema.ts";
 import { canRead, toolsForCaller } from "../panda-ai/agent/tool-permissions.ts";
@@ -73,12 +75,18 @@ export async function messagingToolDiscovery(db: Knex, access: MessagingAccess, 
     boqMaterials: importedBoq, importedBoq,
   };
   const tools = messagingActionDescriptors(current.access);
+  const financial = messagingFinancialTargetRepository(db);
+  const [expenses, invoices, purchaseOrders] = await Promise.all([
+    can("finances", "viewCosts") && current.access.features.enabled?.["commercial.transactions"] ? financial.expenses(projectId, expenseReaderId(field.request, field.project)) : [],
+    can("finances", "view") && current.access.features.enabled?.["commercial.invoices"] ? financial.invoices(projectId, can("finances", "viewCosts")) : [],
+    can("finances", "viewCosts") && current.access.features.enabled?.["commercial.purchaseOrders"] ? financial.purchaseOrders(projectId) : [],
+  ]);
   const availableReads = buildTools().flatMap((tool) => {
     const readContext = messagingReadContext(context, tool.spec.function.name);
     return toolsForCaller([tool], readContext).filter((entry) => messagingReadToolEnabled(entry, readContext, current.access.features));
   });
   const executedReads: string[] = [];
-  return { tools, targets: { ...voiceOptions, ...snapshot, rfis, projectGeneral: can("messages", "view") && can("messages", "send") ? { projectId, label: "General", target: { projectGeneral: true }, requiresConfirmation: true } : null, ledgerEntries: ledger.map((row) => ({ ...row, quantity: Number(row.quantity) })),
+  return { tools, targets: { ...voiceOptions, ...snapshot, expenses, invoices, purchaseOrders, rfis, projectGeneral: can("messages", "view") && can("messages", "send") ? { projectId, label: "General", target: { projectGeneral: true }, requiresConfirmation: true } : null, ledgerEntries: ledger.map((row) => ({ ...row, quantity: Number(row.quantity) })),
     dailyLogEntries, todayEntries: dailyLogEntries.filter((entry) => entry.logDate === snapshot.today), voiceOptions, options: voiceOptions }, executedReads, uploads,
   reads: availableReads.map((entry) => entry.spec.function),
   async runRead(name, args) {

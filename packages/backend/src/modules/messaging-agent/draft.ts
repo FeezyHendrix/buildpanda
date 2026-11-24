@@ -5,6 +5,8 @@ import { fieldToolDescriptor, fieldToolSchemas, isFieldToolKind } from "../field
 import { groundedReview } from "./review-validation.ts";
 import type { MessagingDraftScope, MessagingReviewAction } from "./management-types.ts";
 import { MessagingAnswerResult, MessagingClarificationError } from "./draft-errors.ts";
+import { firstDocumentQuestion, validateDocumentDraft, type InspectedSource } from "./document-review.ts";
+import { documentIntakeInstructions } from "./document-instructions.ts";
 import { projectToday } from "./dates.ts";
 
 export { materialReviewCommand } from "./material-review.ts";
@@ -18,6 +20,10 @@ export async function draftDailyActions(
   if (typeof text !== "string" || !text.trim() || text.length > 20_000) throw new BadRequestError("Send a message of up to 20,000 characters.");
   if (complete === chatJson && !isLlmConfigured()) throw new ServiceUnavailableError("Panda AI is not configured. Your message has been retained for retry.");
   const tools = scope.tools ?? Object.keys(fieldToolSchemas).filter(isFieldToolKind).map(fieldToolDescriptor);
+  const attachments = (scope.targets?.attachments ?? []) as InspectedSource[];
+  if (attachments.length && /^(?:File attached\.?)?$/i.test(text.trim()) && !previous.length && !scope.recentMessages?.length) {
+    throw new MessagingClarificationError(firstDocumentQuestion(attachments, tools));
+  }
   const messages: LlmMessage[] = [
     { role: "system", content: [
       "You are Panda, the BuildPanda construction field assistant. Text and translated voice are equal inputs.",
@@ -35,6 +41,7 @@ export async function draftDailyActions(
       "A date the delivery was expected is not the actual occurrence date. An arrival today can omit occurredAt; preserve 'expected last week' in reason and do not backdate it. Material quantities must be explicit, positive, within numeric(14,2), with their original unit; never silently round or convert units.",
       "A receipt explicitly tied to an existing named order uses receive_material_order with an authorized orderId. Approvals, RFIs and tasks retain named reviewers, assignment, state and revision restrictions.",
       "Drawing markup needs the actual document revision, page and explicit geometry. Ask for coordinates or selection in the secure viewer; never place a mark by guessing. File actions require an actual uploaded fileId; ask for an attachment when absent.",
+      documentIntakeInstructions,
       "An upload alone is not authorization to create a document, post an update or choose a destination. Ask how the sender wants to use the attachment unless the caption or pending conversation already gives that instruction.",
       "For plain narrative text use the plain field; HTML may only mirror or preserve supplied rich content. Preserve every previously reviewed field, file, template response and HTML unless the user explicitly changes/removes it. Return the complete corrected pending batch, including unrelated pending actions. Use null only for an explicit clear or a schema-accepted null.",
       "Use recent conversation to continue clarification. Consecutive delivery statements are separate movements unless corrected. Return every still-pending movement once. Saved/cancelled work is no longer pending.",
@@ -90,7 +97,11 @@ export async function draftDailyActions(
       if (envelope.answer.length > 12_000) throw new BadRequestError("The answer is too long. Ask for a narrower result.");
       throw new MessagingAnswerResult(envelope.answer.trim());
     }
-    try { return groundedReview(envelope.actions, { ...scope, targets }, previous, text); }
+    try {
+      const actions = groundedReview(envelope.actions, { ...scope, targets }, previous, text);
+      validateDocumentDraft(actions, attachments);
+      return actions;
+    }
     catch (error) {
       if (!(error instanceof BadRequestError) || !repair(result, error.message)) throw error;
     }

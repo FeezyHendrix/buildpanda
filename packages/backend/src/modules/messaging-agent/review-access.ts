@@ -13,7 +13,7 @@ import type { MessagingScope } from "./types.ts";
 import type { MessagingReviewTargetAction } from "./review-access-types.ts";
 
 const aliases: Record<string, string> = { materialOrderId: "orderId", phaseId: "stageId", documentVersionId: "versionId", sourceMarkupId: "markupId", parentMessageId: "messageId", quotedMessageId: "messageId", linkedRfiId: "rfiId", linkedChangeRequestId: "changeRequestId", linkedMaterialOrderId: "orderId", supersedesId: "documentId" };
-const keys = new Set(["taskId", "rfiId", "orderId", "approvalId", "changeRequestId", "lookAheadId", "activityId", "stageId", "documentId", "buildingId", "versionId", "markupId", "columnId", "channelId", "messageId", "updateId", "dailyEntryId", "ledgerEntryId", "expenseId"]);
+const keys = new Set(["taskId", "rfiId", "orderId", "approvalId", "changeRequestId", "lookAheadId", "activityId", "stageId", "documentId", "buildingId", "versionId", "markupId", "columnId", "channelId", "messageId", "updateId", "dailyEntryId", "ledgerEntryId", "expenseId", "purchaseOrderId", "invoiceId"]);
 
 function targetsFor(action: MessagingReviewTargetAction): Record<string, string[]> {
   const result: Record<string, string[]> = {};
@@ -29,7 +29,7 @@ function targetsFor(action: MessagingReviewTargetAction): Record<string, string[
     }
   }
   visit(action.payload);
-  const created: Record<string, string> = { create_task: "taskId", rfi: "rfiId", create_expense: "expenseId", create_project_update: "updateId", material_order: "orderId", create_material_approval: "approvalId", daily_log: "dailyEntryId", annotate_drawing: "markupId", upload_document: "documentId", upload_document_version: "versionId", send_message: "messageId", send_direct_message: "messageId", reply_message: "messageId" };
+  const created: Record<string, string> = { create_task: "taskId", rfi: "rfiId", create_expense: "expenseId", attach_expense_receipt: "expenseId", create_purchase_order: "purchaseOrderId", issue_purchase_order: "purchaseOrderId", receive_purchase_order: "purchaseOrderId", create_supplier_invoice: "invoiceId", record_invoice_payment: "invoiceId", create_project_update: "updateId", material_order: "orderId", create_material_approval: "approvalId", daily_log: "dailyEntryId", annotate_drawing: "markupId", upload_document: "documentId", upload_document_version: "versionId", send_message: "messageId", send_direct_message: "messageId", reply_message: "messageId" };
   if (typeof action.result?.recordId === "string" && created[action.kind]) visit(action.result.recordId, created[action.kind]);
   const related = action.result?.data as { relatedKind?: string; relatedRecordId?: string } | undefined;
   if (action.kind === "annotate_drawing" && related?.relatedRecordId) visit(related.relatedRecordId, related.relatedKind === "rfi" ? "rfiId" : "approvalId");
@@ -42,7 +42,7 @@ export async function messagingReviewVisibility(db: Knex, access: MessagingAcces
   const request = { ...access.context, requireAuth: () => ({ id: access.user.id }) };
   const has = (resource: string, action: string) => access.permissions[resource]?.includes(action) === true;
   const visible = await messagingReviewAccessRepository(db).visible({ projectId: scope.projectId, organizationId: scope.organizationId, userId: access.user.id,
-    fullTasks: has("tasks", "viewAll"), fullExpenses: has("finances", "viewAllExpenses"), internalRfis: isCompanyCaller(request, access.project), projectMessages: has("messages", "view"), workspaceMessages: access.workspacePermissions?.messages?.includes("view") === true }, targets);
+    financialCosts: has("finances", "viewCosts"), financialView: has("finances", "view"), fullTasks: has("tasks", "viewAll"), fullExpenses: has("finances", "viewAllExpenses"), internalRfis: isCompanyCaller(request, access.project), projectMessages: has("messages", "view"), workspaceMessages: access.workspacePermissions?.messages?.includes("view") === true }, targets);
   return items.map((item) => Object.entries(item).every(([key, ids]) => ids.every((id) => visible[key]?.has(id))));
 }
 

@@ -85,6 +85,7 @@ export const MESSAGING_HELP = [
   "How it works\n1. Sign in to Panda Agent and select your project and building.\n2. Connect this messaging account.\n3. Send your update and review the details.",
   "Tap Confirm to save or Cancel to discard the review. To change the details, send a correction before confirming.",
   "Reply STOP to opt out. Reconnect in Panda Agent to resume.",
+  "Forward a receipt, invoice, purchase order, plan or other document. Panda will suggest its section and ask for missing details before preparing a review.",
   "Ask about project records to read the information your current access allows. Attach files for evidence; drawing marks need an exact revision and position.",
 ].join("\n\n");
 

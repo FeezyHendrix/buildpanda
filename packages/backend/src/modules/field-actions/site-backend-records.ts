@@ -1,3 +1,5 @@
+import { financialHandlers } from "./financial-records.ts";
+import { financialSchemas, financialRequirements, financialDefinitions } from "./financial-schemas.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { sanitizeHtmlFields } from "../../lib/rich-text.ts";
 import { raiseDelayBody } from "../activities/route-schemas.ts";
@@ -9,6 +11,7 @@ import { assertTargetBuilding } from "./work-coordination-support.ts";
 import type { FieldToolHandler, FieldToolRequirement } from "./tool-types.ts";
 
 export const siteBackendSchemas = {
+  ...financialSchemas,
   raise_activity_delay: { ...raiseDelayBody, required: ["activityId", ...raiseDelayBody.required],
     properties: { ...raiseDelayBody.properties, activityId: { type: "string", minLength: 1, maxLength: 100 } } },
 };
@@ -29,11 +32,13 @@ const raiseDelay: FieldToolHandler = async (input, context) => {
   return { kind: input.kind, projectId: input.projectId, recordId: record.id, message: "Activity delay recorded.", data: { activityId: activity.id } };
 };
 
-export const siteBackendHandlers = { raise_activity_delay: raiseDelay } satisfies Record<string, FieldToolHandler>;
+export const siteBackendHandlers = { ...financialHandlers, raise_activity_delay: raiseDelay } satisfies Record<string, FieldToolHandler>;
 export const siteBackendRequirements = {
+  ...financialRequirements,
   raise_activity_delay: { features: ["projects.schedule"], permissions: [["schedule", "manage"]], readPermissions: [["schedule", "view"]] },
 } as const satisfies Record<string, FieldToolRequirement>;
 
 export const siteBackendDefinitions = {
+  ...Object.fromEntries(Object.entries(financialDefinitions).map(([kind, definition]) => [kind, { ...definition, requiresBuilding: false, destructive: false, fields: [] }])) as { [K in keyof typeof financialDefinitions]: typeof financialDefinitions[K] & { requiresBuilding: boolean; destructive: boolean; fields: [] } },
   raise_activity_delay: { label: "Log an activity delay", description: "Record an actual stoppage against an authorized activity without inventing hours worked. Ask for the reason and actual start date. Preserve cause, time and cost impact, linked records, and EOT rules.", requiresBuilding: false, destructive: false, fields: [] },
 };

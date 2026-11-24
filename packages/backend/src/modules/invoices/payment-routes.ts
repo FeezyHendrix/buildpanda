@@ -1,10 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
-import { toContractTerms } from "../finances/contract-terms.ts";
-import { financesRepository } from "../finances/repository.ts";
+import { addPaymentBody } from "./payment-schemas.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
-import { invoiceCertificateRepository } from "./certificate-repository.ts";
-import { invoiceCertificateService } from "./certificate.ts";
+import { buildInvoiceCertificateService } from "./wiring.ts";
 import { invoiceNotifier } from "./invoice-notifier.ts";
 import { invoicePaymentsService } from "./invoice-payments.ts";
 import { invoicesRepository } from "./repository.ts";
@@ -39,20 +37,6 @@ const paymentParams = {
   },
 } as const;
 
-const addPaymentBody = {
-  type: "object",
-  required: ["amount"],
-  additionalProperties: false,
-  properties: {
-    amount: { type: "number", exclusiveMinimum: 0 },
-    method: { type: "string", enum: PAYMENT_METHODS },
-    paidAt: { type: "string", maxLength: 30 },
-    note: { type: "string", maxLength: 500 },
-    /** Accept a receipt above the balance; it is recorded as a credit. */
-    allowOverpayment: { type: "boolean" },
-  },
-} as const;
-
 const paymentSchema = {
   type: "object",
   properties: {
@@ -60,6 +44,7 @@ const paymentSchema = {
     amount: { type: "number" },
     method: { type: "string", enum: PAYMENT_METHODS },
     paidAt: { type: ["string", "null"] },
+    sourceFileId: { type: ["string", "null"] },
     note: { type: ["string", "null"] },
     credit: { type: "boolean" },
   },
@@ -114,27 +99,8 @@ const invoicePaymentRoutes: FastifyPluginAsync = async (fastify) => {
   const repository = invoicesRepository(fastify.db);
   const invoices = invoicesService(repository);
   const service = invoicePaymentsService(invoices);
-  const finances = financesRepository(fastify.db);
-  const notifier = invoiceNotifier(
-    notificationsService(notificationsRepository(fastify.db), fastify.queue),
-    fastify.db,
-  );
-  // Recording a receipt goes through the certificate service, where the guards
-  // and the audit trail live — a payment is never a bare insert.
-  const certificates = invoiceCertificateService({
-    invoices: repository,
-    certificates: invoiceCertificateRepository(fastify.db),
-    terms: async (projectId) => {
-      const row = await finances.findSummary(projectId);
-      return row ? toContractTerms(row) : null;
-    },
-    adjustedContract: async (projectId) => {
-      const row = await finances.findSummary(projectId);
-      return row ? Number(row.contract_sum) + Number(row.variations_total) : 0;
-    },
-    onEvent: (projectId, invoice, type, actor, reason) =>
-      notifier.statusChanged(projectId, invoice, type, actor, reason),
-  });
+  const certificates = buildInvoiceCertificateService(fastify.db, fastify.queue);
+  const notifier = invoiceNotifier(notificationsService(notificationsRepository(fastify.db), fastify.queue), fastify.db);
 
   // Static segment declared ahead of /invoices/:invoiceId so it never reads as an id.
   fastify.get<{ Params: { id: string } }>(

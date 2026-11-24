@@ -50,6 +50,7 @@ export function toPayment(row: InvoicePaymentRow): InvoicePayment {
     amount: num(row.amount),
     method: row.method,
     paidAt: row.paid_at,
+    sourceFileId: row.source_file_id ?? null,
     note: row.note,
     credit: Boolean(row.credit),
   };

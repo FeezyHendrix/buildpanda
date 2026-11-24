@@ -52,6 +52,7 @@ export function toPurchaseOrder(
   return {
     id: row.id,
     poNumber: row.po_number,
+    sourceFileId: row.source_file_id ?? null,
     vendorName: row.vendor_name,
     supplierId: row.supplier_id ?? null,
     materialOrderId: row.material_order_id ?? null,
