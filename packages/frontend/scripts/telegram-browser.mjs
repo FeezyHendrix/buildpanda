@@ -17,7 +17,7 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 page.on("console", (message) => { if (message.type() === "error" && !/Failed to load resource/.test(message.text())) errors.push(message.text()); });
 const code = "a".repeat(32), botUrl = `https://t.me/buildpanda_bot?start=${code}`;
-let allowed = true, enabled = true, linked = false, projectAllowed = true, multiple = false, delayed = false, failLink = false, invalidLink = false, unknownAccess = false;
+let allowed = true, enabled = true, linked = false, projectAllowed = true, multiple = false, delayed = false, failLink = false, invalidLink = false, unknownAccess = false, denyLink = false;
 let statusCalls = 0, links = [], releaseLink, releaseAccess;
 const access = () => ({ relationship: "guest", orgRole: null, permissions: allowed ? { project: ["view"], buildings: ["view"], dailyLog: ["create"] } : {}, sections: null, capabilities: {} });
 await page.route("**/*", async (route) => {
@@ -40,6 +40,7 @@ await page.route("**/*", async (route) => {
   if (url.pathname.endsWith("/messaging-agent/link")) {
     links.push(request.postDataJSON());
     if (delayed) await new Promise((resolve) => { releaseLink = resolve; });
+    if (denyLink) { allowed = false; return json({ message: "Project permission was revoked" }, 403); }
     return failLink ? json({ message: "Connection service unavailable" }, 503) : json({ code, expiresAt: new Date(Date.now() + 600_000).toISOString(), connectUrl: invalidLink ? "https://attacker.test" : botUrl });
   }
   if (url.origin !== origin) return json({});
@@ -100,7 +101,9 @@ try {
   const offlineCalls = statusCalls; await page.waitForTimeout(200); assert.equal(statusCalls, offlineCalls);
   await page.evaluate(() => { Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); window.dispatchEvent(new Event("online")); });
   await button().waitFor();
+  denyLink = true; await button().click(); await card().waitFor({ state: "hidden" });
+  assert.equal(new URL(page.url()).origin, origin);
   assert.deepEqual(errors, []);
-  console.log("Passed: phone-sized two-tap handoff, server-confirmed connection, building selection, project changes during linking, link failures, unsafe links, permission revocation during linking, unknown/denied access, disabled channel and offline/reconnect.");
+  console.log("Passed: phone-sized two-tap handoff, server-confirmed connection, building selection, project changes during linking, link failures, unsafe links, permission revocation during linking, unknown/denied access, server-denied links, disabled channel and offline/reconnect.");
 } catch (error) { console.error(output); console.error(errors); console.error(await page.locator("body").innerText()); throw error; }
 finally { await browser.close(); server.kill("SIGTERM"); }
