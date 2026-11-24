@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isAxiosError } from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { messagingAgentApi } from "@/api/messaging-agent";
 import { useSession } from "@/stores/auth";
@@ -62,6 +63,11 @@ export function useTelegramConnection(projectId: string, buildingId: string | un
 
   const connect = useMutation({
     gcTime: 0,
+    onError: (error) => {
+      if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) {
+        void client.invalidateQueries({ queryKey: participantKeys.access(projectId) });
+      }
+    },
     mutationFn: async () => {
       const scope = current.current;
       requireCurrent(scope);
