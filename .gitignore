@@ -248,3 +248,6 @@ branch_structure.json
 !/packages/backend/src/modules/messaging-agent/artifacts.test.ts
 
 !/packages/panda-agent/scripts/review-schema.test.ts
+
+# Telegram connection permission and handoff regression coverage.
+!/packages/frontend/src/lib/telegram-connection.test.ts
