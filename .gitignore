@@ -174,3 +174,6 @@ branch_structure.json
 # slash so a real .claude/skills or a package's own store is unaffected.
 /.claude/worktrees/
 /.pnpm-store/
+
+# Telegram connection permission and handoff regression coverage.
+!/packages/frontend/src/lib/telegram-connection.test.ts
