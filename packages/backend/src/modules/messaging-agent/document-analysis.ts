@@ -69,7 +69,9 @@ export async function inspectDocument(
     const result = await complete(messages, documentAnalysisSchema);
     if (!result) return unavailable("Document reading is unavailable. Tell me the document type and details; the original is retained.");
     return { status: "read", analysis: documentAnalysisSchema.parse(result.data), pagesRead, pageCount, complete: fullyRead,
-      notice: fullyRead ? null : `I read ${pagesRead} of ${pageCount} pages visually. Send a shorter document or the relevant pages before importing financial details.` };
+      notice: fullyRead ? null : pdf
+        ? `I read ${pagesRead} of ${pageCount} pages visually. Send a shorter document or the relevant pages before importing financial details.`
+        : "I read only part of this file's text. Send a shorter file or the relevant section before importing financial details." };
   } catch {
     return unavailable("I could not read this file clearly. Send a clearer copy or tell me its details and destination; the original is retained.");
   }

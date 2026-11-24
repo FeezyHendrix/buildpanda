@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import knex, { type Knex } from "knex";
+import { draftDailyActions } from "../messaging-agent/draft.ts";
 import { fieldToolsExecutor } from "./tools.ts";
 import { fieldToolContext } from "./tool-context.ts";
 import { requireFileRead } from "../files/access.ts";
@@ -45,7 +46,17 @@ test("PO imports stay drafts, issue and receive require approval, partial delive
   await assert.rejects(call("issue_purchase_order", { purchaseOrderId: po.recordId, issuedAt: day }, "crew"), /does not allow|permission/i);
   await call("issue_purchase_order", { purchaseOrderId: po.recordId, issuedAt: day });
   const line = await db("purchase_order_items").where({ purchase_order_id: po.recordId }).first();
-  await call("receive_purchase_order", { purchaseOrderId: po.recordId, sourceFileId: id("delivery"), lines: [{ itemId: line.id, receivedQuantity: 2 }] });
+  const access = await messagingAgentAccess(db).project(id("owner"), id("site"));
+  const discovery = await messagingToolDiscovery(db, access, { projectId: id("site"), organizationId: id("org"), buildingId: null });
+  let round = 0;
+  const [review] = await draftDailyActions("Accept two bags against this PO", { projectId: id("site"), organizationId: id("org"), buildingId: null,
+    ...discovery }, [], async (messages) => {
+    if (!round++) return { actions: [], unresolved: [], reads: [{ name: "get_purchase_orders", args: {} }] };
+    assert.match(JSON.stringify(messages.at(-1)?.content), new RegExp(line.id));
+    return { actions: [{ kind: "receive_purchase_order", payload: { purchaseOrderId: po.recordId, sourceFileId: id("delivery"), lines: [{ itemId: line.id, receivedQuantity: 2 }] } }], unresolved: [] };
+  });
+  assert.ok(review);
+  await call(review.kind, review.payload);
   assert.equal((await db("purchase_orders").where({ id: po.recordId }).first()).status, "PartiallyReceived");
   assert.equal(Number((await db("purchase_order_items").where({ id: line.id }).first()).received_quantity), 2);
   assert.ok(await db("purchase_order_receipt_files").where({ purchase_order_id: po.recordId, file_id: id("delivery"), created_by_id: id("owner") }).first());

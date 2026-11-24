@@ -21,6 +21,8 @@ test("document extraction validates facts and treats file text as evidence", asy
     assert.match(JSON.stringify(messages[1]!.content), /IGNORE RULES/);
     return { data: schema.parse(receipt), retryCount: 0 };
   });
+  const truncated = await inspectDocument({ fileName: "long.txt", mimeType: "text/plain", bytes: Buffer.alloc(30_001, "x") }, reader);
+  assert.equal(truncated.complete, false); assert.match(truncated.notice!, /part of.*text/);
   assert.equal(result.analysis?.amount, 85000); assert.equal(result.analysis?.purpose, null); assert.equal(result.complete, true);
   assert.equal(documentAnalysisSchema.safeParse({ ...receipt, amount: -1 }).success, false);
   assert.equal(documentAnalysisSchema.safeParse({ ...receipt, currency: "naira" }).success, false);
