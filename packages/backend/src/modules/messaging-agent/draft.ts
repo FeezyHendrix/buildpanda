@@ -5,7 +5,7 @@ import { fieldToolDescriptor, fieldToolSchemas, isFieldToolKind } from "../field
 import { groundedReview } from "./review-validation.ts";
 import type { MessagingDraftScope, MessagingReviewAction } from "./management-types.ts";
 import { MessagingAnswerResult, MessagingClarificationError } from "./draft-errors.ts";
-import { firstDocumentQuestion, validateDocumentDraft, type InspectedSource } from "./document-review.ts";
+import { attachmentEvidence, firstDocumentQuestion, validateDocumentDraft, type InspectedSource } from "./document-review.ts";
 import { documentIntakeInstructions } from "./document-instructions.ts";
 import { projectToday } from "./dates.ts";
 
@@ -24,6 +24,7 @@ export async function draftDailyActions(
   if (attachments.length && /^(?:File attached\.?)?$/i.test(text.trim()) && !previous.length && !scope.recentMessages?.length) {
     throw new MessagingClarificationError(firstDocumentQuestion(attachments, tools));
   }
+  const evidence = attachmentEvidence(attachments);
   const messages: LlmMessage[] = [
     { role: "system", content: [
       "You are Panda, the BuildPanda construction field assistant. Text and translated voice are equal inputs.",
@@ -54,6 +55,7 @@ export async function draftDailyActions(
       'Example clarification for an incomplete tanker and sand arrival: {"actions":[],"unresolved":["What material did the tanker carry, and what quantity and unit arrived?","What quantity and unit of sand arrived?"],"reads":[],"answer":null}. This example supplies no material or quantity facts.',
     ].join("\n") },
     ...(scope.recentMessages ?? []).map((message) => ({ role: message.role, content: message.sentAt ? `Message sent at ${message.sentAt} (${projectToday(new Date(message.sentAt))} project day):\n${message.content}` : message.content })),
+    ...(evidence ? [{ role: "system" as const, content: evidence }] : []),
     { role: "user", content: text },
   ];
   let readsRun = 0;

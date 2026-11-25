@@ -289,3 +289,24 @@ test("all audio transport errors and invalid config omit credentials", async () 
     return /configuration/.test(error.message);
   });
 });
+
+test("audio retries a dropped connection or a 5xx, then names the failed step", async () => {
+  let calls = 0;
+  const flaky = telegramProvider(settings, async () => {
+    calls++;
+    if (calls === 1) throw new TypeError("fetch failed");
+    if (calls === 2) return metadata();
+    if (calls === 3) return new Response("busy", { status: 502 });
+    return new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "application/octet-stream" } });
+  });
+  assert.deepEqual([...(await flaky.downloadAudio(mediaId)).bytes], [1, 2, 3]);
+  assert.equal(calls, 4);
+
+  calls = 0;
+  const down = telegramProvider(settings, async () => { calls++; throw new TypeError(`timeout /bot${settings.botToken}/getFile`); });
+  await assert.rejects(down.downloadAudio(mediaId), (error: Error) => {
+    assert.ok(!error.message.includes(settings.botToken));
+    return /did not respond\. Send the voice note again/.test(error.message);
+  });
+  assert.equal(calls, 3);
+});

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { draftDailyActions } from "./draft.ts";
+import { attachmentEvidence } from "./document-review.ts";
 import { messagingAgentReviewService } from "./review-service.ts";
 import { fixture as workerFixture } from "./test-fixture.ts";
 import type { DocumentAnalysis, DocumentInspection } from "./document-analysis.ts";
@@ -75,3 +76,12 @@ test("partial document evidence blocks direct review edits and confirmation", { 
   assert.match(result.clarification!, /partly read/);
   assert.equal(Number((await f.db("project_transactions").where({ project_id: f.scope.projectId }).count("*").first())!.count), 0);
 }));
+
+test("read attachment facts are restated beside the sender text; unread files add nothing", () => {
+  const file = { id: "file_1", fileName: "photo.jpg", mimeType: "image/jpeg", sizeBytes: 10 };
+  const evidence = attachmentEvidence([{ ...file, inspection }])!;
+  assert.match(evidence, /"fileId":"file_1"/);
+  assert.match(evidence, /"amount":85000/);
+  assert.match(evidence, /Never ask the sender for a non-null amount/);
+  assert.equal(attachmentEvidence([{ ...file, inspection: { ...inspection, status: "unavailable", analysis: null } }]), null);
+});

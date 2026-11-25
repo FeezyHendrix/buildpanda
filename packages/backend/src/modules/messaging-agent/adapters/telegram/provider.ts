@@ -51,6 +51,20 @@ async function boundedBytes(response: Response, maxBytes: number): Promise<Uint8
   return Buffer.concat(chunks, size);
 }
 
+const retryDelaysMs = [500, 2_000];
+
+/** Retries network errors, timeouts, 429 and 5xx; a thrown fetch error can contain the bot token, so it is never kept. */
+async function fetchWithRetry(request: typeof fetch, url: string | URL, init: () => RequestInit, failure: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    let response: Response | undefined;
+    try { response = await request(url, init()); } catch { response = undefined; }
+    if (response && response.status < 500 && response.status !== 429) return response;
+    await response?.body?.cancel().catch(() => undefined);
+    if (attempt >= retryDelaysMs.length) throw new BadRequestError(failure);
+    await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[attempt]));
+  }
+}
+
 export function telegramProvider(settings: TelegramProviderConfig, request: typeof fetch = fetch) {
   const botToken = settings.botToken;
   const token = /^([1-9]\d{0,15}):[A-Za-z0-9_-]{20,200}$/.exec(botToken);
@@ -120,15 +134,15 @@ export function telegramProvider(settings: TelegramProviderConfig, request: type
       const identity = parseAttachmentMediaId("telegram", mediaId), limit = Math.min(maxBytes, config.uploads.maxFileBytes);
       if (identity.sizeBytes !== undefined && identity.sizeBytes > limit) throw new BadRequestError("The attachment exceeds Telegram's download limit.");
       try {
-        const response = await request(`${base}/getFile`, {
+        const response = await fetchWithRetry(request, `${base}/getFile`, () => ({
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file_id: identity.providerId }),
           redirect: "error", signal: AbortSignal.timeout(timeout),
-        });
+        }), "Telegram did not respond");
         if (!response.ok) throw new Error();
         const parsed = fileSchema.safeParse(await response.json().catch(() => null));
         if (!parsed.success || (parsed.data.result.file_size !== undefined && parsed.data.result.file_size > limit)) throw new Error();
         const metadata = parsed.data.result;
-        const responseFile = await request(mediaUrl(botToken, metadata.file_path), { redirect: "error", signal: AbortSignal.timeout(timeout) });
+        const responseFile = await fetchWithRetry(request, mediaUrl(botToken, metadata.file_path), () => ({ redirect: "error", signal: AbortSignal.timeout(timeout) }), "Telegram did not respond");
         if (!responseFile.ok) throw new Error();
         const actualType = attachmentMime(responseFile.headers.get("content-type") ?? undefined);
         if (actualType && actualType !== "application/octet-stream" && identity.mimeType && actualType !== identity.mimeType) throw new Error();
@@ -141,17 +155,18 @@ export function telegramProvider(settings: TelegramProviderConfig, request: type
     async downloadAudio(mediaId: string): Promise<MessagingMedia> {
       const identity = parseTelegramMediaId(mediaId);
       try {
-        const response = await request(`${base}/getFile`, {
+        const response = await fetchWithRetry(request, `${base}/getFile`, () => ({
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file_id: identity.fileId }),
           redirect: "error", signal: AbortSignal.timeout(timeout),
-        });
+        }), "Telegram audio could not be downloaded because Telegram did not respond. Send the voice note again.");
         if (!response.ok) throw new BadRequestError("Telegram audio metadata could not be loaded");
         const parsed = fileSchema.safeParse(await response.json().catch(() => null));
         // Telegram can return another valid file_id for the same file.
         if (!parsed.success) throw new BadRequestError("Telegram audio metadata is invalid");
         const metadata = parsed.data.result;
         if (metadata.file_size !== undefined && metadata.file_size > maxBytes) throw new BadRequestError("Telegram audio is too large");
-        const audio = await request(mediaUrl(botToken, metadata.file_path), { redirect: "error", signal: AbortSignal.timeout(timeout) });
+        const audio = await fetchWithRetry(request, mediaUrl(botToken, metadata.file_path), () => ({ redirect: "error", signal: AbortSignal.timeout(timeout) }),
+          "Telegram audio could not be downloaded because Telegram did not respond. Send the voice note again.");
         if (!audio.ok) throw new BadRequestError("Telegram audio could not be downloaded");
         const actualType = audio.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
         const expected = identity.mimeType ? telegramAudioFormat(identity.mimeType) : undefined;
@@ -166,8 +181,10 @@ export function telegramProvider(settings: TelegramProviderConfig, request: type
         const bytes = await boundedBytes(audio, maxBytes);
         if (metadata.file_size !== undefined && bytes.byteLength !== metadata.file_size) throw new BadRequestError("Telegram audio size does not match its metadata");
         return { bytes, mimeType: format.mimeType, fileName: `voice-note.${format.extension}` };
-      } catch {
-        throw new BadRequestError("Telegram audio could not be downloaded");
+      } catch (error) {
+        // Our own errors carry fixed, token-free messages that name the failed step.
+        if (error instanceof BadRequestError && error.message.startsWith("Telegram audio")) throw error;
+        throw new BadRequestError("Telegram audio could not be downloaded. Send the voice note again.");
       }
     },
   };
