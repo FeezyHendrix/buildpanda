@@ -1,6 +1,10 @@
 import "./instrument.ts";
 import { randomUUID } from "node:crypto";
-import { captureError, captureErrorLog, flushErrorSink } from "./modules/error-reports/runtime.ts";
+import {
+  captureErrorLog,
+  failStartup,
+  flushErrorSink,
+} from "./modules/error-reports/runtime.ts";
 import errorReportsPlugin from "./plugins/error-reports.ts";
 import errorReportRoutes from "./modules/error-reports/routes.ts";
 import * as Sentry from "@sentry/node";
@@ -110,7 +114,13 @@ export async function buildApp(): Promise<FastifyInstance> {
     genReqId: () => randomUUID(),
     logger: {
       level: config.http.logLevel,
-      hooks: { logMethod(args, method, level) { if (level >= 40) captureErrorLog(args, this.bindings(), level); method.apply(this, args); } },
+      hooks: {
+        // Warnings and errors logged anywhere also reach the error sink.
+        logMethod(args, method, level) {
+          if (level >= 40) captureErrorLog(args, this.bindings(), level);
+          method.apply(this, args);
+        },
+      },
       // Strip credentials and client PII from logs at the serializer level so
       // session tokens / passwords / personal data never reach log storage,
       // regardless of what a handler passes to request.log.
@@ -294,13 +304,13 @@ export async function start(): Promise<void> {
   process.on("uncaughtException", (error) => {
     app.log.fatal({ err: error }, "Uncaught exception");
     Sentry.captureException(error, { level: "fatal", tags: { lifecycle: "uncaughtException" } });
-    void Promise.allSettled([Sentry.flush(2000), flushErrorSink(2000)]).finally(() => process.exit(1));
+    void flushAllAndExit();
   });
 
   process.on("unhandledRejection", (reason) => {
     app.log.fatal({ err: reason }, "Unhandled rejection");
     Sentry.captureException(reason, { level: "fatal", tags: { lifecycle: "unhandledRejection" } });
-    void Promise.allSettled([Sentry.flush(2000), flushErrorSink(2000)]).finally(() => process.exit(1));
+    void flushAllAndExit();
   });
 
   try {
@@ -312,7 +322,13 @@ export async function start(): Promise<void> {
   }
 }
 
+function flushAllAndExit(): Promise<void> {
+  return Promise.allSettled([Sentry.flush(2000), flushErrorSink(2000)]).then(
+    () => process.exit(1),
+  );
+}
+
 const isEntrypoint = import.meta.url === `file://${process.argv[1]}`;
 if (isEntrypoint) {
-  void start().catch(async (error) => { captureError(error, { kind: "fatal", operation: "startup" }); await flushErrorSink(2000); console.error("Server startup failed"); process.exit(1); });
+  void start().catch((error) => failStartup(error, "Server startup failed"));
 }

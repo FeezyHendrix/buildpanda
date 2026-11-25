@@ -1,19 +1,20 @@
 import {
-  sendErrorReport,
-  sendErrorReportsOnExit,
+  errorReportsApi,
   type ClientErrorContext,
   type ClientErrorReport,
   type ErrorBreadcrumb,
 } from "@/api/error-reports";
 import { asError, safePath, safeText } from "./redact";
+import { serializeErrorReport, serializeExitBatch } from "./serialize";
 
-const enabled =
+export const errorSinkEnabled =
   import.meta.env.VITE_ERROR_SINK_ENABLED === "true" ||
   (import.meta.env.PROD && import.meta.env.VITE_ERROR_SINK_ENABLED !== "false");
-const sessionId =
+const randomId = (prefix: string) =>
   typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
-    : `browser_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    : `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+const sessionId = randomId("browser");
 const breadcrumbs: ErrorBreadcrumb[] = [];
 const seen = new WeakMap<object, number>();
 const groups = new Map<
@@ -28,7 +29,7 @@ let sending = false,
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function addErrorBreadcrumb(crumb: Omit<ErrorBreadcrumb, "at">) {
-  if (!enabled) return;
+  if (!errorSinkEnabled) return;
   breadcrumbs.push({
     ...crumb,
     at: new Date().toISOString(),
@@ -45,7 +46,7 @@ async function drain() {
       const report = pending[0];
       if (!report) break;
       try {
-        const retry = await sendErrorReport(report);
+        const retry = await errorReportsApi.send(serializeErrorReport(report));
         if (retry) {
           retryAt = Date.now() + retry;
           break;
@@ -91,7 +92,7 @@ export function reportFrontendError(
   value: unknown,
   context: ClientErrorContext = {},
 ) {
-  if (!enabled) return;
+  if (!errorSinkEnabled) return;
   try {
     if (value && typeof value === "object") {
       if (seen.has(value) && Date.now() - seen.get(value)! < 1000) return;
@@ -100,9 +101,7 @@ export function reportFrontendError(
     const error = asError(value),
       now = new Date().toISOString();
     const report: ClientErrorReport = {
-      id:
-        crypto.randomUUID?.() ??
-        `error_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      id: randomId("error"),
       sessionId,
       name: safeText(error.name, 100),
       message: safeText(error.message),
@@ -161,7 +160,7 @@ export function resumeErrorReports() {
 }
 
 export function flushFrontendReports() {
-  if (!enabled) return;
+  if (!errorSinkEnabled) return;
   const reports = [...pending];
   for (const group of groups.values())
     if (group.repeats) {
@@ -169,5 +168,6 @@ export function flushFrontendReports() {
       group.repeats = 0;
     }
   // Best effort on mobile backgrounding; the browser can terminate this page without a final callback.
-  sendErrorReportsOnExit(reports);
+  const body = serializeExitBatch(reports);
+  if (body) errorReportsApi.sendOnExit(body);
 }

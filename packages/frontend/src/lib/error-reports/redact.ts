@@ -1,14 +1,17 @@
+const SENSITIVE_SEGMENTS =
+  "invite|invitations|reset-password|verify-email|public|share|shared|token|accept-invite";
+const SENSITIVE_PATH = new RegExp(`\\/(${SENSITIVE_SEGMENTS})(\\/[^#?]*)?`, "gi");
+const SENSITIVE_PATH_IN_TEXT = new RegExp(
+  `\\/(${SENSITIVE_SEGMENTS})(?:\\/[^\\s?#"'<>)]*)?`,
+  "gi",
+);
+
 export function safePath(value: string): string {
   try {
     const url = new URL(value, window.location.origin);
     if (!["http:", "https:"].includes(url.protocol))
       return `[${url.protocol.slice(0, -1)} resource]`;
-    return url.pathname
-      .replace(
-        /\/(invite|invitations|reset-password|verify-email|public|share|shared|token|accept-invite)(\/[^#?]*)?/gi,
-        "/$1/[redacted]",
-      )
-      .slice(0, 400);
+    return url.pathname.replace(SENSITIVE_PATH, "/$1/[redacted]").slice(0, 400);
   } catch {
     return "[invalid path]";
   }
@@ -25,10 +28,7 @@ export function safeText(value: string, limit = 2000): string {
       }
     })
     .replace(/(\/[^\s?"'<>]+)\?[^\s"'<>]*/g, "$1")
-    .replace(
-      /\/(invite|invitations|reset-password|verify-email|public|share|shared|token|accept-invite)(?:\/[^\s?#"'<>)]*)?/gi,
-      "/$1/[redacted]",
-    )
+    .replace(SENSITIVE_PATH_IN_TEXT, "/$1/[redacted]")
     .replace(
       /\b(cookie|set-cookie|authorization)\s*:\s*[^\r\n]+/gi,
       "$1: [redacted]",

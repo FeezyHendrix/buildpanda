@@ -22,10 +22,23 @@ if (import.meta.env.PROD && "serviceWorker" in navigator && !didRegisterSw) {
   });
 }
 
+function reportReactError(
+  error: unknown,
+  info: { componentStack?: string },
+  log: boolean,
+) {
+  reportFrontendError(error, {
+    kind: "react",
+    componentStack: info.componentStack,
+  });
+  if (log) console.error(error);
+}
+
 createRoot(document.getElementById("root")!, {
-  onUncaughtError: (error, info) => { reportFrontendError(error, { kind: "react", componentStack: info.componentStack }); console.error(error); },
-  onCaughtError: (error, info) => reportFrontendError(error, { kind: "react", componentStack: info.componentStack }),
-  onRecoverableError: (error, info) => { reportFrontendError(error, { kind: "react", componentStack: info.componentStack }); console.error(error); },
+  onUncaughtError: (error, info) => reportReactError(error, info, true),
+  // Caught errors are already logged by the ErrorBoundary.
+  onCaughtError: (error, info) => reportReactError(error, info, false),
+  onRecoverableError: (error, info) => reportReactError(error, info, true),
 }).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

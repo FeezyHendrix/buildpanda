@@ -1,10 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
 import { errorDetails, redactText, safePath, safeTags } from "./redact.ts";
 import type {
+  ClientEvent,
+  ErrorActor,
   ErrorContext,
   ErrorReport,
   ErrorSinkOptions,
+  FrontendErrorBody,
   FrontendErrorInput,
+  ReportGroup,
 } from "./types.ts";
 
 export function errorReportService(options: ErrorSinkOptions) {
@@ -13,11 +17,8 @@ export function errorReportService(options: ErrorSinkOptions) {
     options.schedule ?? ((callback, delay) => setTimeout(callback, delay));
   const seen = new WeakMap<object, number>();
   // shortcut: grouping and ingest deduplication are per process; use Redis counters for deployment-wide counts.
-  const groups = new Map<
-    string,
-    { report: ErrorReport; repeats: number; lastSeenAt: string }
-  >();
-  const clientEvents = new Map<string, { id: string; at: number }>();
+  const groups = new Map<string, ReportGroup>();
+  const clientEvents = new Map<string, ClientEvent>();
   const pending = new Set<Promise<unknown>>();
   function deliver(report: ErrorReport) {
     const task = Promise.resolve()
@@ -133,7 +134,7 @@ export function errorReportService(options: ErrorSinkOptions) {
       lastSeenAt: occurredAt ?? receivedAt,
     };
   }
-  return {
+  const service = {
     capture(error: unknown, context: ErrorContext = {}) {
       if (
         !options.enabled ||
@@ -153,8 +154,8 @@ export function errorReportService(options: ErrorSinkOptions) {
     },
     frontend(
       input: FrontendErrorInput,
-      actor: Pick<ErrorContext, "userId" | "organizationId"> = {},
-    ) {
+      actor: ErrorActor = {},
+    ): string | undefined {
       if (!options.enabled) return;
       const eventKey = `${actor.userId ?? "anonymous"}:${input.sessionId}:${input.id}`;
       const previous = clientEvents.get(eventKey);
@@ -221,6 +222,13 @@ export function errorReportService(options: ErrorSinkOptions) {
       clientEvents.set(eventKey, { id, at: now() });
       return id;
     },
+    /** Accepts one report or a page-exit batch; returns the last accepted id. */
+    frontendBatch(body: FrontendErrorBody, actor: ErrorActor = {}): string | null {
+      const entries = "reports" in body ? body.reports : [body];
+      let id: string | undefined;
+      for (const entry of entries) id = service.frontend(entry, actor);
+      return id ?? null;
+    },
     async flush(timeoutMs = 2000) {
       for (const group of groups.values())
         if (group.repeats) {
@@ -241,5 +249,6 @@ export function errorReportService(options: ErrorSinkOptions) {
       if (timer) clearTimeout(timer);
     },
   };
+  return service;
 }
 export type ErrorReportService = ReturnType<typeof errorReportService>;

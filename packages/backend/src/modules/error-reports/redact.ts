@@ -1,7 +1,12 @@
 const SECRET_KEY =
   /password|passphrase|secret|token|authorization|cookie|credential|api[-_]?key|signature|webhook|session(?!Id)|body|payload|prompt|content|email|phone|address|bank|card|file(name|path)?|sql|binding|query/i;
-const SENSITIVE_PATH =
-  /\/(invite|invitations|reset-password|verify-email|public|share|shared|token|accept-invite)(\/[^\s#?]*)?/gi;
+const SENSITIVE_SEGMENTS =
+  "invite|invitations|reset-password|verify-email|public|share|shared|token|accept-invite";
+const SENSITIVE_PATH = new RegExp(`\\/(${SENSITIVE_SEGMENTS})(\\/[^\\s#?]*)?`, "gi");
+const SENSITIVE_PATH_IN_TEXT = new RegExp(
+  `\\/(${SENSITIVE_SEGMENTS})(?:\\/[^\\s?#"'<>)]*)?`,
+  "gi",
+);
 
 export function safePath(value: string): string {
   try {
@@ -26,10 +31,7 @@ export function redactText(value: string, limit = 2000): string {
       }
     })
     .replace(/(\/[^\s?"'<>]+)\?[^\s"'<>]*/g, "$1")
-    .replace(
-      /\/(invite|invitations|reset-password|verify-email|public|share|shared|token|accept-invite)(?:\/[^\s?#"'<>)]*)?/gi,
-      "/$1/[redacted]",
-    )
+    .replace(SENSITIVE_PATH_IN_TEXT, "/$1/[redacted]")
     .replace(
       /\b(cookie|set-cookie|authorization)\s*:\s*[^\r\n]+/gi,
       "$1: [redacted]",

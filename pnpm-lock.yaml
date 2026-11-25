@@ -15,9 +15,6 @@ importers:
       concurrently:
         specifier: ^9.1.0
         version: 9.2.1
-      playwright:
-        specifier: 1.61.1
-        version: 1.61.1
 
   packages/admin:
     dependencies:
@@ -16762,13 +16759,15 @@ snapshots:
       mlly: 1.8.2
       pathe: 2.0.3
 
-  playwright-core@1.61.1: {}
+  playwright-core@1.61.1:
+    optional: true
 
   playwright@1.61.1:
     dependencies:
       playwright-core: 1.61.1
     optionalDependencies:
       fsevents: 2.3.2
+    optional: true
 
   plist@3.1.1:
     dependencies:
