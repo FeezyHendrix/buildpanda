@@ -4,9 +4,9 @@ import type { WhatsAppProviderConfig } from "./types.ts";
 import { z } from "zod";
 import { BadRequestError } from "../../../../lib/errors.ts";
 import { isReviewCommand, validReviewButtons } from "../../reply-buttons.ts";
-import type {
-  MessagingDeliveryStatus, MessagingInboundMessage, MessagingMedia,
-  MessagingSendInput, MessagingSendResult, MessagingWebhookEvents,
+import {
+  MESSAGING_CHANNEL, type MessagingDeliveryStatus, type MessagingInboundMessage, type MessagingMedia,
+  type MessagingSendInput, type MessagingSendResult, type MessagingWebhookEvents,
 } from "../../types.ts";
 
 const id = z.string().min(1).max(1000);
@@ -56,9 +56,9 @@ export function parseWhatsAppWebhook(payload: unknown, phoneNumberId: string): M
       const attachment = message.type === "image" ? message.image : message.type === "document" ? message.document : message.type === "video" ? message.video : undefined;
       const type = (message.type === "text" && message.text) || buttonCommand ? "text" : message.type === "audio" && message.audio ? "audio" : attachment ? "attachment" : "unsupported";
       messages.push({
-        channel: "whatsapp", channelAccountId: phoneNumberId, senderId, replyRecipientId: senderId, conversationType: "direct", providerMessageId: message.id, sentAt, type,
+        channel: MESSAGING_CHANNEL.whatsapp, channelAccountId: phoneNumberId, senderId, replyRecipientId: senderId, conversationType: "direct", providerMessageId: message.id, sentAt, type,
         text: type === "text" ? buttonCommand ?? message.text!.body : type === "attachment" ? attachment!.caption ?? null : null,
-        mediaId: type === "audio" ? message.audio!.id : type === "attachment" ? attachmentMediaId("whatsapp", {
+        mediaId: type === "audio" ? message.audio!.id : type === "attachment" ? attachmentMediaId(MESSAGING_CHANNEL.whatsapp, {
           providerId: attachment!.id, fileName: attachment!.filename ?? (message.type === "image" ? "photo.jpg" : message.type === "video" ? "video.mp4" : "attachment"),
           ...(attachment!.mime_type ? { mimeType: attachmentMime(attachment!.mime_type) } : {}),
         }) : null,
@@ -72,7 +72,7 @@ export function parseWhatsAppWebhook(payload: unknown, phoneNumberId: string): M
       const sentAt = new Date(Number(event.timestamp) * 1000);
       if (!Number.isFinite(sentAt.getTime())) throw new BadRequestError("Invalid Messaging status timestamp");
       statuses.push({
-        channel: "whatsapp", channelAccountId: phoneNumberId, providerMessageId: event.id, recipientId: event.recipient_user_id ?? event.recipient_id ?? null,
+        channel: MESSAGING_CHANNEL.whatsapp, channelAccountId: phoneNumberId, providerMessageId: event.id, recipientId: event.recipient_user_id ?? event.recipient_id ?? null,
         status: event.status as MessagingDeliveryStatus["status"], sentAt,
       });
     }
@@ -163,7 +163,7 @@ export function whatsappProvider(config: WhatsAppProviderConfig, request: typeof
     },
 
     async downloadAttachment(mediaId: string): Promise<MessagingMedia> {
-      const identity = parseAttachmentMediaId("whatsapp", mediaId);
+      const identity = parseAttachmentMediaId(MESSAGING_CHANNEL.whatsapp, mediaId);
       const limit = Math.min(config.maxMediaBytes ?? appConfig.uploads.maxFileBytes, appConfig.uploads.maxFileBytes);
       if (!/^[A-Za-z0-9_-]{1,200}$/.test(identity.providerId)) throw new BadRequestError("Invalid attachment identity.");
       const response = await request(`${base}/${config.apiVersion}/${encodeURIComponent(identity.providerId)}?phone_number_id=${config.phoneNumberId}`, {

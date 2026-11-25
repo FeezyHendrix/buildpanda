@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MESSAGING_CHANNELS, canConnectMessaging, channelConnectUrl, connectionChannel } from "./messaging-connection.ts";
+import { MESSAGING_CHANNEL, MESSAGING_CHANNELS, canConnectMessaging, channelConnectUrl, connectionChannel } from "./messaging-connection.ts";
 import type { MessagingStatus } from "../api/messaging-agent.ts";
 import type { ProjectAccess } from "./project-types.ts";
 
@@ -16,19 +16,19 @@ test("linking denies missing access and uses the exact project grant without rol
 
 test("the server must allow the channel in this exact user and project, including external project participants", () => {
   const status: MessagingStatus = { userId: "crew", enabled: true, projects: [{ id: "site", organizationId: "org" }],
-    channels: [{ id: "telegram", accountId: "bot", enabled: true }, { id: "whatsapp", accountId: "phone", enabled: false }], connections: [] };
-  assert.equal(connectionChannel(status, "crew", "site", "telegram")?.accountId, "bot");
-  assert.equal(connectionChannel({ ...status, projects: [{ id: "site", organizationId: "external-org" }] }, "crew", "site", "telegram")?.accountId, "bot");
-  assert.equal(connectionChannel(undefined, "crew", "site", "telegram"), undefined);
-  assert.equal(connectionChannel(status, "other-user", "site", "telegram"), undefined);
-  assert.equal(connectionChannel(status, "crew", "other-site", "telegram"), undefined);
+    channels: [{ id: MESSAGING_CHANNEL.telegram, accountId: "bot", enabled: true }, { id: MESSAGING_CHANNEL.whatsapp, accountId: "phone", enabled: false }], connections: [] };
+  assert.equal(connectionChannel(status, "crew", "site", MESSAGING_CHANNEL.telegram)?.accountId, "bot");
+  assert.equal(connectionChannel({ ...status, projects: [{ id: "site", organizationId: "external-org" }] }, "crew", "site", MESSAGING_CHANNEL.telegram)?.accountId, "bot");
+  assert.equal(connectionChannel(undefined, "crew", "site", MESSAGING_CHANNEL.telegram), undefined);
+  assert.equal(connectionChannel(status, "other-user", "site", MESSAGING_CHANNEL.telegram), undefined);
+  assert.equal(connectionChannel(status, "crew", "other-site", MESSAGING_CHANNEL.telegram), undefined);
   for (const denied of [{ ...status, enabled: false }, { ...status, projects: [] }, { ...status, channels: [{ ...status.channels[0]!, enabled: false }] }]) {
-    assert.equal(connectionChannel(denied, "crew", "site", "telegram"), undefined);
+    assert.equal(connectionChannel(denied, "crew", "site", MESSAGING_CHANNEL.telegram), undefined);
   }
   // A disabled WhatsApp account stays hidden; enabling it shows only WhatsApp's own account.
-  assert.equal(connectionChannel(status, "crew", "site", "whatsapp"), undefined);
+  assert.equal(connectionChannel(status, "crew", "site", MESSAGING_CHANNEL.whatsapp), undefined);
   const enabled = { ...status, channels: status.channels.map((channel) => ({ ...channel, enabled: true })) };
-  assert.equal(connectionChannel(enabled, "crew", "site", "whatsapp")?.accountId, "phone");
+  assert.equal(connectionChannel(enabled, "crew", "site", MESSAGING_CHANNEL.whatsapp)?.accountId, "phone");
 });
 
 test("only fresh Telegram links with the exact server-issued token can leave the app", () => {

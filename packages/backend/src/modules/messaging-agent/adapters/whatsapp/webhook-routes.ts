@@ -1,3 +1,4 @@
+import { MESSAGING_CHANNEL } from "../../types.ts";
 import { timingSafeEqual } from "node:crypto";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { config } from "../../../../config/index.ts";
@@ -51,7 +52,7 @@ const whatsappWebhookRoutes: FastifyPluginAsync<WhatsAppWebhookOptions> = async 
     if (!settings.enabled) throw new NotFoundError("WhatsApp webhook");
     if (!verified.has(request)) throw new ForbiddenError("Invalid WhatsApp webhook signature.");
     const events = parseWhatsAppWebhook(request.body, settings.phoneNumberId);
-    await messagingAgentIntake(fastify.db).receive({ channel: "whatsapp", channelAccountId: settings.phoneNumberId }, events);
+    await messagingAgentIntake(fastify.db).receive({ channel: MESSAGING_CHANNEL.whatsapp, channelAccountId: settings.phoneNumberId }, events);
     return { received: true };
   });
 };

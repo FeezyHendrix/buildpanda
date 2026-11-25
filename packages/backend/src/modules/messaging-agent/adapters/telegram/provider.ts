@@ -2,7 +2,7 @@ import { config } from "../../../../config/index.ts";
 import { parseAttachmentMediaId, boundedAttachmentBytes, attachmentMime } from "../../attachment-media.ts";
 import { z } from "zod";
 import { BadRequestError } from "../../../../lib/errors.ts";
-import type { MessagingMedia, MessagingSendInput, MessagingSendResult } from "../../types.ts";
+import { MESSAGING_CHANNEL, type MessagingMedia, type MessagingSendInput, type MessagingSendResult } from "../../types.ts";
 import { validReviewButtons } from "../../reply-buttons.ts";
 import { parseTelegramMediaId, parseTelegramMessageId, parseTelegramSenderId, telegramAudioFormat, telegramMessageId } from "./identifiers.ts";
 import type { TelegramProviderConfig } from "./types.ts";
@@ -131,7 +131,7 @@ export function telegramProvider(settings: TelegramProviderConfig, request: type
     },
 
     async downloadAttachment(mediaId: string): Promise<MessagingMedia> {
-      const identity = parseAttachmentMediaId("telegram", mediaId), limit = Math.min(maxBytes, config.uploads.maxFileBytes);
+      const identity = parseAttachmentMediaId(MESSAGING_CHANNEL.telegram, mediaId), limit = Math.min(maxBytes, config.uploads.maxFileBytes);
       if (identity.sizeBytes !== undefined && identity.sizeBytes > limit) throw new BadRequestError("The attachment exceeds Telegram's download limit.");
       try {
         const response = await fetchWithRetry(request, `${base}/getFile`, () => ({

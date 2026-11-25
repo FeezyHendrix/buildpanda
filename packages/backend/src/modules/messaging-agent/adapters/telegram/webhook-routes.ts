@@ -1,3 +1,4 @@
+import { MESSAGING_CHANNEL } from "../../types.ts";
 import { timingSafeEqual } from "node:crypto";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { config } from "../../../../config/index.ts";
@@ -34,7 +35,7 @@ const telegramWebhookRoutes: FastifyPluginAsync<TelegramWebhookOptions> = async 
   }, async (request) => {
     if (!verified.has(request)) throw new ForbiddenError("Invalid Telegram webhook secret.");
     const events = parseTelegramUpdate(request.body, settings);
-    await messagingAgentIntake(fastify.db).receive({ channel: "telegram", channelAccountId: settings.botId }, events);
+    await messagingAgentIntake(fastify.db).receive({ channel: MESSAGING_CHANNEL.telegram, channelAccountId: settings.botId }, events);
     if (events.callbackQueryId) {
       try {
         const answer = options.answerCallbackQuery ?? ((id: string) => telegramProvider(settings).answerCallbackQuery(id));

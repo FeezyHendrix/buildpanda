@@ -1,6 +1,10 @@
 import type { Knex } from "knex";
 import type { MessagingReadAccess } from "./management-types.ts";
 
+/** Channel IDs stored on every inbox, outbox, identity and conversation row. */
+export const MESSAGING_CHANNEL = { telegram: "telegram", whatsapp: "whatsapp" } as const;
+export type MessagingChannelId = (typeof MESSAGING_CHANNEL)[keyof typeof MESSAGING_CHANNEL];
+
 export type MessagingSourceKind = "text" | "voice_translation" | "file_attachment";
 export type MessagingConversationType = "direct" | "group";
 export type MessagingMessageOrigin = "provider" | "web";
