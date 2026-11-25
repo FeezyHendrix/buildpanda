@@ -70,6 +70,11 @@ export function messagingAgentInboxRepository(db: MessagingDb) {
         .update({ status: "failed", last_error: error.slice(0, 1000), processing_started_at: null, updated_at: db.fn.now() });
     },
 
+    async releaseInbox(id: string): Promise<void> {
+      await db("messaging_agent_inbox").where({ id, status: "processing" })
+        .update({ status: "received", processing_started_at: null, updated_at: db.fn.now() });
+    },
+
     async retryInbox(id: string): Promise<boolean> {
       return !!await db("messaging_agent_inbox").where({ id, status: "failed" })
         .update({ status: "received", last_error: null, updated_at: db.fn.now() });

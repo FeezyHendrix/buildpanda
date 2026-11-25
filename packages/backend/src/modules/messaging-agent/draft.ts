@@ -68,7 +68,7 @@ export async function draftDailyActions(
     return true;
   }
   for (let round = 0; round < 5; round++) {
-    const result = await complete(messages);
+    const result = await complete(messages, { promptId: "messaging_agent.draft" });
     if (!result || typeof result !== "object" || !Array.isArray((result as { unresolved?: unknown }).unresolved)) {
       if (repair(result, "unresolved must be an array of question strings; include [] when no clarification is needed.")) continue;
       throw new BadRequestError("Panda could not draft that message. Please describe the field action again.");

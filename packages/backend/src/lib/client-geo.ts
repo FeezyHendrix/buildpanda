@@ -1,7 +1,10 @@
 import geoip from "geoip-lite";
 import type { FastifyRequest } from "fastify";
 
+// Edge-set X-Real-IP first: the left of X-Forwarded-For is whatever the client sent. Keep in step with auth.ts ipAddressHeaders.
 export function clientIp(request: FastifyRequest): string | null {
+  const realIp = request.headers["x-real-ip"];
+  if (typeof realIp === "string" && realIp.trim()) return realIp.trim();
   const forwarded = request.headers["x-forwarded-for"];
   if (typeof forwarded === "string" && forwarded.length > 0) {
     const first = forwarded.split(",")[0]?.trim();

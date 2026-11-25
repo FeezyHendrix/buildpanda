@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import { BadRequestError, ConflictError, isAppError } from "../../lib/errors.ts";
 import { translateAudioToEnglish } from "../../lib/speech.ts";
 import { runWithLlmContext } from "../../lib/llm-context.ts";
+import { logger } from "../../lib/logger.ts";
 import { filesRepository } from "../files/repository.ts";
 import { filesService } from "../files/service.ts";
 import { draftDailyActions } from "./draft.ts";
@@ -9,6 +10,10 @@ import { messagingAgentRepository } from "./repository.ts";
 import { enqueueMessagingReply, handleMessagingInbox } from "./worker-inbox.ts";
 import { deliverMessagingOutbox } from "./worker-outbox.ts";
 import type { MessagingWorkerDependencies, MessagingWorkerOptions } from "./worker-types.ts";
+
+// Unexpected errors and 5xx (AI provider, speech, storage) are usually brief; 4xx results are final.
+const MAX_AUTOMATIC_ATTEMPTS = 3;
+const isTransient = (error: unknown) => !isAppError(error) || error.statusCode >= 500;
 
 export function messagingAgentWorker(db: Knex, options: MessagingWorkerOptions) {
   const deps: MessagingWorkerDependencies = {
@@ -34,6 +39,14 @@ export function messagingAgentWorker(db: Knex, options: MessagingWorkerOptions) 
         () => handleMessagingInbox(db, inbox, deps));
       await repo.completeInbox(id);
     } catch (error) {
+      const retry = isTransient(error) && inbox.attempts < MAX_AUTOMATIC_ATTEMPTS;
+      const context = { area: "messaging_agent", inboxId: id, channel: inbox.channel, messageType: inbox.message_type, attempts: inbox.attempts, err: error };
+      if (retry) {
+        logger.warn(context, "Messaging inbox failed; retrying on the next sweep");
+        await repo.releaseInbox(id);
+        return;
+      }
+      logger.error(context, "Messaging inbox failed");
       const safeMessage = error instanceof BadRequestError || error instanceof ConflictError ? error.message
         : isAppError(error) && error.statusCode < 500 ? "Your account or project access changed. Open the app to check your connection and selected project."
         : "Panda could not process this message. Your source was retained; open the app or send a new message to try again.";
