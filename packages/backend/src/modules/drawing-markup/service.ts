@@ -76,11 +76,10 @@ export function drawingMarkupService(
   /** One batched round of lookups for a set of markups — never a query per row. */
   async function buildContext(rows: DrawingMarkupRow[]): Promise<MarkupContext> {
     const markupIds = rows.map((r) => r.id);
-    const [commentRows, rfiLinks, approvalLinks] = await Promise.all([
-      repo.commentsForMarkups(markupIds),
-      repo.rfiLinksForMarkups(markupIds),
-      repo.approvalLinksForMarkups(markupIds),
-    ]);
+    // Sequential: the repository may run on a transaction, whose one connection cannot run queries concurrently.
+    const commentRows = await repo.commentsForMarkups(markupIds);
+    const rfiLinks = await repo.rfiLinksForMarkups(markupIds);
+    const approvalLinks = await repo.approvalLinksForMarkups(markupIds);
 
     const userIds = new Set<string>();
     for (const r of rows) if (r.created_by_id) userIds.add(r.created_by_id);
@@ -89,21 +88,15 @@ export function drawingMarkupService(
       if (c.assignee_id) userIds.add(c.assignee_id);
     }
 
-    const documentIds = nonNull(rows.map((r) => r.document_id));
-    const versionIds = nonNull(rows.map((r) => r.document_version_id));
-    const [users, documents, versions] = await Promise.all([
-      repo.usersByIds([...userIds]),
-      Promise.all(documentIds.map((id) => repo.currentVersionIdForDocument(id))),
-      Promise.all(versionIds.map((id) => repo.versionById(id))),
-    ]);
+    const documentIds = [...new Set(nonNull(rows.map((r) => r.document_id)))];
+    const versionIds = [...new Set(nonNull(rows.map((r) => r.document_version_id)))];
+    const users = await repo.usersByIds([...userIds]);
+    const documents = await repo.currentVersionIdsForDocuments(documentIds);
+    const versions = await repo.versionsByIds(versionIds);
 
     const names = new Map(users.map((u) => [u.id, u.name]));
-    const currentVersionByDocument = new Map(
-      documentIds.map((id, i) => [id, documents[i]?.current_version_id ?? null]),
-    );
-    const revisionByVersion = new Map(
-      versionIds.map((id, i) => [id, versions[i]?.revision_label ?? null]),
-    );
+    const currentVersionByDocument = new Map(documents.map((d) => [d.id, d.current_version_id ?? null]));
+    const revisionByVersion = new Map(versions.map((v) => [v.id, v.revision_label ?? null]));
 
     const comments = new Map<string, DrawingMarkupComment[]>();
     for (const row of commentRows) {

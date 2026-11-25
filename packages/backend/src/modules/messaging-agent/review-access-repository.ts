@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { runQueries } from "../../lib/run-queries.ts";
 import { taskVisibilityRepository } from "../tasks/visibility-repository.ts";
 import { applyExpenseVisibility } from "../transactions/visibility-repository.ts";
 import type { MessagingReviewTargetScope } from "./review-access-types.ts";
@@ -35,7 +36,7 @@ export function messagingReviewAccessRepository(db: Knex) {
       rules.messageId = () => db("messages as message").whereNull("message.deleted_at").whereIn("message.id", targets.messageId ?? [])
         .whereIn("message.channel_id", channels().select("c.id")).select("message.id");
       rules.updateId = () => db("project_updates").where({ project_id: projectId, is_draft: false }).whereIn("id", targets.updateId ?? []).select("id");
-      const entries = await Promise.all(Object.entries(targets).filter(([key, ids]) => ids.length && rules[key]).map(async ([key]) => [key, new Set((await rules[key]!()).map((row) => row.id))] as const));
+      const entries = await runQueries(db, Object.entries(targets).filter(([key, ids]) => ids.length && rules[key]).map(([key]) => async () => [key, new Set((await rules[key]!()).map((row) => row.id))] as const));
       return Object.fromEntries(entries);
     },
   };

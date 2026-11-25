@@ -1,4 +1,5 @@
 import { messagingSourceVisibility } from "./source-files.ts";
+import { runQueries } from "../../lib/run-queries.ts";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Knex } from "knex";
 import type { QueueManager } from "../../lib/queue/index.ts";
@@ -69,7 +70,7 @@ export function messagingAgentService(db: Knex, adapters: MessagingAdapterRegist
       return {
         userId, enabled: adapters.list().length > 0, projects,
         channels: adapters.list().map((adapter) => ({ id: adapter.channel, accountId: adapter.channelAccountId, label: adapter.label, enabled: true })),
-        connections: await Promise.all(linked.map(async (row) => ({
+        connections: await runQueries(db, linked.map((row) => async () => ({
           id: row.id, channel: row.channel, accountId: row.channel_account_id,
           channelLabel: adapters.get(row.channel, row.channel_account_id).label,
           linkedAt: new Date(row.created_at).toISOString(), selectedScope: await selectedScope(userId, row),
@@ -102,8 +103,8 @@ export function messagingAgentService(db: Knex, adapters: MessagingAdapterRegist
       const buildingId = linked?.conversation.building_id ?? (!stored && buildings.length === 1 ? buildings[0]!.id : null);
       const canReadHistory = context.capabilities.read;
       const proposals = linked ? await reads.proposals(userId, projectId, buildingId, true, linked.id) : [];
-      const [inbox, outbox] = linked && canReadHistory ? await Promise.all([
-        reads.messages(linked.id, projectId, linked.conversation.building_id), reads.replies(linked.conversation.id, linked.conversation.scope_version),
+      const [inbox, outbox] = linked && canReadHistory ? await runQueries(db, [
+        () => reads.messages(linked.id, projectId, linked.conversation.building_id), () => reads.replies(linked.conversation.id, linked.conversation.scope_version),
       ]) : [[], []];
       const actions = await reads.actionsForProposals(proposals.map((proposal) => proposal.id));
       const visible = await messagingReviewVisibility(db, context, { projectId, organizationId: context.project.organization_id, buildingId }, actions);

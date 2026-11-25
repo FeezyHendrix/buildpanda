@@ -31,9 +31,10 @@ export async function requireFileAttachment(request: AuthorizationRequest, proje
 
 export async function requireFileRead(request: AuthorizationRequest, file: UploadedFileRow, repository: FileAccessRepository) {
   const userId = request.requireAuth().id;
-  const [references, conversations, organizations] = await Promise.all([
-    repository.projectReferences(file.id, userId, file.project_id ?? undefined), repository.messageReferences(file.id, userId), repository.organizationReferences(file.id),
-  ]);
+  // Sequential: the repository may run on a transaction, whose one connection cannot run queries concurrently.
+  const references = await repository.projectReferences(file.id, userId, file.project_id ?? undefined);
+  const conversations = await repository.messageReferences(file.id, userId);
+  const organizations = await repository.organizationReferences(file.id);
   for (const reference of references) {
     if (!reference.project_id) continue;
     if (file.project_id && reference.project_id !== file.project_id) continue;

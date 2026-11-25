@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { runQueries } from "../../../lib/run-queries.ts";
 import { loadDefaultForm } from "./daily-log-form.ts";
 import type { ProjectSnapshot } from "./types.ts";
 
@@ -97,61 +98,61 @@ export function voiceReportRepository(db: Knex) {
         stages,
         buildings,
         dailyLogForm,
-      ] = await Promise.all([
-          canView("rfis") ? db<RfiPick>("rfis")
+      ] = await runQueries(db, [
+          async () => canView("rfis") ? db<RfiPick>("rfis")
             .where({ project_id: projectId })
             .whereNotIn("status", ["Closed", "Void"])
             .modify((query) => { if (sharedOnly) query.where("visibility", "shared"); })
             .orderBy("number", "desc")
             .limit(20)
             .select("id", "number", "subject", "status") : [],
-          canView("change-requests") ? db<ChangeRequestPick>("change_requests")
+          async () => canView("change-requests") ? db<ChangeRequestPick>("change_requests")
             .where({ project_id: projectId })
             .orderBy("created_at", "desc")
             .limit(15)
             .select("id", "title", "status") : [],
-          canView("materials") ? db<MaterialOrderPick>("material_orders")
+          async () => canView("materials") ? db<MaterialOrderPick>("material_orders")
             .where({ project_id: projectId })
             .orderBy("created_at", "desc")
             .limit(15)
             .select("id", "title", "material_name", "quantity", "unit", "status") : [],
-          canView("schedule") ? db<LookAheadPick>("look_aheads")
+          async () => canView("schedule") ? db<LookAheadPick>("look_aheads")
             .where({ project_id: projectId })
             .orderBy("start_date", "desc")
             .limit(10)
             .select("id", "name", "start_date", "end_date", "status") : [],
-          canView("schedule") ? db<ActivityPick>("activities")
+          async () => canView("schedule") ? db<ActivityPick>("activities")
             .where({ project_id: projectId })
             .orderBy("planned_start_at", "desc")
             .limit(20)
             .select("id", "name", "status") : [],
-          canView("schedule") ? db<DelayReasonPick>("delay_reasons").limit(30).select("code", "name") : [],
-          canView("materials") && includeMaterialsLedger ? db<LedgerEntryPick>("material_ledger_entries")
+          async () => canView("schedule") ? db<DelayReasonPick>("delay_reasons").limit(30).select("code", "name") : [],
+          async () => canView("materials") && includeMaterialsLedger ? db<LedgerEntryPick>("material_ledger_entries")
             .where({ project_id: projectId, status: "Posted" })
             .orderBy("created_at", "desc")
             .limit(10)
             .select("id", "entry_type", "material_name_snapshot", "quantity", "unit_snapshot") : [],
-          canView("materials") && includeMaterialsLedger ? db<{ name: string; unit: string }>("materials_catalog")
+          async () => canView("materials") && includeMaterialsLedger ? db<{ name: string; unit: string }>("materials_catalog")
             .where({ project_id: projectId, active: true })
             .orderBy("name", "asc")
             .limit(60)
             .select("name", "unit") : [],
-          canView("dailyLog") ? db<DailyLogEntryPick>("daily_log_entries")
+          async () => canView("dailyLog") ? db<DailyLogEntryPick>("daily_log_entries")
             .where({ project_id: projectId, log_date: today })
             .orderBy("created_at", "desc")
             .limit(10)
             .select("id", "log_date", "author_name", "body_text") : [],
-          canView("stages") ? db<StagePick>("project_phases")
+          async () => canView("stages") ? db<StagePick>("project_phases")
             .where({ project_id: projectId })
             .orderBy("sort_order", "asc")
             .limit(40)
             .select("id", "name", "status", "building_id") : [],
-          canView("buildings") ? db<BuildingPick>("buildings")
+          async () => canView("buildings") ? db<BuildingPick>("buildings")
             .where({ project_id: projectId, kind: "real" })
             .orderBy("sort_order", "asc")
             .limit(20)
             .select("id", "name", "code") : [],
-          canView("dailyLog") ? loadDefaultForm(db, projectId) : null,
+          async () => canView("dailyLog") ? loadDefaultForm(db, projectId) : null,
         ]);
 
       return {

@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { runQueries } from "../../lib/run-queries.ts";
 import { canProjectPermission, assertProjectPermission } from "../../lib/authorization.ts";
 import { BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from "../../lib/errors.ts";
 import { statement } from "../../lib/permissions.ts";
@@ -36,7 +37,7 @@ export function messagingAgentAccess(db: Knex) {
   return {
     actor,
     async projects(userId: string): Promise<MessagingProjectOption[]> {
-      const [{ context }, enabled] = await Promise.all([actor(userId), features()]);
+      const [{ context }, enabled] = await runQueries(db, [() => actor(userId), () => features()]);
       return (await repo.candidates(context)).filter((project) => {
         const scope = { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id };
         const capabilities = messagingCapabilities(permissions(scope, context), enabled, workspacePermissions(context, project.organization_id));
@@ -44,7 +45,7 @@ export function messagingAgentAccess(db: Knex) {
       }).map((project) => ({ id: project.id, name: project.name, organizationId: project.organization_id }));
     },
     async project(userId: string, projectId: string, action?: "view" | "create"): Promise<MessagingAccess> {
-      const [{ user, context }, enabled] = await Promise.all([actor(userId), features()]);
+      const [{ user, context }, enabled] = await runQueries(db, [() => actor(userId), () => features()]);
       const project = await repo.project(projectId);
       if (!project) throw new NotFoundError("Project");
       const scope = { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id };

@@ -165,6 +165,16 @@ export function drawingMarkupRepository(db: Knex) {
         .select("id", "document_id", "revision_label")
         .first(),
 
+    versionsByIds: (versionIds: readonly string[]) =>
+      versionIds.length === 0
+        ? Promise.resolve([])
+        : db<MarkupVersionRow>("document_versions").whereIn("id", versionIds).select("id", "document_id", "revision_label"),
+
+    currentVersionIdsForDocuments: (documentIds: readonly string[]) =>
+      documentIds.length === 0
+        ? Promise.resolve([])
+        : db<{ id: string; current_version_id: string | null }>("project_documents").whereIn("id", documentIds).select("id", "current_version_id"),
+
     currentVersionIdForDocument: (documentId: string) =>
       db<{ current_version_id: string | null }>("project_documents")
         .where({ id: documentId })

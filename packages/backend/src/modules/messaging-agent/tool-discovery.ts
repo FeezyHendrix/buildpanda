@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { runQueries } from "../../lib/run-queries.ts";
 import { expenseReaderId } from "../transactions/access.ts";
 import { messagingFinancialTargetRepository } from "./financial-target-repository.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
@@ -39,18 +40,18 @@ export async function messagingToolDiscovery(db: Knex, access: MessagingAccess, 
   try { await requireFileStaging(field.request, projectId); }
   catch (error) { if (error instanceof ForbiddenError) uploads = false; else throw error; }
   const approvalContext = { ...context, readableResource: (resource: string) => resource === "materials" || context.readableResource!(resource) };
-  const [snapshot, options, rfis, ledger, entries, templates, suppliers, versions, files, assignees, boq] = await Promise.all([
-    voiceReportRepository(db).snapshot(projectId, (resource) => can(resource, "view"), !internal, current.access.features.materialLogs),
-    voiceContextRepository(db).options(projectId, { userId: field.user.id, organizationId: scope.organizationId ?? "", can: (resource, action) => canRead(approvalContext, resource, action), workspaceCan, capabilities }),
-    can("rfis", "view") ? repository.rfis(projectId, !internal) : [],
-    can("materials", "view") && current.access.features.materialLogs ? repository.ledgerEntries(projectId) : [],
-    can("dailyLog", "view") ? repository.diaryEntries(projectId, scope.buildingId) : [],
-    can("dailyLog", "view") ? dailyLogTemplatesRepository(db).list(owner, false) : [],
-    can("materials", "view") ? suppliersService(suppliersRepository(db)).list(owner) : [],
-    can("documents", "view") ? repository.documentVersions(projectId) : [],
-    repository.ownFiles(projectId, field.user.id),
-    can("tasks", "view") ? buildTasksServices(db).service.listAssignable(projectId, scope.organizationId, field.project.owner_id, field.user.id) : [],
-    can("materials", "view") ? boqJobsRepository(db).listCompletedMaterials(projectId) : [],
+  const [snapshot, options, rfis, ledger, entries, templates, suppliers, versions, files, assignees, boq] = await runQueries(db, [
+    async () => voiceReportRepository(db).snapshot(projectId, (resource) => can(resource, "view"), !internal, current.access.features.materialLogs),
+    async () => voiceContextRepository(db).options(projectId, { userId: field.user.id, organizationId: scope.organizationId ?? "", can: (resource, action) => canRead(approvalContext, resource, action), workspaceCan, capabilities }),
+    async () => can("rfis", "view") ? repository.rfis(projectId, !internal) : [],
+    async () => can("materials", "view") && current.access.features.materialLogs ? repository.ledgerEntries(projectId) : [],
+    async () => can("dailyLog", "view") ? repository.diaryEntries(projectId, scope.buildingId) : [],
+    async () => can("dailyLog", "view") ? dailyLogTemplatesRepository(db).list(owner, false) : [],
+    async () => can("materials", "view") ? suppliersService(suppliersRepository(db)).list(owner) : [],
+    async () => can("documents", "view") ? repository.documentVersions(projectId) : [],
+    async () => repository.ownFiles(projectId, field.user.id),
+    async () => can("tasks", "view") ? buildTasksServices(db).service.listAssignable(projectId, scope.organizationId, field.project.owner_id, field.user.id) : [],
+    async () => can("materials", "view") ? boqJobsRepository(db).listCompletedMaterials(projectId) : [],
   ]);
   const fileRows = await filesRepository(db).findByIds(files.map((file) => file.value));
   const permittedFiles = new Set<string>();
@@ -76,10 +77,10 @@ export async function messagingToolDiscovery(db: Knex, access: MessagingAccess, 
   };
   const tools = messagingActionDescriptors(current.access);
   const financial = messagingFinancialTargetRepository(db);
-  const [expenses, invoices, purchaseOrders] = await Promise.all([
-    can("finances", "viewCosts") && current.access.features.enabled?.["commercial.transactions"] ? financial.expenses(projectId, expenseReaderId(field.request, field.project)) : [],
-    can("finances", "view") && current.access.features.enabled?.["commercial.invoices"] ? financial.invoices(projectId, can("finances", "viewCosts")) : [],
-    can("finances", "viewCosts") && current.access.features.enabled?.["commercial.purchaseOrders"] ? financial.purchaseOrders(projectId) : [],
+  const [expenses, invoices, purchaseOrders] = await runQueries(db, [
+    async () => can("finances", "viewCosts") && current.access.features.enabled?.["commercial.transactions"] ? financial.expenses(projectId, expenseReaderId(field.request, field.project)) : [],
+    async () => can("finances", "view") && current.access.features.enabled?.["commercial.invoices"] ? financial.invoices(projectId, can("finances", "viewCosts")) : [],
+    async () => can("finances", "viewCosts") && current.access.features.enabled?.["commercial.purchaseOrders"] ? financial.purchaseOrders(projectId) : [],
   ]);
   const availableReads = buildTools().flatMap((tool) => {
     const readContext = messagingReadContext(context, tool.spec.function.name);

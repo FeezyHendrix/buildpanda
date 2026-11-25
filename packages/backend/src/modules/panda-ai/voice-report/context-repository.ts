@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import { runQueries } from "../../../lib/run-queries.ts";
 import type { VoiceOptions, VoiceOption } from '@buildpanda/voice-actions';
 import { PRESET_TRANSACTION_CATEGORIES } from '../../transactions/types.ts';
 import type { VoiceCaller } from './context-types.ts';
@@ -12,24 +13,24 @@ export function voiceContextRepository(db: Knex) {
       const taskAccess = can('tasks', 'view') && capabilities.canAccessTaskBoard;
       const people = () => db('member as m').join('user as u', 'u.id', 'm.userId').where('m.organizationId', organizationId)
         .select<VoiceOption[]>('u.id as value', 'u.name as label');
-      const [tasks, taskColumns, assignees, approvals, documents, documentCategories, markups, updates, workspaceMembers, categories] = await Promise.all([
-        taskAccess ? db('tasks as t').where('t.project_id', projectId)
+      const [tasks, taskColumns, assignees, approvals, documents, documentCategories, markups, updates, workspaceMembers, categories] = await runQueries(db, [
+        async () => taskAccess ? db('tasks as t').where('t.project_id', projectId)
           .modify((query) => applyTaskVisibility(query, db, can('tasks', 'viewAll') ? undefined : userId))
           .select<VoiceOption[]>('t.id as value', 't.title as label', 't.board_id as parentId', 't.building_id as buildingId') : [],
-        taskAccess ? db('task_columns as c').join('task_boards as b', 'b.id', 'c.board_id').where('b.project_id', projectId)
+        async () => taskAccess ? db('task_columns as c').join('task_boards as b', 'b.id', 'c.board_id').where('b.project_id', projectId)
           .select<VoiceOption[]>('c.id as value', 'c.name as label', 'c.board_id as parentId', 'b.building_id as buildingId') : [],
-        taskAccess ? people() : [],
-        can('materials', 'view') ? db('approvals').where({ project_id: projectId, kind: 'material' })
+        async () => taskAccess ? people() : [],
+        async () => can('materials', 'view') ? db('approvals').where({ project_id: projectId, kind: 'material' })
           .select<VoiceOption[]>('id as value', 'title as label', 'status', 'requested_reviewer_id as reviewerId') : [],
-        can('documents', 'view') ? db('project_documents as d').leftJoin('document_categories as c', 'c.id', 'd.category_id').where('d.project_id', projectId)
+        async () => can('documents', 'view') ? db('project_documents as d').leftJoin('document_categories as c', 'c.id', 'd.category_id').where('d.project_id', projectId)
           .select<(VoiceOption & { group: string | null })[]>('d.id as value', 'd.file_name as label', 'd.current_version_id as versionId', 'c.group') : [],
-        can('documents', 'view') ? db('document_categories').whereIn('group', ['document', 'plan'])
+        async () => can('documents', 'view') ? db('document_categories').whereIn('group', ['document', 'plan'])
           .select<(VoiceOption & { group: string })[]>('id as value', 'name as label', 'group') : [],
-        can('documents', 'view') ? db('drawing_markups as m').join('project_documents as d', 'd.id', 'm.document_id').where('m.project_id', projectId).whereNull('m.deleted_at')
+        async () => can('documents', 'view') ? db('drawing_markups as m').join('project_documents as d', 'd.id', 'm.document_id').where('m.project_id', projectId).whereNull('m.deleted_at')
           .select<VoiceOption[]>('m.id as value', db.raw("d.file_name || ' — page ' || m.page_no || ' (' || m.id || ')' as label"), 'm.document_id as parentId', 'm.document_version_id as versionId') : [],
-        can('updates', 'view') ? db('project_updates').where({ project_id: projectId, is_draft: false }).select<VoiceOption[]>('id as value', 'title as label') : [],
-        workspaceCan('messages', 'view') && workspaceCan('messages', 'send') ? people().whereNot('u.id', userId) : [],
-        can('finances', 'viewCosts') ? db('custom_transaction_categories').where('org_id', organizationId).select<VoiceOption[]>('label as value', 'label') : [],
+        async () => can('updates', 'view') ? db('project_updates').where({ project_id: projectId, is_draft: false }).select<VoiceOption[]>('id as value', 'title as label') : [],
+        async () => workspaceCan('messages', 'view') && workspaceCan('messages', 'send') ? people().whereNot('u.id', userId) : [],
+        async () => can('finances', 'viewCosts') ? db('custom_transaction_categories').where('org_id', organizationId).select<VoiceOption[]>('label as value', 'label') : [],
       ]);
       const messageOptions = await this.messageOptions(projectId, caller);
       return {

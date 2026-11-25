@@ -14,7 +14,9 @@ import type { DailyLogAuthorizationDeps, DailyLogScope, FieldActor } from "./typ
 
 export function dailyLogAuthorizer(deps: DailyLogAuthorizationDeps) {
   return async (actor: FieldActor, projectId: string, explicitBuildingId?: string): Promise<DailyLogScope> => {
-    const [user, context] = await Promise.all([deps.userById(actor.userId), deps.loadAccess(actor.userId)]);
+    // Sequential: deps may share one transaction connection, which cannot run queries concurrently.
+    const user = await deps.userById(actor.userId);
+    const context = await deps.loadAccess(actor.userId);
     if (!user || (user.banned && (!user.banExpires || new Date(user.banExpires).getTime() > Date.now()))) {
       throw new ForbiddenError("This account cannot perform field actions");
     }

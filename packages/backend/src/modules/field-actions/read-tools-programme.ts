@@ -1,4 +1,5 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { runQueries } from "../../lib/run-queries.ts";
 import { buildingsRepository } from "../buildings/repository.ts";
 import { keyDatesRepository } from "../key-dates/repository.ts";
 import { keyDatesService } from "../key-dates/service.ts";
@@ -24,7 +25,7 @@ export function programmeReadTools() {
         await context.request.requireProjectPermission(context.project.id, "activities", "view");
         return activityReferencesService(activityReferencesRepository(context.db)).get(context.project.id, id);
       }
-      const [events, delayHistory] = await Promise.all([service.listEvents(context.project.id, id), delays.listForActivity(context.project.id, id)]);
+      const [events, delayHistory] = await runQueries(context.db, [() => service.listEvents(context.project.id, id), () => delays.listForActivity(context.project.id, id)]);
       return { activity, events, delays: delayHistory };
     }),
     readTool("read_stage", "Read project stages and recorded progress/cost rollups, or one stage. Reading never creates a contract. Expense visibility follows the caller's grants.", {
