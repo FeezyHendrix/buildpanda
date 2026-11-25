@@ -79,7 +79,6 @@ export default function Dashboard() {
   const shown = pageItems;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
-  console.log(data)
 
   return (
     <div className="mx-auto w-full max-w-[1080px] px-4 pb-12 pt-[52px] lg:px-10">

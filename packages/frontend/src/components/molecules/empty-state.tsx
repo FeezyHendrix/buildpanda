@@ -25,7 +25,7 @@ interface EmptyStateProps {
    */
   action?: EmptyStateAction | ReactNode;
   /**
-   * `page` centres the block in the content area below the header (list pages)
+   * `page` centres the block, horizontally and vertically, in the space below the header (list pages)
    * over a faded grid; `inline` sits compactly inside a table cell, card or panel.
    */
   variant?: "page" | "inline";
@@ -33,7 +33,7 @@ interface EmptyStateProps {
 }
 
 const VARIANT_CLASSES: Record<NonNullable<EmptyStateProps["variant"]>, string> = {
-  page: "min-h-[360px] justify-center py-10",
+  page: "min-h-[max(360px,calc(100dvh-8rem))] justify-center py-10",
   inline: "py-6",
 };
 
