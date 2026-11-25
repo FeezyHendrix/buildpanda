@@ -94,7 +94,7 @@ export function EditableNumberCell({ value, display, editable, onCommit, ariaLab
       onClick={(event) => event.stopPropagation()}
       aria-label={ariaLabel}
       aria-invalid={invalid || undefined}
-      className={cn(INPUT_SM_CLASS, "min-w-[96px] px-2 text-right tabular-nums")}
+      className={cn(INPUT_SM_CLASS, "min-w-[96px] px-2 text-left tabular-nums")}
     />
   );
 }

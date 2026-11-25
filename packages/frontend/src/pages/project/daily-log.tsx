@@ -177,7 +177,7 @@ export default function ProjectDailyLog() {
       <>
         <div className="flex h-full items-center justify-center">
           <EmptyState
-            icon={<img src={emptyIcon} alt="" className="size-90" />}
+            illustration={<img src={emptyIcon} alt="" className="h-auto w-[360px] max-w-full" />}
             title="No logs have been added yet"
             action={
               canCreateEntry ? (

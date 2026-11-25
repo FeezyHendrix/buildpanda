@@ -31,6 +31,7 @@ interface FormDrawerProps {
   className?: string;
   /** Optional style hooks for drawers whose design departs from the defaults. */
   titleClassName?: string;
+  descriptionClassName?: string;
   headerClassName?: string;
   bodyClassName?: string;
   footerClassName?: string;
@@ -57,6 +58,7 @@ function OpenFormDrawer({
   width = "md",
   className,
   titleClassName,
+  descriptionClassName,
   headerClassName,
   bodyClassName,
   footerClassName,
@@ -101,7 +103,7 @@ function OpenFormDrawer({
                 {title}
               </Dialog.Title>
               {description && (
-                <Dialog.Description className="mt-1.5 text-caption-l font-medium text-grey-450 text-pretty">
+                <Dialog.Description className={cn("mt-1.5 text-caption-l font-medium text-grey-450 text-pretty", descriptionClassName)}>
                   {description}
                 </Dialog.Description>
               )}

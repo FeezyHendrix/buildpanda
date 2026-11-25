@@ -198,7 +198,7 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
         <PendingInvitesBanner />
       </div>
       <EmptyState
-        icon={<img src={emptyIcon} alt="" className="size-90" />}
+        illustration={<img src={emptyIcon} alt="" className="h-auto w-[360px] max-w-full" />}
         title="Welcome to your workspace!"
         description="Your workspace is empty for now. Create your first project and start planning, building and collaborating with your team"
         action={
@@ -223,7 +223,7 @@ function NoAssignedProjectsState() {
         <PendingInvitesBanner />
       </div>
       <EmptyState
-        icon={<img src={emptyIcon} alt="" className="size-[159px]" />}
+        illustration={<img src={emptyIcon} alt="" className="h-auto w-[240px] max-w-full" />}
         title="No projects yet"
         description="You'll see a project here as soon as your team adds you to one. Check back shortly or ask your workspace admin for access."
       />

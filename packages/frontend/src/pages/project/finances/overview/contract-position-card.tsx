@@ -1,9 +1,11 @@
+import { useId, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
-import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
 import type { FinanceSummary } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { SettlementStatement, isSettled } from "../settlement-statement";
+import { isSettled } from "../settlement-statement";
+import { ContractStatement } from "./contract-statement";
 import { OverviewCard, OverviewList, OverviewRow } from "./overview-cards";
 
 /**
@@ -15,9 +17,9 @@ import { OverviewCard, OverviewList, OverviewRow } from "./overview-cards";
  */
 
 const SEGMENTS = [
-  { key: "paid", label: "Paid to date", helper: "Receipts recorded against certificates", swatch: "bg-primary-500" },
-  { key: "unpaid", label: "Unpaid certified", helper: "Certified, not yet received", swatch: "bg-primary-100" },
-  { key: "outstanding", label: "Still to certify", helper: "Adjusted contract less certified", swatch: "border border-line bg-surface-alt" },
+  { key: "paid", label: "Paid to date", helper: "Receipts recorded against certificates", swatch: "bg-[#004DE7]", dot: "bg-[#004DE7]" },
+  { key: "unpaid", label: "Unpaid certified", helper: "Certified, not yet received", swatch: "bg-[#B0C8F8]", dot: "bg-[#E6EDFD]" },
+  { key: "outstanding", label: "Still to certify", helper: "Adjusted contract less certified", swatch: "bg-[#CFCFCF]", dot: "bg-[#737373]" },
 ] as const;
 type SegmentKey = (typeof SEGMENTS)[number]["key"];
 
@@ -47,14 +49,16 @@ export function ContractPositionCard({ summary, contractsHref, className }: Cont
   const amounts = segmentAmounts(summary);
   const shares = segmentShares(summary);
   const money = (value: number) => formatCurrency(value, summary.currency);
-  const hasBar = amounts.paid + amounts.unpaid + amounts.outstanding > 0;
+  const [statementOpen, setStatementOpen] = useState(false);
+  const statementId = useId();
 
   return (
     <OverviewCard
-      title="Contract position"
+      title="Contract Position"
       to={contractsHref}
-      linkLabel="Contracts & phases"
+      linkLabel="Contracts & Phases"
       className={className}
+      bodyClassName="pb-0 pt-[18px]"
       actions={
         isSettled(summary) ? (
           <Badge tone="success" size="sm" dot>
@@ -63,26 +67,28 @@ export function ContractPositionCard({ summary, contractsHref, className }: Cont
         ) : null
       }
     >
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <p className="text-xl font-semibold leading-tight text-ink">{money(summary.adjustedContract)}</p>
-        <p className="text-xs text-ink-muted">adjusted contract sum</p>
+      <div className="flex flex-wrap items-baseline gap-x-[6px] gap-y-1">
+        <p className="text-caption-l font-semibold tabular-nums text-[#1E1E1E]">{money(summary.adjustedContract)}</p>
+        <p className="text-caption-m text-[#737373]">adjusted contract sum</p>
       </div>
 
-      {hasBar ? (
-        <div className="mt-3 flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full" role="img" aria-label="Share of the adjusted contract paid, certified but unpaid, and still to certify">
-          {SEGMENTS.map((segment) =>
-            shares[segment.key] > 0 ? (
-              <div key={segment.key} className={cn("h-full rounded-full", segment.swatch)} style={{ width: `${shares[segment.key]}%` }} />
-            ) : null,
-          )}
-        </div>
-      ) : null}
+      {/* The track is always there; segments fill it once there is something to split. */}
+      <div
+        className="mt-[7px] flex h-[8px] w-full gap-0.5 overflow-hidden bg-[#E5E5E5]"
+        role="img"
+        aria-label="Share of the adjusted contract paid, certified but unpaid, and still to certify"
+      >
+        {SEGMENTS.map((segment) =>
+          shares[segment.key] > 0 ? <div key={segment.key} className={cn("h-full", segment.swatch)} style={{ width: `${shares[segment.key]}%` }} /> : null,
+        )}
+      </div>
 
-      <OverviewList className="mt-2">
+      <OverviewList className="mt-[6px]">
         {SEGMENTS.map((segment) => (
           <OverviewRow
             key={segment.key}
-            marker={<span className={cn("block size-2 rounded-full", segment.swatch)} />}
+            tall
+            marker={<span className={cn("block size-[12px] rounded-full", segment.dot)} />}
             label={segment.label}
             sub={segment.helper}
             value={money(amounts[segment.key])}
@@ -91,15 +97,23 @@ export function ContractPositionCard({ summary, contractsHref, className }: Cont
         ))}
       </OverviewList>
 
-      <details className="group mt-2 border-t border-line-hair pt-3">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-medium text-ink [&::-webkit-details-marker]:hidden">
-          Full statement
-          <ChevronRightIcon className="size-4 text-ink-muted transition-transform group-open:rotate-90" />
-        </summary>
-        <div className="mt-3">
-          <SettlementStatement summary={summary} />
-        </div>
-      </details>
+      <div className="border-t border-[#EEEEEE]">
+        <button
+          type="button"
+          onClick={() => setStatementOpen((open) => !open)}
+          aria-expanded={statementOpen}
+          aria-controls={statementId}
+          className="flex h-[58px] w-full items-center justify-between gap-3 text-left text-caption-l font-medium text-[#1E1E1E] outline-none focus-visible:underline"
+        >
+          Full Statement
+          {statementOpen ? <ChevronUp className="size-[18px]" aria-hidden /> : <ChevronDown className="size-[18px]" aria-hidden />}
+        </button>
+        {statementOpen ? (
+          <div id={statementId}>
+            <ContractStatement summary={summary} />
+          </div>
+        ) : null}
+      </div>
     </OverviewCard>
   );
 }

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Badge } from "@/components/atoms/badge";
 import { FinancesIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
 import {
@@ -11,19 +12,27 @@ import {
   TableRow,
 } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { RowActionIcon } from "@/components/molecules/row-action-icon";
 import { RowActionsMenu, type RowActionItem } from "@/components/molecules/row-actions-menu";
 import type { Contract } from "@/hooks/use-contracts";
 import { formatCurrency } from "@/lib/formatters";
 import type { Currency } from "@/lib/project-types";
-import { CONTRACT_KIND_LABEL, formatSignedDate, isPlaceholderContract } from "./contract-model";
-import { ContractStatusSelect } from "./contract-status-select";
+import { CONTRACT_STATUS_META, contractSubtitle, formatSignedDateLong, isPlaceholderContract } from "./contract-model";
 
-/** The contract register. Every row is a recorded agreement, never a payment. */
+/**
+ * The contract register. Every row is a recorded agreement, never a payment.
+ * Status is read here and changed in the edit drawer, where the "needs the
+ * signed document" rule has room to explain itself.
+ */
 
-const COLUMN_COUNT = 8;
+const COLUMN_COUNT = 6;
+const HEADER_CELL = "h-[52px] px-[24px] py-0 text-caption-l font-medium normal-case text-[#525252]";
+const BODY_CELL = "px-[24px] py-0 text-caption-l text-[#1E1E1E]";
+
+/** Column widths as shares of the 1117px design table. */
+const COLUMN_WIDTHS = ["22.1%", "19.4%", "21.1%", "14.8%", "16.7%", "5.9%"] as const;
 
 interface ContractsTableProps {
-  projectId: string;
   currency: Currency;
   contracts: Contract[];
   isLoading: boolean;
@@ -36,7 +45,6 @@ interface ContractsTableProps {
 }
 
 export function ContractsTable({
-  projectId,
   currency,
   contracts,
   isLoading,
@@ -48,18 +56,21 @@ export function ContractsTable({
   onAdd,
 }: ContractsTableProps) {
   return (
-    <div className="overflow-hidden rounded-lg border border-line-hair bg-white">
-      <Table className="min-w-[960px]">
+    <div className="border border-[#EEEEEE] bg-white">
+      <Table className="min-w-[860px] table-fixed">
+        <colgroup>
+          {COLUMN_WIDTHS.map((width) => (
+            <col key={width} style={{ width }} />
+          ))}
+        </colgroup>
         <TableHead>
           <tr>
-            <TableHeaderCell>Contract ID</TableHeaderCell>
-            <TableHeaderCell align="right">Phases</TableHeaderCell>
-            <TableHeaderCell>Signed date</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell>Trade</TableHeaderCell>
-            <TableHeaderCell>Legal entity</TableHeaderCell>
-            <TableHeaderCell align="right">Total</TableHeaderCell>
-            <TableHeaderCell align="right" className="w-[72px]">
+            <TableHeaderCell className={HEADER_CELL}>Contract ID</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL}>Status</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL}>Signed Date</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL}>Phases</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL}>Total</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL}>
               <span className="sr-only">Actions</span>
             </TableHeaderCell>
           </tr>
@@ -89,7 +100,6 @@ export function ContractsTable({
             contracts.map((contract) => (
               <ContractRow
                 key={contract.id}
-                projectId={projectId}
                 currency={currency}
                 contract={contract}
                 canManage={canManage}
@@ -108,7 +118,6 @@ export function ContractsTable({
 ContractsTable.displayName = "ContractsTable";
 
 interface ContractRowProps {
-  projectId: string;
   currency: Currency;
   contract: Contract;
   canManage: boolean;
@@ -117,38 +126,37 @@ interface ContractRowProps {
   onDelete: (contract: Contract) => void;
 }
 
-function ContractRow({ projectId, currency, contract, canManage, onView, onEdit, onDelete }: ContractRowProps) {
+function ContractRow({ currency, contract, canManage, onView, onEdit, onDelete }: ContractRowProps) {
   const placeholder = isPlaceholderContract(contract);
+  const status = CONTRACT_STATUS_META[contract.status];
   const actions = useMemo<RowActionItem[]>(
     () => [
-      { label: "View", onSelect: () => onView(contract) },
-      ...(canManage && !placeholder ? [{ label: "Edit", onSelect: () => onEdit(contract) }] : []),
+      { label: "View", icon: <RowActionIcon name="view" />, onSelect: () => onView(contract) },
+      ...(canManage && !placeholder ? [{ label: "Edit", icon: <RowActionIcon name="edit" />, onSelect: () => onEdit(contract) }] : []),
       ...(canManage && !placeholder && contract.kind !== "main"
-        ? [{ label: "Delete", tone: "danger" as const, onSelect: () => onDelete(contract) }]
+        ? [{ label: "Delete", icon: <RowActionIcon name="delete" />, tone: "danger" as const, onSelect: () => onDelete(contract) }]
         : []),
     ],
     [contract, canManage, placeholder, onView, onEdit, onDelete],
   );
 
   return (
-    <TableRow onClick={() => onView(contract)}>
-      <TableCell>
-        <p className="font-medium text-ink">{contract.title}</p>
-        <p className="text-xs text-ink-muted">{CONTRACT_KIND_LABEL[contract.kind]}</p>
+    <TableRow onClick={() => onView(contract)} className="h-[52px] border-[#EEEEEE]">
+      <TableCell className={BODY_CELL}>
+        <p className="truncate">{contract.title}</p>
+        <p className="truncate text-caption-m text-[#737373]">{contractSubtitle(contract)}</p>
       </TableCell>
-      <TableCell align="right" className="tabular-nums">{contract.phaseCount}</TableCell>
-      <TableCell className="whitespace-nowrap">{formatSignedDate(contract.signedAt)}</TableCell>
-      <TableCell>
-        <ContractStatusSelect projectId={projectId} contract={contract} disabled={!canManage} />
+      <TableCell className={BODY_CELL}>
+        <Badge tone={status.tone} size="sm" className="text-caption-m font-medium">
+          {status.label}
+        </Badge>
       </TableCell>
-      <TableCell>{contract.trade ?? "—"}</TableCell>
-      <TableCell>{contract.legalEntity ?? "—"}</TableCell>
-      <TableCell align="right" className="whitespace-nowrap font-semibold tabular-nums">
-        {formatCurrency(contract.total, currency)}
-      </TableCell>
-      <TableCell align="right" onClick={(event) => event.stopPropagation()}>
-        <div className="flex justify-end">
-          <RowActionsMenu ariaLabel={`Actions for ${contract.title}`} items={actions} />
+      <TableCell className={`${BODY_CELL} whitespace-nowrap`}>{formatSignedDateLong(contract.signedAt)}</TableCell>
+      <TableCell className={`${BODY_CELL} tabular-nums`}>{contract.phaseCount}</TableCell>
+      <TableCell className={`${BODY_CELL} whitespace-nowrap tabular-nums`}>{formatCurrency(contract.total, currency)}</TableCell>
+      <TableCell className={BODY_CELL} onClick={(event) => event.stopPropagation()}>
+        <div className="flex justify-center">
+          <RowActionsMenu ariaLabel={`Actions for ${contract.title}`} items={actions} appearance="house" />
         </div>
       </TableCell>
     </TableRow>

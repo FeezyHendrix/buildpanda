@@ -1,49 +1,65 @@
-import { useMemo, useState } from "react";
+import { MoreVertical } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
-import { SearchInput } from "@/components/atoms/search-input";
-import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/atoms/dropdown-menu";
 import { useProjectInvoices, type Invoice } from "@/hooks/use-invoices";
 import { BUDGET_INVOICES_PATH, financeTabPath } from "@/lib/finance-routes";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatLongDate } from "@/lib/formatters";
 import { INVOICE_STATUS_TONE } from "@/lib/project-meta";
 import type { Currency } from "@/lib/project-types";
-import { INVOICE_STATUS_LABEL, invoicePeriodLabel } from "../invoices/invoice-model";
-import { OverviewCard, OverviewEmpty, OverviewList, OverviewRow } from "./overview-cards";
+import { INVOICE_STATUS_LABEL } from "../invoices/invoice-model";
+import { OverviewCard, OverviewEmpty } from "./overview-cards";
 
 /**
- * The latest invoices, newest first, narrowed by a status filter and a search
- * over vendor, number and trade. Filtering is `useState` applied during
- * render; the list is the same cached query the invoices tab reads.
+ * The latest invoices as a table, newest first. Searching and filtering the
+ * whole list belongs to the invoices tab ("View More"); this card only shows
+ * what came in last. It reads the same cached query that tab does.
  */
 
 const RECENT_N = 5;
-const SEARCH_N = 10;
 
-const FILTERS = [
-  { value: "all", label: "All" },
-  { value: "unpaid", label: "Unpaid" },
-  { value: "paid", label: "Paid" },
-] as const;
-type InvoiceFilter = (typeof FILTERS)[number]["value"];
+/** Invoice, status, date, vendor, amount, row menu. Shared by the header and every row. */
+const COLUMNS = "grid grid-cols-[minmax(0,202fr)_minmax(0,225fr)_minmax(0,198fr)_minmax(0,240fr)_minmax(0,193fr)_24px] items-center px-[24px]";
 
-export function matchesFilter(invoice: Invoice, filter: InvoiceFilter): boolean {
-  if (filter === "all") return true;
-  if (filter === "paid") return invoice.status === "Paid";
-  return invoice.balanceDue > 0 && invoice.status !== "Void" && invoice.status !== "Draft";
-}
-
-export function matchesSearch(invoice: Invoice, query: string): boolean {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return true;
-  return [invoice.vendorName, invoice.number ?? "", invoice.trade].some((field) => field.toLowerCase().includes(needle));
-}
-
-export function recentInvoices(invoices: Invoice[], filter: InvoiceFilter, query: string): Invoice[] {
-  // `filter` returns a fresh array, so sorting it never touches the cache.
-  return invoices
-    .filter((invoice) => matchesFilter(invoice, filter) && matchesSearch(invoice, query))
+/** The newest invoices first; `slice` and `sort` work on a copy, never the cache. */
+export function recentInvoices(invoices: Invoice[]): Invoice[] {
+  return [...invoices]
     .sort((a, b) => (b.issueDate ?? "").localeCompare(a.issueDate ?? "") || b.id.localeCompare(a.id))
-    .slice(0, query.trim() ? SEARCH_N : RECENT_N);
+    .slice(0, RECENT_N);
+}
+
+function InvoiceRow({ invoice, currency, to }: { invoice: Invoice; currency: Currency; to: string }) {
+  const navigate = useNavigate();
+  const name = invoice.number ?? invoice.trade;
+  return (
+    <li className={`${COLUMNS} min-h-[52px] border-b border-[#EEEEEE] py-[8px] text-caption-l text-[#1E1E1E] last:border-b-0`}>
+      <span className="truncate">{name}</span>
+      <span>
+        <Badge tone={INVOICE_STATUS_TONE[invoice.status]} size="sm">
+          {INVOICE_STATUS_LABEL[invoice.status]}
+        </Badge>
+      </span>
+      <span className="truncate">{invoice.issueDate ? formatLongDate(invoice.issueDate) : "—"}</span>
+      <span className="truncate">{invoice.vendorName}</span>
+      <span className="truncate tabular-nums">{formatCurrency(invoice.totalInvoiced, invoice.currency || currency)}</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <button
+              type="button"
+              aria-label={`Actions for ${name}`}
+              className="flex size-[24px] items-center justify-center text-[#1E1E1E] outline-none hover:bg-[#F5F5F5] focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            >
+              <MoreVertical className="size-[18px]" strokeWidth={2} aria-hidden />
+            </button>
+          }
+        />
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => navigate(to)}>View in invoices</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
+  );
 }
 
 interface RecentInvoicesPanelProps {
@@ -55,56 +71,33 @@ interface RecentInvoicesPanelProps {
 
 /** The presentational half, so it can be rendered with any list of invoices. */
 export function RecentInvoicesPanel({ invoices, currency, to, className }: RecentInvoicesPanelProps) {
-  const [filter, setFilter] = useState<InvoiceFilter>("all");
-  const [query, setQuery] = useState("");
-  const shown = useMemo(() => recentInvoices(invoices, filter, query), [invoices, filter, query]);
-  const matching = useMemo(
-    () => invoices.filter((invoice) => matchesFilter(invoice, filter) && matchesSearch(invoice, query)).length,
-    [invoices, filter, query],
-  );
-  const filtered = filter !== "all" || query.trim().length > 0;
+  const shown = recentInvoices(invoices);
 
   return (
-    <OverviewCard title="Recent invoices" to={to} className={className}>
-      <div className="mb-1 flex flex-wrap items-center gap-2">
-        <div className="w-full max-w-[220px]">
-          <SearchInput
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search vendor or number"
-            aria-label="Search invoices"
-            className="h-9 bg-surface-alt text-sm"
-          />
-        </div>
-        <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Invoice filter" />
-        <p className="ml-auto text-xs text-ink-muted" aria-live="polite">
-          {shown.length} of {matching}
-        </p>
-      </div>
-
+    <OverviewCard title="Recent invoices" to={to} className={className} bodyClassName="p-0">
       {shown.length === 0 ? (
-        <OverviewEmpty>{invoices.length === 0 ? "No invoices yet." : "No invoices match this search or filter."}</OverviewEmpty>
+        <div className="px-[24px]">
+          <OverviewEmpty>No invoices yet.</OverviewEmpty>
+        </div>
       ) : (
-        <OverviewList>
-          {shown.map((invoice) => (
-            <OverviewRow
-              key={invoice.id}
-              to={to}
-              label={invoice.vendorName}
-              sub={[invoice.number ?? invoice.trade, invoicePeriodLabel(invoice)].filter(Boolean).join(" · ")}
-              value={formatCurrency(invoice.balanceDue, invoice.currency || currency)}
-              helper={
-                <Badge tone={INVOICE_STATUS_TONE[invoice.status]} size="sm">
-                  {INVOICE_STATUS_LABEL[invoice.status]}
-                </Badge>
-              }
-            />
-          ))}
-        </OverviewList>
+        <div className="overflow-x-auto">
+          <div className="min-w-[760px]">
+            <div className={`${COLUMNS} h-[51px] bg-[#F5F5F5] text-caption-l font-medium text-[#4D4D4D]`} role="row">
+              <span>Invoice</span>
+              <span>Status</span>
+              <span>Date</span>
+              <span>Vendor</span>
+              <span>Amount</span>
+              <span />
+            </div>
+            <ul>
+              {shown.map((invoice) => (
+                <InvoiceRow key={invoice.id} invoice={invoice} currency={currency} to={to} />
+              ))}
+            </ul>
+          </div>
+        </div>
       )}
-      {filtered && shown.length > 0 && matching > shown.length ? (
-        <p className="mt-2 text-xs text-ink-muted">Showing the newest {shown.length}. Open the invoices tab for the rest.</p>
-      ) : null}
     </OverviewCard>
   );
 }

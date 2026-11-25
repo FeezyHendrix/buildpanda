@@ -3,12 +3,17 @@ import { useNavigate, Link } from "react-router-dom";
 import { WizardLayout } from "@/components/organisms/wizard-modal";
 import { ProjectTemplateStep } from "@/components/molecules/project-template-step";
 import {
+  BuildingPhasesStep,
+  phasesFromTemplate,
+  type PhaseDraft,
+} from "@/components/molecules/building-phases-step";
+import {
   ProjectInfoStep,
   type InfoCurrency,
   type ConstructionType,
   type ConstructionTimeline,
 } from "@/components/molecules/project-info-step";
-import { useCreateProject, useProjects } from "@/hooks/use-projects";
+import { useCreateProject, useProjectTemplates, useProjects } from "@/hooks/use-projects";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { RISK_OPTIONS_CONFIG } from "@/components/molecules/management-step";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -21,7 +26,10 @@ import { Spinner } from "@/components/atoms/spinner";
 import { ReactSVG } from "react-svg";
 import { icons2 } from "@/assets/icons2/icon2";
 
-type Step = "choice" | "template" | "info";
+type Step = "choice" | "template" | "phases" | "info";
+
+const NAMED_STEPS = ["Project Template", "Building Phases", "Project Information"];
+const STEP_INDEX: Record<Exclude<Step, "choice">, number> = { template: 0, phases: 1, info: 2 };
 
 // All non-coming-soon risk options submitted by default (UI no longer exposes them).
 const DEFAULT_RISK_IDS = RISK_OPTIONS_CONFIG
@@ -45,8 +53,15 @@ export default function CreateProject() {
 
   // ── Step 1: template ────────────────────────────────────────────────────────
   const [templateId, setTemplateId] = useState<string | null>(null);
+  const { data: templates = [] } = useProjectTemplates();
 
-  // ── Step 2: project information ─────────────────────────────────────────────
+  // ── Step 2: building phases ──────────────────────────────────────────────────
+  // A draft only: the create call cannot carry phases or stage dates yet (see
+  // docs/build-stages-phases-backend.md §10), so these are not submitted.
+  const [phases, setPhases] = useState<PhaseDraft[]>([]);
+  const [phasesTemplateId, setPhasesTemplateId] = useState<string | null | undefined>(undefined);
+
+  // ── Step 3: project information ─────────────────────────────────────────────
   const [projectName, setProjectName] = useState("");
   const [address, setAddress] = useState("");
   const [locationState, setLocationState] = useState<string | null>(null);
@@ -62,36 +77,52 @@ export default function CreateProject() {
   const [contractSum, setContractSum] = useState("");
   const [constructionType, setConstructionType] = useState<ConstructionType | null>(null);
   const [timeline, setTimeline] = useState<ConstructionTimeline | null>(null);
+  // A preset or the dates, not both: picking one clears the other.
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const hasDates = startDate !== "" && endDate !== "";
+  const timelineValue = timeline ?? (hasDates ? `${startDate} to ${endDate}` : null);
 
   // ── Navigation ───────────────────────────────────────────────────────────────
   const handleCancel = () => navigate("/dashboard");
-  const handlePrev = () => setStep("template");
+  const handlePrev = () => setStep(step === "info" ? "phases" : "template");
 
   const canContinue = () => {
-    if (step === "template") return true; // template is optional
-    return (
-      projectName.trim() !== "" &&
-      !!locationState &&
-      !!constructionType &&
-      !!timeline
-    );
+    if (step === "template" || step === "phases") return true; // both are optional
+    return projectName.trim() !== "" && !!locationState && !!constructionType && timelineValue !== null;
   };
 
   const handleNext = () => {
     if (step === "template") {
+      // Entering the phases step with a different template starts its phases afresh.
+      if (phasesTemplateId !== templateId) {
+        setPhases(phasesFromTemplate(templates.find((t) => t.id === templateId) ?? null));
+        setPhasesTemplateId(templateId);
+      }
+      setStep("phases");
+    } else if (step === "phases") {
       setStep("info");
     } else {
       void handleFinish();
     }
   };
 
+  // Skip leaves the template's own phases as they were, discarding any edits made here.
+  const handleSkipPhases = () => {
+    setPhases(phasesFromTemplate(templates.find((t) => t.id === templateId) ?? null));
+    setStep("info");
+  };
+
   // ── Submit ───────────────────────────────────────────────────────────────────
   async function handleFinish(): Promise<void> {
-    if (!locationState || !constructionType || !timeline) return;
+    if (!locationState || !constructionType || !timelineValue) return;
 
     setSubmitting(true);
     try {
       const sumValue = contractSum ? Number(contractSum) : 0;
+      // Not sent yet, because the API rejects fields it does not know: the phases
+      // and stage dates from step 2 and the project's own start and end dates.
+      // See docs/build-stages-phases-backend.md §10.
       const project = await createProject.mutateAsync({
         title: projectName.trim(),
         projectType: "build",
@@ -106,7 +137,7 @@ export default function CreateProject() {
           currency,
           budgetMin: sumValue,
           budgetMax: sumValue,
-          timeline,
+          timeline: timelineValue,
           fundingMethod: "full",
         },
         management: {
@@ -201,21 +232,24 @@ export default function CreateProject() {
 
   return (
     <WizardLayout
-      currentStep={step === "template" ? 1 : 2}
-      totalSteps={2}
+      currentStep={STEP_INDEX[step] + 1}
+      totalSteps={NAMED_STEPS.length}
       onCancel={hasExistingProjects ? handleCancel : () => setStep("choice")}
       onBack={handlePrev}
       onContinue={handleNext}
       continueDisabled={!canContinue() || submitting}
-      continueLabel={step === "info" ? (submitting ? "Creating…" : "Next") : "Next"}
-      backLabel={step === "info" ? "Previous" : undefined}
+      continueLabel={step === "info" && submitting ? "Creating…" : "Next"}
+      backLabel={step === "template" ? undefined : "Previous"}
+      secondaryLabel={step === "phases" ? "Skip" : undefined}
+      onSecondary={handleSkipPhases}
       title="Create New Project"
-      namedSteps={["Project Template", "Project Information"]}
-      activeNamedStep={step === "template" ? 0 : 1}
+      namedSteps={NAMED_STEPS}
+      activeNamedStep={STEP_INDEX[step]}
     >
       {step === "template" && (
         <ProjectTemplateStep selected={templateId} onSelect={setTemplateId} />
       )}
+      {step === "phases" && <BuildingPhasesStep phases={phases} onChange={setPhases} />}
       {step === "info" && (
         <ProjectInfoStep
           projectName={projectName}
@@ -236,7 +270,21 @@ export default function CreateProject() {
           constructionType={constructionType}
           onConstructionTypeChange={setConstructionType}
           timeline={timeline}
-          onTimelineChange={setTimeline}
+          onTimelineChange={(t) => {
+            setTimeline(t);
+            setStartDate("");
+            setEndDate("");
+          }}
+          startDate={startDate}
+          onStartDateChange={(d) => {
+            setStartDate(d);
+            setTimeline(null);
+          }}
+          endDate={endDate}
+          onEndDateChange={(d) => {
+            setEndDate(d);
+            setTimeline(null);
+          }}
         />
       )}
     </WizardLayout>

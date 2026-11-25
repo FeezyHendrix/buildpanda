@@ -1,25 +1,18 @@
-import { useEffect, useId, useMemo, useState } from "react";
-import { INPUT_CLASS } from "@/components/atoms/input";
-import { Label } from "@/components/atoms/label";
-import { MoneyInput } from "@/components/atoms/money-input";
-import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
-import { ExpenseFlagFields, ExpenseReceiptField } from "./expense-form-fields";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Select } from "@/components/atoms/select";
+import { CurrencyAmountField, DRAWER_FIELD_CLASS, DRAWER_LABEL_CLASS } from "@/components/molecules/drawer-fields";
 import { FormDrawer } from "@/components/molecules/form-drawer";
-import { useStages } from "@/hooks/use-stages";
 import { useCreateTransaction, useUpdateTransaction } from "@/hooks/use-transactions";
-import { useUploadFile, resolveFileUrl } from "@/hooks/use-files";
-import { currencySymbol } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
+import { resolveFileUrl, useUploadFile } from "@/hooks/use-files";
 import { errorMessage } from "@/lib/api-error";
-import type {
-  CreateTransactionInput,
-  Stage,
-  Transaction,
-  TransactionCategoryInfo,
-} from "@/lib/project-types";
+import { currencySymbol } from "@/lib/formatters";
+import { proofError } from "@/lib/photo-proof";
+import { cn } from "@/lib/utils";
+import type { CreateTransactionInput, Transaction, TransactionCategoryInfo } from "@/lib/project-types";
+import { ExpenseFlagFields, ExpenseProofField, ExpenseReceiptField } from "./expense-form-fields";
 
-export const expenseInputClass = INPUT_CLASS;
-const textareaClass = cn(INPUT_CLASS, "h-auto min-h-24 resize-y py-3");
+const MANAGE_CATEGORIES = "__manage__";
+const TEXTAREA_CLASS = cn(DRAWER_FIELD_CLASS, "h-[132px] resize-none py-[16px]");
 
 interface TransactionFormValues {
   title: string;
@@ -35,8 +28,6 @@ interface TransactionFormValues {
   recoverable: boolean;
 }
 
-const NO_STAGE = "__none__";
-
 const EMPTY_FORM: TransactionFormValues = {
   title: "",
   description: "",
@@ -51,76 +42,67 @@ const EMPTY_FORM: TransactionFormValues = {
   recoverable: false,
 };
 
-export function CategoryBadge({ categoryLabel, categoryColor }: { categoryLabel: string; categoryColor: string | null }) {
-  const hex = categoryColor || "#6B7280";
+function valuesOf(initial: Transaction | null | undefined): TransactionFormValues {
+  if (!initial) return { ...EMPTY_FORM };
+  return {
+    title: initial.title,
+    description: initial.description ?? "",
+    category: initial.category,
+    amount: initial.amount.toString(),
+    transactedAt: initial.transactedAt.split("T")[0] || "",
+    vendor: initial.vendor ?? "",
+    reference: initial.reference ?? "",
+    receiptFileId: initial.receiptFileId ?? "",
+    stageId: initial.stageId ?? "",
+    credit: initial.credit,
+    recoverable: initial.recoverable,
+  };
+}
+
+function Field({ label, htmlFor, optional, children }: { label: string; htmlFor?: string; optional?: boolean; children: ReactNode }) {
   return (
-    <span
-      className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
-      style={{ backgroundColor: `${hex}26`, color: hex }}
-    >
-      {categoryLabel}
-    </span>
+    <div className="flex min-w-0 flex-col gap-[5px]">
+      <label htmlFor={htmlFor} className={DRAWER_LABEL_CLASS}>
+        {label}
+        {optional ? <span className="font-normal text-[#737373]"> (optional)</span> : null}
+      </label>
+      {children}
+    </div>
   );
 }
 
-CategoryBadge.displayName = "CategoryBadge";
+Field.displayName = "Field";
 
-export function toStageItems(stages: Stage[]): ComboItem[] {
-  return [
-    { id: NO_STAGE, label: "No stage" },
-    ...stages.map((s) => ({ id: s.id, label: s.name })),
-  ];
-}
-
-export function toCategoryItems(categories: TransactionCategoryInfo[]): ComboItem[] {
-  return categories.map((c) => ({
-    id: c.key,
-    label: c.label,
-    group: c.type === "preset" ? "Presets" : "Custom",
-  }));
-}
-
-export function UpsertTransactionDialog({
-  projectId,
-  currency,
-  initial,
-  categories,
-  onClose,
-  onManageCategories,
-}: {
+interface UpsertTransactionDialogProps {
   projectId: string;
   currency: string;
   initial?: Transaction | null;
   categories: TransactionCategoryInfo[];
   onClose: () => void;
   onManageCategories: () => void;
-}) {
+}
+
+/**
+ * Record or edit one expense: a logged outlay with its receipt, never a payment
+ * the system makes. The build stage an expense was attributed to is not on the
+ * form; an edit keeps whatever the record already carries.
+ *
+ * Photo proof is picked and validated but not sent: the API has no field for it
+ * (docs/expenses-backend.md). Credit / refund and Recoverable deposit are set
+ * when the expense is recorded and are not offered on edit.
+ */
+export function UpsertTransactionDialog({ projectId, currency, initial, categories, onClose, onManageCategories }: UpsertTransactionDialogProps) {
   const isEdit = Boolean(initial);
-  const stageFieldId = useId();
-  const [values, setValues] = useState<TransactionFormValues>(() => {
-    if (!initial) return { ...EMPTY_FORM };
-    return {
-      title: initial.title,
-      description: initial.description ?? "",
-      category: initial.category,
-      amount: initial.amount.toString(),
-      transactedAt: initial.transactedAt.split("T")[0] || "",
-      vendor: initial.vendor ?? "",
-      reference: initial.reference ?? "",
-      receiptFileId: initial.receiptFileId ?? "",
-      stageId: initial.stageId ?? "",
-      credit: initial.credit,
-      recoverable: initial.recoverable,
-    };
-  });
+  const [values, setValues] = useState<TransactionFormValues>(() => valuesOf(initial));
+  const [receiptName, setReceiptName] = useState<string | null>(initial?.receiptFileId ? "Receipt attached" : null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [proof, setProof] = useState<File | null>(null);
+  const [proofProblem, setProofProblem] = useState<string | null>(null);
 
   const create = useCreateTransaction(projectId);
   const update = useUpdateTransaction(projectId);
   const uploadFile = useUploadFile();
-  const { data: stages = [] } = useStages(projectId);
-  const stageItems = useMemo(() => toStageItems(stages), [stages]);
   const mutation = isEdit ? update : create;
 
   useEffect(() => {
@@ -129,21 +111,24 @@ export function UpsertTransactionDialog({
     }
   }, [initial?.receiptFileId]);
 
-  const categoryItems = useMemo(() => {
-    const items = toCategoryItems(categories);
-    items.push({ id: "__manage__", label: "+ New category…", group: "Actions" });
-    return items;
-  }, [categories]);
+  const categoryOptions = useMemo(
+    () => [...categories.map((c) => ({ value: c.key, label: c.label })), { value: MANAGE_CATEGORIES, label: "+ New category…" }],
+    [categories],
+  );
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  function patch(next: Partial<TransactionFormValues>): void {
+    setValues((prev) => ({ ...prev, ...next }));
+  }
+
+  async function handleReceipt(files: FileList): Promise<void> {
+    const file = files[0];
     if (!file) return;
     setUploadProgress(0);
     try {
       const res = await uploadFile.mutateAsync({ file, projectId, onProgress: setUploadProgress });
-      setValues((prev) => ({ ...prev, receiptFileId: res.id }));
-      const url = await resolveFileUrl(res.id);
-      setReceiptUrl(url);
+      patch({ receiptFileId: res.id });
+      setReceiptName(file.name);
+      setReceiptUrl(await resolveFileUrl(res.id));
     } catch (err) {
       console.error(err);
     } finally {
@@ -151,7 +136,15 @@ export function UpsertTransactionDialog({
     }
   }
 
-  function handleSubmit() {
+  function handleProof(files: FileList): void {
+    const file = files[0];
+    if (!file) return;
+    const problem = proofError(file);
+    setProofProblem(problem);
+    setProof(problem ? null : file);
+  }
+
+  function handleSubmit(): void {
     const payload: CreateTransactionInput = {
       title: values.title,
       description: values.description || null,
@@ -165,7 +158,6 @@ export function UpsertTransactionDialog({
       credit: values.credit,
       recoverable: values.recoverable,
     };
-
     if (isEdit && initial) {
       update.mutate({ transactionId: initial.id, body: payload }, { onSuccess: onClose });
     } else {
@@ -176,135 +168,106 @@ export function UpsertTransactionDialog({
   // An expense is an outlay, so a negative figure is never what the user
   // means — money coming back is a credit, which is a flag on the record, not
   // a minus sign the mask would swallow anyway. The API refuses it too.
-  const amountValue = Number(values.amount);
-  const isNegative = values.amount.trim().startsWith("-") || amountValue < 0;
-  const isValid = Boolean(
-    values.title && values.category && values.amount && values.transactedAt && !isNegative,
-  );
-  const formError = isNegative
-    ? "An expense cannot be negative — record a refund or credit note instead by turning on Credit / refund."
-    : mutation.error
-      ? errorMessage(mutation.error)
-      : null;
+  const isNegative = values.amount.trim().startsWith("-") || Number(values.amount) < 0;
+  const isValid = Boolean(values.title && values.category && values.amount && values.transactedAt && !isNegative);
+  const negativeMessage = isEdit
+    ? "An expense cannot be negative."
+    : "An expense cannot be negative — record a refund or credit note instead by turning on Credit / refund.";
+  const formError = isNegative ? negativeMessage : mutation.error ? errorMessage(mutation.error) : null;
 
   return (
     <FormDrawer
       open
       onOpenChange={(open) => !open && onClose()}
-      title={isEdit ? "Edit expense" : "Record expense"}
-      submitLabel={isEdit ? "Save changes" : "Save entry"}
+      title={isEdit ? "Edit Expenses" : "Record Expenses"}
+      submitLabel="Save Entry"
       submitting={mutation.isPending || uploadProgress !== null}
       submitDisabled={!isValid || uploadProgress !== null}
       error={formError}
       onSubmit={handleSubmit}
+      footerVariant="stacked"
+      className="w-[min(430px,100vw)]"
+      titleClassName="text-[20px] leading-[28px] tracking-normal"
+      headerClassName="px-[24px] pb-[23px] pt-[40px]"
+      bodyClassName="gap-[19px] px-[24px] py-0"
+      footerClassName="gap-[3px] px-[24px] pb-[17px] pt-6 [&>button]:h-[46px]"
     >
-      <div className="space-y-5">
-        <div className="space-y-2">
-          <Label>Title *</Label>
-          <input
-            className={expenseInputClass}
-            value={values.title}
-            onChange={(e) => setValues({ ...values, title: e.target.value })}
-            placeholder="e.g. Concrete mix"
-          />
-        </div>
+      <Field label="Title" htmlFor="expense-title">
+        <input
+          id="expense-title"
+          className={DRAWER_FIELD_CLASS}
+          value={values.title}
+          onChange={(e) => patch({ title: e.target.value })}
+          placeholder="e.g. Concrete mix"
+        />
+      </Field>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Amount *</Label>
-            <MoneyInput
-              value={values.amount}
-              onChange={(raw) => setValues({ ...values, amount: raw })}
-              currencySymbol={currencySymbol(currency)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Date *</Label>
-            <input
-              type="date"
-              className={expenseInputClass}
-              value={values.transactedAt}
-              onChange={(e) => setValues({ ...values, transactedAt: e.target.value })}
-            />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-[16px]">
+        <Field label="Amount" htmlFor="expense-amount">
+          <CurrencyAmountField id="expense-amount" value={values.amount} onChange={(amount) => patch({ amount })} currency={currency} symbol={currencySymbol(currency)} />
+        </Field>
+        <Field label="Date" htmlFor="expense-date">
+          <input id="expense-date" type="date" className={DRAWER_FIELD_CLASS} value={values.transactedAt} onChange={(e) => patch({ transactedAt: e.target.value })} />
+        </Field>
+      </div>
 
-        <div className="space-y-2">
-          <Label>Category *</Label>
-          <ComboSelect
-            items={categoryItems}
-            value={values.category}
-            onChange={(val) => {
-              if (val === "__manage__") {
-                onManageCategories();
-              } else if (val) {
-                setValues({ ...values, category: val });
-              }
-            }}
-            placeholder="Select category"
-          />
-        </div>
+      <Field label="Category" htmlFor="expense-category">
+        <Select
+          id="expense-category"
+          options={categoryOptions}
+          value={values.category || null}
+          onChange={(value) => (value === MANAGE_CATEGORIES ? onManageCategories() : value ? patch({ category: value }) : undefined)}
+          placeholder="Select category"
+          className="h-[45px] px-[16px] text-caption-l"
+          iconClassName="text-[#A3A3A3]"
+        />
+      </Field>
 
-        <div className="space-y-2">
-          <Label htmlFor={stageFieldId}>Build stage</Label>
-          <ComboSelect
-            id={stageFieldId}
-            items={stageItems}
-            value={values.stageId || NO_STAGE}
-            onChange={(val) => setValues({ ...values, stageId: val && val !== NO_STAGE ? val : "" })}
-            placeholder="Attribute to a build stage"
-          />
-        </div>
+      <div className="grid grid-cols-2 gap-[16px]">
+        <Field label="Vendor" htmlFor="expense-vendor">
+          <input id="expense-vendor" className={DRAWER_FIELD_CLASS} value={values.vendor} onChange={(e) => patch({ vendor: e.target.value })} placeholder="e.g. BuildMart" />
+        </Field>
+        <Field label="Reference / Invoice #" htmlFor="expense-reference">
+          <input id="expense-reference" className={DRAWER_FIELD_CLASS} value={values.reference} onChange={(e) => patch({ reference: e.target.value })} placeholder="e.g. INV-0034" />
+        </Field>
+      </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Vendor</Label>
-            <input
-              className={expenseInputClass}
-              value={values.vendor}
-              onChange={(e) => setValues({ ...values, vendor: e.target.value })}
-              placeholder="e.g. BuildMart"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Reference / Invoice #</Label>
-            <input
-              className={expenseInputClass}
-              value={values.reference}
-              onChange={(e) => setValues({ ...values, reference: e.target.value })}
-              placeholder="e.g. INV-1234"
-            />
-          </div>
-        </div>
+      <Field label="Description" htmlFor="expense-description" optional>
+        <textarea
+          id="expense-description"
+          className={TEXTAREA_CLASS}
+          value={values.description}
+          onChange={(e) => patch({ description: e.target.value })}
+          placeholder="What was this spend for?"
+        />
+      </Field>
 
-        <div className="space-y-2">
-          <Label>Description</Label>
-          <textarea
-            className={textareaClass}
-            value={values.description}
-            onChange={(e) => setValues({ ...values, description: e.target.value })}
-            placeholder="Additional details..."
-          />
+      {isEdit ? null : (
+        <div className="mt-[4px]">
+          <ExpenseProofField file={proof} problem={proofProblem} onFiles={handleProof} onClear={() => setProof(null)} />
         </div>
+      )}
 
+      {isEdit ? null : (
         <ExpenseFlagFields
           credit={values.credit}
           recoverable={values.recoverable}
-          onCreditChange={(next) => setValues({ ...values, credit: next })}
-          onRecoverableChange={(next) => setValues({ ...values, recoverable: next })}
+          onCreditChange={(credit) => patch({ credit })}
+          onRecoverableChange={(recoverable) => patch({ recoverable })}
         />
+      )}
 
-        <ExpenseReceiptField
-          receiptUrl={receiptUrl}
-          hasReceipt={Boolean(values.receiptFileId)}
-          uploadProgress={uploadProgress}
-          onClear={() => {
-            setValues({ ...values, receiptFileId: "" });
-            setReceiptUrl(null);
-          }}
-          onPick={handleFile}
-        />
-      </div>
+      <ExpenseReceiptField
+        receiptName={values.receiptFileId ? receiptName : null}
+        receiptUrl={receiptUrl}
+        uploadProgress={uploadProgress}
+        onFiles={(files) => void handleReceipt(files)}
+        onClear={() => {
+          patch({ receiptFileId: "" });
+          setReceiptName(null);
+          setReceiptUrl(null);
+        }}
+      />
     </FormDrawer>
   );
 }

@@ -8,16 +8,17 @@ interface UnitInputProps {
   disabled?: boolean;
   id?: string;
   "aria-label"?: string;
+  placeholder?: string;
 }
 
-export function UnitInput({ value, onChange, className, disabled, id }: UnitInputProps) {
+export function UnitInput({ value, onChange, className, disabled, id, placeholder = "Select or type unit…" }: UnitInputProps) {
   return (
     <ComboInput
       id={id}
       items={CONSTRUCTION_UNITS}
       value={value || null}
       onChange={(v) => onChange(v ?? "")}
-      placeholder="Select or type unit…"
+      placeholder={placeholder}
       emptyText="Press to use a custom unit."
       className={className}
       disabled={disabled}

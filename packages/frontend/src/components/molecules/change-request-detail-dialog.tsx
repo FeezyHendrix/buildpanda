@@ -76,7 +76,7 @@ function ImpactCells({ cr }: { cr: ChangeRequestDetail }) {
   );
 }
 
-function Discussion({ projectId, cr }: { projectId: string; cr: ChangeRequestDetail }) {
+export function Discussion({ projectId, cr }: { projectId: string; cr: ChangeRequestDetail }) {
   const addComment = useAddChangeComment();
   const [comment, setComment] = useState("");
 
@@ -127,7 +127,7 @@ function Discussion({ projectId, cr }: { projectId: string; cr: ChangeRequestDet
   );
 }
 
-function ReasonValue({ cr }: { cr: ChangeRequestDetail }): ReactNode {
+export function ReasonValue({ cr }: { cr: ChangeRequestDetail }): ReactNode {
   if (cr.reasonHtml) {
     return (
       <div

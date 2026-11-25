@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { Button } from "@/components/atoms/button";
 import { CreateButton } from "@/components/molecules/create-button";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,7 @@ interface EmptyStateProps {
    */
   action?: EmptyStateAction | ReactNode;
   /**
-   * `page` centres the block in the content area below the header (list pages)
+   * `page` centres the block, horizontally and vertically, in the space below the header (list pages)
    * over a faded grid; `inline` sits compactly inside a table cell, card or panel.
    */
   variant?: "page" | "inline";
@@ -32,13 +33,16 @@ interface EmptyStateProps {
 }
 
 const VARIANT_CLASSES: Record<NonNullable<EmptyStateProps["variant"]>, string> = {
-  page: "min-h-[360px] justify-center py-10",
+  page: "min-h-[max(360px,calc(100dvh-8rem))] justify-center py-10",
   inline: "py-6",
 };
 
 /** The faded grid behind a page-level empty state: hairlines that dissolve away from the centre. */
 const GRID_BACKDROP =
   "pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,var(--color-line)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-line)_1px,transparent_1px)] bg-[size:32px_32px] bg-center [mask-image:radial-gradient(ellipse_55%_60%_at_center,black_0%,transparent_100%)]";
+
+/** "Clear filters", "Reset", "Retry" undo or repeat something; they are not creating anything, so they get no plus. */
+const NON_CREATE_LABEL = /^(clear|reset|retry|try)\b/i;
 
 function isActionObject(action: EmptyStateAction | ReactNode): action is EmptyStateAction {
   return typeof action === "object" && action !== null && "label" in action && "onClick" in action;
@@ -80,9 +84,15 @@ function EmptyState({ icon, illustration, title, description, action, variant = 
         {action ? (
           <div className="mt-4">
             {isActionObject(action) ? (
-              <CreateButton variant="secondary" size="sm" onClick={action.onClick} loading={action.loading}>
-                {action.label}
-              </CreateButton>
+              NON_CREATE_LABEL.test(action.label) ? (
+                <Button variant="primary" size="lg" onClick={action.onClick} loading={action.loading}>
+                  {action.label}
+                </Button>
+              ) : (
+                <CreateButton variant="primary" size="lg" onClick={action.onClick} loading={action.loading}>
+                  {action.label}
+                </CreateButton>
+              )
             ) : (
               action
             )}

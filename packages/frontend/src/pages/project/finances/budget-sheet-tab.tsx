@@ -1,13 +1,26 @@
 import { useCallback, useMemo, useState } from "react";
-import { KpiCard } from "@/components/molecules/kpi-card";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useStages } from "@/hooks/use-stages";
 import { formatCurrency } from "@/lib/formatters";
 import { Money } from "@/lib/money";
 import { canResourceAction, type Stage } from "@/lib/project-types";
 import { BillingSheet } from "./contract/billing-sheet";
+import { ExpensePanel } from "./expenses/expense-panel";
 import { ScheduleOfValuesDrawer } from "./schedule-of-values-drawer";
 import { StageValueDrawer } from "./stage-value-drawer";
+
+function SummaryCard({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <ExpensePanel title={label}>
+      <div className="px-[24px] pb-[22px] pt-[16px]">
+        <p className="truncate text-[24px] font-medium leading-[32px] tracking-[-0.02em] tabular-nums text-[#1E1E1E]">{value}</p>
+        <p className="mt-[4px] truncate text-caption-l text-[#737373]">{helper}</p>
+      </div>
+    </ExpensePanel>
+  );
+}
+
+SummaryCard.displayName = "SummaryCard";
 
 /**
  * Budget — the contract side of a build read phase by phase.
@@ -47,20 +60,16 @@ export function BudgetSheetTab() {
 
   return (
     <section aria-label="Budget">
-      <section aria-label="Contract summary" className="grid gap-4 sm:grid-cols-2">
-        <KpiCard
+      <section aria-label="Contract summary" className="grid gap-[24px] sm:grid-cols-2">
+        <SummaryCard
           label="Scheduled contract value"
           value={formatCurrency(totals.value.round().toNumber(), project.currency)}
-          helper="Across every phase on this build"
+          helper="For the selected build stage"
         />
-        <KpiCard
+        <SummaryCard
           label="Phases priced"
           value={`${totals.priced} of ${stages.length}`}
-          helper={
-            totals.unpriced > 0
-              ? `${totals.unpriced} still carry no value`
-              : "Every phase carries a value"
-          }
+          helper={totals.unpriced > 0 ? `${totals.unpriced} still carry no value` : "Every phase carries a value"}
         />
       </section>
 
@@ -74,7 +83,7 @@ export function BudgetSheetTab() {
         onOpenSchedule={setScheduleTarget}
       />
 
-      <p className="mt-3 text-xs text-ink-muted">
+      <p className="mt-[16px] text-[11px] leading-[16px] text-[#737373]">
         Each cell is the cumulative % of the phase reached by the end of that month; the amount
         beneath is what the month bills. Recorded, not transacted — BuildPanda logs money that
         moved off-platform.

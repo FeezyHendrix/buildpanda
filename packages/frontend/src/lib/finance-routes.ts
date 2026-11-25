@@ -2,7 +2,7 @@ import type { FeatureFlagKey } from "@/lib/feature-flags";
 
 /**
  * The finance section is an overview plus three tabbed pages under
- * `finances/*` (change orders live at `change-requests`). Each tab keeps the
+ * `finances/*`, beside the change-orders board at `finances/change-orders`. Each tab keeps the
  * feature flag its standalone page used to be gated by, so hiding a flag hides
  * the tab. The active tab lives in `?tab=` so links and reloads keep it; the
  * first tab of each page is the default and needs no query string.
@@ -20,7 +20,7 @@ export const FINANCE_OVERVIEW_PATH = "finances";
 export const CONTRACTS_PHASES_PATH = "finances/contracts-phases";
 export const EXPENSES_PATH = "finances/expenses";
 export const BUDGET_INVOICES_PATH = "finances/budget-invoices";
-export const CHANGE_ORDERS_PATH = "change-requests";
+export const CHANGE_ORDERS_PATH = "finances/change-orders";
 
 export const CONTRACTS_PHASES_TABS = [
   { id: "contracts", label: "Contracts", flag: "commercial.finances" },

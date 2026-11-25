@@ -19,18 +19,18 @@ import type {
  */
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, { label: string; hint: string }> = {
-  lump_sum: { label: "Lump sum", hint: "Fixed total price for a fully defined scope." },
-  cost_plus: { label: "Cost plus", hint: "Contractor bills cost + agreed fee or markup." },
+  lump_sum: { label: "Lump Sum", hint: "Fixed total price for a fully defined scope." },
+  cost_plus: { label: "Cost-Plus", hint: "Contractor bills cost + agreed fee or markup." },
   unit_rate: {
-    label: "Unit rate / re-measurement",
+    label: "Unit Rate / Re-measurement",
     hint: "Price per measured unit; final total known at completion.",
   },
-  gmp: { label: "Guaranteed maximum price", hint: "Cost-plus with a cap agreed up-front." },
+  gmp: { label: "Guaranteed Maximum Price", hint: "Cost-plus with a cap agreed up-front." },
   design_build: {
-    label: "Design–build",
+    label: "Design Build",
     hint: "Single party responsible for design and construction.",
   },
-  target_cost: { label: "Target cost", hint: "Shared pain/gain against an agreed target price." },
+  target_cost: { label: "Target Cost", hint: "Shared pain/gain against an agreed target price." },
 };
 
 export const RETENTION_MODE_LABELS: Record<RetentionReleaseMode, { label: string; hint: string }> = {

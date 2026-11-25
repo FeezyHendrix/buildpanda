@@ -16,9 +16,9 @@ import { OverviewCard, OverviewEmpty } from "./overview-cards";
  */
 
 const RANGES = [
-  { value: "6", label: "Last 6 months" },
-  { value: "12", label: "Last 12 months" },
-  { value: "all", label: "All time" },
+  { value: "6", label: "Last 6 Months" },
+  { value: "12", label: "Last 12 Months" },
+  { value: "all", label: "All Time" },
 ] as const;
 type Range = (typeof RANGES)[number]["value"];
 
@@ -69,16 +69,20 @@ export function windowPoints(points: SpendPoint[], range: Range): SpendPoint[] {
 }
 
 const SERIES = [
-  { key: "spent", label: "Spent", swatch: "bg-primary-500", stroke: "var(--color-primary-500)", dash: undefined },
-  { key: "budgeted", label: "Budgeted", swatch: "border border-dashed border-ink-muted", stroke: "var(--color-ink-muted)", dash: "4 4" },
+  { key: "spent", label: "Spent", swatch: "bg-[#004DE7]", stroke: "#004DE7", dash: undefined },
+  { key: "budgeted", label: "Budgeted", swatch: "bg-[#737373]", stroke: "#737373", dash: "4 4" },
 ] as const;
+
+/** Faint dashed rules behind the lines, as drawn in the design. */
+const GRID_STROKE = "#6B6B6B";
+const TICK = { fontSize: 12, fill: "#737373" } as const;
 
 function Legend() {
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-[24px]">
       {SERIES.map((series) => (
-        <span key={series.key} className="flex items-center gap-1.5 text-xs text-ink-muted">
-          <span aria-hidden="true" className={cn("size-2 rounded-full", series.swatch)} />
+        <span key={series.key} className="flex items-center gap-[8px] text-caption-m text-[#1E1E1E]">
+          <span aria-hidden="true" className={cn("size-[10px] rounded-full", series.swatch)} />
           {series.label}
         </span>
       ))}
@@ -134,21 +138,32 @@ export function SpendVsBudgetCard({ projectId, currency, points, budgetCurve, bu
 
   return (
     <OverviewCard
-      title="Spend vs budget"
+      title="Spend VS Budget"
       to={`/project/${projectId}/${BUDGET_INVOICES_PATH}`}
       linkLabel="Budget"
       className={className}
-      actions={<SimpleDropdown options={RANGES} value={range} onChange={setRange} ariaLabel="Period" />}
+      bodyClassName="pb-[22px] pt-[34px]"
+      actions={
+        <SimpleDropdown
+          options={RANGES}
+          value={range}
+          onChange={setRange}
+          ariaLabel="Period"
+          className="h-auto gap-[8px] rounded-none border-0 bg-transparent px-0 text-caption-l font-normal text-[#1E1E1E] hover:bg-transparent [&_svg]:size-[16px] [&_svg]:text-[#1E1E1E]"
+        />
+      }
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-xl font-semibold leading-tight text-ink">{formatCurrency(spentTotal, currency)}</p>
-        <p className="text-xs text-ink-muted">
-          spent of <span className="font-medium text-ink">{formatCurrency(budgetTotal, currency)}</span> budgeted
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <p className="flex flex-wrap items-baseline gap-x-[6px]">
+          <span className="text-caption-l font-semibold tabular-nums text-[#1E1E1E]">{formatCurrency(spentTotal, currency)}</span>
+          <span className="text-caption-m text-[#737373]">
+            spent of <span className="text-[#1E1E1E]">{formatCurrency(budgetTotal, currency)}</span> budgeted
+          </span>
         </p>
         <Legend />
       </div>
 
-      <div className="mt-3 h-[240px] w-full">
+      <div className="mt-[16px] h-[306px] w-full">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Spinner size="md" />
@@ -158,16 +173,16 @@ export function SpendVsBudgetCard({ projectId, currency, points, budgetCurve, bu
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="var(--color-line-hair)" />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--color-ink-muted)" }} tickLine={false} axisLine={false} dy={6} />
+              <CartesianGrid strokeDasharray="4 4" vertical={false} stroke={GRID_STROKE} strokeWidth={1} />
+              <XAxis dataKey="label" tick={TICK} tickLine={false} axisLine={false} dy={10} />
               <YAxis
                 tickFormatter={(value: number) => formatCompactCurrency(value, currency)}
-                tick={{ fontSize: 11, fill: "var(--color-ink-muted)" }}
+                tick={TICK}
                 tickLine={false}
                 axisLine={false}
                 width={64}
               />
-              <Tooltip content={<SpendTooltip currency={currency} />} cursor={{ stroke: "var(--color-line)" }} />
+              <Tooltip content={<SpendTooltip currency={currency} />} cursor={{ stroke: "#DDDDDD" }} />
               {SERIES.map((series) => (
                 <Line
                   key={series.key}

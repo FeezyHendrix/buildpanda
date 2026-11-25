@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { AwardDaysDialog } from "@/components/molecules/award-days-dialog";
 import { ReasonDialog } from "@/components/molecules/reason-dialog";
@@ -68,8 +68,9 @@ interface ChangeRequestActionsProps {
   /**
    * `row`: register-row buttons — green Approve, red Reject, outlined for the rest, silent once
    * executed. `modal`: the detail footer — equal-width, blue Approve, soft-red Reject.
+   * `sheet`: the wide detail sheet header — outlined secondary buttons, then the one forward action in blue.
    */
-  appearance?: "default" | "row" | "modal";
+  appearance?: "default" | "row" | "modal" | "sheet";
 }
 
 const COMPACT_STYLE: Partial<Record<ChangeAction, string>> = {
@@ -79,6 +80,7 @@ const COMPACT_OUTLINE = "border border-[#DDDDDD] bg-white text-[#1E1E1E] hover:b
 const MODAL_REJECT = "flex-1 bg-[#FEF2F2] text-[#E7000B] hover:bg-[#FEE2E2]";
 
 export function ChangeRequestActions({ projectId, cr, appearance = "default" }: ChangeRequestActionsProps) {
+  const sheet = appearance === "sheet";
   const compact = appearance === "row";
   const modal = appearance === "modal";
   const run = useChangeRequestAction();
@@ -107,6 +109,7 @@ export function ChangeRequestActions({ projectId, cr, appearance = "default" }: 
 
   if (available.length === 0) {
     if (compact) return null;
+    if (sheet) return null;
     return (
       <p className="text-xs text-ink-muted">
         This change is executed — the contract and the stage dates have already moved with it.
@@ -122,11 +125,36 @@ export function ChangeRequestActions({ projectId, cr, appearance = "default" }: 
   const inlineError =
     run.isError && reasonFor === null && !awarding ? getApiErrorMessage(run.error) : null;
 
+  // In the sheet the last action forward is the blue one; anything else is outlined.
+  const primaryAction = sheet ? available.find((action) => action !== "reject") : undefined;
+  const ordered = sheet ? [...available.filter((action) => action !== primaryAction), ...(primaryAction ? [primaryAction] : [])] : available;
+
   return (
     <>
-      <div className={cn("flex", !modal && "flex-wrap", compact || modal ? "gap-[8px]" : "gap-2")}>
-        {available.map((action) => {
+      <div className={cn("flex", !modal && "flex-wrap", sheet && "items-center gap-[8px]", !sheet && (compact || modal ? "gap-[8px]" : "gap-2"))}>
+        {ordered.map((action) => {
           const meta = ACTION_META[action];
+          if (sheet) {
+            const isPrimary = action === primaryAction;
+            return (
+              <Fragment key={action}>
+                <Button
+                  type="button"
+                  variant={isPrimary ? "primary" : "outline"}
+                  size="lg"
+                  className={isPrimary ? "h-[40px] min-w-[114px] px-[24px]" : "h-[40px] min-w-[97px] border border-[#E0E0E0] px-[24px]"}
+                  loading={run.isPending && reasonFor === null && !awarding}
+                  onClick={() => {
+                    if (meta.reason) setReasonFor(action);
+                    else if (action === "approve" && isTimeClaim) setAwarding(true);
+                    else perform(action);
+                  }}
+                >
+                  {action === "approve" && isTimeClaim ? "Approve and award days" : meta.label}
+                </Button>
+              </Fragment>
+            );
+          }
           return (
             <Button
               key={action}

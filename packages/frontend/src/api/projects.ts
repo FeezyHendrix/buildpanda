@@ -18,6 +18,9 @@ export interface ProjectTemplateSummary {
   stageCount: number;
   taskCount: number;
   totalWeeks: number;
+  /** Shortest and longest realistic duration; the card shows "46 - 138 Weeks" once the API sends them. */
+  minWeeks?: number;
+  maxWeeks?: number;
   stages: Array<{ name: string; durationWeeks: number; dateRange: string }>;
 }
 

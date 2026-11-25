@@ -6,7 +6,7 @@ import { Table, TableBody, TableEmptyRow, TableHead } from "@/components/atoms/t
 import { EmptyState } from "@/components/molecules/empty-state";
 import { useContracts } from "@/hooks/use-contracts";
 import { useProjectFinances, useStageCosts } from "@/hooks/use-finances";
-import { useProjectScheduleOfValues, useStages } from "@/hooks/use-stages";
+import { useProjectScheduleOfValues, useReorderStages, useStages } from "@/hooks/use-stages";
 import type { Currency, Stage } from "@/lib/project-types";
 import { AddMonthButton } from "./add-month-button";
 import { BillingSheetGroupEmpty, BillingSheetGroupHeader } from "./billing-sheet-group";
@@ -134,23 +134,53 @@ export function BillingSheet({
   }, []);
 
   const columnCount = FIXED_COLUMNS + periods.length - (showCosts ? 0 : COST_COLUMNS);
+  // Fixed columns are 56 + 185 + 126 + 141 per money column + 141 (To date) + 44; each month adds 150.
+  const tableWidth = 56 + 185 + 126 + 141 * (showCosts ? 4 : 1) + 141 + 44 + 150 * periods.length;
+
+  // Dropping a phase on another moves it to that place in the build order. Only within a contract group, so a change order's phases stay together.
+  const reorderStages = useReorderStages();
+  const handleReorder = useCallback(
+    (draggedId: string, targetId: string) => {
+      const from = stages.findIndex((stage) => stage.id === draggedId);
+      const to = stages.findIndex((stage) => stage.id === targetId);
+      if (from < 0 || to < 0 || from === to) return;
+      const ids = stages.map((stage) => stage.id).filter((id) => id !== draggedId);
+      ids.splice(ids.indexOf(targetId) + (from < to ? 1 : 0), 0, draggedId);
+      reorderStages.mutate({ projectId, stageIds: ids }, { onError: (error) => toast(getApiErrorMessage(error), "error") });
+    },
+    [stages, projectId, reorderStages],
+  );
 
   return (
     <>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="w-full rounded-lg bg-surface-alt lg:max-w-md">
+      <div className="mt-[40px] flex flex-wrap items-center justify-between gap-3">
+        <div className="w-full border border-[#EEEEEE] bg-white sm:max-w-[396px]">
           <SearchInput
             value={search}
             onChange={handleSearch}
-            placeholder="Search phases"
+            placeholder="Search Phases"
             aria-label="Search phases"
+            className="h-[34px] rounded-none pl-[44px] text-caption-l placeholder:text-[#A3A3A3] lg:text-caption-l"
           />
         </div>
         {canBill ? <AddMonthButton periods={periods} onAdd={addPeriod} /> : null}
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-grey-50 bg-white">
-        <Table className="min-w-[1100px]">
+      <div className="mt-[16px] overflow-x-auto border border-[#EEEEEE] bg-white">
+        <Table className="table-fixed" style={{ minWidth: tableWidth }}>
+          <colgroup>
+            <col style={{ width: 56 }} />
+            <col style={{ width: 185 }} />
+            <col style={{ width: 126 }} />
+            {Array.from({ length: showCosts ? 4 : 1 }, (_, index) => (
+              <col key={`money-${index}`} style={{ width: 141 }} />
+            ))}
+            {periods.map((period) => (
+              <col key={period} style={{ width: 150 }} />
+            ))}
+            <col style={{ width: 141 }} />
+            <col style={{ width: 44 }} />
+          </colgroup>
           <TableHead>
             <BillingSheetHeader
               projectId={projectId}
@@ -197,10 +227,10 @@ export function BillingSheet({
                       canBill={canBill}
                       certified={invoiced}
                       showCosts={showCosts}
-                      hasCosts={costs !== undefined}
                       columnCount={columnCount}
                       onEditValue={onEditValue}
                       onOpenSchedule={onOpenSchedule}
+                      onReorder={canManage ? handleReorder : undefined}
                     />
                   );
                 })}
@@ -240,10 +270,10 @@ interface GroupRowsProps {
   canBill: boolean;
   certified: Set<string>;
   showCosts: boolean;
-  hasCosts: boolean;
   columnCount: number;
   onEditValue: (stage: Stage) => void;
   onOpenSchedule: (stage: Stage) => void;
+  onReorder?: (draggedId: string, targetId: string) => void;
 }
 
 function GroupRows({
@@ -257,16 +287,15 @@ function GroupRows({
   canBill,
   certified,
   showCosts,
-  hasCosts,
   columnCount,
   onEditValue,
   onOpenSchedule,
+  onReorder,
 }: GroupRowsProps) {
   return (
     <>
       <BillingSheetGroupHeader
         label={group.label}
-        count={group.rows.length}
         open={open}
         onToggle={onToggle}
         trailingColumns={columnCount - 2}
@@ -288,12 +317,10 @@ function GroupRows({
               showCosts={showCosts}
               onEditValue={onEditValue}
               onOpenSchedule={onOpenSchedule}
+              onReorder={onReorder}
             />
           ))
         : null}
-      {open && group.rows.length > 0 ? (
-        <BillingSheetTotals label="Subtotal" totals={group.totals} periods={periods} currency={currency} hasCosts={hasCosts} showCosts={showCosts} />
-      ) : null}
     </>
   );
 }

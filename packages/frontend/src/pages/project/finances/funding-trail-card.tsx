@@ -1,4 +1,3 @@
-import { Card } from "@/components/atoms/card";
 import { useFinanceEvents } from "@/hooks/use-finances";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
 import { Spinner } from "@/components/atoms/spinner";
@@ -20,79 +19,57 @@ const EVENT_STYLES: Record<FinanceEventType, { dot: string; bg: string }> = {
   cash_flow_entry: { dot: "bg-accent-500", bg: "bg-accent-50" },
 };
 
+/** A ring tinted by the kind of event, so a deposit and a release read apart at a glance. */
 function EventIcon({ type }: { type: FinanceEventType }) {
   const styles = EVENT_STYLES[type];
   return (
-    <div
-      className={cn(
-        "z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-        styles.bg,
-      )}
-    >
-      <div className={cn("h-2.5 w-2.5 rounded-full", styles.dot)} />
-    </div>
+    <span aria-hidden="true" className={cn("flex size-[24px] shrink-0 items-center justify-center rounded-full", styles.bg)}>
+      <span className={cn("size-[8px] rounded-full", styles.dot)} />
+    </span>
   );
 }
 
-export function FundingTrailCard({
-  projectId,
-  currency,
-}: FundingTrailCardProps) {
+/**
+ * The log of every funding action on the project, newest first: what was done,
+ * by whom, how much and when. It is an audit trail, so nothing here can be
+ * edited, only read.
+ */
+export function FundingTrailCard({ projectId, currency }: FundingTrailCardProps) {
   const { data: events, isPending } = useFinanceEvents(projectId);
 
   return (
-    <Card padding="md">
-      <div className="mb-3">
-        <h3 className="text-[13px] font-semibold text-black-300">Funding trail</h3>
-        <p className="mt-0.5 text-xs text-ink-muted">Every recorded funding action on this project.</p>
-      </div>
+    <section aria-label="Funding trail" className="flex min-w-0 flex-col border border-[#EEEEEE] bg-white">
+      <header className="px-[24px] pb-[8px] pt-[14px]">
+        <h3 className="text-caption-l font-medium text-[#1E1E1E]">Funding Trail</h3>
+        <p className="text-caption-m text-[#737373]">A log of every recorded funding action on this project.</p>
+      </header>
 
-      <div className="relative">
-        {isPending ? (
-          <div className="flex h-32 items-center justify-center">
-            <Spinner size="md" />
-          </div>
-        ) : !events || events.length === 0 ? (
-          <div className="flex h-32 items-center justify-center text-sm text-ink-muted">
-            No funding activity logged yet.
-          </div>
-        ) : (
-          <div className="relative">
-            <div className="absolute bottom-0 left-4 top-0 w-px bg-line-hair" />
-
-            <div className="space-y-4">
-              {events.map((event) => (
-                <div key={event.id} className="relative flex items-start gap-4">
-                  <EventIcon type={event.type} />
-                  <div className="flex-1 pt-1">
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                      <div>
-                        <p className="text-sm font-medium text-ink">
-                          {event.summary}
-                        </p>
-                        <p className="mt-0.5 text-xs text-ink-muted">
-                          by {event.actor.name}
-                        </p>
-                      </div>
-                      <div className="flex flex-col sm:items-end">
-                        {event.amount !== null && (
-                          <p className="text-sm font-semibold text-ink">
-                            {formatCurrency(event.amount, currency)}
-                          </p>
-                        )}
-                        <p className="mt-0.5 text-xs text-ink-muted">
-                          {formatShortDate(event.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </Card>
+      {isPending ? (
+        <div className="flex h-32 items-center justify-center">
+          <Spinner size="md" />
+        </div>
+      ) : !events || events.length === 0 ? (
+        <p className="flex h-32 items-center justify-center text-caption-l text-[#737373]">No funding activity logged yet.</p>
+      ) : (
+        <ul className="divide-y divide-[#EEEEEE] px-[24px] pb-[8px]">
+          {events.map((event) => (
+            <li key={event.id} className="flex min-h-[72px] items-center gap-[16px] py-[10px]">
+              <EventIcon type={event.type} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-caption-l text-[#1E1E1E]">{event.summary}</p>
+                <p className="text-caption-m text-[#737373]">by {event.actor.name}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                {event.amount !== null ? (
+                  <p className="text-caption-l tabular-nums text-[#1E1E1E]">{formatCurrency(event.amount, currency)}</p>
+                ) : null}
+                <p className="text-caption-m text-[#737373]">{formatShortDate(event.createdAt)}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

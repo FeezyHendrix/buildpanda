@@ -7,7 +7,10 @@ import { formatCurrency } from "@/lib/formatters";
 import type { Currency } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { formatPeriodHeading, isForecastPeriod, type SheetTotals } from "./billing-sheet-model";
-import { STICKY_INDEX, STICKY_STAGE } from "./billing-sheet-row";
+import { SHEET_CELL, STICKY_INDEX, STICKY_STAGE } from "./billing-sheet-row";
+
+/** The compact header: 12px, flush left to its column, 45px tall, as designed. */
+const HEAD = "h-[45px] p-0 pr-[16px] text-caption-m font-medium normal-case text-[#525252]";
 
 /**
  * Header and totals rows of the billing sheet; both track the month columns.
@@ -46,7 +49,7 @@ function PeriodHeading({
   const label = formatPeriodHeading(period);
 
   return (
-    <TableHeaderCell scope="col" align="right" className="min-w-[150px] px-3">
+    <TableHeaderCell scope="col" align="right" className="min-w-[150px] px-3 py-1 text-caption-m font-medium normal-case text-[#525252]">
       <div className="flex items-start justify-end gap-1.5">
         <div className="flex flex-col items-end gap-1">
           <span className="whitespace-nowrap">{label}</span>
@@ -102,15 +105,17 @@ export function BillingSheetHeader({
 }: BillingSheetHeaderProps) {
   return (
     <tr>
-      <TableHeaderCell scope="col" className={cn(STICKY_INDEX, "bg-surface-alt")} />
-      <TableHeaderCell scope="col" className={cn(STICKY_STAGE, "bg-surface-alt")}>Stage</TableHeaderCell>
-      <TableHeaderCell scope="col">Claim state</TableHeaderCell>
-      <TableHeaderCell scope="col" align="right">Scheduled value</TableHeaderCell>
+      <TableHeaderCell scope="col" className={cn(STICKY_INDEX, HEAD, "bg-[#F6F6F6]")}>
+        <span className="sr-only">Reorder</span>
+      </TableHeaderCell>
+      <TableHeaderCell scope="col" className={cn(STICKY_STAGE, HEAD, "bg-[#F6F6F6]")}>Build Stages</TableHeaderCell>
+      <TableHeaderCell scope="col" className={HEAD}>Claim state</TableHeaderCell>
+      <TableHeaderCell scope="col" className={HEAD}>Scheduled value</TableHeaderCell>
       {showCosts ? (
         <>
-          <TableHeaderCell scope="col" align="right">Committed</TableHeaderCell>
-          <TableHeaderCell scope="col" align="right">Actual</TableHeaderCell>
-          <TableHeaderCell scope="col" align="right" title="Scheduled value less actual cost">Variance</TableHeaderCell>
+          <TableHeaderCell scope="col" className={HEAD}>Committed</TableHeaderCell>
+          <TableHeaderCell scope="col" className={HEAD}>Actual</TableHeaderCell>
+          <TableHeaderCell scope="col" className={HEAD} title="Scheduled value less actual cost">Variance</TableHeaderCell>
         </>
       ) : null}
       {periods.map((period) => (
@@ -123,8 +128,10 @@ export function BillingSheetHeader({
           onRemovePeriod={onRemovePeriod}
         />
       ))}
-      <TableHeaderCell scope="col" align="right" className="whitespace-nowrap bg-primary-50">To date</TableHeaderCell>
-      <TableHeaderCell scope="col" align="right">Actions</TableHeaderCell>
+      <TableHeaderCell scope="col" className={cn(HEAD, "whitespace-nowrap")}>To date</TableHeaderCell>
+      <TableHeaderCell scope="col" className={HEAD}>
+        <span className="sr-only">Actions</span>
+      </TableHeaderCell>
     </tr>
   );
 }
@@ -141,40 +148,32 @@ interface BillingSheetTotalsProps {
   label?: string;
 }
 
-const DASH = <span className="font-normal text-ink-muted">—</span>;
+const DASH = <span className="text-[#737373]">—</span>;
 
 export function BillingSheetTotals({ totals, periods, currency, hasCosts, showCosts, label = "Total" }: BillingSheetTotalsProps) {
+  const cell = cn(SHEET_CELL, "whitespace-nowrap tabular-nums");
   return (
-    <TableRow tone="total">
-      <TableCell className={cn(STICKY_INDEX, "bg-surface-alt")} />
-      <TableCell className={cn(STICKY_STAGE, "bg-surface-alt")}>{label}</TableCell>
-      <TableCell />
-      <TableCell align="right" className="whitespace-nowrap tabular-nums">{formatCurrency(totals.scheduled, currency)}</TableCell>
+    <TableRow className="h-[50px] border-[#EEEEEE] bg-[#F6F6F6]">
+      <TableCell className={cn(STICKY_INDEX, SHEET_CELL, "bg-[#F6F6F6]")} />
+      <TableCell className={cn(STICKY_STAGE, SHEET_CELL, "bg-[#F6F6F6] font-semibold")}>{label}</TableCell>
+      <TableCell className={SHEET_CELL} />
+      <TableCell className={cell}>{formatCurrency(totals.scheduled, currency)}</TableCell>
       {showCosts ? (
         <>
-          <TableCell align="right" className="whitespace-nowrap tabular-nums">{hasCosts ? formatCurrency(totals.committed, currency) : DASH}</TableCell>
-          <TableCell align="right" className="whitespace-nowrap tabular-nums">{hasCosts ? formatCurrency(totals.actual, currency) : DASH}</TableCell>
-          <TableCell align="right" className={cn("whitespace-nowrap tabular-nums", hasCosts && totals.variance < 0 && "text-negative-600")}>
+          <TableCell className={cell}>{hasCosts ? formatCurrency(totals.committed, currency) : DASH}</TableCell>
+          <TableCell className={cell}>{hasCosts ? formatCurrency(totals.actual, currency) : DASH}</TableCell>
+          <TableCell className={cn(cell, hasCosts && totals.variance < 0 && "text-negative-600")}>
             {hasCosts ? formatCurrency(totals.variance, currency) : DASH}
           </TableCell>
         </>
       ) : null}
       {periods.map((period) => (
-        <TableCell
-          key={period}
-          align="right"
-          className={cn(
-            "whitespace-nowrap px-3 tabular-nums",
-            isForecastPeriod(period) && "font-normal italic text-ink-muted",
-          )}
-        >
+        <TableCell key={period} align="right" className={cn("h-[50px] whitespace-nowrap px-3 py-0 text-caption-l tabular-nums", isForecastPeriod(period) && "italic text-[#737373]")}>
           {formatCurrency(totals.byPeriod.get(period) ?? 0, currency)}
         </TableCell>
       ))}
-      <TableCell align="right" className="whitespace-nowrap bg-primary-50/60 tabular-nums">
-        {formatCurrency(totals.toDate, currency)}
-      </TableCell>
-      <TableCell />
+      <TableCell className={cell}>{formatCurrency(totals.toDate, currency)}</TableCell>
+      <TableCell className="p-0" />
     </TableRow>
   );
 }

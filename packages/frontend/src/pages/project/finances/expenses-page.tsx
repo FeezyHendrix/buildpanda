@@ -1,10 +1,11 @@
 import { FinancesIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { PageHeader } from "@/components/molecules/page-header";
+import { SectionTabs } from "@/components/molecules/section-tabs";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import { useProjectContext } from "@/layouts/project-layout";
 import { EXPENSES_TABS } from "@/lib/finance-routes";
 import { ExpensesTab } from "./expenses-tab";
-import { FinancePageFrame, FinanceTabBar, useFinanceTab } from "./finance-tabs";
+import { FinancePageFrame, useFinanceTab } from "./finance-tabs";
 import { PurchaseOrdersTab } from "./purchase-orders-tab";
 
 /**
@@ -16,6 +17,7 @@ import { PurchaseOrdersTab } from "./purchase-orders-tab";
  * they are party to — and gets the explanation rather than a page of 403s.
  */
 export default function ProjectExpensesPage() {
+  useSetPageTitle("Expenses", "Site spend logged with its receipt, and the purchase orders that commit spend first.");
   const { access } = useProjectContext();
   const { tab, setTab, visible } = useFinanceTab(EXPENSES_TABS);
   const canViewCosts = access?.capabilities?.canViewCosts ?? false;
@@ -23,7 +25,6 @@ export default function ProjectExpensesPage() {
   if (!canViewCosts) {
     return (
       <FinancePageFrame>
-        <PageHeader title="Expenses" />
         <EmptyState
           icon={<FinancesIcon />}
           title="Costs are not shared on this project"
@@ -33,14 +34,11 @@ export default function ProjectExpensesPage() {
     );
   }
 
+  const tabs = <SectionTabs items={visible} value={tab} onChange={setTab} ariaLabel="Expense sections" />;
+
   return (
-    <FinancePageFrame>
-      <PageHeader title="Expenses" />
-      <FinanceTabBar tabs={visible} value={tab} onChange={setTab} ariaLabel="Expense sections" />
-      <div className="mt-6">
-        {tab === "expenses" ? <ExpensesTab /> : null}
-        {tab === "purchase-orders" ? <PurchaseOrdersTab /> : null}
-      </div>
-    </FinancePageFrame>
+    <div className="w-full px-4 pb-8 pt-[24px] sm:px-10 lg:px-[40px]">
+      {tab === "purchase-orders" ? <PurchaseOrdersTab tabs={tabs} /> : <ExpensesTab tabs={tabs} />}
+    </div>
   );
 }

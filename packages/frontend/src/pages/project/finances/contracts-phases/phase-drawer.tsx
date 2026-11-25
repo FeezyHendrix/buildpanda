@@ -1,14 +1,16 @@
+import { ArrowUpRight } from "lucide-react";
 import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
-import { DetailDrawer, DrawerMetric, DrawerSectionTitle } from "../finance-drawer";
 import type { Contract } from "@/hooks/use-contracts";
 import { useScheduleOfValues } from "@/hooks/use-stages";
 import { formatCurrency } from "@/lib/formatters";
 import type { Currency, Stage, StageStatus } from "@/lib/project-types";
 import { formatPeriodHeading } from "../contract/billing-sheet-model";
-import { formatPercent, percentOfContract } from "./contract-model";
+import { formatPercent, formatSignedDate, percentOfContract } from "./contract-model";
+import { DetailSheet } from "./detail-sheet";
+import { SheetHeading, SheetMetric } from "./sheet-parts";
 
 /**
  * One phase, read in place: its particulars, the estimates and the used
@@ -16,11 +18,14 @@ import { formatPercent, percentOfContract } from "./contract-model";
  * existing drawers on top.
  */
 
-const STATUS_META: Record<StageStatus, { tone: BadgeTone; label: string; marker: string }> = {
-  Pending: { tone: "neutral", label: "Not started", marker: "○" },
-  InProgress: { tone: "info", label: "In progress", marker: "◑" },
-  Done: { tone: "success", label: "Completed", marker: "●" },
+const STATUS_META: Record<StageStatus, { tone: BadgeTone; label: string }> = {
+  Pending: { tone: "warning", label: "Pending" },
+  InProgress: { tone: "info", label: "In progress" },
+  Done: { tone: "success", label: "Completed" },
 };
+
+const HEADER_CELL = "h-[35px] px-[24px] py-0 text-caption-m font-medium normal-case text-[#525252]";
+const BODY_CELL = "whitespace-nowrap px-[24px] py-0 text-caption-l text-[#1E1E1E] tabular-nums";
 
 interface PhaseDrawerProps {
   open: boolean;
@@ -44,6 +49,15 @@ function hours(value: number | null | undefined): string {
   return value == null ? "—" : `${value.toLocaleString("en-GB")} h`;
 }
 
+/** "Main contract · 15 Oct 2026 – 22 Oct 2026": the contract and the dates the phase runs. */
+function phaseSubtitle(stage: Stage, contract: Contract): string {
+  const range =
+    stage.startDate && stage.endDate
+      ? `${formatSignedDate(stage.startDate)} – ${formatSignedDate(stage.endDate)}`
+      : stage.dateRange;
+  return range ? `${contract.title} · ${range}` : contract.title;
+}
+
 export function PhaseDrawer({
   open,
   onOpenChange,
@@ -60,89 +74,88 @@ export function PhaseDrawer({
   const { data: lines = [], isPending } = useScheduleOfValues(open ? projectId : undefined, stage.id);
 
   return (
-    <DetailDrawer
+    <DetailSheet
       open={open}
       onOpenChange={onOpenChange}
-      width={stacked ? "lg" : "xl"}
+      widthClassName="w-[min(592px,100vw)]"
       className={stacked ? "z-[60]" : undefined}
       title={stage.name}
-      headerMeta={
-        <>
-          <Badge tone={status.tone} size="md" className="gap-1.5">
-            <span aria-hidden="true">{status.marker}</span>
-            {status.label}
-          </Badge>
-          <span className="text-sm text-ink-muted">{contract.title}</span>
-          {stage.dateRange ? <span className="text-sm text-ink-muted">· {stage.dateRange}</span> : null}
-        </>
+      status={
+        <Badge tone={status.tone} size="sm" className="text-caption-m font-medium">
+          {status.label}
+        </Badge>
       }
-      footer={
-        <>
-          <Button variant="secondary" size="sm" onClick={() => onOpenSchedule(stage)}>
-            {canManage ? "Schedule" : "View schedule"}
+      subtitle={phaseSubtitle(stage, contract)}
+      headerAction={
+        <button
+          type="button"
+          onClick={() => onOpenSchedule(stage)}
+          className="mt-[15px] inline-flex shrink-0 items-center gap-[8px] text-caption-l font-medium text-[#004DE7] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[#004DE7]/25"
+        >
+          {canManage ? "Schedule" : "View Schedule"}
+          <ArrowUpRight className="size-[18px]" strokeWidth={1.5} aria-hidden />
+        </button>
+      }
+      action={
+        canManage ? (
+          <Button type="button" size="lg" className="h-[46px] w-[179px]" onClick={() => onEditValue(stage)}>
+            Edit Value
           </Button>
-          {canManage ? (
-            <Button size="sm" onClick={() => onEditValue(stage)}>
-              Edit value
-            </Button>
-          ) : null}
-        </>
+        ) : undefined
       }
     >
       <section>
-        <DrawerSectionTitle>Details</DrawerSectionTitle>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <DrawerMetric label="Scheduled value" value={stage.value > 0 ? formatCurrency(stage.value, currency) : "Not priced"} />
-          <DrawerMetric label="% of contract" value={formatPercent(percentOfContract(stage.value, contract.total))} />
-          <DrawerMetric label="Progress" value={`${stage.progressPercent}%`} />
-          <DrawerMetric label="Contract" value={contract.title} />
+        <SheetHeading>Details</SheetHeading>
+        <div className="mt-[18px] grid grid-cols-1 gap-x-[24px] gap-y-[16px] sm:grid-cols-2">
+          <SheetMetric label="Scheduled value" value={stage.value > 0 ? formatCurrency(stage.value, currency) : "Not priced"} />
+          <SheetMetric label="% of contract" value={formatPercent(percentOfContract(stage.value, contract.total))} />
+          <SheetMetric label="Progress" value={`${stage.progressPercent}%`} />
+          <SheetMetric label="Contract" value={contract.title} />
         </div>
       </section>
 
-      <section>
-        <DrawerSectionTitle>Estimates and costs</DrawerSectionTitle>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <DrawerMetric label="Est. total costs" value={money(stage.expectedCost, currency)} />
-          <DrawerMetric label="Total costs" value={money(stage.totalCost, currency)} />
-          <DrawerMetric label="Est. labour hours" value={hours(stage.estimatedLaborHours)} />
-          <DrawerMetric label="Used labour hours" value={hours(stage.usedLaborHours)} />
-          <DrawerMetric label="Labour budget" value={money(stage.laborBudget, currency)} />
-          <DrawerMetric label="Material budget" value={money(stage.materialBudget, currency)} />
-          <DrawerMetric label="Used material costs" value={money(stage.usedMaterialCost, currency)} />
+      <section className="mt-[26px]">
+        <SheetHeading>Estimates and costs</SheetHeading>
+        <div className="mt-[18px] grid grid-cols-1 gap-x-[24px] gap-y-[16px] sm:grid-cols-2">
+          <SheetMetric label="Est. total costs" value={money(stage.expectedCost, currency)} />
+          <SheetMetric label="Total costs" value={money(stage.totalCost, currency)} />
+          <SheetMetric label="Est. labour hours" value={hours(stage.estimatedLaborHours)} />
+          <SheetMetric label="Used labour hours" value={hours(stage.usedLaborHours)} />
+          <SheetMetric label="Labour budget" value={money(stage.laborBudget, currency)} />
+          <SheetMetric label="Material budget" value={money(stage.materialBudget, currency)} />
+          <SheetMetric label="Used material costs" value={money(stage.usedMaterialCost, currency)} />
         </div>
       </section>
 
-      <section>
-        <DrawerSectionTitle>Schedule of values</DrawerSectionTitle>
+      <section className="mt-[26px]">
+        <SheetHeading>Schedule of values</SheetHeading>
         {isPending ? (
-          <div className="mt-3 flex justify-center py-6">
+          <div className="mt-[18px] flex justify-center py-6">
             <Spinner size="sm" />
           </div>
         ) : lines.length === 0 ? (
-          <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm text-ink-muted">
+          <p className="mt-[18px] flex h-[36px] items-center justify-center bg-[#F6F6F6] px-4 text-caption-m text-[#737373]">
             No billing months planned for this phase yet.
           </p>
         ) : (
-          <div className="mt-3 overflow-hidden rounded-lg border border-line-hair">
+          <div className="mt-[18px] border border-[#EEEEEE]">
             <Table>
               <TableHead>
                 <tr>
-                  <TableHeaderCell className="px-4">Month</TableHeaderCell>
-                  <TableHeaderCell align="right" className="px-4">Planned %</TableHeaderCell>
-                  <TableHeaderCell align="right" className="px-4">Amount</TableHeaderCell>
-                  <TableHeaderCell align="right" className="px-4">Complete</TableHeaderCell>
-                  <TableHeaderCell className="px-4">Billed</TableHeaderCell>
+                  <TableHeaderCell className={HEADER_CELL}>Month</TableHeaderCell>
+                  <TableHeaderCell className={HEADER_CELL}>Planned %</TableHeaderCell>
+                  <TableHeaderCell className={HEADER_CELL}>Amount</TableHeaderCell>
+                  <TableHeaderCell className={HEADER_CELL}>Billed</TableHeaderCell>
                 </tr>
               </TableHead>
               <TableBody>
                 {lines.map((line) => (
-                  <TableRow key={line.id}>
-                    <TableCell className="whitespace-nowrap px-4">{formatPeriodHeading(line.period)}</TableCell>
-                    <TableCell align="right" className="px-4 tabular-nums">{formatPercent(line.percent)}</TableCell>
-                    <TableCell align="right" className="whitespace-nowrap px-4 tabular-nums">{formatCurrency(line.amount, currency)}</TableCell>
-                    <TableCell align="right" className="px-4 tabular-nums">{formatPercent(line.percentComplete)}</TableCell>
-                    <TableCell className="px-4">
-                      <Badge tone={line.billed ? "success" : "neutral"} size="sm">
+                  <TableRow key={line.id} className="h-[46px] border-[#EEEEEE]">
+                    <TableCell className={BODY_CELL}>{formatPeriodHeading(line.period)}</TableCell>
+                    <TableCell className={BODY_CELL}>{formatPercent(line.percent)}</TableCell>
+                    <TableCell className={BODY_CELL}>{formatCurrency(line.amount, currency)}</TableCell>
+                    <TableCell className={BODY_CELL}>
+                      <Badge tone={line.billed ? "success" : "neutral"} size="sm" className="text-caption-m font-medium">
                         {line.billed ? "Billed" : "Not billed"}
                       </Badge>
                     </TableCell>
@@ -153,7 +166,7 @@ export function PhaseDrawer({
           </div>
         )}
       </section>
-    </DetailDrawer>
+    </DetailSheet>
   );
 }
 

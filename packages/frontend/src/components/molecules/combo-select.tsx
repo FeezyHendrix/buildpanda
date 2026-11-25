@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Combobox } from "@base-ui/react/combobox";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,7 @@ export function ComboSelect({
   searchPlaceholder = "Search…",
   emptyText = "No matches",
   className,
+  icon,
   id,
 }: {
   items: ComboItem[];
@@ -25,6 +26,8 @@ export function ComboSelect({
   searchPlaceholder?: string;
   emptyText?: string;
   className?: string;
+  /** Replaces the trailing ▾ glyph. */
+  icon?: ReactNode;
   /** Put on the trigger so a `<Label htmlFor>` points at something real. */
   id?: string;
 }) {
@@ -59,7 +62,7 @@ export function ComboSelect({
             )
           }
         </Combobox.Value>
-        <span className="text-gray-400">▾</span>
+        {icon ?? <span className="text-gray-400">▾</span>}
       </Combobox.Trigger>
       <Combobox.Portal>
         <Combobox.Positioner align="start" sideOffset={4} className="z-50">

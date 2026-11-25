@@ -28,7 +28,7 @@ interface SectionProps {
 }
 
 const CONTRACT_FORM_OPTIONS: readonly { value: ContractForm | ""; label: string }[] = [
-  { value: "", label: "Not recorded" },
+  { value: "", label: "Not set" },
   ...CONTRACT_FORMS.map((form) => ({ value: form, label: CONTRACT_FORM_LABELS[form] })),
 ];
 
@@ -44,7 +44,7 @@ export function ContractPartiesSection({ form, set, disabled }: SectionProps) {
       title="Parties and form"
       description="Who the contract is between and which standard form governs it. The employer is the party being certified to; the contractor is the party carrying out the works."
     >
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-x-[16px] gap-y-[20px] sm:grid-cols-2">
         <TermsTextField
           id="employer-name"
           label="Employer / client"
@@ -96,7 +96,7 @@ export function ContractPeriodSection({ form, set, disabled, currency }: Section
       title="Contract period and liquidated damages"
       description="The dates the works run between, and the damages the employer may levy for each day of culpable delay beyond completion. An approved extension of time moves the date lateness is measured against."
     >
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-x-[16px] gap-y-[20px] sm:grid-cols-2">
         <TermsTextField
           id="commencement-date"
           label="Commencement date"
@@ -149,7 +149,7 @@ export function ContractTaxSection({ form, set, disabled }: SectionProps) {
       title="VAT and defects"
       description="The VAT rate every certificate raised under this contract inherits, and how long the contractor stays responsible for defects after practical completion."
     >
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-x-[16px] gap-y-[20px] sm:grid-cols-2">
         <UnitNumberField
           id="vat-rate"
           label="VAT rate"

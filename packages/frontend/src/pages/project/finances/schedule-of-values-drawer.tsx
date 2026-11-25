@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/atoms/button";
+import { Plus } from "lucide-react";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
@@ -13,7 +13,6 @@ import { formatCurrency } from "@/lib/formatters";
 import { Money } from "@/lib/money";
 import type { Currency, Stage } from "@/lib/project-types";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 import {
   MAX_PERCENT,
   ScheduleLineRow,
@@ -27,11 +26,7 @@ import {
   toDraftLine,
   type DraftLine,
 } from "./schedule-of-values-line";
-import {
-  ScheduleBar,
-  formatPercent,
-  sharePercent,
-} from "./schedule-of-values-parts";
+import { ScheduleSummary } from "./schedule-of-values-parts";
 
 /**
  * Schedule of Values editor for one build stage.
@@ -192,12 +187,18 @@ export function ScheduleOfValuesDrawer({
           ? `${stage.name} · ${formatCurrency(stage.value, currency)} scheduled value. Saving replaces every line on this stage.`
           : "Break a stage's value into the months it gets billed in."
       }
-      submitLabel="Save schedule"
+      submitLabel="Save Schedule"
       submitDisabled={!canSave}
       submitting={replace.isPending}
       error={replace.error ? getApiErrorMessage(replace.error) : null}
       onSubmit={handleSubmit}
-      className="w-[min(560px,100vw)]"
+      footerVariant="split"
+      className="w-[min(592px,100vw)]"
+      titleClassName="text-[20px] font-medium leading-[28px] tracking-normal"
+      descriptionClassName="font-normal text-[#737373]"
+      headerClassName="px-[24px] pb-[23px] pt-[39px]"
+      bodyClassName="gap-0 px-[24px] py-0"
+      footerClassName="gap-[8px] px-[24px] pb-[15px] pt-[16px] [&>button]:w-[179px]"
     >
       {isPending && !savedLines ? (
         <div className="flex flex-1 items-center justify-center py-16">
@@ -205,78 +206,36 @@ export function ScheduleOfValuesDrawer({
         </div>
       ) : (
         <>
-          <section className="sticky top-0 z-10 -mx-6 -mt-5 border-b border-line-hair bg-white px-6 pb-4 pt-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-medium uppercase text-ink-muted">
-                  Scheduled
-                </p>
-                <p
-                  className={cn(
-                    "mt-1 text-2xl font-medium tabular-nums",
-                    isOverBooked ? "text-error-600" : "text-ink",
-                  )}
-                >
-                  {formatPercent(totalPercent)}%
-                </p>
-                <p className="mt-0.5 text-xs tabular-nums text-ink-muted">
-                  {formatCurrency(scheduledAmount.round().toNumber(), currency)} of{" "}
-                  {formatCurrency(stageValue, currency)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-medium uppercase text-ink-muted">
-                  Billed to date
-                </p>
-                <p className="mt-1 text-2xl font-medium tabular-nums text-primary-500">
-                  {formatCurrency(billedAmount.round().toNumber(), currency)}
-                </p>
-                <p className="mt-0.5 text-xs tabular-nums text-ink-muted">
-                  {billedLines} of {draft.length}{" "}
-                  {draft.length === 1 ? "line" : "lines"} billed
-                </p>
-              </div>
-            </div>
-
-            <ScheduleBar
-              billedShare={sharePercent(billedAmount, stageValue)}
-              scheduledShare={sharePercent(scheduledAmount, stageValue)}
+          <hr className="border-0 border-t border-[#EEEEEE]" />
+          <div className="mt-[24px]">
+            <ScheduleSummary
+              currency={currency}
+              stageValue={stageValue}
+              totalPercent={totalPercent}
+              scheduledAmount={scheduledAmount}
+              billedAmount={billedAmount}
+              billedLines={billedLines}
+              lineCount={draft.length}
               overBooked={isOverBooked}
-              className="mt-3"
+              remainingPercent={remainingPercent}
+              unscheduled={unscheduled}
             />
-
-            <p
-              className={cn(
-                "mt-3 rounded-lg px-3 py-2 text-xs",
-                isOverBooked
-                  ? "bg-error-50 font-medium text-error-600"
-                  : "bg-surface-alt text-ink-muted",
-              )}
-            >
-              {isOverBooked
-                ? `Over by ${formatPercent(remainingPercent.abs())}%. A stage cannot schedule more than 100% of its value — trim a line before saving.`
-                : remainingPercent.isZero()
-                  ? "Fully scheduled. Every part of this stage's value sits on a billing month."
-                  : `${formatPercent(remainingPercent)}% (${formatCurrency(unscheduled.round().toNumber(), currency)}) is still unscheduled.`}
-            </p>
-          </section>
-
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-medium uppercase text-ink-muted">
-              Billing months
-            </h3>
-            <span className="text-xs text-ink-muted">% of stage value</span>
           </div>
 
+          <hr className="mt-[23px] border-0 border-t border-[#EEEEEE]" />
+          <h3 className="mt-[26px] text-[16px] font-medium leading-[20px] text-[#1E1E1E]">Billing Months</h3>
+
           {draft.length === 0 ? (
-            <EmptyState
-              variant="inline"
-              title="No billing months yet"
-              description="Add the months this stage gets billed in and give each one its share of the stage value."
-              action={canManage ? { label: "Add month", onClick: addLine } : undefined}
-            />
+            <div className="mt-[26px]">
+              <EmptyState
+                variant="inline"
+                title="No billing months yet"
+                description="Add the months this stage gets billed in and give each one its share of the stage value."
+                action={canManage ? { label: "Add month", onClick: addLine } : undefined}
+              />
+            </div>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="mt-[26px] flex flex-col gap-[12px]">
               {draft.map((line, index) => (
                 <ScheduleLineRow
                   key={line.key}
@@ -293,20 +252,18 @@ export function ScheduleOfValuesDrawer({
           )}
 
           {canManage && draft.length > 0 ? (
-            <Button
+            <button
               type="button"
-              variant="secondary"
-              size="sm"
-              className="self-start"
               onClick={addLine}
+              className="mt-[21px] inline-flex items-center gap-[10px] self-start pl-[19px] text-caption-l font-medium text-[#004DE7] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[#004DE7]/25"
             >
-              Add month
-            </Button>
+              <Plus className="size-[16px]" strokeWidth={2} aria-hidden />
+              Add Month
+            </button>
           ) : null}
 
-          <p className="mt-auto pt-2 text-xs text-ink-muted">
-            These lines record billing that happened off-platform. BuildPanda
-            never charges or moves money.
+          <p className="mt-auto pb-[16px] pt-[24px] text-caption-m text-[#737373]">
+            These lines record billing that happened off-platform. BuildPanda never charges or moves money.
           </p>
         </>
       )}

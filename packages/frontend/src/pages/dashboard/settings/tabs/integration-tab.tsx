@@ -6,7 +6,7 @@ export function IntegrationTab() {
     <div className="flex flex-col gap-6 items-center justify-center py-10">
       <Badge dot tone='success' className='py-2'>Coming soon</Badge>
       <EmptyState
-        icon={<img src={emptyIcon} alt="" className="w-100 mb-8" />}
+        illustration={<img src={emptyIcon} alt="" className="mb-8 h-auto w-100 max-w-full" />}
         title="Integrations"
         description="We're working on connecting BuildPanda with your favorite tools. Check back later."
         className="flex flex-col gap-8 max-w-4xl"

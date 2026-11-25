@@ -26,6 +26,12 @@ interface PanelProps {
   canManage: boolean;
 }
 
+interface PaymentsPanelProps extends PanelProps {
+  /** When the sheet owns the "Record payment" button, it also owns the drawer's open state. */
+  addOpen?: boolean;
+  onAddOpenChange?: (open: boolean) => void;
+}
+
 export function InvoiceDetailsPanel({ projectId, invoice, currency, canManage }: PanelProps) {
   const money = (value: number) => formatCurrency(value, currency);
   return (
@@ -134,8 +140,10 @@ export function InvoiceLineItemsPanel({ invoice, currency }: Pick<PanelProps, "i
 
 InvoiceLineItemsPanel.displayName = "InvoiceLineItemsPanel";
 
-export function InvoicePaymentsPanel({ projectId, invoice, currency, canManage }: PanelProps) {
-  const [addOpen, setAddOpen] = useState(false);
+export function InvoicePaymentsPanel({ projectId, invoice, currency, canManage, addOpen: controlledOpen, onAddOpenChange }: PaymentsPanelProps) {
+  const [ownOpen, setOwnOpen] = useState(false);
+  const addOpen = controlledOpen ?? ownOpen;
+  const setAddOpen = onAddOpenChange ?? setOwnOpen;
   const [removeId, setRemoveId] = useState<string | null>(null);
   const removePayment = useDeleteInvoicePayment();
   const fixedInvoice = useMemo(() => [invoice], [invoice]);

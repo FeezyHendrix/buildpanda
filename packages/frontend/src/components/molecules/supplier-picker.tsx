@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { Label } from "@/components/atoms/label";
-import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
+import { SearchableSelect } from "@/components/atoms/searchable-select";
 import { UpsertSupplierDialog } from "@/components/molecules/upsert-supplier-dialog";
 import { useCreateSupplier, useSuppliers, type SupplierInput } from "@/hooks/use-suppliers";
 import { errorMessage } from "@/lib/api-error";
 import type { Supplier } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
 
-const NO_SUPPLIER = "__none__";
-const ADD_SUPPLIER = "__add__";
+const NO_SUPPLIER_LABEL = "No supplier yet";
 
 /**
  * Supplier is a reference, not typed text: an order points at a register row so
@@ -25,22 +25,18 @@ interface SupplierPickerProps {
   legacyName?: string | null;
   id?: string;
   label?: string;
+  /** Style hooks for forms whose design departs from the default field look. */
+  className?: string;
+  labelClassName?: string;
+  triggerClassName?: string;
+  triggerIconClassName?: string;
 }
 
-function toItems(suppliers: readonly Supplier[]): ComboItem[] {
+/** Approved suppliers first, then the rest; the "no supplier" row leads. */
+function toLabels(suppliers: readonly Supplier[]): string[] {
   const approved = suppliers.filter((supplier) => supplier.approved);
   const rest = suppliers.filter((supplier) => !supplier.approved);
-  const row = (supplier: Supplier): ComboItem => ({
-    id: supplier.id,
-    label: supplier.name,
-    group: supplier.trade ?? undefined,
-  });
-  return [
-    { id: NO_SUPPLIER, label: "No supplier yet" },
-    ...approved.map(row),
-    ...rest.map(row),
-    { id: ADD_SUPPLIER, label: "＋ Add a new supplier…" },
-  ];
+  return [NO_SUPPLIER_LABEL, ...approved.map((supplier) => supplier.name), ...rest.map((supplier) => supplier.name)];
 }
 
 export function SupplierPicker({
@@ -51,21 +47,21 @@ export function SupplierPicker({
   legacyName,
   id = "supplier-picker",
   label = "Supplier",
+  className,
+  labelClassName,
+  triggerClassName,
+  triggerIconClassName,
 }: SupplierPickerProps) {
   const { data: suppliers = [] } = useSuppliers(enabled ? projectId : undefined);
   const createSupplier = useCreateSupplier();
   const [addOpen, setAddOpen] = useState(false);
 
-  const items = useMemo(() => toItems(suppliers), [suppliers]);
+  const items = useMemo(() => toLabels(suppliers), [suppliers]);
   const selected = suppliers.find((supplier) => supplier.id === value) ?? null;
 
   function handleChange(next: string | null): void {
-    if (next === ADD_SUPPLIER) {
-      setAddOpen(true);
-      return;
-    }
-    const id = next && next !== NO_SUPPLIER ? next : null;
-    onChange(id, suppliers.find((supplier) => supplier.id === id) ?? null);
+    const row = next && next !== NO_SUPPLIER_LABEL ? (suppliers.find((supplier) => supplier.name === next) ?? null) : null;
+    onChange(row?.id ?? null, row);
   }
 
   function handleCreate(values: SupplierInput): void {
@@ -81,16 +77,18 @@ export function SupplierPicker({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <ComboSelect
-        items={items}
-        value={value ?? NO_SUPPLIER}
-        onChange={handleChange}
-        placeholder="Pick from the supplier register"
-        searchPlaceholder="Search suppliers…"
-        emptyText="No suppliers on the register"
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <Label htmlFor={id} className={labelClassName}>{label}</Label>
+      <SearchableSelect
         id={id}
+        items={items}
+        value={selected?.name ?? NO_SUPPLIER_LABEL}
+        onChange={handleChange}
+        searchPlaceholder="Search suppliers"
+        emptyText="No suppliers on the register"
+        className={triggerClassName}
+        iconClassName={triggerIconClassName}
+        footerAction={{ label: "Add a new supplier", onSelect: () => setAddOpen(true) }}
       />
       {selected ? (
         <p className="text-xs text-ink-muted">

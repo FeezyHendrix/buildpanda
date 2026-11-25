@@ -3,8 +3,8 @@ import { Spinner } from "@/components/atoms/spinner";
 import { FinancesIcon } from "@/components/atoms/project-nav-icons";
 import { CreateButton } from "@/components/molecules/create-button";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { PageHeader } from "@/components/molecules/page-header";
 import { RecordDepositDialog } from "@/components/molecules/record-deposit-dialog";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import { useFinancePosition } from "@/hooks/use-finances";
 import { useReportingSnapshot, type CashFlowPoint } from "@/hooks/use-reporting-snapshot";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -23,12 +23,15 @@ import { SpendVsBudgetCard } from "./finances/overview/spend-vs-budget-card";
 
 const EMPTY_POINTS: CashFlowPoint[] = [];
 
+/** The wide panel and its narrow neighbour, in the 668 : 424 ratio of the design. */
+const TWO_UP_WIDE = "lg:grid-cols-[minmax(0,668fr)_minmax(0,424fr)]";
+
 /**
  * Finance overview: one screen, one money model, laid out as rows of panels.
  * The KPI strip leads; then spend against budget over time beside phase
  * spend; then the contract position beside contract health; then dates and
- * LDs, change orders and funding; then recent invoices beside the funding
- * trail. The position panels read `GET /projects/:id/finances/summary` and
+ * LDs beside change orders; then funding beside its trail; then the recent
+ * invoices across the full width. The position panels read `GET /projects/:id/finances/summary` and
  * recompute nothing: certification comes from approved receivable
  * certificates, payment from the receipts recorded on them. The spend curve
  * reads the reporting snapshot's cash-flow points. Funding (deposits and
@@ -39,6 +42,7 @@ const EMPTY_POINTS: CashFlowPoint[] = [];
  * them.
  */
 export default function ProjectFinances() {
+  useSetPageTitle("Finance", "The contract position, cash and cost of this build, read from certificates, receipts and logged expenses.");
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "finances", "manage");
   const canViewCosts = access?.capabilities?.canViewCosts ?? false;
@@ -56,8 +60,7 @@ export default function ProjectFinances() {
 
   if (!summary) {
     return (
-      <div className="w-full px-4 pb-8 pt-4 sm:px-10 lg:px-6">
-        <PageHeader title="Finance" />
+      <div className="w-full px-4 pb-8 pt-[24px] sm:px-10 lg:px-[40px]">
         <EmptyState
           icon={<FinancesIcon />}
           title="No finance data yet"
@@ -70,20 +73,21 @@ export default function ProjectFinances() {
   const contractsHref = `/project/${project.id}/${CONTRACTS_PHASES_PATH}`;
 
   return (
-    <div className="w-full px-4 pb-8 pt-4 sm:px-10 lg:px-6">
-      <PageHeader
-        title="Finance"
-        description="The contract position, cash and cost of this build, read from certificates, receipts and logged expenses."
-        actions={canManage ? <CreateButton onClick={() => setDepositOpen(true)}>Record funding</CreateButton> : undefined}
-      />
+    <div className="w-full px-4 pb-8 pt-[24px] sm:px-10 lg:px-[40px]">
+      {canManage ? (
+        <div className="flex justify-end">
+          <CreateButton onClick={() => setDepositOpen(true)} className="h-[36px] gap-[8px] px-[16px] text-[14px] font-semibold">
+            Record Funding
+          </CreateButton>
+        </div>
+      ) : null}
 
-      <div className="mt-6 flex flex-col gap-4">
+      <div className={canManage ? "mt-[24px] flex flex-col gap-[24px]" : "flex flex-col gap-[24px]"}>
         <MoneyStrip projectId={project.id} summary={summary} />
 
         {canViewCosts ? (
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className={`grid gap-[24px] ${TWO_UP_WIDE}`}>
             <SpendVsBudgetCard
-              className="lg:col-span-2"
               projectId={project.id}
               currency={summary.currency}
               points={snapshot.data?.finance.cashFlow.points ?? EMPTY_POINTS}
@@ -96,21 +100,22 @@ export default function ProjectFinances() {
           </div>
         ) : null}
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <ContractPositionCard className="lg:col-span-2" summary={summary} contractsHref={contractsHref} />
+        <div className={`grid gap-[24px] ${TWO_UP_WIDE}`}>
+          <ContractPositionCard summary={summary} contractsHref={contractsHref} />
           <ContractHealthCard summary={summary} />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-[24px] lg:grid-cols-2">
           <LdExposureCard summary={summary} contractsHref={contractsHref} />
           <ChangeOrdersCard projectId={project.id} />
-          <FundingCard projectId={project.id} currency={summary.currency} funding={summary.funding} />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <RecentInvoicesCard className="lg:col-span-2" projectId={project.id} currency={summary.currency} />
+        <div className="grid gap-[24px] lg:grid-cols-2">
+          <FundingCard projectId={project.id} currency={summary.currency} funding={summary.funding} />
           <FundingTrailCard projectId={project.id} currency={summary.currency} />
         </div>
+
+        <RecentInvoicesCard projectId={project.id} currency={summary.currency} />
       </div>
 
       <RecordDepositDialog open={depositOpen} onOpenChange={setDepositOpen} projectId={project.id} currency={summary.currency} />

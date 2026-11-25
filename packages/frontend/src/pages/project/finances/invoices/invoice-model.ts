@@ -150,3 +150,59 @@ export function saveInvoicePdf(blob: Blob, invoice: Pick<Invoice, "number" | "id
   anchor.click();
   URL.revokeObjectURL(url);
 }
+
+/** The design calls a submitted invoice "Pending approval"; every other status reads as itself. */
+export function invoiceStatusLabel(status: InvoiceStatus): string {
+  return status === "Submitted" ? "Pending approval" : INVOICE_STATUS_LABEL[status];
+}
+
+/** Status as a pill: the label carries the meaning, the colour only reinforces it. */
+export const INVOICE_PILL: Record<InvoiceStatus, string> = {
+  Draft: "border-[#E0E0E0] bg-white text-[#1E1E1E]",
+  Sent: "border-[#C6D6FA] bg-white text-[#004DE7]",
+  Submitted: "border-[#FFD8A8] bg-[#FFF8EB] text-[#E58A00]",
+  Queried: "border-[#FFC9C9] bg-[#FFF3E8] text-[#D9480F]",
+  Approved: "border-[#B9F8CF] bg-[#F0FDF4] text-[#00A63E]",
+  PartiallyPaid: "border-[#C6D6FA] bg-[#E6EDFD] text-[#004DE7]",
+  Paid: "border-[#C6D6FA] bg-[#E6EDFD] text-[#004DE7]",
+  Overdue: "border-[#FFC9C9] bg-[#FEF2F2] text-[#E7000B]",
+  Void: "border-[#E0E0E0] bg-[#F6F6F6] text-[#737373]",
+};
+
+export interface InvoiceKpis {
+  outstanding: { total: number; count: number };
+  pending: { total: number; count: number };
+  overdue: { total: number; count: number };
+  paidThisMonth: { total: number; count: number };
+}
+
+/**
+ * The four headline figures, all derived from the recorded invoices. Outstanding
+ * is what is still owed on issued, un-voided invoices; paid this month is the
+ * receipts dated in the current calendar month.
+ */
+export function invoiceKpis(invoices: readonly Invoice[], now = new Date()): InvoiceKpis {
+  const live = invoices.filter((invoice) => !isVoided(invoice));
+  const sum = (list: readonly Invoice[], pick: (invoice: Invoice) => number) => list.reduce((total, invoice) => total + pick(invoice), 0);
+
+  const outstanding = live.filter((invoice) => invoice.status !== "Draft" && invoice.balanceDue > 0);
+  const pending = live.filter((invoice) => invoice.status === "Submitted");
+  const overdue = live.filter((invoice) => invoice.status === "Overdue");
+
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  let paidTotal = 0;
+  let paidCount = 0;
+  for (const invoice of live) {
+    const inMonth = invoice.payments.filter((payment) => !payment.credit && payment.paidAt?.slice(0, 7) === monthKey);
+    if (inMonth.length === 0) continue;
+    paidCount += 1;
+    paidTotal += inMonth.reduce((total, payment) => total + payment.amount, 0);
+  }
+
+  return {
+    outstanding: { total: sum(outstanding, (i) => i.balanceDue), count: outstanding.length },
+    pending: { total: sum(pending, (i) => i.totalInvoiced), count: pending.length },
+    overdue: { total: sum(overdue, (i) => i.balanceDue), count: overdue.length },
+    paidThisMonth: { total: paidTotal, count: paidCount },
+  };
+}

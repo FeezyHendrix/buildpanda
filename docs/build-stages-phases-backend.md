@@ -1,5 +1,10 @@
 # Build Stages — Building Phases Backend Changes
 
+> **Status (checked 2026-11-18): not implemented.** Nothing in `packages/backend` mentions
+> `building_phase`, `building-phase` or `buildingPhase`: there is no `building_phases` table, no
+> migration and no route. `stages` is still the flat table from `20260609_project_stages`. Everything
+> in §1–§9 below is still outstanding, and §10 (the Create New Project wizard) adds to it.
+
 > Required to support the new Figma: phase-grouped stages, phase-level progress, inline phase editing, and the **Add New Stage** / **Add Building Phase** drawers.
 
 ## 1. Summary
@@ -175,3 +180,98 @@ Block if `stageCount > 0` (or cascade `building_phase_id=null` — prefer block 
 2. Deploy backend with new routes (FE still works — `buildingPhaseId` nullable).
 3. Deploy frontend phase-grouped UI (sends `buildingPhaseId`).
 4. Optionally enforce `building_phase_id not null` once no nulls remain.
+
+## 10. Create New Project wizard — phases and stages at creation
+
+The new "Create New Project" flow (`pages/project/create.tsx`) has three steps: **Project Template**,
+**Building Phases**, **Project Information**. The first and last work today. The middle one, and
+two fields on the last, have nothing to save into.
+
+### 10.1 What the API rejects today
+
+`POST /projects` (`createProjectBody` in `modules/projects/routes.ts`) has
+`additionalProperties: false`, so **any field below makes the request fail with 400**. The frontend
+therefore keeps them in wizard state and does **not** send them.
+
+| Wizard data | Why it is not sent |
+|---|---|
+| Phases and their stages (name, start date, target date) | no `phases` in the body, no `building_phases` table |
+| Project start date / end date (Project Information) | no `startDate` / `endDate` in the body |
+
+**What the user sees today:** they can edit phases, add stages and enter dates, then Next. The
+project is created from the template exactly as before and those edits are **dropped silently**.
+Until this ships the step is a preview; if that is not acceptable, hide the step behind a feature
+flag until the API lands.
+
+### 10.2 `GET /project-templates` — give the template cards and the phases step real data
+
+Today each template returns `stageCount`, `totalWeeks` (one sum) and a flat `stages[]`
+(`name`, `durationWeeks`, `dateRange`). The card says "**6 Phases** · **46 - 138 Weeks**", so:
+
+- The template's `stages` are what the UI calls **phases**. Return them as `phases[]` and nest the
+  stages inside each: `phases: [{ name, sortOrder, durationWeeks, stages: [{ name, durationWeeks }] }]`.
+  Without nested stages the Building Phases step opens every phase empty and the user has to type
+  every stage by hand. (Keep `stageCount`/`stages` for old clients, or version the response.)
+- Add `minWeeks` and `maxWeeks` (shortest and longest realistic duration). The frontend already
+  reads them (`ProjectTemplateSummary.minWeeks/maxWeeks`) and shows "46 - 138 Weeks"; until they
+  exist it shows the single `totalWeeks`, e.g. "46 Weeks".
+
+### 10.3 `POST /projects` — accept what the wizard collects
+
+Add to the body (all optional; omitting them keeps today's behaviour):
+
+```json
+{
+  "startDate": "2027-01-10",
+  "endDate": "2027-12-20",
+  "phases": [
+    {
+      "name": "Sub Structure",
+      "sortOrder": 2,
+      "stages": [
+        { "name": "Site Preparation", "startDate": "2027-01-10", "targetDate": "2027-02-14" }
+      ]
+    }
+  ]
+}
+```
+
+- When `phases` is present it **replaces** the template's phases; when absent the template's
+  defaults are created. (The wizard's **Skip** means "use the template's phases as they are", so it
+  will send no `phases`.)
+- Create the project, its building, the `building_phases` (§2.1) and the `stages` (with
+  `building_phase_id`, `start_date`, `end_date`, `sort_order`) **in one transaction**, so a failure
+  cannot leave a project with half its programme.
+- Validate: phase `name` 1–80 chars and unique within the project; stage `name` 1–80; dates ISO
+  `yyyy-mm-dd`; `targetDate >= startDate`; stage dates inside `[startDate, endDate]` when the project
+  dates are given; at most 50 phases and 100 stages per phase.
+- Stage `targetDate` maps to the existing `stages.end_date`.
+- Start/end dates should be stored on the project (new `start_date`, `end_date` columns, or
+  `setup.startDate/endDate` if you want it cheaper) and read back on the project payload.
+
+### 10.4 Construction timeline
+
+`details.timeline` is a free string (max 100). The wizard now sends either a preset id —
+`lt-12m`, `12-28m`, `12-40m` (the old `lt-6m`, `6-12m`, `12-18m`, `gt-18m` ids still exist on
+older projects and nothing reads them) — or, when the user gives dates instead of a preset,
+`"<start> to <end>"`. Recommended: store a structured value (`timelinePreset` **or**
+`startDate`/`endDate`) rather than parsing that string later.
+
+**Design check:** the presets are "< 12 months", "12 - 28 months" and "12 - 40 months". The last two
+overlap (a 20-month build fits both). The frontend follows the design literally; please confirm with
+design whether the third should read "28 - 40 months" or "> 28 months".
+
+### 10.5 Permissions and records
+
+Creating a project stays behind the org-level `project:create` permission. The stage dates entered
+here are the project's **baseline programme**: store them as the baseline (not just current dates)
+so later slippage is measured against what was agreed at creation, and attribute the create to the
+actor with a timestamp like every other contractual record.
+
+### 10.6 Frontend TODO once this lands
+
+- Send `phases` (unless the user chose Skip) and `startDate`/`endDate` from `create.tsx`'s
+  `handleFinish`; the comment there marks the spot.
+- Seed the Building Phases step from `template.phases[].stages` (`phasesFromTemplate` in
+  `components/molecules/building-phases-step/phase-draft.ts`) instead of empty phases.
+- Show "N Phases · min - max Weeks" from the new fields (already wired).

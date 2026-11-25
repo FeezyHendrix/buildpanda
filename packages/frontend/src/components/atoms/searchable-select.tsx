@@ -1,5 +1,5 @@
 import { Combobox } from "@base-ui/react/combobox";
-import { useId } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface SearchableSelectProps {
@@ -14,6 +14,10 @@ interface SearchableSelectProps {
   id?: string;
   /** `filter` is the compact toolbar use; the v2 field look serves both. */
   variant?: "form" | "filter";
+  /** A button pinned under the list ("+ Add a new supplier") that runs an action and closes the menu. */
+  footerAction?: { label: string; onSelect: () => void };
+  /** Replaces the chevron's colour/size classes. */
+  iconClassName?: string;
 }
 
 function ChevronIcon(props: React.ComponentProps<"svg">) {
@@ -61,8 +65,11 @@ function SearchableSelect({
   className,
   disabled,
   id,
+  footerAction,
+  iconClassName,
 }: SearchableSelectProps) {
   const fallbackId = useId();
+  const [open, setOpen] = useState(false);
   const inputId = id ?? fallbackId;
 
   return (
@@ -72,6 +79,8 @@ function SearchableSelect({
       onValueChange={onChange}
       itemToStringLabel={(item) => item ?? ""}
       disabled={disabled}
+      open={open}
+      onOpenChange={setOpen}
     >
       <Combobox.Trigger
         id={inputId}
@@ -93,7 +102,7 @@ function SearchableSelect({
             )
           }
         </Combobox.Value>
-        <Combobox.Icon className="flex shrink-0 text-[#767676]">
+        <Combobox.Icon className={cn("flex shrink-0 text-[#767676]", iconClassName)}>
           <ChevronIcon />
         </Combobox.Icon>
       </Combobox.Trigger>
@@ -101,6 +110,21 @@ function SearchableSelect({
       <SearchableSelectPopup
         emptyText={emptyText}
         searchPlaceholder={searchPlaceholder}
+        footer={
+          footerAction ? (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                footerAction.onSelect();
+              }}
+              className="mt-1 flex w-full items-center gap-2 border border-[#EBEBEB] bg-white px-4 py-3 text-left text-[14px] font-semibold text-[#004DE7] outline-none hover:bg-[#EEF3FF] focus-visible:bg-[#EEF3FF]"
+            >
+              <span aria-hidden>+</span>
+              {footerAction.label}
+            </button>
+          ) : null
+        }
       />
     </Combobox.Root>
   );
@@ -109,9 +133,11 @@ function SearchableSelect({
 function SearchableSelectPopup({
   emptyText,
   searchPlaceholder,
+  footer,
 }: {
   emptyText: string;
   searchPlaceholder?: string;
+  footer?: ReactNode;
 }) {
   return (
     <Combobox.Portal>
@@ -157,6 +183,7 @@ function SearchableSelectPopup({
                 </Combobox.Item>
               )}
             </Combobox.List>
+            {footer}
           </div>
         </Combobox.Popup>
       </Combobox.Positioner>

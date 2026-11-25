@@ -1,13 +1,12 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
-import { Card } from "@/components/atoms/card";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
-import { EmptyState } from "@/components/molecules/empty-state";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
 import { LEDGER_TYPE_TONE } from "@/lib/project-meta";
 import type { Currency, LedgerType, PaymentLedgerEntry } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
+import { SheetHeading } from "../contracts-phases/sheet-parts";
 
 const AMOUNT_CLASS: Record<LedgerType, string> = {
   Release: "text-success-600",
@@ -48,39 +47,42 @@ export function PaymentLedgerTable({
   );
 
   return (
-    <Card padding="lg" className="mt-6">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-ink-muted">Funding activity</h3>
-        <p className="mt-1 text-xs text-ink-muted">
-          Funding deposits, milestone releases and holds. Invoice receipts are listed separately under Payments.
-        </p>
-        <Link className="mt-2 inline-block text-sm text-primary-500 underline" to={paymentsPath}>View invoice payments</Link>
-      </div>
+    <section aria-label="Funding activity">
+      <SheetHeading>Funding activity</SheetHeading>
+      <p className="mt-[6px] text-caption-m text-[#737373]">
+        Funding deposits, milestone releases and holds. Invoice receipts are listed separately under Payments.
+      </p>
+      <Link
+        to={paymentsPath}
+        className={cn(
+          "mt-[16px] inline-flex h-[36px] items-center border border-[#E5E5E5] bg-white px-[18px]",
+          "text-caption-l font-medium text-[#1E1E1E] outline-none transition-colors hover:bg-[#F6F6F6]",
+          "focus-visible:ring-2 focus-visible:ring-[#004DE7]/25",
+        )}
+      >
+        View invoice payments
+      </Link>
 
-      {sorted.length === 0 ? (
-        <EmptyState
-          variant="inline"
-          title="No funding activity recorded"
-          description="Deposits, releases and retention holds will appear here as they are recorded."
-        />
-      ) : (
-        <Table>
-          <TableHead>
-            <tr>
-              <TableHeaderCell>Date</TableHeaderCell>
-              <TableHeaderCell>Type</TableHeaderCell>
-              <TableHeaderCell>Description</TableHeaderCell>
-              <TableHeaderCell align="right">Amount</TableHeaderCell>
-            </tr>
-          </TableHead>
-          <TableBody>
-            {sorted.map((entry) => (
-              <LedgerRow key={entry.id} entry={entry} currency={currency} />
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </Card>
+      {sorted.length > 0 ? (
+        <div className="mt-[16px] border border-[#EEEEEE]">
+          <Table>
+            <TableHead>
+              <tr>
+                <TableHeaderCell>Date</TableHeaderCell>
+                <TableHeaderCell>Type</TableHeaderCell>
+                <TableHeaderCell>Description</TableHeaderCell>
+                <TableHeaderCell align="right">Amount</TableHeaderCell>
+              </tr>
+            </TableHead>
+            <TableBody>
+              {sorted.map((entry) => (
+                <LedgerRow key={entry.id} entry={entry} currency={currency} />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
