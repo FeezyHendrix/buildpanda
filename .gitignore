@@ -251,3 +251,8 @@ branch_structure.json
 
 # Telegram connection permission and handoff regression coverage.
 !/packages/frontend/src/lib/telegram-connection.test.ts
+
+# Forwarded document intake and finance permission regressions.
+!/packages/backend/src/modules/messaging-agent/document-analysis.test.ts
+!/packages/backend/src/modules/messaging-agent/document-conversation.test.ts
+!/packages/backend/src/modules/field-actions/financial-records-db.test.ts

@@ -166,6 +166,9 @@ export function expensesTools(): AgentTool[] {
     tool(fn("get_purchase_orders", "Get the project's purchase orders with vendor, status, committed total and expected delivery date. Use for questions about POs, what has been ordered from vendors, committed procurement spend, or expected deliveries."), async (ctx) => {
       const repo = agentRepository(ctx.db, agentRecordScope(ctx));
       const orders = await repo.purchaseOrders(ctx.projectId);
+      const lines = await purchaseOrdersRepository(ctx.db).listItemsForPurchaseOrders(orders.map((order) => order.id));
+      const byOrder = new Map<string, typeof lines>();
+      for (const line of lines) byOrder.set(line.purchase_order_id, [...byOrder.get(line.purchase_order_id) ?? [], line]);
       return {
         output: orders.map((po) => ({
           id: po.id,
@@ -175,6 +178,8 @@ export function expensesTools(): AgentTool[] {
           total: round2(Number(po.total ?? 0)),
           orderDate: po.order_date,
           expectedDelivery: po.expected_date,
+          items: (byOrder.get(po.id) ?? []).map((line) => ({ id: line.id, description: line.description,
+            quantity: Number(line.quantity), unitPrice: Number(line.unit_price), receivedQuantity: Number(line.received_quantity) })),
         })),
       };
     }),

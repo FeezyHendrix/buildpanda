@@ -39,6 +39,7 @@ export interface PurchaseOrderItem {
 export interface PurchaseOrder {
   id: string;
   poNumber: string;
+  sourceFileId?: string | null;
   vendorName: string;
   supplierId: string | null;
   materialOrderId: string | null;
@@ -65,6 +66,7 @@ export interface PurchaseOrderRow {
   id: string;
   project_id: string;
   po_number: string;
+  source_file_id?: string | null;
   vendor_name: string;
   supplier_id: string | null;
   material_order_id: string | null;
@@ -105,6 +107,7 @@ export interface PurchaseOrderItemInput {
 export interface CreatePurchaseOrderInput {
   /** Left blank, the project's next PO-<n> is allocated. */
   poNumber?: string;
+  sourceFileId?: string;
   vendorName: string;
   supplierId?: string | null;
   orderDate?: string;
@@ -116,6 +119,7 @@ export interface CreatePurchaseOrderInput {
 
 export interface EditPurchaseOrderInput {
   poNumber?: string;
+  sourceFileId?: string;
   vendorName?: string;
   supplierId?: string | null;
   orderDate?: string;
@@ -131,6 +135,7 @@ export interface ReceiveLineInput {
 }
 
 export interface ReceivePurchaseOrderInput {
+  sourceFileId?: string;
   lines: ReceiveLineInput[];
   receivedAt?: string;
   note?: string;

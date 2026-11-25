@@ -1,8 +1,17 @@
 import type { Knex } from "knex";
+import type { DocumentInspection } from "./document-analysis.ts";
 import type { MessagingSourceFile } from "./attachment-types.ts";
 
 export function messagingAttachmentRepository(db: Knex) {
   return {
+    async inspection(conversationId: string, fileId: string): Promise<DocumentInspection | null> {
+      const row = await db("messaging_agent_inbox").where({ conversation_id: conversationId, source_file_id: fileId })
+        .whereNotNull("attachment_analysis").select("attachment_analysis").first();
+      return row?.attachment_analysis ?? null;
+    },
+    async saveInspection(conversationId: string, fileId: string, inspection: DocumentInspection) {
+      await db("messaging_agent_inbox").where({ conversation_id: conversationId, source_file_id: fileId }).update({ attachment_analysis: JSON.stringify(inspection) });
+    },
     sourceFiles(conversationId: string, scopeVersion: number, currentInboxId: string): Promise<(MessagingSourceFile & { projectId: string; organizationId: string | null; buildingId: string | null; userId: string })[]> {
       return db("messaging_agent_inbox as m")
         .join("messaging_agent_conversations as c", "c.id", "m.conversation_id")

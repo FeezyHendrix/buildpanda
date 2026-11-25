@@ -12,6 +12,7 @@ export interface NewPurchaseOrderRecord {
   id: string;
   project_id: string;
   po_number: string;
+  source_file_id?: string | null;
   vendor_name: string;
   supplier_id: string | null;
   material_order_id: string | null;
@@ -24,6 +25,7 @@ export interface NewPurchaseOrderRecord {
 
 export interface PurchaseOrderUpdatePatch {
   po_number?: string;
+  source_file_id?: string | null;
   vendor_name?: string;
   supplier_id?: string | null;
   status?: PurchaseOrderStatus;
@@ -55,6 +57,14 @@ function withStage(db: Knex) {
 
 export function purchaseOrdersRepository(db: Knex) {
   return {
+    async hasReceiptFile(purchaseOrderId: string, fileId: string) {
+      return Boolean(await db("purchase_order_receipt_files").where({ purchase_order_id: purchaseOrderId }).whereIn("file_id",
+        db("uploaded_files").select("id").where("id", fileId).orWhereIn("content_sha256",
+          db("uploaded_files").select("content_sha256").where({ id: fileId }).whereNotNull("content_sha256"))).first());
+    },
+    async attachReceiptFile(purchaseOrderId: string, fileId: string, actorId: string) {
+      await db("purchase_order_receipt_files").insert({ purchase_order_id: purchaseOrderId, file_id: fileId, created_by_id: actorId });
+    },
     listByProject(projectId: string): Promise<PurchaseOrderRowWithStage[]> {
       return withStage(db)
         .where("purchase_orders.project_id", projectId)

@@ -39,6 +39,7 @@ export const createPurchaseOrderBody = {
   additionalProperties: false,
   properties: {
     poNumber: { type: "string", maxLength: 100 },
+    sourceFileId: { type: "string", minLength: 1, maxLength: 100 },
     vendorName: { type: "string", minLength: 1, maxLength: 200 },
     supplierId: { type: ["string", "null"], maxLength: 100 },
     orderDate: { type: "string", maxLength: 30 },
@@ -80,6 +81,7 @@ export const receiveBody = {
         },
       },
     },
+    sourceFileId: { type: "string", minLength: 1, maxLength: 100 },
     receivedAt: { type: "string", maxLength: 30 },
     note: { type: "string", maxLength: 1000 },
   },
@@ -107,6 +109,7 @@ export const purchaseOrderResponse = {
   properties: {
     id: { type: "string" },
     poNumber: { type: "string" },
+    sourceFileId: { type: ["string", "null"] },
     vendorName: { type: "string" },
     supplierId: { type: ["string", "null"] },
     materialOrderId: { type: ["string", "null"] },

@@ -18,6 +18,10 @@ export function fileAccessRepository(db: Knex) {
         select(db("drawing_markup_comments as c").join("drawing_markups as p", "p.id", "c.markup_id").where("c.file_id", fileId), "documents"),
         select(db("project_transactions as p").where("p.receipt_file_id", fileId), "finances", "viewCosts")
           .select("p.id as expense_id", "p.created_by_id as expense_created_by_id"),
+        select(db("purchase_order_receipt_files as f").join("purchase_orders as p", "p.id", "f.purchase_order_id").where("f.file_id", fileId), "finances", "viewCosts"),
+        select(db("purchase_orders as p").where("p.source_file_id", fileId), "finances", "viewCosts"),
+        select(db("invoice_payments as f").join("project_invoices as p", "p.id", "f.invoice_id").where("f.source_file_id", fileId).where("p.direction", "payable"), "finances", "viewCosts"),
+        select(db("invoice_payments as f").join("project_invoices as p", "p.id", "f.invoice_id").where("f.source_file_id", fileId).where("p.direction", "receivable"), "finances"),
         select(db("project_invoices as p").where("p.source_file_id", fileId).where("p.direction", "payable"), "finances", "viewCosts"),
         select(db("project_invoices as p").where("p.source_file_id", fileId).where("p.direction", "receivable"), "finances"),
         select(db("update_media as m").join("project_updates as p", "p.id", "m.update_id").whereLike("m.url", urlPattern), "updates").select("p.is_draft as update_is_draft"),

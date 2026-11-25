@@ -194,6 +194,7 @@ export function invoiceCertificateService(deps: CertificateDeps) {
         note: input.note?.trim() || null,
         credit: guard.credit,
         recorded_by_id: actor.id,
+        source_file_id: input.sourceFileId ?? null,
       });
       await record(row, "payment_recorded", actor, {
         amount: input.amount,

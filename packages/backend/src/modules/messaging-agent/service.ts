@@ -1,3 +1,4 @@
+import { messagingSourceVisibility } from "./source-files.ts";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Knex } from "knex";
 import type { QueueManager } from "../../lib/queue/index.ts";
@@ -107,11 +108,12 @@ export function messagingAgentService(db: Knex, adapters: MessagingAdapterRegist
       const actions = await reads.actionsForProposals(proposals.map((proposal) => proposal.id));
       const visible = await messagingReviewVisibility(db, context, { projectId, organizationId: context.project.organization_id, buildingId }, actions);
       const recordScope = inbox.some((source) => source.read_access?.recordScope) ? await messagingReadFingerprint(db, context, { projectId, organizationId: context.project.organization_id, buildingId }) : undefined;
+      const visibleFiles = await messagingSourceVisibility(db, context, [...proposals, ...inbox].flatMap((source) => source.source_file_id ? [source.source_file_id] : []));
       return {
         connectionId: stored?.id ?? null, projectId, organizationId: context.project.organization_id, buildingId, permissions: context.permissions,
         buildings: buildings.map(({ id, name }) => ({ id, name })),
         capabilities: context.capabilities,
-        ...messagingHistory(context, proposals, actions, inbox, outbox, new Set(actions.filter((_, index) => visible[index]).map((action) => action.id)), recordScope),
+        ...messagingHistory(context, proposals, actions, inbox, outbox, new Set(actions.filter((_, index) => visible[index]).map((action) => action.id)), recordScope, visibleFiles),
       };
     },
     async setScope(userId: string, input: MessagingScopeInput) {

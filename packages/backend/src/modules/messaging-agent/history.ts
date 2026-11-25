@@ -5,13 +5,14 @@ import { mayReadAnswer } from "./read-access.ts";
 import type { MessagingAccess } from "./management-types.ts";
 import type { MessagingActionRow, MessagingInboxRow, MessagingOutboxRow, MessagingProposalRow } from "./types.ts";
 
-export function messagingHistory(access: MessagingAccess, proposals: MessagingProposalRow[], actions: MessagingActionRow[], inbox: MessagingInboxRow[], outbox: MessagingOutboxRow[], visibleActions?: ReadonlySet<string>, recordScope?: string) {
+export function messagingHistory(access: MessagingAccess, proposals: MessagingProposalRow[], actions: MessagingActionRow[], inbox: MessagingInboxRow[], outbox: MessagingOutboxRow[], visibleActions?: ReadonlySet<string>, recordScope?: string, visibleFiles?: ReadonlySet<string>) {
   const byProposal = new Map(proposals.map((proposal) => [proposal.id, proposal]));
   const byInbox = new Map(proposals.map((proposal) => [proposal.inbox_id, proposal]));
   const sourceById = new Map(inbox.map((source) => [source.id, source]));
   const actionGroups = new Map<string, MessagingActionRow[]>();
   for (const action of actions) actionGroups.set(action.proposal_id, [...(actionGroups.get(action.proposal_id) ?? []), action]);
   const mayRead = (proposal: MessagingProposalRow) => {
+    if (proposal.source_file_id && visibleFiles && !visibleFiles.has(proposal.source_file_id)) return false;
     const items = actionGroups.get(proposal.id) ?? [];
     if (visibleActions && items.some((action) => !visibleActions.has(action.id))) return false;
     if (!items.length) return Boolean(proposal.clarification && access.capabilities.capture);
@@ -20,6 +21,7 @@ export function messagingHistory(access: MessagingAccess, proposals: MessagingPr
   };
   const allHistory = canReadMessagingAction(access, "daily_log") && canReadMessagingAction(access, "material_log");
   const visibleSource = (source: MessagingInboxRow) => {
+    if (source.source_file_id && visibleFiles && !visibleFiles.has(source.source_file_id)) return false;
     if (source.read_access) return mayReadAnswer(access, source.read_access, recordScope);
     const command = parseReviewButtonCommand(source.source_text?.trim().replace(/^(confirm|cancel)\b/i, (name) => name.toUpperCase()));
     const proposal = command ? byProposal.get(command.proposalId) : byInbox.get(source.id);

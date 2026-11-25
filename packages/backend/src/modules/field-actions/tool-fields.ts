@@ -5,6 +5,7 @@ const sources: Record<string, string> = {
   taskId: "tasks", columnId: "taskColumns", rfiId: "rfis", changeRequestId: "changeRequests", orderId: "materialOrders", materialOrderId: "materialOrders",
   approvalId: "materialApprovals", documentId: "documents", supersedesId: "documents", documentVersionId: "documentVersions", versionId: "documentVersions",
   templateId: "templates", supplierId: "suppliers", assigneeId: "assignees", assigneeTeamMemberId: "teamMembers", requestedReviewerId: "reviewers", receivedById: "assignees", ballInCourtId: "assignees",
+  purchaseOrderId: "purchaseOrders", invoiceId: "invoices", expenseId: "expenses", sourceFileId: "files",
   fileId: "files", fileIds: "files", receiptFileId: "files", audioFileId: "files", channelId: "sendableChannels", messageId: "replyTargets", parentMessageId: "replyTargets", quotedMessageId: "replyTargets",
   userId: "workspaceMembers", categoryId: "documentCategories", markupId: "markups", sourceMarkupId: "markups", lookAheadId: "lookAheads",
 };

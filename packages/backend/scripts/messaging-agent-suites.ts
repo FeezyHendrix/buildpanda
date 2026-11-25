@@ -7,6 +7,9 @@ assert.ok(process.env.MESSAGING_AGENT_TEST_DATABASE_URL, "Set MESSAGING_AGENT_TE
 assert.ok(process.env.MESSAGING_AGENT_TEST_REDIS_URL, "Set MESSAGING_AGENT_TEST_REDIS_URL to an isolated Redis instance.");
 
 const suites = [
+  "modules/messaging-agent/document-analysis.test.ts",
+  "modules/messaging-agent/document-conversation.test.ts",
+  "modules/field-actions/financial-records-db.test.ts",
   "../../panda-agent/scripts/review-schema.test.ts",
   "modules/messaging-agent/artifacts.test.ts",
   "modules/field-actions/collaboration-db.test.ts",

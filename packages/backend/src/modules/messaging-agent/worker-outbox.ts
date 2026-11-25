@@ -1,3 +1,4 @@
+import { messagingSourceVisibility } from "./source-files.ts";
 import type { Knex } from "knex";
 import { messagingAgentAccess } from "./access.ts";
 import { messagingAgentReadRepository } from "./read-repository.ts";
@@ -59,6 +60,9 @@ export async function deliverMessagingOutbox(db: Knex, row: MessagingOutboxRow, 
         proposal.project_id !== source.project_id || proposal.building_id !== source.building_id || proposal.organization_id !== source.organization_id ||
         proposal.version !== version || proposal.status !== status || (target && (target.proposalId !== proposal.id || target.version !== version))) {
         await cancel("Review changed before delivery"); return;
+      }
+      if (proposal.source_file_id && (!access || !(await messagingSourceVisibility(trx, access, [proposal.source_file_id])).has(proposal.source_file_id))) {
+        await cancel("Source file access changed before delivery"); return;
       }
       if (proposal.clarification && row.buttons?.some((button) => button.label === "Confirm")) { await cancel("Review needs clarification"); return; }
       const actions = await repo.actionsForProposal(proposal.id, proposal.version);

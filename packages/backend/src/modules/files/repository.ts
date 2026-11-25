@@ -13,6 +13,9 @@ export interface NewUploadedFileRecord {
 
 export function filesRepository(db: Knex) {
   return {
+    async setContentHash(id: string, hash: string) {
+      await db("uploaded_files").where({ id }).update({ content_sha256: hash });
+    },
     findById(id: string): Promise<UploadedFileRow | undefined> {
       return db<UploadedFileRow>("uploaded_files").where({ id }).first();
     },

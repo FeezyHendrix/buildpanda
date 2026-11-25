@@ -131,6 +131,7 @@ export interface NewInvoiceLineItemRecord {
 }
 
 export interface NewPaymentRecord {
+  source_file_id?: string | null;
   id: string;
   invoice_id: string;
   amount: string;
