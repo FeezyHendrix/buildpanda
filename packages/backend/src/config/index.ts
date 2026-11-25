@@ -216,6 +216,12 @@ export const config = {
     serverSideEncryption: optionalBool("S3_SERVER_SIDE_ENCRYPTION", optional("S3_ENDPOINT", "") === ""),
   },
 
+  errorSink: {
+    slackWebhookUrl: optional("ERROR_SINK_SLACK_WEBHOOK_URL", ""),
+    environment: optional("ERROR_SINK_ENVIRONMENT", "") || optional("SENTRY_ENVIRONMENT", "") || env,
+    release: optional("ERROR_SINK_RELEASE", "") || optional("RAILWAY_GIT_COMMIT_SHA", "") || optional("SENTRY_RELEASE", "") || "unknown",
+  },
+
   // Sentry error monitoring. Only runs in production (i.e. on Railway, which
   // sets NODE_ENV=production) AND when a DSN is configured — never in local or
   // dev, even if a DSN leaks into the environment. tracesSampleRate defaults

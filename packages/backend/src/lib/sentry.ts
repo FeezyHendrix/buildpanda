@@ -1,3 +1,5 @@
+import { captureError } from "../modules/error-reports/runtime.ts";
+import { safeTags } from "../modules/error-reports/redact.ts";
 import * as Sentry from "@sentry/node";
 
 export interface BugContext {
@@ -6,11 +8,11 @@ export interface BugContext {
 }
 
 /**
- * Report a swallowed error (background jobs, email/file/AI side-effects) to
- * Sentry. Uses an isolation scope so tags never leak across concurrent jobs,
- * and is a no-op when Sentry has no configured DSN.
+ * Report swallowed errors to each configured sink. Sentry uses an isolation
+ * scope so tags never leak across concurrent jobs. Slack works without a DSN.
  */
 export function captureBug(error: unknown, context: BugContext = {}): void {
+  captureError(error, { kind: "background", tags: safeTags({ ...context.tags, ...context.extra }) });
   Sentry.withIsolationScope(() => {
     Sentry.captureException(error, {
       tags: context.tags,

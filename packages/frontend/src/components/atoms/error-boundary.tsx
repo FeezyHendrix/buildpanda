@@ -1,3 +1,4 @@
+import { reportFrontendError } from "@/lib/error-reports/client";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { ErrorFallback } from "./error-fallback";
 
@@ -19,6 +20,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
+    reportFrontendError(error, { kind: "react", componentStack: info.componentStack });
     if (typeof console !== "undefined") {
       console.error("ErrorBoundary caught:", error, info.componentStack);
     }

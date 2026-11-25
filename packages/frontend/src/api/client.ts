@@ -1,3 +1,4 @@
+import { beginApiRequest, finishApiRequest, failedApiRequest } from "@/lib/error-reports/network";
 import { signInPath } from "@/lib/return-path";
 import axios from "axios";
 import { toast } from "@/lib/toast";
@@ -17,9 +18,11 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+api.interceptors.request.use(beginApiRequest);
 api.interceptors.response.use(
-  (response) => response,
+  finishApiRequest,
   (error) => {
+    failedApiRequest(error);
     if (error.response?.status === 401) {
       // Carry the current location so sign-in returns the user to it, and never
       // bounce while already on an auth screen — a bare redirect here throws

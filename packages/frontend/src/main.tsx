@@ -1,3 +1,5 @@
+import "@/lib/error-reports/bootstrap";
+import { reportFrontendError } from "@/lib/error-reports/client";
 import { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -20,7 +22,11 @@ if (import.meta.env.PROD && "serviceWorker" in navigator && !didRegisterSw) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(
+createRoot(document.getElementById("root")!, {
+  onUncaughtError: (error, info) => { reportFrontendError(error, { kind: "react", componentStack: info.componentStack }); console.error(error); },
+  onCaughtError: (error, info) => reportFrontendError(error, { kind: "react", componentStack: info.componentStack }),
+  onRecoverableError: (error, info) => { reportFrontendError(error, { kind: "react", componentStack: info.componentStack }); console.error(error); },
+}).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RealtimeProvider>
