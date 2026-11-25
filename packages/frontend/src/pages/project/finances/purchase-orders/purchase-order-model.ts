@@ -56,6 +56,10 @@ export interface LineItemValues {
   description: string;
   quantity: string;
   unitPrice: string;
+  /** Unit of measure (bags, m³…). Held on the form; the API has no field for it yet. */
+  unit: string;
+  /** Photos attached to the line. Held on the form; the API has no field for them yet. */
+  images: File[];
 }
 
 export interface UpsertPurchaseOrderValues {
@@ -66,8 +70,12 @@ export interface UpsertPurchaseOrderValues {
   expectedDate: string;
   notes: string;
   stageId: string;
+  /** Photos attached to the order as a whole. Held on the form; not sent. */
+  images: File[];
   items: LineItemValues[];
 }
+
+export const EMPTY_LINE: LineItemValues = { description: "", quantity: "1", unitPrice: "", unit: "", images: [] };
 
 export const EMPTY_PO: UpsertPurchaseOrderValues = {
   poNumber: "",
@@ -77,7 +85,8 @@ export const EMPTY_PO: UpsertPurchaseOrderValues = {
   expectedDate: "",
   notes: "",
   stageId: "",
-  items: [{ description: "", quantity: "1", unitPrice: "" }],
+  images: [],
+  items: [EMPTY_LINE],
 };
 
 export function lineTotal(item: LineItemValues): number {
@@ -126,10 +135,13 @@ export function toValues(purchaseOrder: PurchaseOrder): UpsertPurchaseOrderValue
     expectedDate: purchaseOrder.expectedDate ?? "",
     notes: purchaseOrder.notes ?? "",
     stageId: purchaseOrder.stageId ?? "",
+    images: [],
     items: purchaseOrder.items.map((item) => ({
       description: item.description,
       quantity: String(item.quantity),
       unitPrice: String(item.unitPrice),
+      unit: "",
+      images: [],
     })),
   };
 }

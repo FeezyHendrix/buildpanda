@@ -1,91 +1,96 @@
 import { useMemo } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { ChartCard } from "@/components/molecules/chart-card";
-import { formatCurrency } from "@/lib/formatters";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
+import { formatCompactCurrency, formatCurrency } from "@/lib/formatters";
 import type { TransactionAnalytics } from "@/lib/project-types";
+import { ChartWell, ExpensePanel } from "./expense-panel";
 
 const TOOLTIP_STYLE = {
-  borderRadius: "8px",
-  border: "none",
+  borderRadius: 0,
+  border: "1px solid #EEEEEE",
   boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+  fontSize: 12,
 } as const;
 
-export function ExpenseCharts({
-  analytics,
-  currency,
-  isLoading,
-}: {
+const AXIS_TICK = { fontSize: 12, fill: "#525252" } as const;
+const FALLBACK_COLOR = "#6B7280";
+const TICK_INTERVALS = 4;
+
+/** The smallest 1/2/2.5/5 × 10ⁿ step whose four intervals cover `max`, so the axis ends on a round figure. */
+function niceAxisTicks(max: number): number[] {
+  if (!Number.isFinite(max) || max <= 0) return [0, 1, 2, 3, 4];
+  const rough = max / TICK_INTERVALS;
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((candidate) => candidate >= rough) ?? rough;
+  return Array.from({ length: TICK_INTERVALS + 1 }, (_, i) => step * i);
+}
+
+interface ExpenseChartsProps {
   analytics: TransactionAnalytics | undefined;
   currency: string;
   isLoading: boolean;
-}) {
-  const pieData = useMemo(
-    () =>
-      (analytics?.byCategory ?? []).map((c) => ({
-        name: c.label,
-        value: c.total,
-        color: c.color || "#6B7280",
-      })),
+}
+
+function CategoryDonut({ analytics, currency, isLoading }: ExpenseChartsProps) {
+  const data = useMemo(
+    () => (analytics?.byCategory ?? []).map((c) => ({ name: c.label, value: c.total, color: c.color || FALLBACK_COLOR })),
     [analytics],
   );
-
-  const barData = useMemo(
-    () => (analytics?.byMonth ?? []).map((m) => ({ name: m.month, total: m.total })),
-    [analytics],
-  );
-
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <div className="min-h-[280px]">
-        <ChartCard title="Spend by Category" isLoading={isLoading} isEmpty={pieData.length === 0}>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <RechartsTooltip
-                formatter={(val: unknown) => formatCurrency(Number(val), currency)}
-                contentStyle={TOOLTIP_STYLE}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-      <div className="min-h-[280px]">
-        <ChartCard title="Monthly Spend" isLoading={isLoading} isEmpty={barData.length === 0}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#6B7280" }} dy={10} />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 12, fill: "#6B7280" }}
-                tickFormatter={(val) => formatCurrency(val, currency, { compact: true })}
-              />
-              <RechartsTooltip
-                formatter={(val: unknown) => formatCurrency(Number(val), currency)}
-                cursor={{ fill: "#F3F4F6" }}
-                contentStyle={TOOLTIP_STYLE}
-              />
-              <Bar dataKey="total" fill="#004DE7" radius={[4, 4, 0, 0]} maxBarSize={40} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
+    <ExpensePanel title="Spend by Category">
+      <ChartWell isLoading={isLoading} isEmpty={data.length === 0} emptyLabel="No spend recorded yet">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+            <Pie data={data} dataKey="value" cy={163} innerRadius={86} outerRadius={137} paddingAngle={2} stroke="none" startAngle={90} endAngle={-270}>
+              {data.map((entry) => (
+                <Cell key={entry.name} fill={entry.color} />
+              ))}
+            </Pie>
+            <RechartsTooltip formatter={(value: unknown) => formatCurrency(Number(value), currency)} contentStyle={TOOLTIP_STYLE} />
+          </PieChart>
+        </ResponsiveContainer>
+      </ChartWell>
+    </ExpensePanel>
+  );
+}
+
+function MonthlyBars({ analytics, currency, isLoading }: ExpenseChartsProps) {
+  const data = useMemo(() => (analytics?.byMonth ?? []).map((m) => ({ name: m.month, total: m.total })), [analytics]);
+  const ticks = useMemo(() => niceAxisTicks(Math.max(0, ...data.map((m) => m.total))), [data]);
+  return (
+    <ExpensePanel title="Monthly Spend">
+      <ChartWell isLoading={isLoading} isEmpty={data.length === 0} emptyLabel="No monthly spend yet">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 21, right: 12, bottom: 24, left: 12 }}>
+            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#737373" />
+            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={AXIS_TICK} height={33} tickMargin={15} />
+            <YAxis
+              width={56}
+              axisLine={false}
+              tickLine={false}
+              tick={AXIS_TICK}
+              tickMargin={6}
+              ticks={ticks}
+              domain={[0, ticks[ticks.length - 1] ?? 1]}
+              tickFormatter={(value) => formatCompactCurrency(Number(value), currency)}
+            />
+            <RechartsTooltip
+              formatter={(value: unknown) => formatCurrency(Number(value), currency)}
+              cursor={{ fill: "#F6F6F6" }}
+              contentStyle={TOOLTIP_STYLE}
+            />
+            <Bar dataKey="total" fill="#004DE7" maxBarSize={44} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartWell>
+    </ExpensePanel>
+  );
+}
+
+export function ExpenseCharts(props: ExpenseChartsProps) {
+  return (
+    <div className="grid grid-cols-1 gap-[24px] lg:grid-cols-2">
+      <CategoryDonut {...props} />
+      <MonthlyBars {...props} />
     </div>
   );
 }

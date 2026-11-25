@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { RowActionIcon } from "@/components/molecules/row-action-icon";
 import { RowActionsMenu, type RowActionItem } from "@/components/molecules/row-actions-menu";
 import type { Contract } from "@/hooks/use-contracts";
 import { useUpdateStage } from "@/hooks/use-stages";
@@ -27,8 +28,12 @@ import { EditableNumberCell } from "./editable-number-cell";
  * purchase orders, never edited here.
  */
 
-const COLUMN_COUNT = 9;
+const COLUMN_COUNT = 6;
 const DASH = "—";
+const HEADER_CELL = "h-[52px] px-[24px] py-0 text-caption-l font-medium normal-case text-[#525252]";
+const BODY_CELL = "whitespace-nowrap px-[24px] py-0 text-caption-l text-[#1E1E1E] tabular-nums";
+/** Column widths as shares of the 1117px design table. */
+const COLUMN_WIDTHS = ["17.5%", "22.2%", "22.2%", "15.5%", "16.7%", "5.9%"] as const;
 
 type EstimateField = "expectedCost" | "estimatedLaborHours" | "laborBudget" | "materialBudget";
 
@@ -69,19 +74,21 @@ export function PhasesTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line-hair bg-white">
-      <Table className="min-w-[1100px]">
+    <div className="border border-[#EEEEEE] bg-white">
+      <Table className="min-w-[960px] table-fixed">
+        <colgroup>
+          {COLUMN_WIDTHS.map((width) => (
+            <col key={width} style={{ width }} />
+          ))}
+        </colgroup>
         <TableHead>
           <tr>
-            <TableHeaderCell>Phase</TableHeaderCell>
-            <TableHeaderCell>Contract</TableHeaderCell>
-            <TableHeaderCell align="right">Schedule value</TableHeaderCell>
-            <TableHeaderCell align="right" title="Click a cell to edit">Est. total costs</TableHeaderCell>
-            <TableHeaderCell align="right" title="Click a cell to edit">Est. labour hours</TableHeaderCell>
-            <TableHeaderCell align="right">Used labour hours</TableHeaderCell>
-            <TableHeaderCell align="right">Used material costs</TableHeaderCell>
-            <TableHeaderCell align="right">Total costs</TableHeaderCell>
-            <TableHeaderCell align="right" className="w-[72px]">
+            <TableHeaderCell className={HEADER_CELL}>Phase</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL}>Schedule value</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL} title="Click a cell to edit">Est. total costs</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL} title="Click a cell to edit">Est. labour hours</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL}>Total costs</TableHeaderCell>
+            <TableHeaderCell className={HEADER_CELL}>
               <span className="sr-only">Actions</span>
             </TableHeaderCell>
           </tr>
@@ -145,27 +152,29 @@ function money(value: number | null | undefined, currency: Currency): string {
 }
 
 function hours(value: number | null | undefined): string {
-  return value == null ? DASH : `${value.toLocaleString("en-GB")} h`;
+  return value == null ? DASH : `${value.toLocaleString("en-GB")} ${value === 1 ? "hour" : "hours"}`;
 }
 
 function PhaseRow({ stage, contract, currency, canManage, saving, onCommit, onView, onEditValue, onOpenSchedule }: PhaseRowProps) {
   const actions = useMemo<RowActionItem[]>(
     () => [
-      { label: "View", onSelect: () => onView(stage) },
-      ...(canManage ? [{ label: "Edit value", onSelect: () => onEditValue(stage) }] : []),
-      { label: canManage ? "Schedule" : "View schedule", onSelect: () => onOpenSchedule(stage) },
+      { label: "View Phase", icon: <RowActionIcon name="view" />, onSelect: () => onView(stage) },
+      ...(canManage ? [{ label: "Edit Value", icon: <RowActionIcon name="edit" />, onSelect: () => onEditValue(stage) }] : []),
+      { label: canManage ? "Schedule" : "View Schedule", icon: <RowActionIcon name="schedule" />, onSelect: () => onOpenSchedule(stage) },
     ],
     [stage, canManage, onView, onEditValue, onOpenSchedule],
   );
 
   return (
-    <TableRow onClick={() => onView(stage)}>
-      <TableCell className="font-medium text-ink">{stage.name}</TableCell>
-      <TableCell className="text-ink-subtle">{contract.title}</TableCell>
-      <TableCell align="right" className="whitespace-nowrap font-semibold tabular-nums">
-        {stage.value > 0 ? formatCurrency(stage.value, currency) : <span className="font-normal text-ink-muted">Not priced</span>}
+    <TableRow onClick={() => onView(stage)} className="h-[52px] border-[#EEEEEE]">
+      <TableCell className={BODY_CELL}>
+        <p className="truncate">{stage.name}</p>
+        <p className="truncate text-caption-m text-[#737373]">{contract.title}</p>
       </TableCell>
-      <TableCell align="right" className="whitespace-nowrap">
+      <TableCell className={BODY_CELL}>
+        {stage.value > 0 ? formatCurrency(stage.value, currency) : <span className="text-[#737373]">Not priced</span>}
+      </TableCell>
+      <TableCell className={BODY_CELL}>
         <EditableNumberCell
           value={stage.expectedCost}
           display={money(stage.expectedCost, currency)}
@@ -175,7 +184,7 @@ function PhaseRow({ stage, contract, currency, canManage, saving, onCommit, onVi
           onCommit={(value) => onCommit(stage, "expectedCost", value)}
         />
       </TableCell>
-      <TableCell align="right" className="whitespace-nowrap">
+      <TableCell className={BODY_CELL}>
         <EditableNumberCell
           value={stage.estimatedLaborHours}
           display={hours(stage.estimatedLaborHours)}
@@ -185,12 +194,10 @@ function PhaseRow({ stage, contract, currency, canManage, saving, onCommit, onVi
           onCommit={(value) => onCommit(stage, "estimatedLaborHours", value)}
         />
       </TableCell>
-      <TableCell align="right" className="whitespace-nowrap tabular-nums">{hours(stage.usedLaborHours)}</TableCell>
-      <TableCell align="right" className="whitespace-nowrap tabular-nums">{money(stage.usedMaterialCost, currency)}</TableCell>
-      <TableCell align="right" className="whitespace-nowrap font-medium tabular-nums">{money(stage.totalCost, currency)}</TableCell>
-      <TableCell align="right" onClick={(event) => event.stopPropagation()}>
-        <div className="flex justify-end">
-          <RowActionsMenu ariaLabel={`Actions for ${stage.name}`} items={actions} />
+      <TableCell className={BODY_CELL}>{money(stage.totalCost, currency)}</TableCell>
+      <TableCell className={BODY_CELL} onClick={(event) => event.stopPropagation()}>
+        <div className="flex justify-center">
+          <RowActionsMenu ariaLabel={`Actions for ${stage.name}`} items={actions} appearance="house" />
         </div>
       </TableCell>
     </TableRow>

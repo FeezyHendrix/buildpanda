@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { ProgressBar, type ProgressTone } from "@/components/atoms/progress-bar";
 import type { StageBudgetLine } from "@/hooks/use-finances";
 import { CONTRACTS_PHASES_PATH, financeTabPath } from "@/lib/finance-routes";
 import { formatCompactCurrency } from "@/lib/formatters";
@@ -9,8 +8,7 @@ import { OverviewCard, OverviewEmpty } from "./overview-cards";
 /**
  * Phase spend as a share of budget, read from `GET /finances/summary`. The
  * budget is the phase's estimate where one was entered and its scheduled value
- * otherwise. Nothing is recomputed here beyond the bar width; a phase past
- * 100% is an overrun.
+ * otherwise. Nothing is recomputed here; a phase past 100% is an overrun.
  *
  * Contractor cost, so the card only renders with `finances:viewCosts`.
  */
@@ -41,25 +39,21 @@ export function rankPhasesBySpend(phases: StageBudgetLine[]): PhaseSpend[] {
     .slice(0, TOP_N);
 }
 
-function spendTone(percent: number): ProgressTone {
-  return percent > 100 ? "danger" : "brand";
-}
-
 function PhaseSpendRow({ phase, currency }: { phase: PhaseSpend; currency: string }) {
   const over = phase.percent > 100;
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto_5rem] items-center gap-3 py-2.5">
+    <li className="flex min-h-[60px] items-center justify-between gap-3 py-[10px]">
       <div className="min-w-0">
-        <p className="truncate text-[13px] text-ink">{phase.name}</p>
-        <p className="truncate text-xs text-ink-muted">
+        <p className="truncate text-caption-l text-[#1E1E1E]">{phase.name}</p>
+        <p className="truncate text-caption-m text-[#737373]">
           {formatCompactCurrency(phase.actual, currency)} of {formatCompactCurrency(phase.budget, currency)} budget
         </p>
       </div>
-      <p className={cn("text-[13px] font-medium tabular-nums", over ? "text-error-600" : "text-ink")}>
+      {/* A phase past its budget reads past 100%, flagged in red. */}
+      <p className={cn("shrink-0 text-[16px] font-medium leading-[24px] tabular-nums", over ? "text-error-600" : "text-[#1E1E1E]")}>
         {over ? "▲ " : ""}
         {phase.percent}%
       </p>
-      <ProgressBar value={Math.min(100, phase.percent)} tone={spendTone(phase.percent)} size="lg" trackClassName="bg-surface-alt" />
     </li>
   );
 }
@@ -81,7 +75,7 @@ export function PhaseSpendCard({ projectId, currency, phases, className }: Phase
       {rows.length === 0 ? (
         <OverviewEmpty>No phase costs recorded yet.</OverviewEmpty>
       ) : (
-        <ul className="divide-y divide-line-hair">
+        <ul className="divide-y divide-[#EEEEEE]">
           {rows.map((phase) => (
             <PhaseSpendRow key={phase.stageId} phase={phase} currency={currency} />
           ))}

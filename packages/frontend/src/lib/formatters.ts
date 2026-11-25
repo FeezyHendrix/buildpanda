@@ -38,6 +38,26 @@ export function formatCompactCurrency(value: number, currency: string): string {
   return formatCurrency(value, currency, { compact: true, whole: true });
 }
 
+/**
+ * A headline amount that stays exact at a glance: ₦3.350M, not ₦3.4M. Under a
+ * thousand it is the plain amount, since a suffix would only add noise.
+ */
+export function formatCompactPrecise(value: number, currency: string): string {
+  if (Math.abs(value) < 1000) return formatCurrency(value, currency);
+  const locale = CURRENCY_LOCALE[currency] ?? "en-US";
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      notation: "compact",
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3,
+    }).format(value);
+  } catch {
+    return formatCurrency(value, currency);
+  }
+}
+
 export function currencySymbol(currency: string): string {
   const locale = CURRENCY_LOCALE[currency] ?? "en-US";
   try {

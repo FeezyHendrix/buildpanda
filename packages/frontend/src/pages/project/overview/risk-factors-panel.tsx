@@ -54,7 +54,7 @@ export function RiskFactorsPanel({
           <EmptyState
             variant="inline"
             title="No active risks yet"
-            icon={<ReactSVG src={icons.riskShield} />}
+            illustration={<ReactSVG src={icons.riskShield} />}
             description="Add a risk factor to track and mitigate issues on this project."
           />
         ) : (

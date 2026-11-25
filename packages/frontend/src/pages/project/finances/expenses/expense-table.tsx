@@ -1,22 +1,29 @@
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
-import { Spinner } from "@/components/atoms/spinner";
-import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { FinancesIcon } from "@/components/atoms/project-nav-icons";
+import { Spinner } from "@/components/atoms/spinner";
+import { Table, TableBody, TableCell, TableEmptyRow, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { formatCurrency, formatDayMonth } from "@/lib/formatters";
+import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
+import { formatCurrency, formatLongDate } from "@/lib/formatters";
 import type { Transaction } from "@/lib/project-types";
-import { CategoryBadge } from "./expense-dialogs";
+import { CategoryBadge } from "./category-badge";
+
+const COLUMNS = ["Title", "Category", "Date", "Vendor", "Amount"] as const;
+const COLUMN_COUNT = COLUMNS.length + 1;
+const HEADER_CELL = "h-[52px] px-[24px] py-0 text-caption-l font-medium normal-case text-[#525252]";
+const BODY_CELL = "px-[24px] py-0 text-caption-l text-[#1E1E1E]";
+
+/** Column widths as shares of the 1116px design table. */
+const COLUMN_WIDTHS = ["18.1%", "20.2%", "17.7%", "21.4%", "16.4%", "6.2%"] as const;
 
 /**
- * Credits and recoverable deposits affect how the amount should be read.
- * Date context belongs beside the expense date, separate from stage attribution.
+ * A credit and a recoverable deposit change how the amount reads, so they stay
+ * visible beside the reference even though the table has no column for them.
  */
 function ExpenseFlags({ tx }: { tx: Transaction }) {
   if (!tx.credit && !tx.recoverable) return null;
   return (
-    <div className="mt-1.5 flex flex-wrap gap-1.5">
+    <>
       {tx.credit ? (
         <Badge tone="success" size="sm" dot>
           Credit
@@ -27,76 +34,52 @@ function ExpenseFlags({ tx }: { tx: Transaction }) {
           Recoverable
         </Badge>
       ) : null}
-    </div>
+    </>
   );
 }
 
 ExpenseFlags.displayName = "ExpenseFlags";
 
-function ExpenseRow({
-  tx,
-  currency,
-  onOpen,
-  onDelete,
-}: {
+interface ExpenseRowProps {
   tx: Transaction;
   currency: string;
   onOpen: (tx: Transaction) => void;
   onDelete: (tx: Transaction) => void;
-}) {
+}
+
+function ExpenseRow({ tx, currency, onOpen, onDelete }: ExpenseRowProps) {
   return (
-    <TableRow className="group" onClick={() => onOpen(tx)}>
-      <TableCell>
-        <div className="font-medium text-ink">{tx.title}</div>
-        {tx.vendor ? <div className="mt-0.5 text-xs text-ink-muted">{tx.vendor}</div> : null}
-        {tx.reference ? <div className="mt-0.5 text-xs text-ink-muted">Ref: {tx.reference}</div> : null}
-        <ExpenseFlags tx={tx} />
+    <TableRow onClick={() => onOpen(tx)} className="h-[68px] border-[#EEEEEE]">
+      <TableCell className={BODY_CELL}>
+        <p className="truncate">{tx.title}</p>
+        <div className="flex min-w-0 items-center gap-[6px]">
+          {tx.reference ? <p className="truncate text-caption-m text-[#737373]">Ref: {tx.reference}</p> : null}
+          <ExpenseFlags tx={tx} />
+        </div>
       </TableCell>
-      <TableCell>
+      <TableCell className={BODY_CELL}>
         <CategoryBadge categoryLabel={tx.categoryLabel} categoryColor={tx.categoryColor} />
       </TableCell>
-      <TableCell>
-        <div className="whitespace-nowrap">{formatDayMonth(tx.transactedAt)}</div>
-        {tx.preContract ? (
-          <div className="mt-1 max-w-36 text-xs text-ink-muted">Expense date is before project start.</div>
-        ) : null}
+      <TableCell className={`${BODY_CELL} whitespace-nowrap`}>{formatLongDate(tx.transactedAt)}</TableCell>
+      <TableCell className={BODY_CELL}>
+        <p className="truncate">{tx.vendor || "—"}</p>
       </TableCell>
-      <TableCell className="text-ink-subtle">{tx.stageName || "No stage"}</TableCell>
-      <TableCell align="right" className="font-medium text-ink tabular-nums">
+      <TableCell className={`${BODY_CELL} whitespace-nowrap tabular-nums`}>
         {tx.credit ? "−" : ""}
         {formatCurrency(tx.amount, currency)}
       </TableCell>
-      <TableCell className="whitespace-nowrap text-xs text-ink-subtle">
-        {formatDayMonth(tx.createdAt)}
-        {tx.createdByName ? <span className="text-ink-muted"> · {tx.createdByName}</span> : null}
-      </TableCell>
-      <TableCell align="right">
-        <Button
-          variant="danger"
-          size="sm"
-          className="opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(tx);
-          }}
-        >
-          Delete
-        </Button>
+      <TableCell className={BODY_CELL} onClick={(event) => event.stopPropagation()}>
+        <div className="flex justify-center">
+          <RowActionsMenu ariaLabel={`Actions for ${tx.title}`} onEdit={() => onOpen(tx)} onDelete={() => onDelete(tx)} />
+        </div>
       </TableCell>
     </TableRow>
   );
 }
 
-export function ExpenseTable({
-  transactions,
-  currency,
-  isLoading,
-  isFiltered,
-  onOpen,
-  onDelete,
-  onRecord,
-  onClearFilters,
-}: {
+ExpenseRow.displayName = "ExpenseRow";
+
+interface ExpenseTableProps {
   transactions: Transaction[];
   currency: string;
   isLoading: boolean;
@@ -105,49 +88,52 @@ export function ExpenseTable({
   onDelete: (tx: Transaction) => void;
   onRecord: () => void;
   onClearFilters: () => void;
-}) {
+}
+
+export function ExpenseTable({ transactions, currency, isLoading, isFiltered, onOpen, onDelete, onRecord, onClearFilters }: ExpenseTableProps) {
   return (
-    <Card className="bg-white overflow-hidden">
-      {isLoading ? (
-        <div className="flex justify-center p-12">
-          <Spinner size="md" />
-        </div>
-      ) : transactions.length === 0 && !isFiltered ? (
-        <EmptyState
-          icon={<FinancesIcon />}
-          title="No expenses recorded yet"
-          description="Start recording site spend to build your log."
-          action={{ label: "Record expense", onClick: onRecord }}
-        />
-      ) : transactions.length === 0 ? (
-        <EmptyState
-          title="No expenses match these filters"
-          description="Try adjusting your filters."
-          action={{ label: "Clear filters", onClick: onClearFilters }}
-        />
-      ) : (
-        <Table>
-          <TableHead>
-            <tr>
-              <TableHeaderCell>Name</TableHeaderCell>
-              <TableHeaderCell>Category</TableHeaderCell>
-              <TableHeaderCell>Expense date</TableHeaderCell>
-              <TableHeaderCell>Build stage</TableHeaderCell>
-              <TableHeaderCell align="right">Amount</TableHeaderCell>
-              <TableHeaderCell>Created</TableHeaderCell>
-              <TableHeaderCell className="w-[100px]">
-                <span className="sr-only">Actions</span>
+    <div className="border border-[#EEEEEE] bg-white">
+      <Table className="min-w-[900px] table-fixed">
+        <colgroup>
+          {COLUMN_WIDTHS.map((width) => (
+            <col key={width} style={{ width }} />
+          ))}
+        </colgroup>
+        <TableHead>
+          <tr>
+            {COLUMNS.map((column) => (
+              <TableHeaderCell key={column} className={HEADER_CELL}>
+                {column}
               </TableHeaderCell>
-            </tr>
-          </TableHead>
-          <TableBody>
-            {transactions.map((tx) => (
-              <ExpenseRow key={tx.id} tx={tx} currency={currency} onOpen={onOpen} onDelete={onDelete} />
             ))}
-          </TableBody>
-        </Table>
-      )}
-    </Card>
+            <TableHeaderCell className={HEADER_CELL}>
+              <span className="sr-only">Actions</span>
+            </TableHeaderCell>
+          </tr>
+        </TableHead>
+        <TableBody>
+          {isLoading ? (
+            <TableEmptyRow colSpan={COLUMN_COUNT} className="py-12">
+              <div className="flex items-center justify-center">
+                <Spinner size="md" />
+              </div>
+            </TableEmptyRow>
+          ) : transactions.length === 0 ? (
+            <TableEmptyRow colSpan={COLUMN_COUNT}>
+              <EmptyState
+                variant="inline"
+                icon={isFiltered ? undefined : <FinancesIcon />}
+                title={isFiltered ? "No expenses match these filters" : "No expenses recorded yet"}
+                description={isFiltered ? "Try adjusting your search or filters." : "Start recording site spend to build your log."}
+                action={isFiltered ? { label: "Clear filters", onClick: onClearFilters } : { label: "Record expense", onClick: onRecord }}
+              />
+            </TableEmptyRow>
+          ) : (
+            transactions.map((tx) => <ExpenseRow key={tx.id} tx={tx} currency={currency} onOpen={onOpen} onDelete={onDelete} />)
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 

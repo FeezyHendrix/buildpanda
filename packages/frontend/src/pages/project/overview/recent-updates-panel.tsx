@@ -43,7 +43,7 @@ export function RecentUpdatesPanel({
             <EmptyState
               variant="inline"
               title="No updates yet"
-              icon={<ReactSVG src={icons.updateEmpty} />}
+              illustration={<ReactSVG src={icons.updateEmpty} />}
               description="Progress updates posted on this project will appear here."
             />
           ) : (

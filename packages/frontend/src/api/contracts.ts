@@ -17,6 +17,8 @@ export interface Contract {
   projectId?: string;
   kind: ContractKind;
   changeRequestId: string | null;
+  /** Human-readable contract number (e.g. INV-2026-001). Not on the API yet; the UI falls back to the kind. */
+  reference?: string | null;
   title: string;
   trade: string | null;
   legalEntity: string | null;

@@ -117,3 +117,16 @@ export function formatSignedDate(iso: string | null): string {
   if (Number.isNaN(date.getTime())) return iso;
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
+
+/** "6 June 2026": the register's long form. */
+export function formatSignedDateLong(iso: string | null): string {
+  if (!iso) return "—";
+  const date = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+/** The line under a contract's name: its number when the API has one, else what kind it is. */
+export function contractSubtitle(contract: Contract): string {
+  return contract.reference?.trim() || CONTRACT_KIND_LABEL[contract.kind];
+}

@@ -1,15 +1,17 @@
 import { useUrlState } from "@/hooks/use-url-state";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { CreateButton } from "@/components/molecules/create-button";
-import { SearchInput } from "@/components/atoms/search-input";
-import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { NumberedPagination } from "@/components/molecules/numbered-pagination";
 import { QueryError } from "@/components/molecules/query-error";
 import { UnavailableRecord } from "@/components/molecules/unavailable-record";
 import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
+import { Download } from "lucide-react";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectInvoices, type Invoice, type InvoiceScanResult } from "@/hooks/use-invoices";
+import { downloadCsv } from "@/lib/download-csv";
+import { formatLongDate } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import { InvoiceComposer } from "../invoices/invoice-composer";
 import { PERIOD_PATTERN } from "./contract/billing-sheet-model";
@@ -18,18 +20,23 @@ import {
   useDownloadInvoicePdf,
   type InvoiceAction,
 } from "./invoices/invoice-action-dialogs";
-import { InvoiceDrawer } from "./invoices/invoice-drawer";
-import { filterInvoices, INVOICE_STATUS_FILTERS, type InvoiceStatusFilter } from "./invoices/invoice-model";
+import { InvoiceKpis } from "./invoices/invoice-kpis";
+import { counterpartyName, filterInvoices, INVOICE_STATUS_FILTERS, invoiceStatusLabel, type InvoiceStatusFilter } from "./invoices/invoice-model";
+import { InvoiceSheet } from "./invoices/invoice-sheet";
 import { InvoiceTable } from "./invoices/invoice-table";
+import { InvoiceToolbar } from "./invoices/invoice-toolbar";
+import { useInvoiceStatusMove } from "./invoices/use-invoice-status-move";
 
 const EMPTY_INVOICES: Invoice[] = [];
 const STATUS_VALUES = INVOICE_STATUS_FILTERS.map(filter => filter.value);
+const PAGE_SIZE = 10;
 
 /**
  * Invoices — the register of what's been billed, held back and paid. Adding
- * or sending an invoice records it; nothing here charges anyone.
+ * or sending an invoice records it; nothing here charges anyone. The page's tab
+ * switch arrives as `tabs` because it shares a row with this tab's actions.
  */
-export function InvoicesTab() {
+export function InvoicesTab({ tabs }: { tabs: ReactNode }) {
   const { project, access } = useProjectContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const canManage = canResourceAction(access, "finances", "manage");
@@ -37,9 +44,13 @@ export function InvoicesTab() {
   const currency = project.currency;
   const { data: invoices = EMPTY_INVOICES, isPending, isSuccess, error, refetch } = useProjectInvoices(project.id);
   const pdf = useDownloadInvoicePdf(project.id);
+  const statusMove = useInvoiceStatusMove(project.id);
 
   const [search, setSearch] = useUrlState<string>("q", "");
   const [status, setStatus] = useUrlState<InvoiceStatusFilter>("status", "all", STATUS_VALUES);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
   const [scanOpen, setScanOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [scanResult, setScanResult] = useState<InvoiceScanResult | null>(null);
@@ -63,10 +74,20 @@ export function InvoicesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const visible = useMemo(() => filterInvoices(invoices, status, search), [invoices, status, search]);
+  const visible = useMemo(() => {
+    const matched = filterInvoices(invoices, status, search);
+    if (!dateFrom && !dateTo) return matched;
+    // The date range is on the issue date; an invoice with none drops out while a range is set.
+    return matched.filter((invoice) => {
+      const issued = invoice.issueDate?.slice(0, 10);
+      return Boolean(issued) && (!dateFrom || issued! >= dateFrom) && (!dateTo || issued! <= dateTo);
+    });
+  }, [invoices, status, search, dateFrom, dateTo]);
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(visible.length / PAGE_SIZE)));
+  const paged = useMemo(() => visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [visible, currentPage]);
   // The drawer reads the live invoice so a payment or status change shows at once.
   const viewed = useMemo(() => invoices.find((invoice) => invoice.id === viewId) ?? null, [invoices, viewId]);
-  const isFiltered = status !== "all" || search.trim().length > 0;
+  const isFiltered = status !== "all" || search.trim().length > 0 || dateFrom !== "" || dateTo !== "";
   const unavailable = Boolean(viewId) && isSuccess && !viewed;
 
   function openComposer(): void {
@@ -75,7 +96,25 @@ export function InvoicesTab() {
     setComposerOpen(true);
   }
 
+  function exportCsv(): void {
+    downloadCsv("invoices.csv", [
+      ["Invoice", "Status", "Date", "Vendor", "Amount", "Paid", "Balance"],
+      ...visible.map((invoice) => [
+        invoice.number ?? "",
+        invoiceStatusLabel(invoice.status),
+        formatLongDate(invoice.issueDate),
+        counterpartyName(invoice),
+        invoice.totalInvoiced,
+        invoice.amountPaid,
+        invoice.balanceDue,
+      ]),
+    ]);
+  }
+
   function clearFilters(): void {
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
     setSearchParams(previous => {
       const next = new URLSearchParams(previous);
       next.delete("status");
@@ -86,36 +125,56 @@ export function InvoicesTab() {
 
   return (
     <section aria-label="Invoices">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-1 flex-wrap items-center gap-3">
-          <div className="w-full rounded-lg bg-surface-alt sm:max-w-xs">
-            <SearchInput
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by invoice # or vendor"
-              aria-label="Search invoices"
-            />
-          </div>
-          <FilterTabs items={INVOICE_STATUS_FILTERS} value={status} onChange={setStatus} ariaLabel="Filter invoices by status" />
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {tabs}
         {canManage ? (
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
+          <div className="flex items-center gap-[12px]">
+            <Button variant="outline" className="h-[36px] gap-[8px] border border-[#DCDCDC] px-[15px] text-[14px] font-medium" onClick={() => setScanOpen(true)}>
+              <Download className="size-[16px]" aria-hidden />
               Scan invoice
             </Button>
-            <CreateButton onClick={openComposer}>
-              Add invoice
-      </CreateButton>
+            <CreateButton onClick={openComposer} className="h-[36px] gap-[8px] px-[16px] text-[14px] font-semibold">
+              Create invoice
+            </CreateButton>
           </div>
         ) : null}
       </div>
 
+      {isSuccess ? (
+        <div className="mt-[24px]">
+          <InvoiceKpis invoices={invoices} currency={currency} />
+        </div>
+      ) : null}
+
+      <div className="mt-[40px]">
+        <InvoiceToolbar
+          search={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+          status={status}
+          onStatusChange={(next) => {
+            setStatus(next);
+            setPage(1);
+          }}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateChange={(from, to) => {
+            setDateFrom(from);
+            setDateTo(to);
+            setPage(1);
+          }}
+          onExport={exportCsv}
+          canExport={visible.length > 0}
+        />
+      </div>
+
       {error ? <QueryError error={error} retry={refetch} noun="invoices" /> : null}
       {unavailable ? <UnavailableRecord name="Invoice" returnLabel="Return to invoices" onReturn={() => setViewId(null)} /> : null}
-      {!error && !unavailable ? <InvoiceTable
-        projectId={project.id}
+      {!error && !unavailable ? <div className="mt-[16px]"><InvoiceTable
         currency={currency}
-        invoices={visible}
+        invoices={paged}
         isLoading={isPending}
         isFiltered={isFiltered}
         canManage={canManage}
@@ -124,9 +183,12 @@ export function InvoicesTab() {
         onView={(invoice) => setViewId(invoice.id)}
         onAction={(invoice, action) => setPending({ invoice, action })}
         onDownloadPdf={pdf.download}
-      /> : null}
+        onMoveStatus={statusMove.move}
+      />
+        {visible.length > 0 ? <NumberedPagination page={currentPage} pageSize={PAGE_SIZE} total={visible.length} noun="Invoices" onPageChange={setPage} /> : null}
+      </div> : null}
 
-      <InvoiceDrawer
+      <InvoiceSheet
         open={viewed !== null}
         onOpenChange={(next) => {
           if (!next) setViewId(null);
@@ -138,6 +200,7 @@ export function InvoicesTab() {
         canRecordPayment={canRecordPayment}
         onAction={(invoice, action) => setPending({ invoice, action })}
         onDownloadPdf={pdf.download}
+        onMoveStatus={statusMove.move}
         pdfPending={pdf.isPending}
       />
 

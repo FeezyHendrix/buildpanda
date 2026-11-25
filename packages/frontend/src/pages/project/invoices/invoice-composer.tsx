@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Button } from "@/components/atoms/button";
-import { XIcon } from "@/components/atoms/chat-icons";
+import { SHEET_HEADER_RULED, WIDE_SHEET } from "@/components/molecules/wide-sheet";
 import {
   useCreateInvoice,
   useSendInvoice,
@@ -15,11 +15,11 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { formatPeriodLabel } from "../finances/schedule-of-values-line";
-import { draftToInvoiceValues, sanitizeInvoice } from "./invoice-form-model";
+import { TYPES, countValidLines, draftToInvoiceValues, sanitizeInvoice } from "./invoice-form-model";
 import { toInput } from "./invoice-utils";
 import { useInvoiceForm } from "./use-invoice-form";
 import { useProgressInvoiceSeed } from "./use-progress-invoice-seed";
-import { InvoiceForm } from "./invoice-form";
+import { ComposerForm } from "./composer-form";
 import { ScannedDetailsBanner } from "./scanned-details-banner";
 
 interface InvoiceComposerProps {
@@ -89,15 +89,21 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan,
   }, [open, orgInstructions]);
 
   const money = (n: number): string => formatCurrency(n, form.values.currency || currency);
+  // The design keeps Trade inside More Options, so it cannot block saving: a blank one falls back to the type's name.
+  const canSubmit = form.values.vendorName.trim().length > 0 && countValidLines(form.values) > 0;
+  const prepared = () => {
+    const clean = sanitizeInvoice(form.values);
+    return { ...clean, trade: clean.trade || (TYPES.find((t) => t.value === clean.invoiceType)?.label ?? "Invoice") };
+  };
   const recipient = form.values.recipientEmail.trim();
   const recipientValid = EMAIL_RE.test(recipient);
   const busySubmitting = busy !== "idle";
 
   function saveDraft(): void {
-    if (!form.isValid || busySubmitting) return;
+    if (!canSubmit || busySubmitting) return;
     setBusy("draft");
     create.mutate(
-      { projectId, ...toInput(sanitizeInvoice(form.values)), sourceFileId },
+      { projectId, ...toInput(prepared()), sourceFileId },
       {
         onSuccess: async (created) => {
           await attachPayApplication(created);
@@ -111,10 +117,10 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan,
   }
 
   function sendInvoice(): void {
-    if (!form.isValid || !recipientValid || busySubmitting) return;
+    if (!canSubmit || !recipientValid || busySubmitting) return;
     setBusy("send");
     create.mutate(
-      { projectId, ...toInput(sanitizeInvoice(form.values)), sourceFileId },
+      { projectId, ...toInput(prepared()), sourceFileId },
       {
         onSuccess: async (created) => {
           await attachPayApplication(created);
@@ -143,81 +149,65 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan,
       <Dialog.Portal>
         <Dialog.Backdrop
           className={cn(
-            "fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-300",
+            "fixed inset-0 z-50 bg-black/30 transition-opacity duration-300",
             "data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
           )}
         />
         <Dialog.Popup
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-[min(820px,100vw)] flex-col border-l border-line-hair bg-surface-alt shadow-drawer outline-none",
+            "fixed inset-y-0 right-0 z-50 flex w-[min(1026px,100vw)] flex-col bg-white shadow-drawer outline-none",
             "transition-transform duration-300 ease-out",
             "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
           )}
         >
-          <header className="flex items-start justify-between gap-4 border-b border-line-hair bg-white px-6 py-5">
-            <div className="min-w-0">
-              <Dialog.Title className="text-lg font-semibold text-gray-900">
-                {period ? `Progress invoice · ${formatPeriodLabel(period)}` : "New invoice"}
-              </Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-gray-500 text-pretty">
-                {period
-                  ? "Seeded from the billing sheet: each line is what a stage billed this month. Add who it's for, then send or save."
-                  : "Add who it's for and the line items — totals update as you type."}
-              </Dialog.Description>
-            </div>
-            <Dialog.Close
-              render={
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-black/5 hover:text-ink"
-                >
-                  <XIcon className="size-4" />
-                </button>
-              }
-            />
+          <header className={SHEET_HEADER_RULED}>
+            <Dialog.Title className={cn("font-bold text-grey-800", WIDE_SHEET.titleClassName)}>
+              {period ? `Progress invoice · ${formatPeriodLabel(period)}` : "New invoice"}
+            </Dialog.Title>
+            <Dialog.Description className={cn("text-pretty", WIDE_SHEET.descriptionClassName)}>
+              {period
+                ? "Seeded from the billing sheet: each line is what a stage billed this month. Add who it's for, then send or save."
+                : "Add who it's for and the line items — totals update as you type."}
+            </Dialog.Description>
           </header>
+          <div aria-hidden className="mx-[24px] h-px shrink-0 bg-[#EEEEEE]" />
 
-          <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
+          <div className="flex flex-1 flex-col gap-[24px] overflow-y-auto px-[24px] pb-[24px] pt-[24px] no-scrollbar">
             {scan && <ScannedDetailsBanner draft={scan.draft} currency={form.values.currency || currency} />}
-            <InvoiceForm form={form} money={money} projectId={projectId} />
+            <ComposerForm form={form} money={money} projectId={projectId} />
           </div>
 
-          <footer className="border-t border-line-hair bg-white px-6 py-4">
-            {form.isValid && !recipientValid && (
-              <p className="mb-2 text-xs text-gray-500">
-                Add a client email to send, or save it as a draft for now.
-              </p>
+          <footer className="px-[24px] pb-[25px] pt-[16px]">
+            {canSubmit && !recipientValid && (
+              <p className="mb-2 text-right text-caption-m text-[#737373]">Add a client email to send, or save it as a draft for now.</p>
             )}
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-medium uppercase text-ink-muted">
-                  Net payable
-                </p>
-                <p className="truncate text-lg font-medium tabular-nums text-primary-700">
-                  {money(form.totals.netPayable)}
-                </p>
+                <p className="text-caption-l text-[#737373]">Net Payable</p>
+                <p className="truncate text-[24px] font-medium leading-[32px] tracking-[-0.02em] tabular-nums text-[#004DE7]">{money(form.totals.netPayable)}</p>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 items-center gap-[4px]">
                 <Button
                   type="button"
-                  variant="secondary"
-                  size="md"
+                  variant="outline"
+                  size="lg"
+                  className="h-[46px] w-[165px] whitespace-nowrap border border-[#E0E0E0] px-[16px]"
                   onClick={saveDraft}
-                  disabled={!form.isValid || busySubmitting}
+                  disabled={!canSubmit || busySubmitting}
                   loading={busy === "draft"}
                 >
-                  Save as draft
+                  Save as Draft
                 </Button>
                 <Button
                   type="button"
                   variant="primary"
-                  size="md"
+                  size="lg"
+                  className="h-[46px] w-[165px] whitespace-nowrap px-[16px]"
                   onClick={sendInvoice}
-                  disabled={!form.isValid || !recipientValid || busySubmitting}
+                  disabled={!canSubmit || !recipientValid || busySubmitting}
                   loading={busy === "send"}
                 >
-                  Send invoice
+                  Send Invoice
                 </Button>
               </div>
             </div>

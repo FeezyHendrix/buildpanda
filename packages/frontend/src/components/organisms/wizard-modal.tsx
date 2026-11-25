@@ -1,5 +1,8 @@
 import { type ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
+import { ReactSVG } from "react-svg";
 import { cn } from "@/lib/utils";
+import { icons } from "@/assets/icons/icons";
 import Navbar from "@/components/organisms/navbar";
 import { StepperBar } from "@/components/atoms/stepper-bar";
 import { WizardFooter } from "@/components/molecules/wizard-footer";
@@ -19,7 +22,7 @@ interface WizardLayoutProps {
   className?: string;
   /** When set, renders the new minimal wizard header instead of the main Navbar. */
   title?: string;
-  /** Named step labels shown in the 2-segment progress bar (requires title). */
+  /** Named steps listed down the left rail, with "Step n of N" above them (requires title). */
   namedSteps?: string[];
   /** 0-indexed active named step (requires namedSteps). */
   activeNamedStep?: number;
@@ -27,74 +30,68 @@ interface WizardLayoutProps {
   backLabel?: string;
   /** Called when the back button in the footer is clicked (new design only). */
   onBack?: () => void;
+  /** An optional second action beside Continue, e.g. "Skip" (new design only). */
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 }
 
 // ── New-design sub-components ─────────────────────────────────────────────────
 
 function ArrowLeftIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <ArrowLeft className="size-5" strokeWidth={1.5} aria-hidden />;
 }
 
 function WizardHeader({ title, onCancel }: { title: string; onCancel: () => void }) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center border-b border-[#F0F0F0] bg-white px-8">
+    <header className="sticky top-0 z-40 flex h-[68px] shrink-0 items-center border-b border-[#EEEEEE] bg-white px-6 lg:px-[80px]">
       {/* Left: cancel */}
       <button
         type="button"
         onClick={onCancel}
-        className="flex items-center gap-1.5 text-sm font-medium text-[#1E1E1E] transition-opacity hover:opacity-60"
+        className="flex items-center gap-[8px] text-[14px] font-medium text-[#1E1E1E] outline-none transition-opacity hover:opacity-60 focus-visible:ring-2 focus-visible:ring-gray-900/10"
       >
         <ArrowLeftIcon />
         Cancel
       </button>
 
       {/* Center: title (absolute to stay truly centered) */}
-      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-caption-l font-semibold text-black">
+      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-[14px] font-semibold text-black">
         {title}
       </span>
-
-      {/* Right: spacer matching cancel width so the title stays centred */}
-      <div className="ml-auto w-16" />
     </header>
   );
 }
 
-function WizardNamedProgress({
-  steps,
-  activeStep,
-}: {
-  steps: string[];
-  activeStep: number;
-}) {
+/** "Step 2 of 3" over the named steps: the current one filled, finished ones ticked. */
+function WizardRail({ steps, activeStep }: { steps: string[]; activeStep: number }) {
   return (
-    <div className="flex gap-6 w-full shrink-0">
-      {steps.map((label, i) => (
-        <div key={label} className="flex-1 gap-4">
-          {/* bar */}
-          <div
+    <nav aria-label="Progress">
+      <p className="text-[24px] font-bold leading-[32px] tracking-[-0.04em] text-[#1E1E1E]">
+        Step {activeStep + 1} of {steps.length}
+      </p>
+      <ol className="mt-[16px]">
+        {steps.map((label, i) => (
+          <li
+            key={label}
+            aria-current={i === activeStep ? "step" : undefined}
             className={cn(
-              "h-[3px]",
-              i <= activeStep ? "bg-primary" : "bg-border",
-            )}
-          />
-          {/* label */}
-          <p
-            className={cn(
-              "px-8 py-2.5 text-caption-l font-medium text-center",
-              i < activeStep && "font-semibold text-primary",
-              i === activeStep && "font-semibold text-primary",
-              i > activeStep && "font-medium text-grey-450",
+              "flex h-[54px] items-center justify-between px-[16px] text-[16px] font-semibold leading-[24px] tracking-[-0.02em]",
+              i === activeStep && "bg-[#E6EDFD] text-primary",
+              i < activeStep && "text-[#1E1E1E]",
+              i > activeStep && "text-[#737373]",
             )}
           >
             {label}
-          </p>
-        </div>
-      ))}
-    </div>
+            {i < activeStep ? (
+              <>
+                <ReactSVG src={icons.verifiedCheck} className="[&_svg]:size-5" aria-hidden />
+                <span className="sr-only">completed</span>
+              </>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </nav>
   );
 }
 
@@ -116,6 +113,8 @@ function WizardLayout({
   activeNamedStep = 0,
   backLabel,
   onBack,
+  secondaryLabel,
+  onSecondary,
 }: WizardLayoutProps) {
   const { data: session } = authClient.useSession();
   const isNewDesign = Boolean(title);
@@ -130,32 +129,38 @@ function WizardLayout({
       <div className="flex h-dvh flex-col bg-white">
         <WizardHeader title={title!} onCancel={onCancel} />
 
-        {namedSteps && namedSteps.length > 0 && !hideStepper && (
-          <WizardNamedProgress steps={namedSteps} activeStep={activeNamedStep} />
-        )}
-
         <main className={cn("flex-1 overflow-y-auto", className)}>
-          <div className="mx-auto max-w-[636px] px-6 py-10">
-            {children}
+          <div className="mx-auto grid w-full max-w-[calc(1083px+3rem)] gap-x-[128px] gap-y-8 px-6 pb-10 pt-[40px] lg:grid-cols-[326px_minmax(0,1fr)]">
+            {namedSteps && namedSteps.length > 0 && !hideStepper ? (
+              // Sticky, so the rail stays put while the content beside it scrolls.
+              <div className="lg:sticky lg:top-[40px] lg:self-start">
+                <WizardRail steps={namedSteps} activeStep={activeNamedStep} />
+              </div>
+            ) : (
+              <div className="hidden lg:block" />
+            )}
+            <div className="min-w-0">{children}</div>
           </div>
         </main>
 
         {!hideContinue && (
-          <div className="shrink-0 border-t border-[#F0F0F0] bg-white px-8 py-5">
-            <div className={cn("flex items-center", backLabel ? "justify-between" : "justify-end")}>
+          <div className="shrink-0 border-t border-[#EEEEEE] bg-white px-6 py-[16px] lg:px-[80px]">
+            <div className={cn("flex items-center gap-[8px]", backLabel ? "justify-between" : "justify-end")}>
               {backLabel && (
-                <Button variant="outline" size="md" onClick={onBack ?? onCancel}>
+                <Button variant="outline" size="lg" onClick={onBack ?? onCancel} className="h-[46px] px-[16px]">
                   {backLabel}
                 </Button>
               )}
-              <Button
-                variant="primary"
-                size="md"
-                onClick={onContinue}
-                disabled={continueDisabled}
-              >
-                {continueLabel}
-              </Button>
+              <div className="flex items-center gap-[8px]">
+                {secondaryLabel && (
+                  <Button variant="outline" size="lg" onClick={onSecondary} className="h-[46px] px-[16px]">
+                    {secondaryLabel}
+                  </Button>
+                )}
+                <Button variant="primary" size="lg" onClick={onContinue} disabled={continueDisabled} className="h-[46px] px-[16px]">
+                  {continueLabel}
+                </Button>
+              </div>
             </div>
           </div>
         )}

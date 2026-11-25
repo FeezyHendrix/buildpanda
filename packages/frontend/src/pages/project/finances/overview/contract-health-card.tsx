@@ -1,4 +1,5 @@
-import { Badge, type BadgeTone } from "@/components/atoms/badge";
+import type { BadgeTone } from "@/components/atoms/badge";
+import { cn } from "@/lib/utils";
 import type { FinanceSummary } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
 import { isSettled, percentPaid } from "../settlement-statement";
@@ -26,17 +27,26 @@ export function contractHealth(summary: FinanceSummary): HealthStatus {
   return { tone: "success", label: "On track" };
 }
 
+const PILL_CLASS: Record<BadgeTone, string> = {
+  success: "bg-[#F0FDF4] text-[#00A63E]",
+  warning: "bg-[#FFF8E6] text-[#E17100]",
+  danger: "bg-[#FEF2F2] text-[#E7000B]",
+  neutral: "bg-[#F5F5F5] text-[#737373]",
+  info: "bg-[#E6EDFD] text-[#004DE7]",
+  accent: "bg-[#F6EEFD] text-[#5D5FEF]",
+};
+
 /** A half-ring meter: the track is the light step of the same hue so state reads across the whole arc. */
 function Gauge({ percent }: { percent: number }) {
   const clamped = Math.max(0, Math.min(100, percent));
   return (
     <svg
       viewBox="0 0 120 68"
-      className="w-full max-w-[200px]"
+      className="w-full max-w-[190px]"
       role="img"
       aria-label={`${clamped}% of the adjusted contract received`}
     >
-      <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" strokeWidth={12} strokeLinecap="round" className="stroke-primary-50" />
+      <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" strokeWidth={12} strokeLinecap="round" className="stroke-[#E5E5E5]" />
       <path
         d="M 10 60 A 50 50 0 0 1 110 60"
         fill="none"
@@ -44,9 +54,9 @@ function Gauge({ percent }: { percent: number }) {
         strokeLinecap="round"
         pathLength={100}
         strokeDasharray={`${clamped} 100`}
-        className="stroke-primary-500 transition-[stroke-dasharray] duration-500"
+        className="stroke-[#004DE7] transition-[stroke-dasharray] duration-500"
       />
-      <text x="60" y="58" textAnchor="middle" className="fill-ink text-[22px] font-semibold">
+      <text x="60" y="58" textAnchor="middle" className="fill-[#1E1E1E] text-[22px] font-bold">
         {clamped}%
       </text>
     </svg>
@@ -63,18 +73,19 @@ export function ContractHealthCard({ summary }: { summary: FinanceSummary }) {
   return (
     <OverviewCard
       title="Contract health"
+      bodyClassName="pt-[24px]"
       actions={
-        <Badge tone={status.tone} size="sm" dot>
+        <span className={cn("inline-flex h-[22px] items-center rounded-full px-[10px] text-caption-m font-medium", PILL_CLASS[status.tone])}>
           {status.label}
-        </Badge>
+        </span>
       }
     >
-      <div className="flex flex-col items-center py-2">
+      <div className="flex flex-col items-center pb-[12px]">
         <Gauge percent={percent} />
-        <p className="mt-1 text-xs text-ink-muted">received of {money(summary.adjustedContract)}</p>
+        <p className="mt-[4px] text-caption-m text-[#737373]">received of {money(summary.adjustedContract)}</p>
       </div>
 
-      <OverviewList className="border-t border-line-hair">
+      <OverviewList className="border-b border-[#EEEEEE]">
         <OverviewRow label="Retention held" value={money(summary.retentionHeld)} />
         <OverviewRow label="Variations" value={formatCurrency(summary.variationsTotal, summary.currency, { signed: true })} />
       </OverviewList>

@@ -45,9 +45,9 @@ export function AddMonthButton({ periods, onAdd }: AddMonthButtonProps) {
     >
       <Popover.Trigger
         render={
-          <CreateButton type="button" variant="secondary">
+          <CreateButton type="button" className="h-[36px] gap-[8px] px-[16px] text-[14px] font-semibold">
             Add month
-     </CreateButton>
+          </CreateButton>
         }
       />
       <Popover.Portal>

@@ -277,6 +277,14 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     helper: "Billing sheet, invoices & payments",
     flag: "commercial.finances",
   },
+  {
+    label: "Change Orders",
+    slug: "finances/change-orders",
+    resource: "change-requests",
+    Icon: ClipboardIcon,
+    helper: "Variations, omissions & time claims",
+    flag: "workflow.changeRequests",
+  },
 ] as const;
 
 export const CLIENT_ENTRIES: readonly NavEntry[] = [

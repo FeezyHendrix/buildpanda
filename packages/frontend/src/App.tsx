@@ -96,6 +96,7 @@ const ProjectFinances = lazy(() => import("@/pages/project/finances"));
 const ProjectContractsPhasesPage = lazy(() => import("@/pages/project/finances/contracts-phases-page"));
 const ProjectExpensesPage = lazy(() => import("@/pages/project/finances/expenses-page"));
 const ProjectBudgetInvoicesPage = lazy(() => import("@/pages/project/finances/budget-invoices-page"));
+const ProjectChangeOrdersPage = lazy(() => import("@/pages/project/finances/change-orders-page"));
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
@@ -386,6 +387,7 @@ export const router = createBrowserRouter([
       { path: "finances/contracts-phases", element: pfr("commercial.finances", "finances", <ProjectContractsPhasesPage />) },
       { path: "finances/expenses", element: pfr("commercial.finances", "finances", <ProjectExpensesPage />) },
       { path: "finances/budget-invoices", element: pfr("commercial.finances", "finances", <ProjectBudgetInvoicesPage />) },
+      { path: "finances/change-orders", element: pfr("workflow.changeRequests", "change-requests", <ProjectChangeOrdersPage />) },
       ...legacyFinanceRoutes,
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },

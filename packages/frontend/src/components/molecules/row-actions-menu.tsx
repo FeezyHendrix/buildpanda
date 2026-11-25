@@ -1,10 +1,14 @@
 import { Menu } from "@base-ui/react/menu";
+import type { ReactNode } from "react";
+import { DropdownMenuContent, DropdownMenuItem } from "@/components/atoms/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const NOOP = () => {};
 
 interface RowActionItem {
   label: string;
+  /** A leading icon, shown when the menu uses the house dropdown look. */
+  icon?: ReactNode;
   onSelect: () => void;
   tone?: "default" | "danger";
 }
@@ -17,6 +21,8 @@ interface RowActionsMenuProps {
   deleteLabel?: string;
   /** Custom entries; when given they replace the default edit/delete pair. */
   items?: RowActionItem[];
+  /** `house` renders the app's standard dropdown (grey tray, square white entries, icons) instead of the compact list. */
+  appearance?: "default" | "house";
 }
 
 const ITEM_TONE: Record<NonNullable<RowActionItem["tone"]>, string> = {
@@ -35,6 +41,7 @@ function RowActionsMenu({
   editLabel = "Edit",
   deleteLabel = "Delete",
   items,
+  appearance = "default",
 }: RowActionsMenuProps) {
   const entries: RowActionItem[] = items ?? [
     { label: editLabel, onSelect: onEdit ?? NOOP },
@@ -59,27 +66,38 @@ function RowActionsMenu({
           <circle cx="8" cy="13" r="1.5" />
         </svg>
       </Menu.Trigger>
-      <Menu.Portal>
-        <Menu.Positioner align="end" sideOffset={4} className="z-[70]">
-          <Menu.Popup className="flex min-w-[140px] flex-col rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-black/5 outline-none">
-            {entries.map((entry) => (
-              <Menu.Item
-                key={entry.label}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  entry.onSelect();
-                }}
-                className={cn(
-                  "flex h-8 cursor-default select-none items-center rounded-md px-3 text-sm whitespace-nowrap outline-none",
-                  ITEM_TONE[entry.tone ?? "default"],
-                )}
-              >
-                {entry.label}
-              </Menu.Item>
-            ))}
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
+      {appearance === "house" ? (
+        <DropdownMenuContent align="end" sideOffset={4} className="z-[70] w-[160px]">
+          {entries.map((entry) => (
+            <DropdownMenuItem key={entry.label} tone={entry.tone} onSelect={entry.onSelect}>
+              {entry.icon}
+              {entry.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      ) : (
+        <Menu.Portal>
+          <Menu.Positioner align="end" sideOffset={4} className="z-[70]">
+            <Menu.Popup className="flex min-w-[140px] flex-col rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-black/5 outline-none">
+              {entries.map((entry) => (
+                <Menu.Item
+                  key={entry.label}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    entry.onSelect();
+                  }}
+                  className={cn(
+                    "flex h-8 cursor-default select-none items-center rounded-md px-3 text-sm whitespace-nowrap outline-none",
+                    ITEM_TONE[entry.tone ?? "default"],
+                  )}
+                >
+                  {entry.label}
+                </Menu.Item>
+              ))}
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      )}
     </Menu.Root>
   );
 }

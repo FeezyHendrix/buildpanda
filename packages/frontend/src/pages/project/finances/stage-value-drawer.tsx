@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Label } from "@/components/atoms/label";
-import { MoneyInput } from "@/components/atoms/money-input";
+import { CurrencyAmountField, DRAWER_LABEL_CLASS } from "@/components/molecules/drawer-fields";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { useUpdateStage } from "@/hooks/use-stages";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -65,33 +64,38 @@ export function StageValueDrawer({
           ? `${stage.name} — the share of the contract this stage carries.`
           : "The share of the contract a stage carries."
       }
-      submitLabel="Save value"
+      submitLabel="Save Value"
       submitDisabled={!isValid || !isChanged}
       submitting={update.isPending}
       error={update.error ? getApiErrorMessage(update.error) : null}
       onSubmit={handleSubmit}
+      footerVariant="split"
+      className="w-[min(592px,100vw)]"
+      titleClassName="text-[20px] font-medium leading-[28px] tracking-normal"
+      descriptionClassName="text-caption-m font-normal text-[#737373]"
+      headerClassName="px-[24px] pb-[20px] pt-[39px]"
+      bodyClassName="gap-[16px] px-[24px] py-0"
+      footerClassName="gap-[8px] px-[24px] pb-[15px] pt-[16px] [&>button]:w-[179px]"
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="stage-value">Scheduled value</Label>
-        <MoneyInput
+      <div className="flex flex-col gap-[5px]">
+        <label htmlFor="stage-value" className={DRAWER_LABEL_CLASS}>Total</label>
+        <CurrencyAmountField
           id="stage-value"
           value={value}
           onChange={setValue}
-          currencySymbol={currencySymbol(currency)}
+          currency={currency}
+          symbol={currencySymbol(currency)}
           autoFocus
         />
-        <p className="text-xs text-ink-muted">
-          Current:{" "}
-          <span className="font-medium tabular-nums text-ink-muted">
-            {formatCurrency(stage?.value ?? 0, currency)}
-          </span>
-          . Stage values have to stay within the project's contract sum.
+        <p className="mt-[2px] text-caption-m text-[#737373]">
+          Current: <span className="tabular-nums">{formatCurrency(stage?.value ?? 0, currency)}</span>. Stage values have to stay
+          within the project's contract sum.
         </p>
       </div>
 
-      <p className="rounded-lg bg-surface-alt px-3 py-2 text-xs text-ink-muted">
-        Schedule of Values lines keep the amounts already recorded against them.
-        Save the schedule again to re-price it against the new stage value.
+      <p className="mt-[13px] bg-[#F6F6F6] px-[13px] py-[10px] text-caption-m text-[#737373]">
+        Schedule of Values lines keep the amounts already recorded against them. Save the schedule again to re-price it against
+        the new stage value.
       </p>
     </FormDrawer>
   );

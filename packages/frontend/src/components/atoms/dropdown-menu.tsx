@@ -39,16 +39,19 @@ function DropdownMenuContent({
   children,
   className,
   align = "end",
+  side = "bottom",
   sideOffset = 6,
 }: {
   children: React.ReactNode;
   className?: string;
   align?: "start" | "end" | "center";
+  /** Which edge of the trigger the menu opens from; `top` for a trigger pinned to the bottom of a sheet. */
+  side?: "top" | "bottom";
   sideOffset?: number;
 }) {
   return (
     <Menu.Portal>
-      <Menu.Positioner align={align} sideOffset={sideOffset} className="z-50">
+      <Menu.Positioner side={side} align={align} sideOffset={sideOffset} className="z-50">
         <Menu.Popup
           className={cn(
             "flex flex-col gap-2 z-50 min-w-[160px] overflow-hidden border border-[#EBEBEB] bg-grey-50 p-1 shadow-xl",

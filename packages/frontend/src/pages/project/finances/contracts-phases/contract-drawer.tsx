@@ -1,12 +1,11 @@
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { DetailDrawer } from "../finance-drawer";
-import { Tabs } from "@/components/molecules/tabs";
 import type { Contract } from "@/hooks/use-contracts";
 import type { Currency, Stage } from "@/lib/project-types";
 import { ContractDetailsSection } from "./contract-details-section";
-import { CONTRACT_STATUS_META, isPlaceholderContract } from "./contract-model";
+import { CONTRACT_STATUS_META, contractSubtitle, isPlaceholderContract } from "./contract-model";
 import { ContractPhasesSection } from "./contract-phases-section";
+import { DetailSheet } from "./detail-sheet";
 import { ContractTermsSection } from "./contract-terms-section";
 import { FinalAccountSection } from "./final-account-section";
 
@@ -22,7 +21,7 @@ const ALL_VIEWS = [
   { id: "details", label: "Details" },
   { id: "terms", label: "Terms" },
   { id: "phases", label: "Phases" },
-  { id: "final-account", label: "Final account" },
+  { id: "final-account", label: "Final Account" },
 ] as const satisfies readonly { id: ContractView; label: string }[];
 
 const CHANGE_ORDER_VIEWS = ALL_VIEWS.filter((view) => view.id === "details" || view.id === "phases");
@@ -58,36 +57,33 @@ export function ContractDrawer({
   onEdit,
   onOpenPhase,
 }: ContractDrawerProps) {
-  const isMain = contract.kind === "main";
-  const views = isMain ? ALL_VIEWS : CHANGE_ORDER_VIEWS;
+  const views = contract.kind === "main" ? ALL_VIEWS : CHANGE_ORDER_VIEWS;
   const status = CONTRACT_STATUS_META[contract.status];
   const activeView = views.some((candidate) => candidate.id === view) ? view : "details";
 
   return (
-    <DetailDrawer
+    <DetailSheet
       open={open}
       onOpenChange={onOpenChange}
-      width="xl"
       title={contract.title}
-      headerMeta={
-        <>
-          <Badge tone={status.tone} size="md" className="gap-1.5">
-            <span aria-hidden="true">{status.marker}</span>
-            {status.label}
-          </Badge>
-          <span className="text-sm text-ink-muted">{isMain ? "Main contract" : "Change order"}</span>
-        </>
+      status={
+        <Badge tone={status.tone} size="sm" className="text-caption-m font-medium">
+          {status.label}
+        </Badge>
       }
-      footer={
+      subtitle={contractSubtitle(contract)}
+      tabs={views}
+      activeTab={activeView}
+      onTabChange={onViewChange}
+      cancelWidthClassName="w-[238px]"
+      action={
         canManage && !isPlaceholderContract(contract) ? (
-          <Button size="sm" onClick={() => onEdit(contract)}>
-            Edit contract
+          <Button type="button" size="lg" className="h-[46px] w-[245px]" onClick={() => onEdit(contract)}>
+            Edit Contract
           </Button>
         ) : undefined
       }
     >
-      <Tabs items={views} value={activeView} onChange={onViewChange} ariaLabel="Contract sections" className="-mt-2" />
-
       {activeView === "details" ? (
         <ContractDetailsSection projectId={projectId} contract={contract} currency={currency} canManage={canManage} />
       ) : null}
@@ -96,7 +92,7 @@ export function ContractDrawer({
         <ContractPhasesSection phases={phases} contractTotal={contract.total} currency={currency} onOpenPhase={onOpenPhase} />
       ) : null}
       {activeView === "final-account" ? <FinalAccountSection /> : null}
-    </DetailDrawer>
+    </DetailSheet>
   );
 }
 

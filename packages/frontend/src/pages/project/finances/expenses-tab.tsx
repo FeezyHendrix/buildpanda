@@ -1,11 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
-import { CreateButton } from "@/components/molecules/create-button";
-import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { INPUT_SM_CLASS } from "@/components/atoms/input";
-import { ComboSelect } from "@/components/molecules/combo-select";
-import { KpiCard } from "@/components/molecules/kpi-card";
+import { CreateButton } from "@/components/molecules/create-button";
+import { NumberedPagination } from "@/components/molecules/numbered-pagination";
 import {
   useDeleteTransaction,
   useExportTransactionsCsv,
@@ -14,26 +11,41 @@ import {
   useTransactions,
 } from "@/hooks/use-transactions";
 import { useProjectContext } from "@/layouts/project-layout";
-import { formatCurrency } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
+import { formatCompactPrecise } from "@/lib/formatters";
 import type { Transaction, TransactionListFilters } from "@/lib/project-types";
-import {
-  UpsertTransactionDialog,
-  toCategoryItems,
-} from "./expenses/expense-dialogs";
-import { ManageCategoriesDialog } from "./expenses/manage-categories-dialog";
 import { ExpenseCharts } from "./expenses/expense-charts";
+import { UpsertTransactionDialog } from "./expenses/expense-dialogs";
+import { ExpenseStatCard } from "./expenses/expense-panel";
 import { ExpenseTable } from "./expenses/expense-table";
-import { TabActions } from "./finance-tabs";
+import { ExpenseToolbar } from "./expenses/expense-toolbar";
+import { ManageCategoriesDialog } from "./expenses/manage-categories-dialog";
 
-/** Expenses — site spend logged with its receipt. A record of money spent off-platform. */
-export function ExpensesTab() {
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
+const HEADER_BUTTON = "h-[36px] border border-[#DCDCDC] px-[15px] text-[14px] font-medium";
+
+/**
+ * Expenses — site spend logged with its receipt. A record of money spent
+ * off-platform. The page's tab switch arrives as `tabs` because it shares a row
+ * with this tab's actions.
+ */
+export function ExpensesTab({ tabs }: { tabs: ReactNode }) {
   const { project } = useProjectContext();
   const projectId = project.id;
   const currency = project.currency;
 
   const [filters, setFilters] = useState<TransactionListFilters>({});
-  const [draftSearch, setDraftSearch] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  // The search box types freely; the list is asked for once typing settles.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setFilters((prev) => (prev.search === (search.trim() || undefined) ? prev : { ...prev, search: search.trim() || undefined }));
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const { data: transactions = [], isPending: isLoadingTx } = useTransactions(projectId, filters);
   const { data: analytics, isPending: isLoadingAnalytics } = useTransactionAnalytics(projectId, filters);
@@ -46,87 +58,70 @@ export function ExpensesTab() {
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
 
-  const categoryOptions = useMemo(() => toCategoryItems(categories), [categories]);
-  const isFiltered = Object.keys(filters).length > 0;
+  const isFiltered = Object.values(filters).some(Boolean);
+  const pageCount = Math.max(1, Math.ceil(transactions.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedTransactions = useMemo(
+    () => transactions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [transactions, currentPage],
+  );
 
-  function handleClearFilters() {
-    setFilters({});
-    setDraftSearch("");
+  function handleFiltersChange(next: TransactionListFilters): void {
+    setFilters(next);
+    setPage(1);
   }
 
-  function handleSearch() {
-    setFilters((prev) => ({ ...prev, search: draftSearch || undefined }));
+  function handleClearFilters(): void {
+    setFilters({});
+    setSearch("");
+    setPage(1);
+  }
+
+  function handleExport(): void {
+    exportCsv.mutate({ projectId, filters });
   }
 
   return (
     <section aria-label="Expenses">
-      <TabActions>
-        <Button
-          variant="secondary"
-          onClick={() => exportCsv.mutate({ projectId, filters })}
-          loading={exportCsv.isPending}
-        >
-          Export CSV
-        </Button>
-        <Button variant="secondary" onClick={() => setManageCategoriesOpen(true)}>
-          Manage categories
-        </Button>
-        <CreateButton onClick={() => setUpsertTarget("new")}>Record expense</CreateButton>
-      </TabActions>
-
-      <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <KpiCard label="Total spend" value={formatCurrency(analytics?.totalAmount || 0, currency)} />
-          <KpiCard label="Expenses recorded" value={(analytics?.count || 0).toString()} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {tabs}
+        <div className="flex flex-wrap items-center gap-[12px]">
+          <Button variant="outline" className={HEADER_BUTTON} onClick={handleExport} loading={exportCsv.isPending}>
+            Export CSV
+          </Button>
+          <Button variant="outline" className={HEADER_BUTTON} onClick={() => setManageCategoriesOpen(true)}>
+            Manage Categories
+          </Button>
+          <CreateButton onClick={() => setUpsertTarget("new")} className="h-[36px] gap-[8px] px-[16px] text-[14px] font-semibold">
+            Record Expense
+          </CreateButton>
         </div>
+      </div>
 
+      <div className="mt-[24px] grid gap-[24px] sm:grid-cols-2">
+        <ExpenseStatCard label="Total spend" value={formatCompactPrecise(analytics?.totalAmount ?? 0, currency)} pending={isLoadingAnalytics} />
+        <ExpenseStatCard label="Expenses recorded" value={String(analytics?.count ?? 0)} pending={isLoadingAnalytics} />
+      </div>
+
+      <div className="mt-[41px]">
         <ExpenseCharts analytics={analytics} currency={currency} isLoading={isLoadingAnalytics} />
+      </div>
 
-        <Card className="p-4 flex flex-wrap items-center gap-4 bg-white">
-          <div className="w-48">
-            <ComboSelect
-              items={categoryOptions}
-              value={filters.category || null}
-              onChange={(val) => setFilters((p) => ({ ...p, category: val || undefined }))}
-              placeholder="All categories"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              className={cn(INPUT_SM_CLASS, "w-40")}
-              value={filters.from || ""}
-              onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value || undefined }))}
-            />
-            <span className="text-ink-muted">to</span>
-            <input
-              type="date"
-              className={cn(INPUT_SM_CLASS, "w-40")}
-              value={filters.to || ""}
-              onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value || undefined }))}
-            />
-          </div>
-          <div className="flex-1 flex gap-2 min-w-[200px]">
-            <input
-              className={cn(INPUT_SM_CLASS, "flex-1")}
-              placeholder="Search title, vendor, ref..."
-              value={draftSearch}
-              onChange={(e) => setDraftSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
-            <Button variant="secondary" onClick={handleSearch}>
-              Search
-            </Button>
-          </div>
-          {isFiltered ? (
-            <Button variant="ghost" onClick={handleClearFilters} className="text-ink-muted">
-              Clear
-            </Button>
-          ) : null}
-        </Card>
+      <div className="mt-[40px]">
+        <ExpenseToolbar
+          search={search}
+          onSearchChange={setSearch}
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          categories={categories}
+          exporting={exportCsv.isPending}
+          onExport={handleExport}
+        />
+      </div>
 
+      <div className="mt-[16px]">
         <ExpenseTable
-          transactions={transactions}
+          transactions={pagedTransactions}
           currency={currency}
           isLoading={isLoadingTx}
           isFiltered={isFiltered}
@@ -135,6 +130,9 @@ export function ExpensesTab() {
           onRecord={() => setUpsertTarget("new")}
           onClearFilters={handleClearFilters}
         />
+        {transactions.length > 0 ? (
+          <NumberedPagination page={currentPage} pageSize={PAGE_SIZE} total={transactions.length} noun="Expenses" onPageChange={setPage} />
+        ) : null}
       </div>
 
       {upsertTarget ? (
@@ -152,11 +150,7 @@ export function ExpensesTab() {
       ) : null}
 
       {manageCategoriesOpen ? (
-        <ManageCategoriesDialog
-          projectId={projectId}
-          categories={categories}
-          onClose={() => setManageCategoriesOpen(false)}
-        />
+        <ManageCategoriesDialog projectId={projectId} categories={categories} onClose={() => setManageCategoriesOpen(false)} />
       ) : null}
 
       <ConfirmDialog

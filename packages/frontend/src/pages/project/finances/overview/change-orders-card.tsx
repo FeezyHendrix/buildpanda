@@ -9,11 +9,11 @@ import { OverviewCard, OverviewList, OverviewRow } from "./overview-cards";
  */
 
 export const CHANGE_ORDER_COUNT_CARDS = [
-  { status: "Draft", key: "draft", label: "Draft", marker: "○" },
-  { status: "Submitted", key: "submitted", label: "Submitted", marker: "◔" },
-  { status: "Approved", key: "approved", label: "Approved", marker: "◕" },
-  { status: "Executed", key: "executed", label: "Executed", marker: "●" },
-] as const satisfies readonly { status: ChangeStatus; key: string; label: string; marker: string }[];
+  { status: "Draft", key: "draft", label: "Draft", marker: "○", dot: "bg-[#737373]" },
+  { status: "Submitted", key: "submitted", label: "Submitted", marker: "◔", dot: "bg-[#FF9F0A]" },
+  { status: "Approved", key: "approved", label: "Approved", marker: "◕", dot: "bg-[#00C950]" },
+  { status: "Executed", key: "executed", label: "Executed", marker: "●", dot: "bg-[#004DE7]" },
+] as const satisfies readonly { status: ChangeStatus; key: string; label: string; marker: string; dot: string }[];
 
 type CountKey = (typeof CHANGE_ORDER_COUNT_CARDS)[number]["key"];
 
@@ -36,7 +36,7 @@ export function ChangeOrdersCard({ projectId }: { projectId: string }) {
     <OverviewCard title="Change orders" to={to}>
       <OverviewList>
         {CHANGE_ORDER_COUNT_CARDS.map((card) => (
-          <OverviewRow key={card.key} marker={card.marker} label={card.label} value={counts[card.key]} to={to} />
+          <OverviewRow key={card.key} marker={<span className={`block size-[12px] rounded-full ${card.dot}`} />} label={card.label} value={counts[card.key]} to={to} />
         ))}
       </OverviewList>
     </OverviewCard>

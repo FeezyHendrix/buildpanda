@@ -6,6 +6,7 @@ interface TextInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'on
   value?: string;
   optional?: boolean;
   onChange?: (v: string) => void;
+  labelClassName?: string;
 }
 
 export function TextInput({
@@ -13,12 +14,13 @@ export function TextInput({
   optional,
   onChange,
   className,
+  labelClassName,
   ...props
 }: TextInputProps) {
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label className="text-[13px] font-medium text-[#1E1E1E]">
+        <label className={cn("text-[13px] font-medium text-[#1E1E1E]", labelClassName)}>
           {label}
           {optional && <span className="ml-1 font-normal text-[#B0B0B0]">(optional)</span>}
           {props.required && <span className="text-red-500 ml-0.5">*</span>}

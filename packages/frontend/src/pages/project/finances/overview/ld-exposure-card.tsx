@@ -31,7 +31,7 @@ export function LdExposureCard({ summary, contractsHref, className }: LdExposure
   const money = (value: number) => formatCurrency(value, summary.currency);
 
   return (
-    <OverviewCard title="Dates & liquidated damages" to={contractsHref} linkLabel="Contract terms" className={className}>
+    <OverviewCard title="Dates & liquidated damages" to={contractsHref} linkLabel="Contract Terms" className={className}>
       <OverviewList>
         <OverviewRow label="Completion date" value={day(summary.completionDate)} />
         <OverviewRow
@@ -41,20 +41,21 @@ export function LdExposureCard({ summary, contractsHref, className }: LdExposure
         />
         <OverviewRow
           label="Extension of time"
-          value={eot ? `${dayLabel(eot.daysApproved)} awarded` : "None"}
+          value={`${dayLabel(eot?.daysApproved ?? 0)} awarded`}
           helper={eot && eot.daysPending > 0 ? `${dayLabel(eot.daysPending)} claimed, undecided` : undefined}
         />
         <OverviewRow
           label="LD exposure"
-          sub="What the employer could levy today. Nothing is deducted."
-          value={ldExposure ? money(ldExposure.amount) : "None"}
-          helper={
+          wideSub
+          // One line under the label: what the figure is, then what produced it.
+          sub={`What the employer could levy today. Nothing is deducted. ${
             ldExposure
               ? `${dayLabel(ldExposure.daysLate)} late at ${money(ldExposure.ratePerDay)} a day${
                   ldExposure.capAmount === null ? "" : `, capped at ${money(ldExposure.capAmount)}`
                 }`
               : "No LD rate on the contract terms"
-          }
+          }`}
+          value={ldExposure ? money(ldExposure.amount) : "Not set"}
         />
       </OverviewList>
     </OverviewCard>

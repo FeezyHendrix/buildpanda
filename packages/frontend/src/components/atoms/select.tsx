@@ -14,6 +14,8 @@ interface SelectProps {
   placeholder?: string;
   className?: string;
   popupClassName?: string;
+  /** Overrides the chevron's size/colour. */
+  iconClassName?: string;
   listClassName?: string;
   disabled?: boolean;
   id?: string;
@@ -26,6 +28,7 @@ function Select({
   placeholder = "Select…",
   className,
   popupClassName,
+  iconClassName,
   listClassName,
   disabled,
   id,
@@ -70,7 +73,7 @@ function Select({
           }
         </Combobox.Value>
         <Combobox.Icon className="flex shrink-0 text-[#767676]">
-          <ChevronDown className='size-3' />
+          <ChevronDown className={cn("size-3", iconClassName)} />
         </Combobox.Icon>
       </Combobox.Trigger>
 

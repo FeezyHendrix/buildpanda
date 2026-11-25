@@ -91,7 +91,7 @@ export function InvitationsSection({
   if (invitations.length === 0) {
     return (
       <EmptyState
-        icon={<img src={emptyIcon} alt="" className="w-100 mb-4" />}
+        illustration={<img src={emptyIcon} alt="" className="mb-4 h-auto w-100 max-w-full" />}
         title="Invitations"
         description="You haven't sent any invitations yet. Invite team members to collaborate on your projects."
         className="flex flex-col gap-8 max-w-4xl"

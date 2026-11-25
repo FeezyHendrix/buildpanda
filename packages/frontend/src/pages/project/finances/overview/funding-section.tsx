@@ -20,12 +20,12 @@ interface FundingCardProps {
 
 export function FundingCard({ projectId, currency, funding, className }: FundingCardProps) {
   return (
-    <OverviewCard title="Funding" to={`/project/${projectId}/${financeTabPath(BUDGET_INVOICES_PATH, "payments")}`} className={className}>
+    <OverviewCard title="Funding" to={`/project/${projectId}/${financeTabPath(BUDGET_INVOICES_PATH, "payments")}`} className={className} bodyClassName="py-0">
       <OverviewList>
         <OverviewRow label="Funds deposited" sub="Recorded client deposits" value={formatCurrency(funding.deposited, currency)} />
         <OverviewRow label="Milestones released" sub="Stage payments logged as released" value={formatCurrency(funding.released, currency)} />
       </OverviewList>
-      <p className="mt-2 text-xs text-ink-muted">A separate ledger. Deposits and releases never feed the contract position.</p>
+      <p className="pb-[16px] pt-[12px] text-[10px] leading-[14px] text-[#737373]">A separate ledger. Deposits and releases never feed the contract position.</p>
     </OverviewCard>
   );
 }

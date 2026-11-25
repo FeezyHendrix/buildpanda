@@ -13,10 +13,13 @@ export function DateFilterPopover({
   dateFrom,
   dateTo,
   onApply,
+  triggerClassName,
 }: {
   dateFrom: string;
   dateTo: string;
   onApply: (from: string, to: string) => void;
+  /** Overrides the Date button's size and spacing. */
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [draftFrom, setDraftFrom] = useState(dateFrom);
@@ -72,6 +75,7 @@ export function DateFilterPopover({
           hasFilter
             ? "border-[#004DE7] text-[#004DE7]"
             : "border-[#EBEBEB] text-[#111827] hover:border-[#6B7280]",
+          triggerClassName,
         )}
       >
         <ReactSVG src={icons2.calendar} className="shrink-0 [&_svg]:size-[16px]" />

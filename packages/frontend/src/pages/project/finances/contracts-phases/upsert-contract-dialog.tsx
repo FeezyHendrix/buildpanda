@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { INPUT_CLASS } from "@/components/atoms/input";
-import { Label } from "@/components/atoms/label";
-import { MoneyInput } from "@/components/atoms/money-input";
+import { Select } from "@/components/atoms/select";
+import { CurrencyAmountField, DRAWER_FIELD_CLASS, DRAWER_LABEL_CLASS } from "@/components/molecules/drawer-fields";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { CONTRACT_STATUSES, type Contract, type ContractStatus } from "@/api/contracts";
 import { useCreateContract, useUpdateContract } from "@/hooks/use-contracts";
@@ -93,6 +92,10 @@ export function UpsertContractDialog({ open, onOpenChange, projectId, currency, 
     );
   }
 
+  const statusOptions = CONTRACT_STATUSES.filter((option) => option !== "Signed" || hasDocument || status === "Signed").map(
+    (option) => ({ value: option, label: CONTRACT_STATUS_META[option].label }),
+  );
+
   return (
     <FormDrawer
       open={open}
@@ -103,65 +106,67 @@ export function UpsertContractDialog({ open, onOpenChange, projectId, currency, 
           ? `${CONTRACT_KIND_LABEL[initial.kind]} · total ${formatCurrency(initial.total, currency)}. Attach the signed document from the contract drawer.`
           : "A change-order contract. Its total is recorded once; the main contract is priced by the contract sum in Terms."
       }
-      submitLabel={isEdit ? "Save changes" : "Add contract"}
+      submitLabel={isEdit ? "Save Changes" : "Add Contract"}
       submitDisabled={!isValid}
       submitting={mutation.isPending}
       error={mutation.error ? getApiErrorMessage(mutation.error) : null}
       onSubmit={handleSubmit}
+      footerVariant="stacked"
+      className="w-[min(430px,100vw)]"
+      titleClassName="text-[20px] leading-[28px] tracking-normal"
+      headerClassName="px-[24px] pb-[22px] pt-[40px]"
+      bodyClassName="gap-[19px] px-[24px] py-0"
+      footerClassName="gap-[3px] px-[24px] pb-[17px] pt-6 [&>button]:h-[46px]"
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="contract-title">Contract ID</Label>
+      <div className="flex flex-col gap-[5px]">
+        <label htmlFor="contract-title" className={DRAWER_LABEL_CLASS}>Contract ID</label>
         <input
           id="contract-title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="e.g. CO-003 Electrical rework"
+          placeholder="e.g. CO-003 Electrical work"
           maxLength={200}
-          className={INPUT_CLASS}
+          className={DRAWER_FIELD_CLASS}
           autoFocus
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="contract-trade">Trade</Label>
-          <input id="contract-trade" value={trade} onChange={(event) => setTrade(event.target.value)} placeholder="e.g. Electrical" className={INPUT_CLASS} />
+      <div className="grid grid-cols-2 gap-[24px]">
+        <div className="flex flex-col gap-[5px]">
+          <label htmlFor="contract-trade" className={DRAWER_LABEL_CLASS}>Trade</label>
+          <input id="contract-trade" value={trade} onChange={(event) => setTrade(event.target.value)} placeholder="e.g. Electrical" className={DRAWER_FIELD_CLASS} />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="contract-entity">Legal entity</Label>
-          <input id="contract-entity" value={legalEntity} onChange={(event) => setLegalEntity(event.target.value)} placeholder="Contracting entity" className={INPUT_CLASS} />
+        <div className="flex flex-col gap-[5px]">
+          <label htmlFor="contract-entity" className={DRAWER_LABEL_CLASS}>Legal entity</label>
+          <input id="contract-entity" value={legalEntity} onChange={(event) => setLegalEntity(event.target.value)} placeholder="Contracting entity" className={DRAWER_FIELD_CLASS} />
         </div>
       </div>
 
       {isEdit ? (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="contract-status">Status</Label>
-            <select
-              id="contract-status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value as ContractStatus)}
-              className={INPUT_CLASS}
-              title={hasDocument ? undefined : SIGNED_NEEDS_DOCUMENT}
-            >
-              {CONTRACT_STATUSES.map((option) => (
-                <option key={option} value={option} disabled={option === "Signed" && !hasDocument}>
-                  {CONTRACT_STATUS_META[option].label}
-                  {option === "Signed" && !hasDocument ? " (attach document first)" : ""}
-                </option>
-              ))}
-            </select>
+        <>
+          <div className="grid grid-cols-2 gap-[24px]">
+            <div className="flex flex-col gap-[5px]">
+              <label htmlFor="contract-status" className={DRAWER_LABEL_CLASS}>Status</label>
+              <Select
+                id="contract-status"
+                options={statusOptions}
+                value={status}
+                onChange={(next) => setStatus((next ?? "Draft") as ContractStatus)}
+                className="h-[45px] px-[16px]"
+              />
+            </div>
+            <div className="flex flex-col gap-[5px]">
+              <label htmlFor="contract-signed" className={DRAWER_LABEL_CLASS}>Signed date</label>
+              <input id="contract-signed" type="date" value={signedAt} onChange={(event) => setSignedAt(event.target.value)} className={DRAWER_FIELD_CLASS} />
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="contract-signed">Signed date</Label>
-            <input id="contract-signed" type="date" value={signedAt} onChange={(event) => setSignedAt(event.target.value)} className={INPUT_CLASS} />
-          </div>
-        </div>
+          {hasDocument ? null : <p className="-mt-[10px] text-caption-m text-[#737373]">{SIGNED_NEEDS_DOCUMENT}.</p>}
+        </>
       ) : (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="contract-total">Total</Label>
-          <MoneyInput id="contract-total" value={total} onChange={setTotal} currencySymbol={currencySymbol(currency)} />
-          <p className="text-xs text-ink-muted">Leave blank to price it from the change order later.</p>
+        <div className="flex flex-col gap-[5px]">
+          <label htmlFor="contract-total" className={DRAWER_LABEL_CLASS}>Total</label>
+          <CurrencyAmountField id="contract-total" value={total} onChange={setTotal} currency={currency} symbol={currencySymbol(currency)} />
+          <p className="text-caption-m text-[#737373]">Leave blank to price it from the change order later.</p>
         </div>
       )}
     </FormDrawer>

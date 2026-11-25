@@ -1,14 +1,19 @@
 import { useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
-import { DrawerSectionTitle } from "../finance-drawer";
 import { formatCurrency } from "@/lib/formatters";
 import type { Currency, Stage } from "@/lib/project-types";
 import { formatPercent, percentOfContract, phaseTotals } from "./contract-model";
+import { SheetHeading } from "./sheet-parts";
 
 /**
- * The phases a contract prices, with a TOTALS row. Clicking a phase pushes its
+ * The phases a contract prices, with a Total row. Clicking a phase pushes its
  * drawer on top of the contract's.
  */
+
+const HEADER_CELL = "h-[35px] px-[24px] py-0 text-caption-m font-medium normal-case text-[#525252]";
+const BODY_CELL = "whitespace-nowrap px-[24px] py-0 text-caption-l text-[#1E1E1E] tabular-nums";
+/** Column widths as shares of the 788px sheet body. */
+const COLUMN_WIDTHS = ["25.8%", "31.3%", "22.2%", "20.7%"] as const;
 
 interface ContractPhasesSectionProps {
   phases: Stage[];
@@ -22,38 +27,41 @@ export function ContractPhasesSection({ phases, contractTotal, currency, onOpenP
 
   return (
     <section>
-      <DrawerSectionTitle>Phases · {phases.length}</DrawerSectionTitle>
+      <SheetHeading>Phases · {phases.length}</SheetHeading>
       {phases.length === 0 ? (
-        <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm text-ink-muted">No phases priced under this contract yet.</p>
+        <p className="mt-[18px] bg-[#F6F6F6] p-4 text-caption-l text-[#737373]">No phases priced under this contract yet.</p>
       ) : (
-        <div className="mt-3 overflow-hidden rounded-lg border border-line-hair">
-          <Table>
+        <div className="mt-[9px] border border-[#EEEEEE]">
+          <Table className="table-fixed">
+            <colgroup>
+              {COLUMN_WIDTHS.map((width) => (
+                <col key={width} style={{ width }} />
+              ))}
+            </colgroup>
             <TableHead>
               <tr>
-                <TableHeaderCell className="px-4">Phase</TableHeaderCell>
-                <TableHeaderCell align="right" className="px-4">Scheduled value</TableHeaderCell>
-                <TableHeaderCell align="right" className="px-4">% of contract</TableHeaderCell>
-                <TableHeaderCell align="right" className="px-4">Est. costs</TableHeaderCell>
+                <TableHeaderCell className={HEADER_CELL}>Build Stages</TableHeaderCell>
+                <TableHeaderCell className={HEADER_CELL}>Scheduled value</TableHeaderCell>
+                <TableHeaderCell className={HEADER_CELL}>% of contract</TableHeaderCell>
+                <TableHeaderCell className={HEADER_CELL}>Est. costs</TableHeaderCell>
               </tr>
             </TableHead>
             <TableBody>
               {phases.map((phase) => (
-                <TableRow key={phase.id} onClick={() => onOpenPhase(phase)}>
-                  <TableCell className="px-4 font-medium text-ink">{phase.name}</TableCell>
-                  <TableCell align="right" className="whitespace-nowrap px-4 tabular-nums">{formatCurrency(phase.value, currency)}</TableCell>
-                  <TableCell align="right" className="whitespace-nowrap px-4 tabular-nums">
-                    {formatPercent(percentOfContract(phase.value, contractTotal))}
-                  </TableCell>
-                  <TableCell align="right" className="whitespace-nowrap px-4 tabular-nums">
+                <TableRow key={phase.id} onClick={() => onOpenPhase(phase)} className="h-[46px] border-[#EEEEEE]">
+                  <TableCell className={`${BODY_CELL} truncate`}>{phase.name}</TableCell>
+                  <TableCell className={BODY_CELL}>{formatCurrency(phase.value, currency)}</TableCell>
+                  <TableCell className={BODY_CELL}>{formatPercent(percentOfContract(phase.value, contractTotal))}</TableCell>
+                  <TableCell className={BODY_CELL}>
                     {phase.expectedCost == null ? "—" : formatCurrency(phase.expectedCost, currency)}
                   </TableCell>
                 </TableRow>
               ))}
-              <TableRow tone="total">
-                <TableCell className="px-4">Totals</TableCell>
-                <TableCell align="right" className="whitespace-nowrap px-4 tabular-nums">{formatCurrency(totals.scheduled, currency)}</TableCell>
-                <TableCell align="right" className="whitespace-nowrap px-4 tabular-nums">{formatPercent(totals.percent)}</TableCell>
-                <TableCell align="right" className="whitespace-nowrap px-4 tabular-nums">{formatCurrency(totals.estimatedCost, currency)}</TableCell>
+              <TableRow tone="total" className="h-[34px] border-[#EEEEEE] [&_td]:font-normal">
+                <TableCell className="px-[24px] py-0 text-caption-m text-[#525252]">Total</TableCell>
+                <TableCell className={`${BODY_CELL}`}>{formatCurrency(totals.scheduled, currency)}</TableCell>
+                <TableCell className={`${BODY_CELL}`}>{formatPercent(totals.percent)}</TableCell>
+                <TableCell className={`${BODY_CELL}`}>{formatCurrency(totals.estimatedCost, currency)}</TableCell>
               </TableRow>
             </TableBody>
           </Table>

@@ -61,6 +61,8 @@ import PurpleDocIcon from "@/assets/icons2/purple-document.icon.svg";
 import GreenDocIcon from "@/assets/icons2/green-document.icon.svg";
 import EditTwoIcon from "@/assets/icons2/edit-2.icon.svg";
 import FileIcon from "@/assets/icons2/file.icon.svg";
+import EyeIcon from "@/assets/icons2/eye.icon.svg";
+import TimerIcon from "@/assets/icons2/timer.icon.svg";
 
 export const documentIcons = [
   BlueDocIcon,
@@ -135,4 +137,6 @@ export const icons2 = {
   documentIcons,
   editTwo: EditTwoIcon,
   file: FileIcon,
+  eye: EyeIcon,
+  timer: TimerIcon
 };

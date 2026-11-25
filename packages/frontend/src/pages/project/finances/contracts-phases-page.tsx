@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { CreateButton } from "@/components/molecules/create-button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { SearchInput } from "@/components/atoms/search-input";
-import { PageHeader } from "@/components/molecules/page-header";
+import { NumberedPagination } from "@/components/molecules/numbered-pagination";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import { useContracts, useDeleteContract, type Contract } from "@/hooks/use-contracts";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { useStages } from "@/hooks/use-stages";
@@ -25,10 +26,13 @@ import { ContractsTable } from "./contracts-phases/contracts-table";
 import { popEntry, pushEntry, topContractId, topPhaseId, type DrawerEntry } from "./contracts-phases/drawer-stack";
 import { PhaseDrawer } from "./contracts-phases/phase-drawer";
 import { PhasesTable } from "./contracts-phases/phases-table";
+import { SectionTabs } from "@/components/molecules/section-tabs";
 import { UpsertContractDialog } from "./contracts-phases/upsert-contract-dialog";
-import { FinancePageFrame, FinanceTabBar, useFinanceTab } from "./finance-tabs";
+import { useFinanceTab } from "./finance-tabs";
 import { ScheduleOfValuesDrawer } from "./schedule-of-values-drawer";
 import { StageValueDrawer } from "./stage-value-drawer";
+
+const PAGE_SIZE = 10;
 
 /**
  * Contracts & phases: the agreements that price this build and the phases
@@ -36,6 +40,7 @@ import { StageValueDrawer } from "./stage-value-drawer";
  * its Final account section (where the old page used to be).
  */
 export default function ProjectContractsPhasesPage() {
+  useSetPageTitle("Contract & Phases", "The agreements that price this build and the phases they price.");
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "finances", "manage");
   const canManageStages = canResourceAction(access, "stages", "manage");
@@ -49,6 +54,7 @@ export default function ProjectContractsPhasesPage() {
   const deleteContract = useDeleteContract();
 
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [stack, setStack] = useState<DrawerEntry[]>([]);
   const [view, setView] = useState<ContractView>("details");
   const [upsert, setUpsert] = useState<{ open: boolean; initial: Contract | null }>({ open: false, initial: null });
@@ -68,6 +74,17 @@ export default function ProjectContractsPhasesPage() {
   const visibleStages = useMemo(
     () => (query ? stages.filter((stage) => stage.name.toLowerCase().includes(query)) : stages),
     [stages, query],
+  );
+  const listLength = tab === "contracts" ? visibleContracts.length : visibleStages.length;
+  const pageCount = Math.max(1, Math.ceil(listLength / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedContracts = useMemo(
+    () => visibleContracts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [visibleContracts, currentPage],
+  );
+  const pagedStages = useMemo(
+    () => visibleStages.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [visibleStages, currentPage],
   );
 
   // Deep link: ?drawer=<contractId|main>&view=<section>, consumed once.
@@ -118,32 +135,37 @@ export default function ProjectContractsPhasesPage() {
   }
 
   return (
-    <FinancePageFrame>
-      <PageHeader title="Contracts & phases" />
-      <FinanceTabBar tabs={visible} value={tab} onChange={setTab} ariaLabel="Contract sections" />
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="w-full rounded-lg bg-surface-alt sm:max-w-xs">
-          <SearchInput
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={tab === "contracts" ? "Search contracts" : "Search by phase"}
-            aria-label={tab === "contracts" ? "Search contracts" : "Search phases"}
-          />
-        </div>
+    <div className="w-full px-4 pb-8 pt-[40px] sm:px-10 lg:px-[40px]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SectionTabs items={visible} value={tab} onChange={(next) => { setTab(next); setPage(1); }} ariaLabel="Contract sections" />
         {tab === "contracts" && canManage ? (
-          <CreateButton onClick={() => setUpsert({ open: true, initial: null })}>
-            Add contract
-     </CreateButton>
+          <CreateButton
+            onClick={() => setUpsert({ open: true, initial: null })}
+            className="h-[36px] gap-[8px] px-[16px] text-[14px] font-semibold"
+          >
+            Add Contract
+          </CreateButton>
         ) : null}
       </div>
 
-      <div className="mt-4">
+      <div className="mt-[32px] w-full border border-[#EEEEEE] bg-white sm:max-w-[396px]">
+        <SearchInput
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
+          placeholder={tab === "contracts" ? "Search Contracts" : "Search Phases"}
+          aria-label={tab === "contracts" ? "Search contracts" : "Search phases"}
+          className="h-[34px] rounded-none pl-[44px] text-caption-l placeholder:text-[#A3A3A3] lg:text-caption-l"
+        />
+      </div>
+
+      <div className="mt-[16px]">
         {tab === "contracts" ? (
           <ContractsTable
-            projectId={project.id}
             currency={currency}
-            contracts={visibleContracts}
+            contracts={pagedContracts}
             isLoading={contractsPending}
             isFiltered={query.length > 0}
             canManage={canManage}
@@ -156,7 +178,7 @@ export default function ProjectContractsPhasesPage() {
           <PhasesTable
             projectId={project.id}
             currency={currency}
-            stages={visibleStages}
+            stages={pagedStages}
             contracts={contracts}
             mainContract={mainContract}
             isLoading={stagesPending}
@@ -167,6 +189,15 @@ export default function ProjectContractsPhasesPage() {
             onOpenSchedule={setScheduleTarget}
           />
         )}
+        {listLength > 0 ? (
+          <NumberedPagination
+            page={currentPage}
+            pageSize={PAGE_SIZE}
+            total={listLength}
+            noun={tab === "contracts" ? "Contracts" : "Phases"}
+            onPageChange={setPage}
+          />
+        ) : null}
       </div>
 
       {openedContract ? (
@@ -245,6 +276,6 @@ export default function ProjectContractsPhasesPage() {
         currency={currency}
         canManage={canManageStages}
       />
-    </FinancePageFrame>
+    </div>
   );
 }

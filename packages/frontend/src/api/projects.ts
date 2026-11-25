@@ -9,6 +9,7 @@ export interface ProjectPageQuery {
   pageSize?: number;
 }
 import type { AiUpdateCadence, Currency, Project } from "@/lib/project-types";
+import { pageProjectsLocally, type ProjectPage } from "./projects-local-page"; // TEMP, see that file
 
 export interface ProjectTemplateSummary {
   id: string;
@@ -18,6 +19,9 @@ export interface ProjectTemplateSummary {
   stageCount: number;
   taskCount: number;
   totalWeeks: number;
+  /** Shortest and longest realistic duration; the card shows "46 - 138 Weeks" once the API sends them. */
+  minWeeks?: number;
+  maxWeeks?: number;
   stages: Array<{ name: string; durationWeeks: number; dateRange: string }>;
 }
 
@@ -56,8 +60,9 @@ export const projectsApi = {
 
   page: (query: ProjectPageQuery) =>
     api
-      .get<{ items: Project[]; total: number; page: number; pageSize: number }>("/projects", { params: { page: 1, ...query } })
-      .then((r) => r.data),
+      .get<ProjectPage | Project[]>("/projects", { params: { page: 1, ...query } })
+      // TEMP: a backend without paging answers with the plain array (see projects-local-page.ts).
+      .then((r) => (Array.isArray(r.data) ? pageProjectsLocally(r.data, query) : r.data)),
   
   detail: (id: string) => api.get<Project>(`/projects/${id}`).then((r) => r.data),
   
