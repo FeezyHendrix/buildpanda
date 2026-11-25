@@ -1,5 +1,9 @@
 import { UnrecoverableError } from "bullmq";
-import type { ErrorReport, SlackTransportOptions } from "./types.ts";
+import type {
+  ErrorReport,
+  SlackSend,
+  SlackTransportOptions,
+} from "./types.ts";
 
 function explanation(report: ErrorReport): string {
   if (report.kind === "react")
@@ -104,7 +108,9 @@ export function slackPayload(report: ErrorReport) {
     unfurl_media: false,
   };
 }
-export function createSlackTransport(options: SlackTransportOptions) {
+export function createSlackTransport(
+  options: SlackTransportOptions,
+): SlackSend {
   const url = new URL(options.webhookUrl);
   if (
     url.protocol !== "https:" ||
@@ -119,7 +125,7 @@ export function createSlackTransport(options: SlackTransportOptions) {
       "ERROR_SINK_SLACK_WEBHOOK_URL must be a Slack incoming webhook URL.",
     );
   const send = options.fetch ?? globalThis.fetch;
-  return async (report: ErrorReport): Promise<number | undefined> => {
+  return async (report) => {
     let response: Response;
     try {
       response = await send(options.webhookUrl, {

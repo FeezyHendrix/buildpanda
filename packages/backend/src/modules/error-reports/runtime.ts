@@ -3,6 +3,7 @@ import { getLlmContext } from "../../lib/llm-context.ts";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { setImmediate as immediate } from "node:timers/promises";
 import { config } from "../../config/index.ts";
+import { logger } from "../../lib/logger.ts";
 import { errorReportService } from "./service.ts";
 import { createSlackTransport } from "./slack.ts";
 import {
@@ -11,18 +12,18 @@ import {
   type ErrorContext,
   type ErrorQueue,
   type ErrorReport,
+  type SlackSend,
 } from "./types.ts";
 
 const contextStorage = new AsyncLocalStorage<() => ErrorContext>();
 let queue: ErrorQueue | undefined;
-let emergencySend: ReturnType<typeof createSlackTransport> | undefined;
+let emergencySend: SlackSend | undefined;
 const startupReports: ErrorReport[] = [];
 const deliveries = new Set<Promise<unknown>>();
+// `area: "error_sink"` stops the logger hook from capturing these entries again.
 const failure = (code: string) => {
   try {
-    process.stderr.write(
-      `${JSON.stringify({ level: "warn", area: "error_sink", code })}\n`,
-    );
+    logger.warn({ area: "error_sink", code }, "Error sink delivery problem");
   } catch {
     /* Reporting must not interrupt the application. */
   }
@@ -32,9 +33,7 @@ export const errorSink = errorReportService({
   environment: config.errorSink.environment,
   release: config.errorSink.release,
   record: (report) =>
-    process.stdout.write(
-      `${JSON.stringify({ level: "error", area: "error_sink", report })}\n`,
-    ),
+    logger.error({ area: "error_sink", report }, "Error report captured"),
   enqueue: async (report) => {
     if (queue) {
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -113,10 +112,10 @@ export function captureErrorLog(
 export async function bindErrorQueue(
   manager: ErrorQueue,
   runWorkers: boolean,
-  transport?: ReturnType<typeof createSlackTransport>,
+  transport?: SlackSend,
 ) {
   if (!config.errorSink.slackWebhookUrl && !transport) return;
-  let send: ReturnType<typeof createSlackTransport>;
+  let send: SlackSend;
   try {
     send =
       transport ??
@@ -197,4 +196,12 @@ export async function flushErrorSink(timeoutMs = 2000) {
     }),
   ]);
   if (timer) clearTimeout(timer);
+}
+
+/** Last resort when the process cannot start: report, flush, then exit. */
+export async function failStartup(error: unknown, message: string) {
+  captureError(error, { kind: "fatal", operation: "startup" });
+  await flushErrorSink(2000);
+  logger.error({ area: "error_sink" }, message);
+  process.exit(1);
 }

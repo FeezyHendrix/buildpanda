@@ -3,9 +3,19 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
+const envDir = path.resolve(__dirname, "../../");
+
+// Error reports carry the build's commit so frontend and backend reports line up.
+const appRelease = (mode: string) =>
+  loadEnv(mode, envDir, "VITE_").VITE_APP_RELEASE ||
+  process.env["RAILWAY_GIT_COMMIT_SHA"] ||
+  "unknown";
+
 export default defineConfig(({ mode }) => ({
-  define: { "import.meta.env.VITE_APP_RELEASE": JSON.stringify(loadEnv(mode, path.resolve(__dirname, "../../"), "VITE_").VITE_APP_RELEASE || process.env["RAILWAY_GIT_COMMIT_SHA"] || "unknown") },
-  envDir: path.resolve(__dirname, "../../"),
+  define: {
+    "import.meta.env.VITE_APP_RELEASE": JSON.stringify(appRelease(mode)),
+  },
+  envDir,
   plugins: [react(), tailwindcss()],
   resolve: {
     dedupe: ["react", "react-dom"],

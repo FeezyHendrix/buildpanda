@@ -1,5 +1,5 @@
 import "./instrument.ts";
-import { captureError, flushErrorSink } from "./modules/error-reports/runtime.ts";
+import { failStartup } from "./modules/error-reports/runtime.ts";
 import cluster from "node:cluster";
 import os from "node:os";
 import { config } from "./config/index.ts";
@@ -75,4 +75,4 @@ async function main(): Promise<void> {
   await start();
 }
 
-void main().catch(async (error) => { captureError(error, { kind: "fatal", operation: "startup" }); await flushErrorSink(2000); console.error("Cluster startup failed"); process.exit(1); });
+void main().catch((error) => failStartup(error, "Cluster startup failed"));

@@ -16,9 +16,26 @@ export const REPORT_KINDS = [
 ] as const;
 export type ReportKind = (typeof REPORT_KINDS)[number];
 export type ErrorLevel = "warning" | "error" | "fatal";
+export const BREADCRUMB_TYPES = [
+  "navigation",
+  "action",
+  "http",
+  "lifecycle",
+] as const;
+export type BreadcrumbType = (typeof BREADCRUMB_TYPES)[number];
+export const HTTP_METHODS = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+  "UNKNOWN",
+] as const;
 export interface ErrorBreadcrumb {
   at: string;
-  type: "navigation" | "action" | "http" | "lifecycle";
+  type: BreadcrumbType;
   description: string;
   method?: string;
   status?: number;
@@ -110,6 +127,22 @@ export interface ErrorSinkOptions {
     delayMs: number,
   ) => { unref?: () => unknown };
   onFailure: (code: string) => void;
+}
+export type ErrorActor = Pick<ErrorContext, "userId" | "organizationId">;
+export interface ReportGroup {
+  report: ErrorReport;
+  repeats: number;
+  lastSeenAt: string;
+}
+export interface ClientEvent {
+  id: string;
+  at: number;
+}
+/** Resolves to a retry delay in ms when Slack rate-limits the delivery. */
+export type SlackSend = (report: ErrorReport) => Promise<number | undefined>;
+export interface ProjectRouteParams {
+  id?: string;
+  projectId?: string;
 }
 export interface SlackTransportOptions {
   webhookUrl: string;

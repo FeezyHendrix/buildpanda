@@ -1,5 +1,6 @@
 import {
   addErrorBreadcrumb,
+  errorSinkEnabled,
   reportFrontendError,
   resumeErrorReports,
   flushFrontendReports,
@@ -7,10 +8,7 @@ import {
 import { instrumentFetch } from "./network";
 import { safePath } from "./redact";
 
-const enabled =
-  import.meta.env.VITE_ERROR_SINK_ENABLED === "true" ||
-  (import.meta.env.PROD && import.meta.env.VITE_ERROR_SINK_ENABLED !== "false");
-if (enabled && typeof window !== "undefined") {
+if (errorSinkEnabled && typeof window !== "undefined") {
   window.addEventListener(
     "error",
     (event: Event) => {

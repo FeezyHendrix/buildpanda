@@ -14,10 +14,16 @@ export const logger = {
   },
   warn(obj: unknown, msg?: string): void {
     if (instance) instance.warn(obj as object, msg as string);
-    else { captureErrorLog([obj, msg], {}, 40); console.warn(msg ?? obj); }
+    else {
+      captureErrorLog([obj, msg], {}, 40);
+      console.warn(msg ?? obj);
+    }
   },
   error(obj: unknown, msg?: string): void {
     if (instance) instance.error(obj as object, msg as string);
-    else { captureErrorLog([obj, msg], {}, 50); console.error(msg ?? obj); }
+    else {
+      captureErrorLog([obj, msg], {}, 50);
+      console.error(msg ?? obj);
+    }
   },
 };

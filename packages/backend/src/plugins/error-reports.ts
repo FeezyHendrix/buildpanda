@@ -7,12 +7,11 @@ import {
 import type {
   ErrorContext,
   ErrorReportPluginOptions,
+  ProjectRouteParams,
 } from "../modules/error-reports/types.ts";
 
 export function requestErrorContext(request: FastifyRequest): ErrorContext {
-  const params = request.params as
-    | { id?: string; projectId?: string }
-    | undefined;
+  const params = request.params as ProjectRouteParams | undefined;
   const route = request.routeOptions.url ?? request.url;
   return {
     kind: "http",
