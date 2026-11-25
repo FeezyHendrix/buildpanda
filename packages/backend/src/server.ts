@@ -1,4 +1,8 @@
 import "./instrument.ts";
+import { randomUUID } from "node:crypto";
+import { captureError, captureErrorLog, flushErrorSink } from "./modules/error-reports/runtime.ts";
+import errorReportsPlugin from "./plugins/error-reports.ts";
+import errorReportRoutes from "./modules/error-reports/routes.ts";
 import * as Sentry from "@sentry/node";
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
@@ -103,8 +107,10 @@ import { besmmRag } from "./lib/besmm-rag.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
+    genReqId: () => randomUUID(),
     logger: {
       level: config.http.logLevel,
+      hooks: { logMethod(args, method, level) { if (level >= 40) captureErrorLog(args, this.bindings(), level); method.apply(this, args); } },
       // Strip credentials and client PII from logs at the serializer level so
       // session tokens / passwords / personal data never reach log storage,
       // regardless of what a handler passes to request.log.
@@ -139,6 +145,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   setLogger(app.log);
+  await app.register(errorReportsPlugin);
 
   if (config.sentry.enabled) {
     Sentry.setupFastifyErrorHandler(app);
@@ -147,6 +154,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(cors, {
     origin: config.http.corsOrigins,
     credentials: true,
+    exposedHeaders: ["X-Request-ID"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
 
@@ -168,6 +176,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(queuePlugin);
   await app.register(realtimePlugin);
 
+  await app.register(errorReportRoutes);
   await app.register(authRoutes);
   await app.register(assetRoutes);
   await app.register(healthRoutes);
@@ -270,6 +279,7 @@ export async function start(): Promise<void> {
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     app.log.info({ signal }, "Shutting down");
     try {
+      await flushErrorSink(2000);
       await app.close();
       process.exit(0);
     } catch (error) {
@@ -284,24 +294,25 @@ export async function start(): Promise<void> {
   process.on("uncaughtException", (error) => {
     app.log.fatal({ err: error }, "Uncaught exception");
     Sentry.captureException(error, { level: "fatal", tags: { lifecycle: "uncaughtException" } });
-    void Sentry.flush(2000).finally(() => process.exit(1));
+    void Promise.allSettled([Sentry.flush(2000), flushErrorSink(2000)]).finally(() => process.exit(1));
   });
 
   process.on("unhandledRejection", (reason) => {
     app.log.fatal({ err: reason }, "Unhandled rejection");
     Sentry.captureException(reason, { level: "fatal", tags: { lifecycle: "unhandledRejection" } });
-    void Sentry.flush(2000).finally(() => process.exit(1));
+    void Promise.allSettled([Sentry.flush(2000), flushErrorSink(2000)]).finally(() => process.exit(1));
   });
 
   try {
     await app.listen({ host: config.http.host, port: config.http.port });
   } catch (error) {
     app.log.fatal({ err: error }, "Failed to start server");
+    await flushErrorSink(2000);
     process.exit(1);
   }
 }
 
 const isEntrypoint = import.meta.url === `file://${process.argv[1]}`;
 if (isEntrypoint) {
-  void start();
+  void start().catch(async (error) => { captureError(error, { kind: "fatal", operation: "startup" }); await flushErrorSink(2000); console.error("Server startup failed"); process.exit(1); });
 }

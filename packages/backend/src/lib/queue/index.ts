@@ -1,3 +1,4 @@
+import type { QueueWorkerOptions } from "./types.ts";
 import { Queue, Worker, type Job } from "bullmq";
 import IORedis, { type Redis } from "ioredis";
 import type { FastifyBaseLogger } from "fastify";
@@ -34,6 +35,7 @@ export class QueueManager {
   private readonly connection: Redis | null;
   private readonly queues = new Map<string, Queue>();
   private readonly workers = new Map<string, Worker>();
+  private readonly workerOptions = new Map<string, QueueWorkerOptions>();
   private readonly processors = new Map<string, JobProcessor>();
   private started = false;
 
@@ -65,11 +67,13 @@ export class QueueManager {
   registerProcessor<TData>(
     queueName: string,
     processor: JobProcessor<TData>,
+    options: QueueWorkerOptions = {},
   ): void {
     if (this.processors.has(queueName)) {
       throw new Error(`Processor already registered for queue "${queueName}"`);
     }
     this.processors.set(queueName, processor as JobProcessor);
+    this.workerOptions.set(queueName, options);
   }
 
   /**
@@ -89,7 +93,7 @@ export class QueueManager {
             () => processor(job.data),
           );
         },
-        { connection: this.connection, concurrency: 2 },
+        { connection: this.connection, concurrency: 2, ...this.workerOptions.get(queueName) },
       );
       worker.on("failed", (job, err) => {
         this.logger.error(

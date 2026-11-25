@@ -1,3 +1,4 @@
+import { bindErrorQueue } from "../modules/error-reports/runtime.ts";
 import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import { QueueManager } from "../lib/queue/index.ts";
@@ -40,6 +41,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
   const inlineModeRequiresLocalWorkers = manager.mode === "inline";
   const runWorkers = inlineModeRequiresLocalWorkers || config.worker.runWorkers;
 
+  await bindErrorQueue(manager, runWorkers);
   if (runWorkers) {
     registerPandaAiWorker(fastify.db, manager);
     registerProposalExpiryWorker(fastify.db, manager);

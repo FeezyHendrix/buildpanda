@@ -139,6 +139,14 @@ coverage/
 !/packages/frontend/src/components/molecules/precon-workbook/workbook-protection.test.ts
 !/packages/frontend/src/components/molecules/precon-workbook/workbook-serialization.test.ts
 
+# Error reporting regression tests
+!/packages/backend/src/modules/error-reports/redis.test.ts
+!/packages/backend/src/modules/error-reports/routes.test.ts
+!/packages/backend/src/modules/error-reports/runtime.test.ts
+!/packages/backend/src/modules/error-reports/service.test.ts
+!/packages/backend/src/modules/error-reports/slack.test.ts
+!/packages/backend/src/modules/error-reports/worker.test.ts
+
 # Docker
 postgres_data/
 
