@@ -57,10 +57,17 @@ dbTest("text and voice draft equal review actions, persist original audio, and s
   assert.match((await f.reply(confirm.id)).body, /Saved 1 daily-log action/);
 });
 
-dbTest("translation failure retains original audio and a deliberate retry reuses the stored file", async (f) => {
+dbTest("translation failure retries automatically, then retains original audio and a deliberate retry reuses the stored file", async (f) => {
   await f.link();
   const inbox = await f.receive(null, { type: "audio", mediaId: "media.1" });
-  await f.worker({ translate: async () => { throw new Error("speech unavailable"); } }).processInbox(inbox.id);
+  const failing = f.worker({ translate: async () => { throw new Error("speech unavailable"); } });
+  for (const attempt of [1, 2]) {
+    await failing.processInbox(inbox.id);
+    const row = await f.repo.inbox(inbox.id);
+    assert.equal(row?.status, "received"); assert.equal(row?.attempts, attempt);
+    assert.equal(await f.db("messaging_agent_outbox").where({ inbox_id: inbox.id }).count("* as n").first().then((r) => Number(r?.n)), 0);
+  }
+  await failing.processInbox(inbox.id);
   assert.equal((await f.repo.inbox(inbox.id))?.status, "failed");
   assert.ok((await f.repo.inbox(inbox.id))?.source_file_id);
   assert.equal(f.effects.drafts, 0);

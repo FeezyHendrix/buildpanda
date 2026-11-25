@@ -38,6 +38,9 @@ coverage/
 !/packages/backend/src/lib/stage-filter.test.ts
 !/packages/frontend/src/hooks/stage-scope-cache.test.ts
 
+# Client IP resolution behind Railway's edge, for rate limits and geo.
+!/packages/backend/src/lib/client-geo.test.ts
+
 # Exception: the take-off regression suites must travel with the branch. They
 # are the only proof that a saved measurement keeps its definition, its geometry
 # id, its basis sentence and its undo chain against a real database, and that a
@@ -250,7 +253,7 @@ branch_structure.json
 !/packages/panda-agent/scripts/review-schema.test.ts
 
 # Telegram connection permission and handoff regression coverage.
-!/packages/frontend/src/lib/telegram-connection.test.ts
+!/packages/frontend/src/lib/messaging-connection.test.ts
 
 # Forwarded document intake and finance permission regressions.
 !/packages/backend/src/modules/messaging-agent/document-analysis.test.ts

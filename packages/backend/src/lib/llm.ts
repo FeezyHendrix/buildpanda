@@ -133,6 +133,8 @@ export type JsonCompletionTransport = (messages: LlmMessage[], provider: Provide
 // llm-long-text.ts).
 export interface JsonCallOptions {
   provider?: Provider | null;
+  /** Names the caller in llm_calls so a call can be traced back to its feature. */
+  promptId?: string;
 }
 
 const defaultJsonTransport: JsonCompletionTransport = async (messages, provider) => {
@@ -183,7 +185,12 @@ function resolveProvider(options: JsonCallOptions): Provider | null {
 }
 
 export async function chatJson(messages: LlmMessage[], options: JsonCallOptions = {}): Promise<unknown | null> {
-  const { content } = await jsonTransport(messages, resolveProvider(options));
+  const start = Date.now(), provider = resolveProvider(options);
+  const { content, usage } = await jsonTransport(messages, provider);
+  if (provider) emitCallRecord({
+    promptId: options.promptId ?? null, modelVersion: provider.model, latencyMs: Date.now() - start, validationStatus: "unvalidated",
+    retryCount: 0, tokensIn: usage?.prompt_tokens ?? null, tokensOut: usage?.completion_tokens ?? null,
+  });
   if (!content) return null;
   return JSON.parse(content);
 }

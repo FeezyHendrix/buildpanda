@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { runQueries } from "../../lib/run-queries.ts";
 import { assertCanAccessProject, assertProjectPermission } from "../../lib/authorization.ts";
 import { FeatureDisabledError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import type { QueueManager } from "../../lib/queue/index.ts";
@@ -15,7 +16,7 @@ import type { FieldActor } from "./types.ts";
 import type { FieldToolContext, FieldToolInput } from "./tool-types.ts";
 
 export async function fieldToolContext(db: Knex, input: FieldToolInput, actor: FieldActor, queue?: QueueManager): Promise<FieldToolContext> {
-  const [user, loaded] = await Promise.all([fieldActionsRepository(db).userById(actor.userId), accessContextRepository(db).load(actor.userId)]);
+  const [user, loaded] = await runQueries(db, [() => fieldActionsRepository(db).userById(actor.userId), () => accessContextRepository(db).load(actor.userId)]);
   if (!user || (user.banned && (!user.banExpires || new Date(user.banExpires).getTime() > Date.now()))) throw new ForbiddenError("This account cannot perform field actions.");
   const access = resolveAccessContext(actor.userId, loaded);
   const request: FieldToolContext["request"] = {

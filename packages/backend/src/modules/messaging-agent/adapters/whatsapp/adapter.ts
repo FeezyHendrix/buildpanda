@@ -1,3 +1,4 @@
+import { MESSAGING_CHANNEL } from "../../types.ts";
 import type { config } from "../../../../config/index.ts";
 import type { MessagingChannelAdapter } from "../../channel-types.ts";
 import { whatsappProvider } from "./provider.ts";
@@ -10,7 +11,7 @@ export function withinWhatsAppServiceWindow(sentAt: Date | string | null, now: D
 
 export function whatsappChannelAdapter(settings: typeof config.whatsapp, provider: Pick<MessagingChannelAdapter, "sendText" | "downloadAudio" | "downloadAttachment"> = whatsappProvider(settings)): MessagingChannelAdapter {
   return {
-    channel: "whatsapp", channelAccountId: settings.phoneNumberId, label: "WhatsApp", maxTextLength: 4096, maxButtonTextLength: 1024,
+    channel: MESSAGING_CHANNEL.whatsapp, channelAccountId: settings.phoneNumberId, label: "WhatsApp", maxTextLength: 4096, maxButtonTextLength: 1024,
     connectUrl: (code) => `https://wa.me/${settings.businessNumber.replace(/^\+/, "")}?text=${encodeURIComponent(`LINK ${code}`)}`,
     canReply: withinWhatsAppServiceWindow,
     sendText: provider.sendText,

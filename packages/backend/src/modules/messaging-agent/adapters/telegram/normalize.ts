@@ -1,3 +1,4 @@
+import { MESSAGING_CHANNEL } from "../../types.ts";
 import { z } from "zod";
 import { BadRequestError } from "../../../../lib/errors.ts";
 import { attachmentMediaId, attachmentMime } from "../../attachment-media.ts";
@@ -61,7 +62,7 @@ export function parseTelegramUpdate(payload: unknown, settings: TelegramConfig, 
     if (!Number.isFinite(now.getTime())) throw new BadRequestError("Invalid Telegram callback timestamp");
     const senderId = telegramSenderId(message.chat.id, callback.from.id);
     return { messages: [{
-      channel: "telegram", channelAccountId: settings.botId, senderId, replyRecipientId: senderId, conversationType: "direct",
+      channel: MESSAGING_CHANNEL.telegram, channelAccountId: settings.botId, senderId, replyRecipientId: senderId, conversationType: "direct",
       providerMessageId: telegramCallbackMessageId(message.chat.id, message.message_id, callback.id), sentAt: new Date(now.getTime()),
       type: "text", text: callback.data, mediaId: null, mediaMimeType: null,
       replyToMessageId: telegramMessageId(message.chat.id, message.message_id),
@@ -87,10 +88,10 @@ export function parseTelegramUpdate(payload: unknown, settings: TelegramConfig, 
   const attachmentType = photo === attachment ? "image/jpeg" : attachmentMime(attachment?.mime_type);
   const type = text !== null ? "text" : attachment ? "attachment" : supportedAudio ? "audio" : "unsupported";
   return { messages: [{
-    channel: "telegram", channelAccountId: settings.botId, senderId, replyRecipientId: senderId,
+    channel: MESSAGING_CHANNEL.telegram, channelAccountId: settings.botId, senderId, replyRecipientId: senderId,
     conversationType: "direct", providerMessageId: telegramMessageId(message.chat.id, message.message_id), sentAt, type,
     text: type === "attachment" ? message.caption ?? null : text,
-    mediaId: type === "audio" ? telegramMediaId(audio!.file_id, mimeType) : type === "attachment" ? attachmentMediaId("telegram", {
+    mediaId: type === "audio" ? telegramMediaId(audio!.file_id, mimeType) : type === "attachment" ? attachmentMediaId(MESSAGING_CHANNEL.telegram, {
       providerId: attachment!.file_id, fileName: attachment!.file_name ?? (photo === attachment ? "photo.jpg" : message.video ? "video.mp4" : "attachment"),
       ...(attachmentType ? { mimeType: attachmentType } : {}), ...(attachment!.file_size ? { sizeBytes: attachment!.file_size } : {}),
     }) : null,

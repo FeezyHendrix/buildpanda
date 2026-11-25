@@ -1,4 +1,5 @@
 import { canProjectPermission } from "../../lib/authorization.ts";
+import { runQueries } from "../../lib/run-queries.ts";
 import { requestAccessContext } from "../../lib/authorization-request.ts";
 import { buildRfiServices } from "../rfis/wiring.ts";
 import { isCompanyCaller } from "../rfis/access.ts";
@@ -36,8 +37,8 @@ const rfiHandler: FieldToolHandler = async (input, context) => {
       : await service.update(project.id, rfiId, body, actor);
     recordId = saved.id;
     if (input.kind === "rfi" || (reassigned && saved.ballInCourtEmail !== previous?.ballInCourtEmail)) {
-      const [projectRecord, actorRecord] = await Promise.all([
-        projectsRepository(context.db).findById(project.id), usersRepository(context.db).findById(user.id),
+      const [projectRecord, actorRecord] = await runQueries(context.db, [
+        () => projectsRepository(context.db).findById(project.id), () => usersRepository(context.db).findById(user.id),
       ]);
       await sendBallInCourtEmail(saved, projectRecord?.name ?? "Project", actorRecord?.email ?? "");
     }

@@ -19,6 +19,7 @@
     "test:takeoff-editor": "tsx scripts/takeoff-suites.ts",
     "test:user-deletion": "tsx --test src/modules/admin/user-deletion.test.ts",
     "test:messaging-agent": "tsx scripts/messaging-agent-suites.ts",
+    "test:client-ip": "tsx --test src/lib/client-geo.test.ts",
     "telegram:webhook:check": "tsx scripts/telegram-webhook.ts --check",
     "telegram:webhook:register": "tsx scripts/telegram-webhook.ts --register"
   },

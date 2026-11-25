@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BadRequestError } from "../../lib/errors.ts";
 import type { MessagingAttachmentIdentity } from "./attachment-types.ts";
+import type { MessagingChannelId } from "./types.ts";
 
 const identitySchema = z.object({
   providerId: z.string().regex(/^[A-Za-z0-9_-]{1,512}$/),
@@ -9,13 +10,13 @@ const identitySchema = z.object({
   sizeBytes: z.number().int().positive().safe().optional(),
 }).strict();
 
-export function attachmentMediaId(channel: "telegram" | "whatsapp", identity: MessagingAttachmentIdentity): string {
+export function attachmentMediaId(channel: MessagingChannelId, identity: MessagingAttachmentIdentity): string {
   const checked = identitySchema.safeParse(identity);
   if (!checked.success) throw new BadRequestError("Attachment metadata is invalid.");
   return `${channel}:file:${Buffer.from(JSON.stringify(checked.data)).toString("base64url")}`;
 }
 
-export function parseAttachmentMediaId(channel: "telegram" | "whatsapp", value: string): MessagingAttachmentIdentity {
+export function parseAttachmentMediaId(channel: MessagingChannelId, value: string): MessagingAttachmentIdentity {
   const prefix = `${channel}:file:`;
   if (!value.startsWith(prefix) || value.length > 4096 || !/^[A-Za-z0-9_-]+$/.test(value.slice(prefix.length))) throw new BadRequestError("Attachment identity is invalid.");
   try { return identitySchema.parse(JSON.parse(Buffer.from(value.slice(prefix.length), "base64url").toString("utf8"))); }

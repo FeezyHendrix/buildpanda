@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { runQueries } from "../../lib/run-queries.ts";
 import { BUILTIN_ROLES } from "../../lib/permissions.ts";
 import type { AccessContextRows } from "../../plugins/access-cache.ts";
 
@@ -7,9 +8,9 @@ export function accessContextRepository(db: Knex) {
     async loadMany(userIds: string[]): Promise<Map<string, AccessContextRows>> {
       const ids = [...new Set(userIds)];
       if (!ids.length) return new Map();
-      const [members, participants] = await Promise.all([
-        db("member").whereIn("userId", ids).select<(AccessContextRows["memberRows"][number] & { userId: string })[]>("userId", "organizationId", "role"),
-        db("project_participants").whereIn("user_id", ids).where({ status: "active" }).select<(AccessContextRows["participantRows"][number] & { user_id: string })[]>("user_id", "project_id", "role", "permissions", "grants"),
+      const [members, participants] = await runQueries(db, [
+        () => db("member").whereIn("userId", ids).select<(AccessContextRows["memberRows"][number] & { userId: string })[]>("userId", "organizationId", "role"),
+        () => db("project_participants").whereIn("user_id", ids).where({ status: "active" }).select<(AccessContextRows["participantRows"][number] & { user_id: string })[]>("user_id", "project_id", "role", "permissions", "grants"),
       ]);
       const orgIds = [...new Set(members.filter((row) => !BUILTIN_ROLES.has(row.role)).map((row) => row.organizationId))];
       const roles = orgIds.length ? await db("organizationRole").whereIn("organizationId", orgIds).select<AccessContextRows["customRoleRows"]>("organizationId", "role", "permission") : [];

@@ -276,6 +276,9 @@ export const auth = betterAuth({
       secure: true,
       partitioned: true,
     },
+    // Railway's edge sets X-Real-IP to the caller and replaces client copies. A multi-hop
+    // X-Forwarded-For resolves to no IP, which put every sign-in in one shared bucket.
+    ipAddress: { ipAddressHeaders: ["x-real-ip", "x-forwarded-for"] },
   },
 
   emailAndPassword: {

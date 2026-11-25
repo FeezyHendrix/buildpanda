@@ -14,7 +14,9 @@ import type { FieldActor } from "./types.ts";
 
 export function materialLogAuthorizer(deps: MaterialLogAuthorizationDeps) {
   return async (actor: FieldActor, projectId: string, entryType: "IN" | "USED"): Promise<MaterialLogScope> => {
-    const [user, context] = await Promise.all([deps.userById(actor.userId), deps.loadAccess(actor.userId)]);
+    // Sequential: deps may share one transaction connection, which cannot run queries concurrently.
+    const user = await deps.userById(actor.userId);
+    const context = await deps.loadAccess(actor.userId);
     if (!user || (user.banned && (!user.banExpires || new Date(user.banExpires).getTime() > Date.now()))) {
       throw new ForbiddenError("This account cannot perform field actions");
     }
@@ -48,8 +50,6 @@ export async function authorizeMaterialLogScope(db: Knex, actor: FieldActor, pro
     userById: fieldActionsRepository(db).userById,
     loadAccess: async (id) => resolveAccessContext(id, await access.load(id)),
     projectById: projectsRepository(db).findById,
-    isEnabled: async () => (await Promise.all([
-      flags.isEnabled("commercial.materialsLedger"), flags.isEnabled("commercial.materialsEquipment"),
-    ])).every(Boolean),
+    isEnabled: async () => await flags.isEnabled("commercial.materialsLedger") && await flags.isEnabled("commercial.materialsEquipment"),
   })(actor, projectId, entryType);
 }
