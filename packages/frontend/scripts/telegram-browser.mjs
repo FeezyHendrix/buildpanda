@@ -16,14 +16,14 @@ const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 page.on("console", (message) => { if (message.type() === "error" && !/Failed to load resource/.test(message.text())) errors.push(message.text()); });
-const code = "a".repeat(32), botUrl = `https://t.me/buildpanda_bot?start=${code}`;
-let allowed = true, enabled = true, linked = false, projectAllowed = true, multiple = false, delayed = false, failLink = false, invalidLink = false, unknownAccess = false, denyLink = false;
+const code = "a".repeat(32), botUrl = `https://t.me/buildpanda_bot?start=${code}`, waUrl = `https://wa.me/2348000000000?text=LINK%20${code}`;
+let allowed = true, enabled = true, linked = false, projectAllowed = true, multiple = false, delayed = false, failLink = false, invalidLink = false, unknownAccess = false, denyLink = false, whatsapp = false;
 let statusCalls = 0, links = [], releaseLink, releaseAccess;
 const access = () => ({ relationship: "guest", orgRole: null, permissions: allowed ? { project: ["view"], buildings: ["view"], dailyLog: ["create"] } : {}, sections: null, capabilities: {} });
 await page.route("**/*", async (route) => {
   const request = route.request(), url = new URL(request.url());
   const json = (data, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data), headers: { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Credentials": "true" } });
-  if (url.hostname === "t.me") return route.fulfill({ contentType: "text/html", body: "<button>Start</button>" });
+  if (url.hostname === "t.me" || url.hostname === "wa.me") return route.fulfill({ contentType: "text/html", body: "<button>Start</button>" });
   if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Credentials": "true", "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" } });
   if (url.pathname.endsWith("/api/auth/get-session")) return json({ user: { id: "crew", name: "Crew", email: "crew@example.test" }, session: { id: "session", userId: "crew", activeOrganizationId: "org", expiresAt: "2099-01-01T00:00:00Z" } });
   if (url.pathname.endsWith("/auth/payload-key")) return json({}, 404);
@@ -35,13 +35,13 @@ await page.route("**/*", async (route) => {
   if (url.pathname.endsWith("/messaging-agent/status")) {
     statusCalls++;
     return json({ userId: "crew", enabled, projects: projectAllowed ? [{ id: "site", organizationId: "org" }, { id: "other", organizationId: "org" }] : [],
-      channels: [{ id: "telegram", accountId: "bot", enabled }], connections: linked ? [{ id: "connection", channel: "telegram", accountId: "bot", selectedScope: { projectId: "site", buildingId: "block" } }] : [] });
+      channels: [{ id: "telegram", accountId: "bot", enabled }, { id: "whatsapp", accountId: "phone", enabled: whatsapp }], connections: linked ? [{ id: "connection", channel: "telegram", accountId: "bot", selectedScope: { projectId: "site", buildingId: "block" } }] : [] });
   }
   if (url.pathname.endsWith("/messaging-agent/link")) {
     links.push(request.postDataJSON());
     if (delayed) await new Promise((resolve) => { releaseLink = resolve; });
     if (denyLink) { allowed = false; return json({ message: "Project permission was revoked" }, 403); }
-    return failLink ? json({ message: "Connection service unavailable" }, 503) : json({ code, expiresAt: new Date(Date.now() + 600_000).toISOString(), connectUrl: invalidLink ? "https://attacker.test" : botUrl });
+    return failLink ? json({ message: "Connection service unavailable" }, 503) : json({ code, expiresAt: new Date(Date.now() + 600_000).toISOString(), connectUrl: invalidLink ? "https://attacker.test" : links.at(-1).channel === "whatsapp" ? waUrl : botUrl });
   }
   if (url.origin !== origin) return json({});
   return route.continue();
@@ -103,7 +103,14 @@ try {
   await button().waitFor();
   denyLink = true; await button().click(); await card().waitFor({ state: "hidden" });
   assert.equal(new URL(page.url()).origin, origin);
+  // WhatsApp stays hidden until the server enables it, then hands off its own prefilled LINK message.
+  const waButton = () => page.getByRole("button", { name: "Connect WhatsApp", exact: true });
+  denyLink = false; allowed = true; await open(); await button().waitFor(); assert.equal(await waButton().count(), 0);
+  whatsapp = true; await open(); await waButton().waitFor(); await button().waitFor();
+  await page.getByLabel("WhatsApp connection", { exact: true }).getByText("Tap Connect WhatsApp, then send the prefilled LINK message in WhatsApp.", { exact: true }).waitFor();
+  await waButton().click(); await page.waitForURL(waUrl);
+  assert.deepEqual(links.at(-1), { channel: "whatsapp", accountId: "phone", projectId: "site", buildingId: "block" });
   assert.deepEqual(errors, []);
-  console.log("Passed: phone-sized two-tap handoff, server-confirmed connection, building selection, project changes during linking, link failures, unsafe links, permission revocation during linking, unknown/denied access, server-denied links, disabled channel and offline/reconnect.");
+  console.log("Passed: phone-sized two-tap handoff, server-confirmed connection, building selection, project changes during linking, link failures, unsafe links, permission revocation during linking, unknown/denied access, server-denied links, disabled channel, offline/reconnect and the WhatsApp handoff.");
 } catch (error) { console.error(output); console.error(errors); console.error(await page.locator("body").innerText()); throw error; }
 finally { await browser.close(); server.kill("SIGTERM"); }

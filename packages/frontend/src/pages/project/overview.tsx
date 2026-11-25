@@ -1,4 +1,5 @@
-import { TelegramConnectionCard } from "@/components/molecules/telegram-connection-card";
+import { MessagingConnectionCard } from "@/components/molecules/messaging-connection-card";
+import { MESSAGING_CHANNELS } from "@/lib/messaging-connection";
 import { ProjectSetupChecklist } from "@/components/molecules/project-setup-checklist";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
@@ -111,7 +112,9 @@ export default function ProjectOverview() {
         }
       />
 
-      <TelegramConnectionCard key={project.id} projectId={project.id} projectName={project.name} />
+      {MESSAGING_CHANNELS.map((channel) => (
+        <MessagingConnectionCard key={`${project.id}:${channel.id}`} projectId={project.id} projectName={project.name} channel={channel} />
+      ))}
 
       {realBuildings.length > 1 ? (
         <section className="mt-8 flex flex-col gap-4">

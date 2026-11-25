@@ -6,6 +6,12 @@ export const projectKeys = {
   profile: (id: string) => [...projectKeys.all, "profile", id] as const,
 };
 
+// Shared by every channel card: one status request serves Telegram and WhatsApp.
+export const messagingConnectionKeys = {
+  status: (userId: string, organizationId: string | null, projectId: string, permissions: unknown) =>
+    ["projects", projectId, "messaging-connection", userId, organizationId, permissions] as const,
+};
+
 export const projectTemplateKeys = {
   all: ["project-templates"] as const,
   list: () => [...projectTemplateKeys.all, "list"] as const,
